@@ -551,6 +551,7 @@ const TUNEL = {
         <div class="route" style="font-family:${sk.rFont};font-size:${sm ? sk.rSm : xl ? (sk.rXl || sk.rMd) : sk.rMd}px">
           <b>일상</b><span class="d"></span><b style="color:${sk.acc}">${m.data?.dest || m.line_short || sk.short}</b></div>
         ${body}
+        ${opt.onclick ? '<span class="tx">자세히<i>⌄</i></span>' : ''}
         <div class="stub">${opt.stub || ''}</div>
       </div>
     ${close_}`;
@@ -614,7 +615,12 @@ const TUNEL = {
     if(!x) return;
     const willOpen = !x.classList.contains('show');
     document.querySelectorAll('.tnlx.show').forEach(o => o.classList.remove('show'));
-    if(willOpen){ x.classList.add('show'); TUNEL._fillApplicants(x);
+    document.querySelectorAll('.btk.on,.tnlbar.on').forEach(o => o.classList.remove('on'));   /* 펼침 표시 */
+    if(willOpen){
+      x.classList.add('show'); el.classList.add('on');
+      const bar = el.nextElementSibling;
+      if(bar && bar.classList.contains('tnlbar')) bar.classList.add('on');
+      TUNEL._fillApplicants(x);
       if(typeof TUNEL.onDetailOpen === 'function'){ try{ TUNEL.onDetailOpen(x); }catch(e){} } }   // 페이지 고유 영역 채우기
   },
 
@@ -687,6 +693,14 @@ div.btk{cursor:pointer}
 .btk .g i{font-style:normal;font-size:7px;letter-spacing:1.5px;opacity:.5}
 .btk .g b{display:block;font-family:'Nanum Gothic Coding',monospace;font-weight:400;font-size:11px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btk .tx{position:absolute;right:110px;bottom:9px;font-size:8px;letter-spacing:1px;
+  display:flex;align-items:center;gap:3px;opacity:.5;pointer-events:none;
+  font-family:'Cinzel',serif;font-weight:800}
+.btk .tx i{font-style:normal;font-size:11px;line-height:1;transition:transform .18s}
+div.btk:hover .tx{opacity:.85}
+.btk.on .tx i{transform:rotate(180deg)}
+.btk.on .tx{opacity:.9}
+.btk.sm .tx{display:none}
 .btk .stub{position:absolute;right:0;top:0;width:100px;height:100%;
   display:flex;flex-direction:column;align-items:center;justify-content:center}
 .btk .stub img{width:58px;height:58px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
@@ -870,6 +884,12 @@ div.btk .stub{cursor:pointer}
 .tnlbar button.ghost{background:none;border:1px solid #4A453E;color:#CFC7B8;font-weight:700}
 .tnlbar button.done{background:#2F6B5A;color:#DFF3EC}
 .tnlbar button.wait{background:#3A2B15;color:#E8C36B}
+/* 펼침 표시 — 티켓이 눌러서 열린다는 걸 알린다. 신청 버튼 바로 왼쪽 */
+.tnlbar button.more{padding:8px 11px;font-size:11.5px;font-weight:600;opacity:.85}
+.tnlbar button.more i{font-style:normal;font-size:13px;display:inline-block;
+  transition:transform .18s;vertical-align:-1px}
+.tnlbar button.more:hover{opacity:1}
+.tnlbar.on button.more i{transform:rotate(180deg)}
 .tnlmdl{position:fixed;inset:0;z-index:60;display:none;align-items:flex-end;justify-content:center}
 .tnlmdl.on{display:flex}
 .tnlmdl .bd{position:absolute;inset:0;background:rgba(12,10,14,.66);backdrop-filter:blur(2px)}
@@ -1001,7 +1021,14 @@ div.btk .stub{cursor:pointer}
     const left = cap ? Math.max(0, cap - st.taken) : null;
     const my = mine[mid];
     const seatsEl = bar.querySelector('.seats');
-    const btn = bar.querySelector('button');
+    const btn = bar.querySelector('button[data-act="open"]');
+    /* 바가 있으면 펼침 표시는 바가 맡는다 — 티켓 겉면 것은 걷는다 */
+    const tk = bar.previousElementSibling;
+    if(tk && tk.classList.contains('btk')) tk.querySelector('.tx')?.remove();
+    const more = bar.querySelector('[data-act="more"]');
+    if(more && !more.onclick) more.onclick = () => {
+      if(tk && tk.classList.contains('btk')) TUNEL.ticketToggle(tk);
+    };
     if(!seatsEl) return;                       /* 바가 이미 걷힌 뒤의 늦은 호출 */
     const closed = TUNEL.isClosed(m);   /* 시작 3시간 전을 넘겨 신청이 닫힘 */
 
@@ -1236,6 +1263,7 @@ div.btk .stub{cursor:pointer}
     byId[m.id] = m;
     return `<div class="tnlbar" data-mid="${m.id}">
       <span class="seats">…</span>
+      <button class="ghost more" data-act="more">자세히 <i>⌄</i></button>
       <button data-act="open">신청하기</button>
     </div>`;
   };
