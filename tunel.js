@@ -884,11 +884,16 @@ div.btk .stub{cursor:pointer}
 .tnlbar button.ghost{background:none;border:1px solid #4A453E;color:#CFC7B8;font-weight:700}
 .tnlbar button.done{background:#2F6B5A;color:#DFF3EC}
 .tnlbar button.wait{background:#3A2B15;color:#E8C36B}
-/* 펼침 표시 — 티켓이 눌러서 열린다는 걸 알린다. 신청 버튼 바로 왼쪽 */
-.tnlbar button.more{padding:8px 11px;font-size:11.5px;font-weight:600;opacity:.85}
-.tnlbar button.more i{font-style:normal;font-size:13px;display:inline-block;
-  transition:transform .18s;vertical-align:-1px}
-.tnlbar button.more:hover{opacity:1}
+/* 펼침 표시 — 티켓이 눌러서 열린다는 걸 알린다. 신청 버튼 바로 왼쪽.
+   테두리 있는 알약 버튼을 쓰지 않는다 — 승차권 세계에 없는 모양이다.
+   티켓의 점선(절취선·행선지 점선)과 같은 말로 «누를 수 있다»를 표시한다 */
+.tnlbar button.more{background:none;border:0;border-radius:0;padding:6px 2px 4px;
+  font-size:11.5px;font-weight:600;color:#B8A88E;letter-spacing:-.2px;
+  border-bottom:1px dotted rgba(184,168,142,.55)}
+.tnlbar button.more i{font-style:normal;font-size:12px;display:inline-block;
+  transition:transform .18s;vertical-align:-1px;margin-left:3px}
+.tnlbar button.more:hover{color:#E8C36B;border-bottom-color:rgba(232,195,107,.8)}
+.tnlbar.on button.more{color:#E8C36B;border-bottom-color:transparent}
 .tnlbar.on button.more i{transform:rotate(180deg)}
 .tnlmdl{position:fixed;inset:0;z-index:60;display:none;align-items:flex-end;justify-content:center}
 .tnlmdl.on{display:flex}
