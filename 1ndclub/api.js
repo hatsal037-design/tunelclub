@@ -209,6 +209,7 @@ API.roundsList = async function(){
     mapq: m.data?.mapq || null,
     route  : m.data?.route || null,
     special: m.data?.special || null,
+    apply  : m.data?.apply || null,
     note: m.memo || '',
   })).sort((a,b) => a.d.localeCompare(b.d));
 };

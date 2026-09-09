@@ -60,7 +60,8 @@ ROUNDS = ROUNDS.map(r => Object.assign({}, r, {
   kind: r.kind || (r.name ? 'event' : 'regular'),
   memo: r.note || '',
   ...(TUNEL.lineSync ? (TUNEL.lineSync(LINE_ID) || LINE_FALLBACK) : LINE_FALLBACK),
-  data: { cap: r.cap ?? null, h: r.h ?? null, mapq: r.mapq || null, route: r.route || null, special: r.special || null },
+  data: { cap: r.cap ?? null, h: r.h ?? null, mapq: r.mapq || null, route: r.route || null,
+          special: r.special || null, apply: r.apply || null },
 }));
 /* 끝났나 판정은 tunel.js 한 곳에서만 한다 — 끝 시각 + 여유 1시간 (TUNEL.isPast) */
 let openRound = ROUNDS.find(r=>r.st==='open' && !TUNEL.isPast(r));
