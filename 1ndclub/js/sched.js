@@ -5,6 +5,16 @@
 const MAPN = s => 'https://map.naver.com/p/search/'+encodeURIComponent(s);
 const fmt  = d => {const [y,m,dd]=d.split('-');return `${+m}/${+dd}`;};
 
+/* 문토 신청 버튼 — 주소는 회차 자료(apply.munto)가 갖는다.
+   아직 안 열린 회차는 주소가 비어 있어 «준비 중»으로 흐리게 나온다.
+   폴백(schedule.js)과 서버(meetings.data) 어느 쪽에서 와도 읽히게 두 군데를 본다. */
+function muntoBtn(r){
+  const url = (r.apply || r.data?.apply || {}).munto || '';
+  if(url) return `<a class="xmunto" href="${url}" target="_blank" rel="noopener">
+      <b>문토에서 신청하기</b><span>모집은 문토에서만 받아요</span></a>`;
+  return `<div class="xmunto off"><b>문토 신청 준비 중</b><span>열리면 여기에 버튼이 생겨요</span></div>`;
+}
+
 const PAST_PAGE = 10;
 let pastShown = PAST_PAGE;   // 최신 N개만 먼저 보여주고, 위로 더 올리면 늘려간다
 
@@ -71,6 +81,7 @@ function renderSched(){
     html+= TUNEL.ticketDetail(r,
       { extra: r.st==='open' ? `
           <div class="picked" id="schedPicked" style="margin:11px 0 0;padding:11px 12px"></div>
+          ${muntoBtn(r)}
           <div class="xb">
             <a onclick="openPick()">🔪 할 게임 고르기</a>
             <a onclick="shareTicket('${r.d}')">🎟 티켓 공유하기</a>
