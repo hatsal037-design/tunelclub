@@ -393,7 +393,7 @@ const TUNEL = {
   },
 
   /* ── 확정규격 티켓 — 모든 페이지가 이 한 곳에서 같은 티켓을 띄운다 ──
-     원본 시안: 시안/티켓_확정규격.html · 규칙: 브랜드/티켓_현황.md
+     원본 시안: 시안/티켓/티켓_확정규격.html · 규칙: 브랜드/티켓_현황.md
      (판지는 img+cover · 절취선 258 · 스터브 100 · 좌여백 20 · 정보란 222)
      일반(358×150)만 우선 구현. 슬림·이벤트는 필요해질 때 여기에 더한다.
 
@@ -403,7 +403,7 @@ const TUNEL = {
          href    있으면 <a> 링크 티켓
          onclick 있으면 <div> + onclick (첫밤 아코디언용)
        })                                                          */
-  /* ── 확정 티켓 스킨 5종 (2026-08-20 확정본 이식 — 시안/티켓_*3크기*.html)
+  /* ── 확정 티켓 스킨 5종 (2026-08-20 확정본 이식 — 시안/티켓/티켓_*3크기*.html)
      pass  = 보딩패스형 (첫밤·놀이터·찰칵) · score = 스코어카드 (올림픽) · metal = 각인 메탈 (방구석)
      새 노선 확정본이 나오면 여기 한 줄 더하면 어디서든 티켓이 뜬다 */
   _skins: {
@@ -412,7 +412,7 @@ const TUNEL = {
              perf:'rgba(0,0,0,.55)' },
     /* play(놀이터) — 손목밴드 판지 확정 (2026-08-20 햇살님 승인).
        놀이공원·워터밤·클럽 밴드 플랫레이 사진 + 어두운 막 + Dongle 헤드라인.
-       시안: 시안/티켓_플레이_밴드3크기.html · 슬림100(예정)·일반150(모집중)·이벤트180(kind=event) */
+       시안: 시안/티켓/티켓_플레이_밴드3크기.html · 슬림100(예정)·일반150(모집중)·이벤트180(kind=event) */
     play:  { t:'band', card:'/tk/TK_play_band.jpg', short:'놀이터' },
     snap:  { t:'pass', short:'나들이', card:'/tk/TK_sopung.jpg', cardSm:'/tk/TK_sopung_slim.jpg',
              ink:'#6B4A52', lbl:'#C4788F', rFont:"'Nanum Pen Script',cursive", rMd:27, rSm:21, acc:'#D9407A',
@@ -986,6 +986,11 @@ div.btk .stub{cursor:pointer}
     if(cap && left === 0)  return { text:'대기 등록', cls:'ghost' };
     return { text:'신청하기', cls:'' };
   }
+  /* 바깥 창구(문토 등)로만 받는 회차인가 — data.apply.munto 가 있으면 그렇다.
+     이런 회차는 앱이 자리를 잡지 않으므로 남은 자리도 세지 않고 입금 안내도 하지 않는다.
+     (2026-09-09 5·6회부터 문토 단독 모집) */
+  function outsideLink(m){ return ((m && (m.apply || m.data?.apply)) || {}).munto || ''; }
+  TUNEL._outsideLink = outsideLink;
   TUNEL._seatText = seatText; TUNEL._btnView = btnView;   /* 검증용 — 화면은 아래 paintBar 가 쓴다 */
 
   async function paintBar(bar){
@@ -999,6 +1004,20 @@ div.btk .stub{cursor:pointer}
     const btn = bar.querySelector('button');
     if(!seatsEl) return;                       /* 바가 이미 걷힌 뒤의 늦은 호출 */
     const closed = TUNEL.isClosed(m);   /* 시작 3시간 전을 넘겨 신청이 닫힘 */
+
+    /* 바깥에서만 받는 회차 — 버튼이 그 페이지로 나간다.
+       앱이 자리를 안 잡으니 «남은 자리»를 쓰면 거짓말이 된다. 어디서 받는지만 적는다. */
+    const out = outsideLink(m);
+    if(out && !closed){
+      seatsEl.innerHTML = '문토에서 모집해요';
+      if(btn){
+        btn.className = ''; btn.textContent = '문토에서 신청하기';
+        btn.onclick = () => window.open(out, '_blank', 'noopener');
+      }
+      addManageBtn(bar, mid);
+      return;
+    }
+
     seatsEl.innerHTML = seatText(cap, st, closed);
     /* 마감된 회차는 첫 렌더에서 버튼을 지운다 — 팝업을 닫으면 여기가 다시 불리므로 없는 버튼을 만지면 안 된다 (2026-08-26) */
     const bv = btnView(my, cap, left, closed);
@@ -1008,6 +1027,9 @@ div.btk .stub{cursor:pointer}
       else { btn.textContent = bv.text; if(bv.cls) btn.classList.add(bv.cls); }
       if(btn.isConnected) btn.onclick = () => openSign(mid);
     }
+    addManageBtn(bar, mid);
+  }
+  function addManageBtn(bar, mid){
     TUNEL.me().then(me => {
       if(me && (me.is_admin || me.role==='staff') && !bar.querySelector('[data-act="mgr"]')){
         const g = document.createElement('button');
