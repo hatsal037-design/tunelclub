@@ -15,6 +15,75 @@ function pastList(){
   serverPast.forEach(p=>by[p.d]={...(by[p.d]||{}),...p});
   return Object.values(by).sort((a,b)=>b.d.localeCompare(a.d));
 }
+/* ══ 예정 회차 편집 (관리자만) ══
+   2026-09-14 신설. 까닭은 api.js 의 API.roundSave 주석에 적었다 —
+   요컨대 다가오는 회차를 고칠 화면이 없어서 서버를 SQL 로 건드려 왔다.
+   여기서 고치면 그게 곧 화면에 뜨는 값이다(회차는 서버가 최종). */
+function editRound(d){
+  if(!isAdmin()){ ask('예정 회차는 관리자만 고칠 수 있어요.', null); return; }
+  const cur = d ? (ROUNDS.find(r=>r.d===d) || {}) : {};
+  const esc = v => String(v==null?'':v).replace(/"/g,'&quot;');
+  const st = cur.st || 'soon';
+  document.getElementById('modal').innerHTML=`
+    <h2>${d?'예정 회차 고치기':'예정 회차 추가'}</h2>
+    <div class="fld"><label>날짜 (YYYY-MM-DD)</label><input id="r_d" value="${esc(cur.d)}" placeholder="2026-10-24"></div>
+    <div class="fld"><label>요일 / 시작 / 종료</label>
+      <div style="display:flex;gap:6px">
+        <input id="r_dow" value="${esc(cur.dow)}" placeholder="토" style="width:56px;text-align:center">
+        <input id="r_s" value="${esc(cur.s)}" placeholder="13:00">
+        <input id="r_e" value="${esc(cur.e)}" placeholder="18:00">
+      </div></div>
+    <div class="fld"><label>상태</label>
+      <select id="r_st">
+        <option value="soon"${st==='soon'?' selected':''}>예정 — 아직 안 엽니다</option>
+        <option value="open"${st==='open'?' selected':''}>모집중 — 신청을 받습니다</option>
+        <option value="cancelled"${st==='cancelled'?' selected':''}>취소</option>
+      </select></div>
+    <div class="fld"><label>회차 번호 (번개면 비워두세요)</label><input id="r_r" value="${esc(cur.r)}" placeholder="8"></div>
+    <div class="fld"><label>회차 이름 (비우면 «N회차 정모»로 나옵니다)</label><input id="r_name" value="${esc(cur.name)}" placeholder="8회차 정모"></div>
+    <div class="fld"><label>장소 — 서울갤러리는 «(지하 2층)»까지</label><input id="r_place" value="${esc(cur.place)}" placeholder="서울갤러리 동그라미방 (지하 2층)"></div>
+    <div class="fld"><label>주소</label><input id="r_addr" value="${esc(cur.addr)}" placeholder="서울 중구 세종대로 110"></div>
+    <div class="fld"><label>지도 검색어 (비우면 주소로 엽니다)</label><input id="r_mapq" value="${esc(cur.mapq)}" placeholder="서울 중구 세종대로 110"></div>
+    <div class="fld"><label>정원 / 이용 시간(시간)</label>
+      <div style="display:flex;gap:6px">
+        <input id="r_cap" value="${esc(cur.cap)}" placeholder="18" style="width:80px;text-align:center">
+        <input id="r_h" value="${esc(cur.h)}" placeholder="6" style="width:80px;text-align:center">
+      </div></div>
+    <div class="fld"><label>참가비</label><input id="r_fee" value="${esc(cur.fee)}" placeholder="15,000원"></div>
+    <div class="fld"><label>한 줄 메모</label><input id="r_memo" value="${esc(cur.note)}" placeholder="「시계탑에 흐른 피」 두세 판 · 신청은 문토에서"></div>
+    <div class="fld"><label>문토 신청 주소 (비우면 신청 버튼이 «준비 중»)</label><input id="r_munto" value="${esc(cur.apply&&cur.apply.munto)}" placeholder="https://www.munto.kr/app/socialing?id="></div>
+    <div class="fld"><label>찾아오는 길 — 그림 파일</label><input id="r_rimg" value="${esc(cur.route&&cur.route.img)}" placeholder="img/place/botc_way_7.jpg"></div>
+    <div class="fld"><label>찾아오는 길 — 안내 글</label><textarea id="r_rtip" placeholder="시청역·을지로입구역 어느 쪽에서 와도…">${String((cur.route&&cur.route.tip)||'')}</textarea></div>
+    <div class="mbtns">
+      <button class="mbtn" onclick="saveRound()">저장</button>
+    </div>
+    <div class="xr" style="opacity:.6;margin-top:10px;font-size:12px">저장하면 바로 화면에 반영돼요. 앱 안의 «지난 모임 기록»과는 다른 칸이에요.</div>
+    <button class="mclose" onclick="closeM()">닫기</button>`;
+  document.getElementById('ov').style.display='flex';
+}
+function saveRound(){
+  const v = id => (document.getElementById(id).value||'').trim();
+  const d = v('r_d');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ alert('날짜를 2026-10-24 형식으로 적어주세요'); return; }
+  const num = x => { const t=v(x); return t===''? null : (isNaN(+t)? null : +t); };
+  const rec = { d, dow:v('r_dow'), s:v('r_s'), e:v('r_e'), st:v('r_st'),
+                r:num('r_r'), name:v('r_name'), place:v('r_place'), addr:v('r_addr'),
+                mapq:v('r_mapq'), cap:num('r_cap'), h:num('r_h'), fee:v('r_fee'),
+                memo:v('r_memo'), munto:v('r_munto'),
+                routeImg:v('r_rimg'), routeTip:v('r_rtip') };
+  (async()=>{
+    try{
+      await API.roundSave(rec);
+      const rows = await API.roundsList();
+      if(rows && rows.length){ ROUNDS = rows; recalcRounds(); }
+    }catch(e){
+      alert('서버 저장에 실패했어요. 네트워크를 확인하고 다시 해주세요.\n' + (e && e.message ? e.message : ''));
+      return;
+    }
+    closeM(); schedScrolled=true; renderSched();
+  })();
+}
+
 function editPast(d){
   const cur = d ? pastList().find(p=>p.d===d)||{} : {};
   const sel = cur.played||[];
