@@ -214,6 +214,42 @@ API.roundsList = async function(){
   })).sort((a,b) => a.d.localeCompare(b.d));
 };
 
+/* ══ 예정 회차 편집 (관리자) ══
+   2026-09-14 신설. 그전까지 다가오는 회차를 고치는 화면이 앱 어디에도 없어서
+   서버를 고치려면 SQL 을 직접 돌려야 했다 — 그러다 값이 어긋나고 오타가 들어갔다.
+   schedule.js 는 서버를 못 읽을 때 쓰는 폴백이라 그걸 고쳐도 화면은 안 바뀐다(js/state.js).
+   그래서 «고치는 곳»을 여기 하나로 만든다.
+
+   data 는 통째로 덮지 않고 있던 것 위에 덮어쓴다 — 편집 화면이 담지 않는 값
+   (특별 안내 등)을 지우지 않으려고. 2026-08-19 에 통째로 덮다가 route 를 날린 적이 있다. */
+/* 편집 화면이 넘긴 값 → meetings 행. 서버를 안 타는 순수 함수라 테스트가 여기를 본다.
+   oldData 는 지금 서버에 있는 data — 편집 화면이 담지 않는 값(특별 안내 등)을 살리려고 받는다. */
+API._roundRow = function(rec, oldData){
+  const data = Object.assign({}, oldData || {}, {
+    h: rec.h ?? null, cap: rec.cap ?? null, mapq: rec.mapq || null,
+    apply: rec.munto ? { munto: rec.munto } : null,
+    route: (rec.routeImg || rec.routeTip)
+         ? { img: rec.routeImg || null, tip: rec.routeTip || null } : null,
+  });
+  /* 빈 값은 키째 뺀다 — 서버에 null 로 남으면 대조 검사가 «다르다» 고 읽는다 */
+  Object.keys(data).forEach(k => { if(data[k] === null) delete data[k]; });
+  return { line:LINE, d:rec.d, dow:rec.dow || null, s:rec.s || null, e:rec.e || null,
+           r: rec.r ?? null, kind: rec.name ? 'event' : 'regular',
+           name: rec.name || null,
+           place: rec.place || null, addr: rec.addr || null,
+           memo: rec.memo || null, fee: rec.fee || null,
+           status: rec.st === 'open' ? 'open' : rec.st === 'cancelled' ? 'cancelled' : 'planned',
+           data };
+};
+
+API.roundSave = async function(rec){
+  const { data: old } = await sb.from('meetings')
+    .select('id,data').eq('line', LINE).eq('d', rec.d).maybeSingle();
+  const { error } = await sb.from('meetings')
+    .upsert(API._roundRow(rec, old?.data), { onConflict:'line,d' });
+  throwErr(error, '회차 저장 실패');
+};
+
 API.pastList = async function(){
   const { data: ms } = await sb.from('meetings').select('*')
     .eq('line', LINE).order('d', { ascending:false });

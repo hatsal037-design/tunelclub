@@ -68,14 +68,20 @@ function renderSched(){
     /* 티켓도 상세도 한 벌만 만든다 — 회차 자료(r)를 손대지 않고 그대로 넘긴다.
        허브(tunel.kr)가 받는 것과 같은 객체라, 두 화면이 어긋날 수 없다 */
     html+= TUNEL.ticketOne(r, { onclick:'TUNEL.ticketToggle(this)' });
-    html+= TUNEL.ticketDetail(r,
-      { extra: r.st==='open' ? `
+    /* 두 덩이를 «더한다» — 예전엔 삼항과 + 가 엉켜서(a ? b : '' + c) 모집중 회차에는
+       뒷덩이가 통째로 안 붙었다. 정작 제일 자주 고치는 회차가 그거다. 2026-09-14 */
+    const 고르기 = r.st==='open' ? `
           <div class="picked" id="schedPicked" style="margin:11px 0 0;padding:11px 12px"></div>
           <div class="xb">
             <a onclick="openPick()">🔪 할 게임 고르기</a>
             <a onclick="shareTicket('${r.d}')">🎟 티켓 공유하기</a>
-          </div>` : ''
-        + (canRecord() ? `<div class="xr" style="opacity:.6;margin-top:8px">예정 회차 수정은 앱 관리에서 · 끝난 뒤 지난 모임으로 옮기면 여기서 편집돼요</div>` : '') });
+          </div>` : '';
+    const 손보기 = isAdmin()
+      ? `<div class="xb" style="margin-top:8px"><a onclick="editRound('${r.d}')">✏️ 이 회차 고치기</a></div>`
+      : canRecord()
+      ? `<div class="xr" style="opacity:.6;margin-top:8px">예정 회차 수정은 관리자가 합니다 · 끝난 뒤 지난 모임으로 옮기면 여기서 편집돼요</div>`
+      : '';
+    html+= TUNEL.ticketDetail(r, { extra: 고르기 + 손보기 });
   });
 
   if(PENDING_APPLY){ const want=PENDING_APPLY; PENDING_APPLY=null;
@@ -87,8 +93,9 @@ function renderSched(){
     : canRecord()
     ? `<div class="adminbox" style="margin:14px 14px 0">
          <div class="at">${isAdmin()?'🔧 관리자':isStaff()?'🔧 운영진':'📜 서기'}</div>
-         <div class="row" style="color:var(--sub)">지난 모임의 참여자와 한 게임을 기록할 수 있어요.</div>
-         <button class="abtn" onclick="editPast('')">＋ 지난 모임 추가</button>
+         <div class="row" style="color:var(--sub)">지난 모임의 참여자와 한 게임을 기록할 수 있어요.${isAdmin()?'<br>예정 회차는 티켓을 펼쳐 «이 회차 고치기»로 고칩니다 — 고치면 바로 화면에 반영돼요.':''}</div>
+         <button class="abtn" onclick="editPast('')">＋ 지난 모임 추가</button>${isAdmin()?`
+         <button class="abtn" onclick="editRound('')">＋ 예정 회차 추가</button>`:''}
        </div>` : '';
   document.getElementById('schedList').innerHTML = html;
   renderPicked();
