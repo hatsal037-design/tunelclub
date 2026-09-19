@@ -86,9 +86,12 @@ async function openProfile(key, backD){
       <div class="mrow"><div class="k">참석</div><div>${att?att+'번':'아직 기록 없음'}</div></div>
       <div class="mrow"><div class="k">가입일</div><div>${(m.joined||'').replace(/-/g,'.')||'—'}</div></div>
       ${met!=null?`<div class="mrow"><div class="k">나와</div><div>${met?`${met}번 같이 했어요`:'아직 같은 회차가 없었어요'}</div></div>`:''}
+      <div id="dgProf"></div>
     </div>
     ${back}<button class="mclose" onclick="closeM()">닫기</button>`;
   document.getElementById('ov').style.display='flex';
+  /* 당산나무 전적은 서버에서 따로 온다 — 시트를 먼저 띄우고 채운다 (2026-09-20 회원 통합) */
+  dangsanGames().then(gs => { const el = document.getElementById('dgProf'); if(el) el.innerHTML = dangsanProfileHtml(gs, m); });
 }
 function meetKeyOf(x){
   if(typeof x==='object') return x.uid;
