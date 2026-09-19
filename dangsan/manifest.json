@@ -1,0 +1,25 @@
+{
+  "name": "당산나무",
+  "short_name": "당산나무",
+  "description": "당산나무 — 마을에 깃든 흉수를 찾는 소셜 디덕션 진행 도우미. 자리 배치·역할·상태·밤 순서 관리. 당산나무 베이직/오리지널 + 외부 모드 불러오기.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#141118",
+  "theme_color": "#141118",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
