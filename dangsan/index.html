@@ -1648,6 +1648,27 @@
   </div>
 </div>
 
+<!-- 내 계정 — 투넬과 같은 카카오 로그인 (2026-09-20 회원 통합) -->
+<div class="overlay" id="acctOverlay" style="z-index:74" onclick="if(event.target===this)closeAcct()">
+  <div class="sheet">
+    <h3>👤 내 계정</h3>
+    <div id="acctBody"></div>
+    <div class="sheet-actions" id="acctActions" style="margin-top:12px"></div>
+  </div>
+</div>
+<!-- 투넬 회원 고르기 — 자리 잡기 «앉을 사람»에서 (2026-09-20) -->
+<div class="overlay" id="tunelPickOverlay" style="z-index:75" onclick="if(event.target===this)closeTunelPick()">
+  <div class="sheet">
+    <h3>👥 투넬 회원에서 고르기</h3>
+    <div class="field"><input id="tunelPickQ" placeholder="닉네임 찾기" oninput="renderTunelPick()" autocomplete="off"></div>
+    <div id="tunelPickList"></div>
+    <div class="sheet-actions" style="margin-top:12px">
+      <button class="btn quiet" onclick="closeTunelPick()">취소</button>
+      <button class="btn gold" onclick="tunelPickApply()">앉히기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 판 준비 — 인원·모드 / 자리 / 구성 / 규칙·전달 네 구간이 한 화면 (15차 5단계, 3차 구성안 02~05). 참석·자리 잡기·구성의 기존 부품을 이 안으로 빌려 온다 -->
 <div class="wizard prep" id="prep">
   <div class="wz-top"><button class="wz-ic" onclick="prepClose()">시작으로</button><span class="sp"></span><div class="wz-ph">이번 판 준비</div><span class="sp"></span><button class="wz-ic acc" title="화면 가리기" onclick="lockOn()">가리기</button></div>
@@ -3362,8 +3383,15 @@ const SRV = {
   cfgKey: 'dangsan_srv',
   _c: null,
   lastRedeem: '',   // 마지막 이전 코드 결과 — 'ok'|'bad'|'expired'|'too_many'|'conflict'|'error'
-  /* 접속 정보는 코드에 박지 않는다. 설정 시트에서 넣으면 이 기기에만 저장된다 */
-  cfg(){ try{ return JSON.parse(localStorage.getItem(SRV.cfgKey)||'null'); }catch(e){ return null; } },
+  /* 기본 접속 정보 — 투넬 서버 (2026-09-20 회원 통합). 당산나무가 tunel.kr/dangsan/ 로 합쳐져 투넬과 같은 프로젝트·같은 로그인을 쓴다.
+     값은 tunelapp/앱/tunel.js 의 URL·ANON 과 같아야 한다 — 상위 도구/당산나무_배포.sh 가 배포 전에 대조한다.
+     공개 키(publishable)라 코드에 있어도 되는 값이다(투넬 앱도 그렇게 싣는다). tunel.kr 에서 열렸을 때만 쓴다 —
+     로컬·테스트에서는 예전처럼 꺼져 있고, 설정 시트에 넣은 값이 있으면 그게 우선(떼어낼 때의 길). */
+  DEFAULT: { url:'https://yguvfogtzazoawtclqvf.supabase.co', key:'sb_publishable_KeezD9hmEnxSTEWA_w8x-A_Tgk3roUf' },
+  cfg(){ try{ const c=JSON.parse(localStorage.getItem(SRV.cfgKey)||'null'); if(c&&c.url&&c.key) return c; }catch(e){}
+    try{ if(typeof location!=='undefined'&&location.hostname==='tunel.kr') return SRV.DEFAULT; }catch(e){}
+    return null; },
+  isDefault(){ return SRV.cfg()===SRV.DEFAULT; },
   setCfg(url, key){ try{ localStorage.setItem(SRV.cfgKey, JSON.stringify({url:String(url||'').trim(), key:String(key||'').trim()})); }catch(e){} SRV._c=null; },
   clearCfg(){ try{ localStorage.removeItem(SRV.cfgKey); }catch(e){} SRV._c=null; },
   on(){ const c=SRV.cfg(); return !!(c&&c.url&&c.key&&_supa&&_supa.createClient); },
@@ -3396,6 +3424,8 @@ const SRV = {
     const iso=v=>{ if(!v) return null; const d=new Date(v); return isNaN(d.getTime())?null:d.toISOString(); };
     const game={ client_game_id:L.uuid||L.id, legacy_local_id:L.id||null,   // 보내는 번호는 uuid. 옛 'g…' 는 마당·pin 이 가리키니 같이 남긴다
       mode:L.mid||L.mode||null, hub:L.hub||null,
+      pot_id:L.potId||null, pot_title:SRV.potTitleOf(L.potId),              // 마당 — «내가 참가한 마당의 판»을 서버가 가려낼 열쇠 (2026-09-20)
+      mode_name:L.modeName||null,                                          // 이름 표기 — 투넬 쪽엔 등록부가 없다
       started_at:iso(L.at),      started_raw:L.at||null,         // 옛 시각은 시간대 없는 글자다 — 원문도 같이 보낸다
       ended_at:iso(L.endedAt),   ended_raw:L.endedAt||null,
       winner:L.winner||null, nights:L.nights||null,
@@ -3403,6 +3433,8 @@ const SRV = {
     /* 좌석 0 은 «퇴장해서 자리가 없다»는 뜻이다. p.seat||i+1 로 두면 0 이 1·2 로 둔갑해
        원본과 서버의 좌석이 어긋난다 — 좌석을 기본키에서 뺀 이유를 앱에서 도로 무너뜨린다 (코덱스 검토 2026-09-13) */
     const players=(L.players||[]).map((p,i)=>({ client_aid:aidOf(L,p,i), seat:(typeof p.seat==='number'?p.seat:(i+1)), local_pid:p.pid||null, name:p.name||'',
+      tunel_member_id:SRV.tunelIdOf(p.pid),                                  // 투넬 회원이면 그 번호 — 판에 스냅샷으로 남는다 (2026-09-20)
+      role_name:p.role||null, final_role_name:p.finalRole||p.role||null,       // 이름 표기 — 투넬 쪽엔 등록부가 없다
       role_id:p.roleId||null, final_role_id:p.finalRoleId||p.roleId||null,
       team:p.finalTeam||p.team||null, side_code:p.sideCode||null,
       won:(p.won===undefined?null:p.won),                        // 미정은 null 그대로. false 로 바꾸면 진 판이 된다
@@ -3416,7 +3448,7 @@ const SRV = {
       /* 같은 pid 가 두 번 들어가면 서버가 한 문장에서 같은 행을 두 번 고치려다 오류를 낸다 — 여기서 한 번 접는다.
          그리고 사람 맞추기가 실패했는데 그냥 올리면 기록이 사람에게 안 붙은 채 «성공»이 된다 (코덱스 검토 2026-09-13) */
       const seen={}, ppl=[];
-      players.forEach(p=>{ if(p.local_pid&&!seen[p.local_pid]){ seen[p.local_pid]=1; ppl.push({ pid:p.local_pid, name:p.name }); } });
+      players.forEach(p=>{ if(p.local_pid&&!seen[p.local_pid]){ seen[p.local_pid]=1; ppl.push({ pid:p.local_pid, name:p.name, tunel_member_id:p.tunel_member_id||null }); } });
       if(ppl.length && !await SRV.syncPeople(ppl)) return false;
       const { error } = await cl.schema('dangsan').rpc('upload_game', { p_game: game, p_players: players });
       if(error) throw error; return true; }catch(e){ return false; } },
@@ -3431,14 +3463,102 @@ const SRV = {
     /* 서버가 예외 대신 상태를 돌려준다 — 'ok' 말고는 전부 실패다.
        오류만 보고 성공이라 답하면 틀린 코드가 통과한 것처럼 보인다 (코덱스 검토 2026-09-13) */
     try{ const { data, error } = await cl.schema('dangsan').rpc('redeem_claim_code', { p_code: code });
-      if(error) throw error; SRV.lastRedeem=data||'bad'; return data==='ok'; }catch(e){ SRV.lastRedeem='error'; return false; } }
+      if(error) throw error; SRV.lastRedeem=data||'bad'; return data==='ok'; }catch(e){ SRV.lastRedeem='error'; return false; } },
+  /* ── 회원 통합 (2026-09-20) — 사람 명부의 투넬 회원 번호, 자동 올리기, 내려받기, 회원 명단 ── */
+  tunelIdOf(pid){ const who=pid?personById(pid):null; return (who&&who.tunelId)||null; },
+  potTitleOf(potId){ try{ const p=potId?potById(potId):null; return (p&&p.title)||null; }catch(e){ return null; } },
+  /* 올라간 판은 srvAt 로 표시한다 — «밀린 기록»은 이 표시가 없는 판. logsAll/logsSave 경계를 지나 저장한다 */
+  markUploaded(L){ try{ const a=logsAll(); const x=a.find(y=>y&&((L.uuid&&y.uuid===L.uuid)||y.id===L.id)); if(!x) return; x.srvAt=Date.now(); logsSave(a); }catch(e){} },
+  pending(){ return logsAll().filter(L=>L&&L.winner&&!L.practice&&!L.srvAt); },
+  /* 판이 끝나면 조용히 올린다. 로그인 안 됐거나 서버가 꺼져 있으면 아무 일도 없다 — 기록은 이미 기기에 있다 */
+  async autoUpload(L){ if(!SRV.on()||!L||!L.winner||L.practice) return false;
+    if(!(await SRV.me())) return false; if(!(await SRV.claim(''))) return false;
+    const ok=await SRV.uploadGame(L); if(ok) SRV.markUploaded(L); return ok; },
+  async listMembers(){ const cl=SRV.client(); if(!cl) return null;
+    try{ const { data, error } = await cl.schema('dangsan').rpc('list_members'); if(error) throw error; return data||[]; }catch(e){ return null; } },
+  async myGames(withPayload){ const cl=SRV.client(); if(!cl) return null;
+    try{ const { data, error } = await cl.schema('dangsan').rpc('my_games', { p_limit: 200, p_with_payload: !!withPayload });
+      if(error) throw error; return data||[]; }catch(e){ return null; } },
+  /* 서버에 있는 내(이야기꾼) 판 중 이 기기에 없는 것을 내려받는다 — 기기를 바꿨을 때.
+     payload 는 올릴 때 보낸 저장꼴 그대로라, 저장소에 그대로 넣고 logsAll() 이 다시 읽게 둔다(변환은 경계에서만) */
+  async pull(){ const rows=await SRV.myGames(true); if(!rows) return null;
+    let raw=[]; try{ raw=JSON.parse(localStorage.getItem('botc_logs')||'[]'); if(!Array.isArray(raw)) raw=[]; }catch(e){ raw=[]; }
+    let n=0;
+    rows.forEach(r=>{ if(!r||!r.owner_me||!r.payload||typeof r.payload!=='object') return; const P=r.payload;
+      if(raw.some(x=>x&&((P.uuid&&x.uuid===P.uuid)||(P.id&&x.id===P.id)))) return;
+      P.srvAt=Date.now(); raw.push(P); n++; });
+    if(n){ raw.sort((a,b)=>String((a&&a.at)||'').localeCompare(String((b&&b.at)||''))); try{ localStorage.setItem('botc_logs', JSON.stringify(raw)); }catch(e){ return null; } }
+    return n; }
 };
-async function homeAcct(){
-  if(!SRV.on()){ alert('내 계정은 서버가 붙으면 열려요 — 지금은 이 기기에만 기록이 남아요.\n(모드 관리에서 서버 접속 정보를 넣으면 켜집니다)'); return; }
+/* ══ 내 계정 시트 (2026-09-20) — 투넬과 같은 카카오 로그인. alert/confirm 으로 묻던 것을 시트로 ══ */
+async function homeAcct(){ openAcct(); }
+function openAcct(){ const ov=document.getElementById('acctOverlay'); if(!ov) return; ov.classList.add('on'); renderAcct(); }
+function closeAcct(){ const ov=document.getElementById('acctOverlay'); if(ov) ov.classList.remove('on'); }
+async function renderAcct(){
+  const el=document.getElementById('acctBody'), act=document.getElementById('acctActions'); if(!el||!act) return;
+  const btn=(t,fn,cls)=>`<button class="btn ${cls||''}" onclick="${fn}">${t}</button>`;
+  if(!SRV.on()){ el.innerHTML='<div class="setup-note">서버가 꺼져 있어요 — 기록은 이 기기에만 남습니다.<br>tunel.kr 에서 열면 투넬 서버가 자동으로 붙고, 다른 서버는 모드 관리에서 넣습니다.</div>';
+    act.innerHTML=btn('닫기','closeAcct()','quiet'); return; }
+  el.innerHTML='<div class="setup-note">확인 중…</div>'; act.innerHTML='';
   const u=await SRV.me();
-  if(!u){ if(confirm('카카오로 로그인할까요?\n기록이 계정에 남아 기기를 바꿔도 이어집니다.')) SRV.login(); return; }
-  const nm=(u.user_metadata&&(u.user_metadata.name||u.user_metadata.nickname))||'';
-  if(confirm('로그인됨'+(nm?' — '+nm:'')+'\n\n로그아웃할까요?')) { await SRV.logout(); alert('로그아웃했어요.'); }
+  if(!u){ el.innerHTML='<div class="setup-note">투넬과 같은 카카오 계정으로 로그인해요. 투넬(tunel.kr)에 이미 로그인돼 있으면 여기도 같이 켜집니다.<br>로그인하면 판 기록이 계정에 남아 기기를 바꿔도 이어지고, 참가자를 투넬 회원 중에서 고를 수 있어요.</div>';
+    act.innerHTML=btn('닫기','closeAcct()','quiet')+btn('카카오로 로그인','SRV.login()','gold'); return; }
+  const info=await SRV.info(); const pend=SRV.pending().length;
+  const nick=(info&&info.nick)||(u.user_metadata&&(u.user_metadata.name||u.user_metadata.nickname))||'';
+  const bits=[]; if(info&&info.title) bits.push('🏅 '+info.title); if(info&&info.founder_no) bits.push('초기 참여자 No.'+info.founder_no);
+  el.innerHTML=`<div class="hm-row hm-open"><div class="g"><div class="n">${escH(nick||'이름 없음')}</div><div class="d">${bits.length?escH(bits.join(' · ')):'투넬 계정으로 로그인됨'}</div></div><div class="k">로그인</div></div>
+    <div class="setup-note" style="margin-top:10px">올라간 판 ${(info&&info.games!==undefined&&info.games!==null)?info.games:'?'} · 아직 안 올라간 판 ${pend}${pend?' — 아래 «밀린 기록 올리기»':''}<br>
+    판이 끝나면 자동으로 올라가요. 로그아웃하면 이 브라우저의 투넬도 같이 로그아웃됩니다.</div>`;
+  act.innerHTML=btn('닫기','closeAcct()','quiet')+(pend?btn('밀린 기록 올리기','acctUploadAll()',''):'')+btn('서버에서 내려받기','acctPull()','')+btn('로그아웃','acctLogout()','quiet');
+}
+async function acctUploadAll(){ await srvUploadAll(); renderAcct(); }
+async function acctPull(){ const n=await SRV.pull(); if(n===null){ alert('내려받지 못했어요. 로그인·연결을 확인해주세요.'); return; }
+  alert(n?(n+'판을 내려받았어요.'):'새로 내려받을 판이 없어요.'); renderAcct(); try{ renderHome(); }catch(e){} }
+async function acctLogout(){ if(!confirm('로그아웃할까요?\n이 브라우저의 투넬도 같이 로그아웃됩니다.')) return; await SRV.logout(); renderAcct(); }
+/* ══ 투넬 회원 고르기 (2026-09-20) — 자리 잡기 «앉을 사람»에서. 서버는 닉·오늘 참석·최근 참석만 준다.
+   고른 사람은 마당 명단(pot.members)과 사람 명부(people)에 들어가고 사람에 tunelId 가 붙는다 — 판을 올릴 때 회원 스냅샷이 된다 ══ */
+const tunelPick={ rows:/** @type {any[]|null} */(null), sel:new Set() };
+async function tunelPickOpen(){
+  if(!SRV.on()){ alert('서버가 꺼져 있어요.'); return; }
+  if(!(await SRV.me())){ if(confirm('투넬 회원을 고르려면 로그인이 필요해요. 카카오로 로그인할까요?')) SRV.login(); return; }
+  const ov=document.getElementById('tunelPickOverlay'); if(!ov) return;
+  tunelPick.rows=null; tunelPick.sel=new Set();
+  const q=/** @type {HTMLInputElement|null} */(document.getElementById('tunelPickQ')); if(q) q.value='';
+  ov.classList.add('on'); renderTunelPick();
+  const rows=await SRV.listMembers();
+  if(!rows){ const el=document.getElementById('tunelPickList'); if(el) el.innerHTML='<div class="wz-note">명단을 못 받았어요 — 서버·로그인을 확인해주세요.</div>'; return; }
+  tunelPick.rows=rows;
+  const pool=attendPool();   // 이미 명단에 있는 회원은 미리 체크
+  rows.forEach(r=>{ const who=personByTunelId(r.member_id); if(who&&pool.some(o=>o.pid===who.id)) tunelPick.sel.add(r.member_id); });
+  renderTunelPick();
+}
+function closeTunelPick(){ const ov=document.getElementById('tunelPickOverlay'); if(ov) ov.classList.remove('on'); }
+function tunelPickToggle(id){ if(tunelPick.sel.has(id)) tunelPick.sel.delete(id); else tunelPick.sel.add(id); renderTunelPick(); }
+function renderTunelPick(){
+  const el=document.getElementById('tunelPickList'); if(!el) return;
+  if(!tunelPick.rows){ el.innerHTML='<div class="wz-note">명단 받는 중…</div>'; return; }
+  const qEl=/** @type {HTMLInputElement|null} */(document.getElementById('tunelPickQ'));
+  const q=((qEl&&qEl.value)||'').trim().toLowerCase();
+  const rows=tunelPick.rows.filter(r=>!q||String(r.nick||'').toLowerCase().includes(q));
+  const row=r=>{ const on=tunelPick.sel.has(r.member_id);
+    return `<div class="hm-row${on?' hm-open':''}" onclick="tunelPickToggle('${String(r.member_id).replace(/[^0-9a-f-]/g,'')}')"><div class="g"><div class="n">${escH(r.nick||'')}</div><div class="d">${r.today?'오늘 참석':(r.recent?'최근 두 달 안에 옴':'회원')}</div></div><div class="k">${on?'앉음':''}</div></div>`; };
+  const grp=(t,list)=>list.length?`<div class="p-sec">${t}</div><div class="list">${list.map(row).join('')}</div>`:'';
+  el.innerHTML=(grp('오늘 참석', rows.filter(r=>r.today))+grp('최근', rows.filter(r=>!r.today&&r.recent))+grp(q?'찾은 회원':'모든 회원', rows.filter(r=>!r.today&&!r.recent)))
+    || '<div class="wz-note">해당하는 회원이 없어요.</div>';
+}
+function personByTunelId(id){ if(!id) return null; return peopleAll().find(p=>p&&p.tunelId===id)||null; }
+function personLinkTunel(pid, tunelId){ const a=peopleAll(); const p=a.find(x=>x&&x.id===pid); if(!p||p.tunelId===tunelId) return; p.tunelId=tunelId; peopleSave(a); }
+function tunelPickApply(){
+  const rows=(tunelPick.rows||[]).filter(r=>tunelPick.sel.has(r.member_id));
+  if(!rows.length){ closeTunelPick(); return; }
+  const p=potNow();
+  rows.forEach(r=>{ const nick=String(r.nick||'').trim(); if(!nick) return;
+    const who=personByTunelId(r.member_id)||personByName(nick)||personNew(nick);   // 같은 회원이 명부에 있으면 그 사람, 아니면 닉으로 찾거나 새로
+    personLinkTunel(who.id, r.member_id);
+    if(p) potMemberAdd(who.name, { tunelId:r.member_id });
+    attend.sel.add(who.id); });
+  closeTunelPick();
+  if(typeof prep!=='undefined'&&prep.on) prepRender(); else renderAttend();
 }
 function homePastToggle(){ home.past=!home.past; renderHome(); }
 /* 마당을 새로 연다 — 열고 나면 참가자를 적는 화면으로 이어준다 */
@@ -3574,7 +3694,7 @@ function prepPeopleHtml(){
   const rows=pool.map(o=>{ const k=attendKey(o), on=attend.sel.has(k);
     return `<div class="lr" onclick="attendToggle('${k.replace(/'/g,"\\'")}')"><span class="p-ck${on?' on':''}">✓</span><div class="t">${escH(o.name)}<small>${o.pid?'전에도 온 사람':'이번에 처음'}</small></div><span class="k">${on?'참석':'관전'}</span></div>`; }).join('');
   return `<div class="p-list">${rows||'<div class="wz-note">아직 아무도 없어요 — 아래 «＋ 이름»으로 넣으세요.</div>'}</div>
-    <div style="margin-top:8px"><span style="font-size:var(--t-body);font-weight:700;color:var(--txt2);cursor:pointer" onclick="attendAdd()">＋ 이름</span></div>`;
+    <div style="margin-top:8px"><span style="font-size:var(--t-body);font-weight:700;color:var(--txt2);cursor:pointer" onclick="attendAdd()">＋ 이름</span>${SRV.on()?'<span style="font-size:var(--t-body);font-weight:700;color:var(--txt2);cursor:pointer;margin-left:14px" onclick="tunelPickOpen()">👥 투넬 회원</span>':''}</div>`;
 }
 function prepRender(){
   const card=document.getElementById('prepCard'), act=document.getElementById('prepActions'), tabs=document.getElementById('prepTabs');
@@ -5164,11 +5284,11 @@ function renderSrvRow(){ const el=document.getElementById('srvRow'); if(!el) ret
       <div class="field"><label>공개 키</label><input id="srvKey" placeholder="anon key" value="${escH(c.key||'')}"></div>
       <div class="sheet-actions"><button class="btn gold" onclick="srvSave()">저장</button></div>`;
     return; }
-  el.innerHTML=`<div class="modhint">서버 켜짐 — <b id="srvWho">확인 중…</b></div>
+  el.innerHTML=`<div class="modhint">서버 켜짐${SRV.isDefault()?' · 투넬 서버(tunel.kr 과 같은 계정)':''} — <b id="srvWho">확인 중…</b></div>
     <div class="sheet-actions">
       <button class="btn" onclick="homeAcct()">계정</button>
       <button class="btn" onclick="srvUploadAll()">밀린 기록 올리기</button>
-      <button class="btn quiet" onclick="srvForget()">접속 정보 지우기</button></div>`;
+      ${SRV.isDefault()?'':'<button class="btn quiet" onclick="srvForget()">접속 정보 지우기</button>'}</div>`;
   SRV.me().then(async u=>{ const w=document.getElementById('srvWho'); if(!w) return;
     if(!u){ w.textContent='로그인 안 됨'; return; }
     const nm=(u.user_metadata&&(u.user_metadata.name||u.user_metadata.nickname))||'';
@@ -5193,9 +5313,9 @@ async function srvUploadAll(){
   if(!SRV.on()){ alert('서버가 꺼져 있어요.'); return; }
   if(!(await SRV.me())){ alert('먼저 로그인해주세요.'); return; }
   await SRV.claim('');
-  const logs=logsAll().filter(L=>L&&L.winner);
+  const logs=SRV.pending();
   let ok=0, bad=0;
-  for(const L of logs){ if(await SRV.uploadGame(L)) ok++; else bad++; }
+  for(const L of logs){ if(await SRV.uploadGame(L)){ ok++; SRV.markUploaded(L); } else bad++; }
   alert('올림 '+ok+'판'+(bad?' · 실패 '+bad+'판':''));
 }
 function renderScriptRow(){ const el=document.getElementById('scriptRow'); if(!el) return; const now=uiScriptPref();
@@ -7849,8 +7969,8 @@ function potMemberAdd(name, opts){
   let added=null;
   potUpdate(id, p=>{ p.members=p.members||[];
     const ex=p.members.find(m=>m.pid===who.id);
-    if(ex){ ex.state='in'; added=ex; return; }   // 같은 사람은 한 번만 (I5)
-    added={ pid:who.id, name:who.name, accountId:(opts&&opts.accountId)||null,
+    if(ex){ ex.state='in'; if(opts&&opts.tunelId) ex.tunelId=opts.tunelId; added=ex; return; }   // 같은 사람은 한 번만 (I5)
+    added={ pid:who.id, name:who.name, accountId:(opts&&opts.accountId)||null, tunelId:(opts&&opts.tunelId)||null,
       guest:!(opts&&opts.accountId), joinedBy:(opts&&opts.joinedBy)||'host', state:'in' };
     p.members.push(added); });
   return added; }
@@ -10526,6 +10646,7 @@ function logFinish(winner, note){
       ghost:(x.ghostUsed||[]).map(v=>v+1), adj:x.adj||0,
       need:(x.need===undefined?null:x.need), alive:(x.alive===undefined?null:x.alive) }))}; }).filter(x=>x.noms.length);
   const logs=logsAll(); logs.push(L); logsSave(logs);
+  try{ SRV.autoUpload(L); }catch(e){}   // 로그인돼 있으면 조용히 서버에도 (2026-09-20 회원 통합). 실패해도 기록은 이미 기기에 있다
   state.log=null; save();
   try{ potAddGame(L); }catch(e){}   // 그릇 담기는 부가 — 실패해도 판 기록은 이미 안전하다
   /* 좌석↔사람 pin 은 «명시적으로 지정된 좌석»(참가자 칩 등이 s.pid 를 박은 것)만 굳힌다.
