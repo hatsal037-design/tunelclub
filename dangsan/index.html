@@ -534,6 +534,7 @@
   .wz-top .wz-ic{ background:transparent; border:0; font-family:var(--mono); font-size:var(--t-label); letter-spacing:.06em;
     color:var(--txt2); cursor:pointer; padding:0 6px; min-height:var(--tap); white-space:nowrap; }
   .wz-top .wz-ic.acc{ color:var(--gold); }
+@media (max-width:400px){ .wz-top{ gap:4px; padding-left:8px; padding-right:8px; } .wz-top .wz-ic{ padding:0 5px; font-size:var(--fs-xs); letter-spacing:0; } }   /* «새 판»이 들어오며 네 단추 — 375px 에서 «오늘»이 잘렸다 (2026-09-20 화면 훑기) */
   /* 조망 줄 — 모노 한 줄, 칸 사이는 짧은 틱 (N03: 정보는 그대로) */
   .wz-gaze{ display:flex; flex-wrap:wrap; align-items:center; gap:2px 0; padding:0 18px 8px; border:0; background:transparent; overflow:visible;
     font-family:var(--f-body); font-size:var(--t-cap); letter-spacing:0; color:var(--dim); white-space:nowrap; }
@@ -1164,6 +1165,10 @@
   .prep #ngSheet{ position:static; max-width:none; width:auto; border:0; border-radius:0; padding:0; background:transparent; box-shadow:none; max-height:none; overflow:visible; }
   .prep #ngSheet > h3, .prep #ngSheet > .sheet-actions{ display:none; }   /* 제목·취소·시작·빈 판 버튼은 준비 화면의 행동 띠가 대신한다 */
   .prep .p-list .lr{ display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); min-height:var(--tap); cursor:pointer; }
+.lr .p-x{margin-left:4px;padding:2px 8px;color:var(--dim);font-size:var(--t-lead);cursor:pointer;flex:0 0 auto}
+/* 자리표에서 고르기 — 밤·낮의 첫 행동이라 한눈에 띄게, 한 줄 가득 (햇살님 2026-09-20 «버튼이 좀 더 잘 보이게») */
+.btn.pick{width:100%;justify-content:center;min-height:52px;font-size:var(--t-lead);font-weight:800}
+.lr .p-x:hover{color:var(--warn-txt)}
   .prep .p-list .lr:last-child{ border-bottom:0; }
   .prep .p-list .lr .t{ flex:1; font-size:var(--t-lead); font-weight:600; color:var(--txt); }
   .prep .p-list .lr .t small{ display:block; font-size:var(--t-cap); font-weight:500; color:var(--txt2); margin-top:2px; }
@@ -1219,6 +1224,8 @@
   .pk-open{ border:0; margin:0; }
   .pk-open > * + *::before{ display:none; }
   .pk-open .btn{ justify-content:flex-start; padding:6px 0; min-height:var(--tap); color:var(--gold); font-weight:700; }
+/* 자리표에서 고르기 — 밤·낮의 첫 행동이라 한 줄 가득, 금색 반전(고른 것은 반전 규칙과 같은 말) (햇살님 2026-09-20 «버튼이 좀 더 잘 보이게») */
+.pk-open .btn.pick, .s-act .btn.pick{ width:100%; justify-content:center; min-height:52px; padding:12px 14px; background:var(--gold); color:var(--bg); font-weight:800; font-size:var(--t-lead); border-radius:var(--r); }
   .pk-chosen{ padding:0; }
   .wz-ansbar{ margin:2px 0 6px; }
   .wz-ansbar .ab-hd{ display:none; }
@@ -1496,6 +1503,7 @@
     <span class="sp"></span>
     <button class="wz-ic" id="wzSound" title="소리" onclick="wzPop('sound')">소리</button>
     <button class="wz-ic acc" title="화면 가리기 — 참가자에게 넘길 때" onclick="lockOn()">가리기</button>
+    <button class="wz-ic" title="초기화 — 이 판을 버리고 자리부터 다시" onclick="wzNewGame()">새 판</button>
     <button class="wz-ic" title="오늘 화면으로" onclick="wzClose()">오늘</button>
   </div>
   <div class="wz-gaze" id="wzGaze"></div>
@@ -2500,19 +2508,24 @@ function seatAdd(){ const n=(prompt('이름·닉네임을 넣으세요')||'').tr
 /* ── 자리표 이미지 ────────────────────────────────────────────────
    좌석 번호·닉네임·배치 모양과 «1번 자리(기준점)» 만 담는다. 직업·진영은 절대 넣지 않는다.
    단톡방·모니터에 공유해 사람들이 자기 번호를 확인하는 용도. (결정 14) */
+/* 캔버스는 CSS 변수(var(--x))를 모른다 — 색이 전부 검정으로 떨어져 자리표 이미지가 깜깜하게 나왔다 (2026-09-20 폰에서 발견).
+   화면이 지금 쓰는 값(어두운·밝은 결)을 읽어 넣고, 못 읽으면 어두운 결의 기본값 */
+function cssColor(name, fallback){ try{ const v=getComputedStyle(document.body).getPropertyValue(name).trim(); return v||fallback; }catch(e){ return fallback; } }
 function seatMapCanvas(){
   const N=state.count, W=1080, H=1080, cv=document.createElement('canvas');
   cv.width=W; cv.height=H; const g=cv.getContext('2d'); if(!g) return null;
-  g.fillStyle='var(--bg)'; g.fillRect(0,0,W,H);
+  const C={ bg:cssColor('--bg','#17151a'), gold:cssColor('--gold','#b08d3e'), dim:cssColor('--dim','#948a7a'),
+            panel2:cssColor('--panel2','#2a2630'), txt:cssColor('--txt','#f4ebd9'), line:cssColor('--line','#332e39') };
+  g.fillStyle=C.bg; g.fillRect(0,0,W,H);
   const title=(potNow()&&potNow().title)||PKO('그릇');
-  g.fillStyle='var(--gold)'; g.font='700 44px "Apple SD Gothic Neo",system-ui,sans-serif'; g.textAlign='center';
+  g.fillStyle=C.gold; g.font='700 44px "Apple SD Gothic Neo",system-ui,sans-serif'; g.textAlign='center';
   g.fillText('🌳 '+title+' — 자리표', W/2, 78);
-  g.fillStyle='var(--dim)'; g.font='400 28px "Apple SD Gothic Neo",system-ui,sans-serif';
+  g.fillStyle=C.dim; g.font='400 28px "Apple SD Gothic Neo",system-ui,sans-serif';
   g.fillText('① 이 자리가 기준입니다 · 번호는 시계 방향', W/2, 124);
   const rect=state.layout==='rect', pos=rect?rectPositions():null, cells=rect?seatCells():null;
   const cx=W/2, cy=H/2+40, R=Math.min(W,H)*0.335;
-  if(!rect){ g.fillStyle='var(--panel2)'; g.beginPath(); g.arc(cx,cy,R-92,0,Math.PI*2); g.fill();
-    g.fillStyle='var(--dim)'; g.font='400 30px "Apple SD Gothic Neo",system-ui,sans-serif';
+  if(!rect){ g.fillStyle=C.panel2; g.beginPath(); g.arc(cx,cy,R-92,0,Math.PI*2); g.fill();
+    g.fillStyle=C.dim; g.font='400 30px "Apple SD Gothic Neo",system-ui,sans-serif';
     g.fillText('가운데', cx, cy-6); g.fillText('(진행자)', cx, cy+34); }
   for(let i=0;i<N;i++){
     let x,y;
@@ -2520,13 +2533,13 @@ function seatMapCanvas(){
     else { const a=(-90+circleSlot(i,N)*360/N)*Math.PI/180; x=cx+R*Math.cos(a); y=cy+R*Math.sin(a); }
     const first=(i===0);
     g.beginPath(); g.arc(x,y,54,0,Math.PI*2);
-    g.fillStyle=first?'var(--panel2)':'var(--panel2)'; g.fill();
-    g.lineWidth=first?6:3; g.strokeStyle=first?'var(--gold)':'var(--line)'; g.stroke();
-    g.fillStyle=first?'var(--gold)':'var(--txt)'; g.textAlign='center';
+    g.fillStyle=first?C.panel2:C.panel2; g.fill();
+    g.lineWidth=first?6:3; g.strokeStyle=first?C.gold:C.line; g.stroke();
+    g.fillStyle=first?C.gold:C.txt; g.textAlign='center';
     g.font='800 40px "Apple SD Gothic Neo",system-ui,sans-serif';
     g.fillText(String(i+1), x, y+14);
     const nm=(state.seats[i]&&state.seats[i].name)||'';
-    if(nm){ g.fillStyle='var(--txt)'; g.font='700 29px "Apple SD Gothic Neo",system-ui,sans-serif';
+    if(nm){ g.fillStyle=C.txt; g.font='700 29px "Apple SD Gothic Neo",system-ui,sans-serif';
       g.fillText(nm.length>7?nm.slice(0,7)+'…':nm, x, y+96); }
   }
   return cv;
@@ -2894,7 +2907,8 @@ function seatPublic(i, ctx, opts){
   if (c) {
     pub.charId = id;
     pub.ko = c.ko;
-    pub.e = CE(c);
+    pub.e = String(c.e || '');     // 글자용(이모지). 이걸 escH 로 찍어도 된다
+    pub.eHtml = CE(c);             // 그림용 HTML(<img>·<i>). 그리는 쪽이 그대로 넣는다 — escH 로 찍으면 태그가 글자로 샌다 (2026-09-20 폰에서 발견)
     pub.team = c.team;
   }
 
@@ -2942,7 +2956,7 @@ function seatMapHtml(pubs, opts){
     if (p.origin && o.origin !== false) c.push('origin');
     if (on) c.push(extra || 'hit'); else if (o.mute !== false) c.push('mute');
     /* 직업은 seatPublic 이 준 자리에만 있다 — 여기서 판단하지 않는다 */
-    const job = p.charId ? '<div class="dsm-job">' + esc(p.e) + ' ' + esc(p.ko) + '</div>' : '';
+    const job = p.charId ? '<div class="dsm-job">' + (p.eHtml || esc(p.e)) + ' ' + esc(p.ko) + '</div>' : '';
     out.push('<div class="' + c.join(' ') + '" data-seat="' + p.i + '"'
       + ' style="left:' + x.toFixed(2) + '%;top:' + y.toFixed(2) + '%">'
       + '<div class="dsm-tk">' + esc(부름(p)) + '</div>' + job + '</div>');
@@ -3215,6 +3229,7 @@ function removeNight(){
   if((state.nights||1)<=1)return;
   const died=state.seats.filter(x=>x.dead&&x.causeN===(state.nights||1));
   if(died.length&&!confirm(`이 밤에 ${died.length}명이 죽었어요(${died.map(x=>x.name||CMAP()[x.char]?.ko||'').join(', ')}).\n밤을 되돌려도 사망은 그대로 남습니다 — 좌석에서 직접 되살려 주세요. 계속할까요?`)) return;
+  try{ fakeClearNight(state.nights||1); }catch(e){}   // 그 밤의 거짓 제안 기억도 같이 (반증 검토 2-4)
   /* 디렉터 흔적도 같이 되돌린다 — 안 하면 되돌린 밤에 쓴 예산·주사위·굳힌 판정이 남아 다음 판정이 오염된다 (2026-08-25).
      반드시 confirm 뒤에 — 취소했는데 예산만 환급되면 안 된다 (검토 1-5).
      «지금 밤»을 지우므로 그 밤의 예산·판정만 돌려주고, 들러리 주사위는 다시 굴리게 한다(조합 memo 는 «조합 다시»가 지운다). */
@@ -3303,7 +3318,7 @@ function autoCompose(N){
 /* ══════════ 참석 체크 ══════════
    판과 판 사이에 사람이 들고 난다. 마당 명단을 체크리스트로 두고, 체크한 사람만 다음 판에 앉는다.
    빠진 사람은 지우지 않고 명단에 그대로 남는다(관전). 사람(pid) 기준이라 통계가 이어진다. */
-let attend={sel:null};
+let attend={ skipConfirm:false,sel:null};
 function attendPool(){ const p=potNow(); const out=[];
   if(p) (p.members||[]).forEach(m=>{ if(m.state!=='out') out.push({pid:m.pid||null, name:m.name}); });
   (state.seats||[]).forEach(s2=>{ if(s2&&s2.name&&!out.some(o=>o.name===s2.name)) out.push({pid:s2.pid||null, name:s2.name}); });
@@ -3336,12 +3351,30 @@ function renderAttend(){
       <div class="d">${o.pid?'전에도 온 사람':'이번에 처음'}</div></div>
       <div class="k">${sel?'참석':'관전'}</div></div>`; }).join('')+'</div>';
 }
+/* 진행 중 초기화 — 이 판을 버리고 자리부터 다시 (햇살님 2026-09-20 «판 실행 중에 초기화»). 화면-090.
+   여기서 한 번 물었으면 판 준비의 «이 모드로 자리 확인»은 다시 묻지 않는다(attend.skipConfirm).
+   실제로 버리는 건 그 확인 때다 — 판 준비를 그냥 닫으면 지금 판은 그대로 남는다. */
+function wzNewGame(){
+  if(gameInProgress()&&!confirm('지금 판을 버리고 자리부터 다시 잡을까요?\n끝나지 않은 판이라 기록에는 남지 않아요.')) return;
+  attend.skipConfirm=!!gameInProgress();
+  wzClose(); newGameEntry(); }
+/* 명단에서 빼기 — 엔터로 넣은 이름이 오타일 때 (햇살님 2026-09-20 «엔터치고 나면 그 이름 삭제가 안 되네»).
+   그릇 명단에서는 «빠짐»으로 표시만 하고(potMemberRemove), 앉아 있던 자리는 비우고, 체크도 푼다 */
+function attendRemove(k){
+  if(!k) return;
+  const pool=attendPool(), o=pool.find(x=>attendKey(x)===k); const name=o?o.name:(k.indexOf('name:')===0?k.slice(5):'');
+  attend.sel.delete(k);
+  if(o&&o.pid) potMemberRemove(o.pid);
+  if(name){ if(typeof setup!=='undefined'&&setup.extra) setup.extra=setup.extra.filter(n=>n!==name);
+    (state.seats||[]).forEach(s2=>{ if(s2&&s2.name===name&&(!o||!o.pid||!s2.pid||s2.pid===o.pid)){ s2.name=''; delete s2.pid; } }); save(); }
+  if(typeof prep!=='undefined'&&prep.on) prepRender(); else renderAttend(); }
 function attendApply(){
   const pool=attendPool().filter(o=>attend.sel.has(attendKey(o)));
   if(pool.length<5){ alert('최소 5명이 필요해요.'); return; }
-  if(gameInProgress()&&!confirm('게임이 진행 중이에요.\n인원을 다시 정하면 지금 판(역할·상태·기록)이 사라집니다. 계속할까요?')) return;   // startNewGame 의 확인을 앞 구간이 우회하던 것 (감사 2026-09-13)
+  if(!attend.skipConfirm&&gameInProgress()&&!confirm('게임이 진행 중이에요.\n인원을 다시 정하면 지금 판(역할·상태·기록)이 사라집니다. 계속할까요?')) return;   // startNewGame 의 확인을 앞 구간이 우회하던 것 (감사 2026-09-13). 진행 화면 «새 판»에서 이미 물었으면 안 묻는다 (2026-09-20)
+  attend.skipConfirm=false;
   autoFinishIfEnded();
-  state.done={}; state.nights=1; state.phase='firstnight'; state.days={}; state.picks={}; state.placed={}; state.tokAt={}; state.tokPh={}; state.guesses={}; state.ansLog={}; state.deathActed={}; state.madAs={}; state.lastT={}; state.fakes={}; state.log=null; state.practice=false;
+  state.done={}; state.nights=1; state.phase='firstnight'; state.days={}; state.picks={}; state.placed={}; state.tokAt={}; state.tokPh={}; state.guesses={}; state.ansLog={}; state.deathActed={}; state.madAs={}; state.lastT={}; state.fakes={}; state.fixed={}; state.log=null; state.practice=false;   // fixed 도 비운다 — 이전 판의 정답·거짓 기억이 새 판에 새던 것 (반증 검토 2-5)
   if(pool.length>20){ alert('최대 20명까지 가능해요.'); return; }
   /* 이미 앉아 있던 사람은 자리를 지키고, 새로 온 사람은 빈자리·뒤쪽부터 */
   const keep=(state.seats||[]).filter(s2=>s2&&s2.name&&pool.some(o=>attendSame(s2,o)));
@@ -3670,7 +3703,7 @@ function prepOpen(tab){
   wz.on=false; document.getElementById('wizard').classList.remove('on');
   prep.on=true; prep.tab=tab||1; document.getElementById('prep').classList.add('on'); prepRender();
   try{ uiSyncSurface(); }catch(e){} }
-function prepClose(){ ngPractice=false; prepLeave(); prep.on=false; wz.againQueue=null; document.getElementById('prep').classList.remove('on'); if(setup.on) setupClose(); homeOpen(); }
+function prepClose(){ ngPractice=false; attend.skipConfirm=false; prepLeave(); prep.on=false; wz.againQueue=null; document.getElementById('prep').classList.remove('on'); if(setup.on) setupClose(); homeOpen(); }
 function prepGo(t){ prepLeave(); prep.tab=t; prepRender(); }
 /* 빌려온 부품(자리 잡기 바·구성 시트·좌석판)을 제자리로 */
 function prepLeave(){
@@ -3692,7 +3725,7 @@ function prepPeopleHtml(){
   const pool=attendPool();
   if(!attend.sel){ const seats=(state.seats||[]).filter(s2=>s2&&s2.name); attend.sel=new Set(pool.filter(o=>seats.some(s2=>attendSame(s2,o))).map(attendKey)); if(!attend.sel.size) pool.forEach(o=>attend.sel.add(attendKey(o))); }
   const rows=pool.map(o=>{ const k=attendKey(o), on=attend.sel.has(k);
-    return `<div class="lr" onclick="attendToggle('${k.replace(/'/g,"\\'")}')"><span class="p-ck${on?' on':''}">✓</span><div class="t">${escH(o.name)}<small>${o.pid?'전에도 온 사람':'이번에 처음'}</small></div><span class="k">${on?'참석':'관전'}</span></div>`; }).join('');
+    return `<div class="lr" onclick="attendToggle('${k.replace(/'/g,"\\'")}')"><span class="p-ck${on?' on':''}">✓</span><div class="t">${escH(o.name)}<small>${o.pid?'전에도 온 사람':'이번에 처음'}</small></div><span class="k">${on?'참석':'관전'}</span><span class="p-x" title="명단에서 빼기" onclick="event.stopPropagation();attendRemove('${k.replace(/'/g,"\\'")}')">✕</span></div>`; }).join('');
   return `<div class="p-list">${rows||'<div class="wz-note">아직 아무도 없어요 — 아래 «＋ 이름»으로 넣으세요.</div>'}</div>
     <div style="margin-top:8px"><span style="font-size:var(--t-body);font-weight:700;color:var(--txt2);cursor:pointer" onclick="attendAdd()">＋ 이름</span>${SRV.on()?'<span style="font-size:var(--t-body);font-weight:700;color:var(--txt2);cursor:pointer;margin-left:14px" onclick="tunelPickOpen()">👥 투넬 회원</span>':''}</div>`;
 }
@@ -5458,9 +5491,9 @@ function wzRenderBody(){
       const tgtLine=tgt===null?'지목당한 사람을 자리표에서 고르세요':`${who(tgt)} · ${D.noms.some(x=>x.t===tgt)?'오늘 이미 후보였어요':'오늘 첫 후보'} · ${state.seats[tgt].dead?'죽어 있음':'살아 있음'}`;
       const daySteps=drafting?[
         {h:`<div class="s-say">지목자${by!==null?` <span class="s-val">${who(by)}</span>`:''}</div><div class="s-sub">${byLine}</div>
-            <div class="s-act">${by===null&&wz.nomStep!=='skip'?`<button class="btn gold" onclick="uiDayPickBy()">자리표에서 고르기</button><button class="btn quiet" onclick="uiDayNomSkipBy()">모르겠어요 · 건너뛰기</button>`:`<button class="btn" onclick="uiDayPickBy()">바꾸기</button>`}</div>`, st:(by!==null||wz.nomStep==='skip')?'done':'now'},
+            <div class="s-act">${by===null&&wz.nomStep!=='skip'?`<button class="btn gold pick" onclick="uiDayPickBy()">🗺️ 자리표에서 고르기</button><button class="btn quiet" onclick="uiDayNomSkipBy()">모르겠어요 · 건너뛰기</button>`:`<button class="btn" onclick="uiDayPickBy()">바꾸기</button>`}</div>`, st:(by!==null||wz.nomStep==='skip')?'done':'now'},
         {h:`<div class="s-say">후보${tgt!==null?` <span class="s-val">${who(tgt)}</span>`:''}</div><div class="s-sub">${tgtLine}</div>
-            <div class="s-act">${tgt===null?`<button class="btn gold" onclick="uiDayPickTarget()">자리표에서 고르기</button>`:`<button class="btn" onclick="uiDayPickTarget()">바꾸기</button>`}</div>`, st:tgt!==null?'done':((by!==null||wz.nomStep==='skip')?'now':'')},
+            <div class="s-act">${tgt===null?`<button class="btn gold pick" onclick="uiDayPickTarget()">🗺️ 자리표에서 고르기</button>`:`<button class="btn" onclick="uiDayPickTarget()">바꾸기</button>`}</div>`, st:tgt!==null?'done':((by!==null||wz.nomStep==='skip')?'now':'')},
         {h:`<div class="s-say">투표</div><div class="s-sub">«투표 시작»을 누르면 지명이 기록되고 자리표에서 손든 사람을 셉니다.</div>`, st:'dim'},
       ]:[
         {h:`<div class="s-say">오늘 후보 <span class="s-val">${D.noms.length}</span></div>${candRows(true)}${notes}${madNotes}${dayAbilityPanel()}`, st:'now'},
@@ -5684,12 +5717,16 @@ function wzRenderBody(){
       else if(btns&&!bar) steps.push({h:`<div class="s-say">${c.ab}</div><div class="s-act">${btns}</div>`, st:'now'});
       if(bar){
         /* 세 줄 같은 크기(D03): 전달할 값 · 계산된 답 · 이유. 중독·취함이면 전달할 값은 진행자가 고른다 */
-        const fals=falsifyTokens(seat); const auto=(!fals.length&&!o.fake)?(()=>{ try{ return autoAns(c,o.i); }catch(e){ return null; } })():null;
-        const calc=(auto&&auto.value!==null&&auto.value!==undefined)?uiAnsText(auto):(o.fake?'가짜 직업 — 계산 없음':'계산 없음');
-        const give=shown?shown:((fals.length||o.fake)?`<em>고르세요</em>`:calc);
-        const why=fals.length?fals.map(t=>TK(t)).join('·')+' — 거짓을 주세요':(o.fake?'가짜 직업 순서':'정상');
-        ui.why=fals.length?`앞선 행동에서 <b>${fals.map(t=>TK(t)).join('·')}</b> → 이번 전달값을 검토해야 함.`:(o.fake?`이 사람의 진짜 직업은 <b>${o.real.ko}</b> — 가짜 직업 순서에 깨워 그럴듯한 거짓을 준다.`:'현재 상태에서 계산한 답을 그대로 전달.');
-        steps.push({h:`<div class="s-say">정보 전달</div><div class="kv3"><span class="k">전달할 값</span><span class="v">${give}</span><span class="k">계산된 답</span><span class="v">${calc}</span><span class="k">이유</span><span class="v${fals.length?' warn':' dim'}">${why}</span></div>${bar}${btnsNoBar?`<div class="s-act">${btnsNoBar}</div>`:''}`, st:(hasPick&&!pickDone)?'':(shown?'done':'now')});
+        const why0=pickFalsified(o.i); const falsified=why0.length>0;   // 거짓 판정은 답 바와 같은 한 함수 (반증 검토 1-1) — 토큰·취객류·미혹귀 판
+        const lab=t=>{ try{ const k=TK(t); return (typeof k==='string'&&k)?k:t; }catch(e){ return t; } };
+        const auto=!falsified?(()=>{ try{ return autoAns(c,o.i); }catch(e){ return null; } })():null;   // 거짓 상황에선 부르지 않는다 — 포교의 '표적' 같은 부작용
+        const fakeA=falsified?(()=>{ try{ return fakeAns(c,o.i); }catch(e){ return null; } })():null;   // 앱이 고른 거짓 (2026-09-20, 화면-094)
+        const realA=(fakeA&&fakeA.real&&fakeA.real.value!==null&&fakeA.real.value!==undefined)?fakeA.real:null;
+        const calc=(auto&&auto.value!==null&&auto.value!==undefined)?uiAnsText(auto):(realA?uiAnsText(realA)+' (실제)':(o.fake?'가짜 직업 — 계산 없음':'계산 없음'));
+        const give=shown?shown:(fakeA?`🎭 ${uiAnsText(fakeA)}`:(falsified?`<em>고르세요</em>`:calc));
+        const why=falsified?why0.map(lab).join(' · ')+(fakeA?' — 앱이 고른 거짓, 바꿔도 됨':' — 거짓을 주세요'):'정상';
+        ui.why=falsified?`<b>${why0.map(lab).join(' · ')}</b> → 이번 전달값은 거짓이어야 함${fakeA?'. 앱이 고른 값을 그대로 줘도 되고 바꿔도 된다':''}.`:'현재 상태에서 계산한 답을 그대로 전달.';
+        steps.push({h:`<div class="s-say">정보 전달</div><div class="kv3"><span class="k">전달할 값</span><span class="v">${give}</span><span class="k">계산된 답</span><span class="v">${calc}</span><span class="k">이유</span><span class="v${falsified?' warn':' dim'}">${why}</span></div>${bar}${btnsNoBar?`<div class="s-act">${btnsNoBar}</div>`:''}`, st:(hasPick&&!pickDone)?'':(shown?'done':'now')});
       } else if(!hasPick&&!btns) steps.push({h:`<div class="s-say">${c.ab}</div>`, st:'now'});
     }
     steps.push({h:`<div class="s-say">재우기</div><div class="s-sub">${villageType()?'다시 재우세요':'『다시 눈을 감아 주세요.』'}</div>`, st:'dim'});
@@ -5897,7 +5934,7 @@ function pickPanel(c, owner){
     // 사람을 고르는 지목은 자리표를 크게 띄워서 (결정 28) — 카드엔 버튼 하나와 고른 결과만
     const warnRep=(R.noRepeat&&lastT&&lastT.n===(state.nights||1)-1)?`<div class="pk-sub">↩️ 어젯밤 ${pickLabel(lastT.seat)}은(는) 고를 수 없어요</div>`:'';
     chips=`<div class="pk-open">
-      <button class="btn gold" onclick="pickOvOpen(${owner})">${sel.length?'자리표에서 다시 고르기':'자리표에서 고르기'}</button>
+      <button class="btn gold pick" onclick="pickOvOpen(${owner})">🗺️ ${sel.length?'자리표에서 다시 고르기':'자리표에서 고르기'}</button>
       ${sel.length?`<div class="pk-chosen">고른 사람 · <b>${sel.map(pickLabel).join(' · ')}</b></div>`:''}
       ${warnRep}</div>`;
   }
@@ -6193,7 +6230,8 @@ function targetAns(c, owner, targets){
 }
 function pickShowAns(owner, type, value){ const c=CMAP()[state.seats[owner].char]; const seat=state.seats[owner]; ANS_CTX={name: seat.name||('좌석 '+(owner+1)), role: c.ko, seat:owner};
   pickCommit(owner, pickGet(owner), 'info:flip'); document.getElementById('wizard').classList.remove('on');
-  if(type==='ox') ansOX(!!value); else if(type==='team') ansTeam(value); }
+  if(type==='ox') ansOX(!!value); else if(type==='team') ansTeam(value);
+  else if(type==='num') ansNum(value); else if(type==='char') ansChar(value); else if(type==='seats'&&value&&value.seats) ansSeats(value.seats, value.head||''); }   // 거짓 제안(2026-09-20)도 같은 길로
 /* 저승사자 생사 문답: 셋을 고르고 각자의 답(살/죽)을 찍으면 규칙대로 사망 처리 */
 function pickGuessAdd(owner){ const gp=wz.gp||{}; if(gp.seat===undefined||!gp.char) return; state.guesses=state.guesses||{}; const G=state.guesses[owner]=state.guesses[owner]||[]; G.push({seat:gp.seat,char:gp.char}); wz.gp={}; logEvent('밤 지목',Object.assign(logSeat(owner),{추측:pickLabel(gp.seat)+'='+gp.char})); save(); pickRerender(); }
 function pickGuessDel(owner,k){ const G=(state.guesses||{})[owner]||[]; G.splice(k,1); save(); pickRerender(); }
@@ -6217,6 +6255,8 @@ function pickShowInfo(owner, force){ const c=seatActChar(owner)||CMAP()[state.se
     if(a0&&(a0.type==='ox'||a0.type==='team')&&why.every(x=>/헛것|만물 거짓/.test(x))){   // 반전 계열은 반대 답이 곧 정답
       const fv=a0.type==='ox'?!a0.value:(a0.value==='good'?'evil':'good');
       flip=` <button class="btn gold" style="margin-left:6px" onclick="pickShowAns(${owner},'${a0.type}',${JSON.stringify(fv)})">↔️ 반대 답 보여주기 (${a0.type==='ox'?(fv?'O':'X'):(fv==='good'?'선':'악')})</button>`; }
+    if(!flip&&a0){ const fk=fakeFromAns(a0, c, owner, t);   // 중독·취객 — 앱이 고른 거짓을 단추로 (2026-09-20, 화면-094)
+      if(fk) flip=` <button class="btn gold" style="margin-left:6px" onclick="pickShowAns(${owner},'${fk.type}',${JSON.stringify(fk.value).replace(/"/g,'&quot;')})">🎭 거짓 보여주기 (${escH(uiAnsText(fk))})</button>`; }
     wz.pickRes={owner, html:`⚠️ <b>${why.join(' · ')}</b> — 지금은 진짜 답을 주면 안 돼요. 아래 '답 보여주기'에서 그럴듯한 거짓을 직접 고르세요.${flip} <button class="btn" style="margin-left:6px" onclick="pickShowInfo(${owner},true)">그래도 정답 보기</button>`}; pickRerender(); return; }
   let a=targetAns(c, owner, t);
   if(!a){ wz.ansOpen=true; wz.freeAns=true; wz.pickRes={owner, html:'이 능력은 앱이 계산할 공식이 없어요 — 아래 답 보여주기에서 직접 고르세요.'}; pickRerender(); return; }
@@ -6954,7 +6994,7 @@ function ansGrimoire(){
       border-radius:var(--r);font-size:var(--t-body);color:${evil?'var(--warn-txt)':'var(--good)'}">
       <b style="min-width:52px">좌석 ${p.no}</b>
       <span style="min-width:66px;color:var(--dim)">${escH(p.name)}</span>
-      <span>${escH(p.e)} <b>${escH(p.ko)}</b></span>
+      <span>${p.eHtml||escH(p.e)} <b>${escH(p.ko)}</b></span>
       ${p.dead?'<span style="color:var(--dead)">☠</span>':''}
       ${(p.rem||[]).length?`<span style="font-size:var(--fs-xs);color:var(--gold)">${escH((p.rem||[]).join('·'))}</span>`:''}
     </div>`; }).join('');
@@ -7514,37 +7554,158 @@ function autoAns(c0, idx){
   }
   return null;
 }
+/* ══ 거짓 값 제안 — 중독·취객·가짜 직업 차례에 앱이 그럴듯한 거짓을 고른다 (햇살님 2026-09-20 «초보 진행자를 위해»). 화면-094.
+   정답 계산(autoAns)과 같은 답 꼴을 쓰되 값만 실제와 다르게. 같은 밤 안에서는 같은 값(state.fixed 에 'fake:직업:n밤' 열쇠), 다음 밤엔 새로.
+   기억엔 value 만 둔다 — 라벨은 읽을 때 좌석 번호로 다시 짓는다(자리 빼기·회전 뒤 옛 번호가 남던 것, 반증 검토 1-4). 가리키던 자리가 비면 버리고 새로 만든다.
+   수·O/X·방향은 읽을 때 실제(pure)와 다시 대조해 같아졌으면 새로 만든다(같은 밤에 직업을 고친 경우, 1-5).
+   fixedSet 은 안 쓴다 — 죽은 자리의 사후 능력 «처리됨» 표시를 건드린다. 여기서 만든 값이 좌석 토큰을 바꾸는 일은 없다(autoAns 는 부작용 없는 수·O/X·방향 직업에서만 부른다).
+   «그럴듯함»의 기준(반증 검토 2026-09-20): 본인이 믿는 직업은 답에 안 넣는다 · 요리사 수는 악인 수−1 까지 · 손님·신령은 사람 후보에서 뺀다 · 처형자 직업은 마을·외지인·하수인·흉수만 · 현자 짝엔 죽은 자리 없음 · 다른 값이 하나도 없으면 null(진행자가 고른다).
+   고른 뒤 답하는 능력(점쟁이·까마귀지기…)은 fakeFromAns 가 맡는다. */
+const FAKE_PEOPLE_TEAMS=['town','outsider','minion','demon','mafia','neutral'];   // «사람» — 손님(traveler)·신령(fabled)·진행자(host)는 답에 안 든다 (2-10)
+function fakeKey(c, idx){ return fixedKey('fake:'+c.id+':n'+(state.nights||1), idx); }
+function fakeClear(roleId, idx){ const c=CMAP()[roleId]; if(!c) return; if(state.fixed) delete state.fixed[fakeKey(c, idx)]; save(); }
+/* 그 밤의 거짓 기억을 전부 지운다 — 밤 되돌리기 (2-4) */
+function fakeClearNight(n){ if(!state.fixed) return; const tag=':n'+n+'#'; Object.keys(state.fixed).forEach(k=>{ if(k.indexOf('fake:')===0&&k.indexOf(tag)>0) delete state.fixed[k]; }); }
+/* 라벨은 읽을 때 만든다 — 좌석 번호가 돌아도 글자가 따라온다 */
+function fakeLabel(o){ const cm=CMAP(); const v=o.value||{};
+  if(o.type==='duo'){ const mc=cm[v.char]; const seats=(v.seats||[]).map(x=>x+1).join('·'); return (v.seats||[]).length===1?`아이: 좌석 ${seats} ${mc?mc.e+' '+mc.ko:''}`:`${mc?mc.e+' '+mc.ko:''} (좌석 ${seats} 중 하나)`; }
+  if(o.type==='seats'){ const seats=(v.seats||[]).map(x=>x+1).join('·'); return /흉수 편/.test(v.head||'')?`흉수 편: 좌석 ${seats}`:`좌석 ${seats} 중 하나가 흉수`; }
+  if(o.type==='trio') return `좌석 ${(v.seats||[]).map(x=>x+1).join('·')} 중 정확히 하나가 흉수 편`;
+  if(o.type==='char'){ const mc=cm[o.value]; return mc?'처형자: '+mc.e+' '+mc.ko:''; }
+  if(o.type==='ox') return o.value?'O 그렇다':'X 아니다';
+  if(o.type==='dir') return o.value==='cw'?'시계 방향(거짓)':'반시계 방향(거짓)';
+  return o.label||String(o.value); }
+function fakeAns(c, idx){
+  const st=state.seats[idx]; if(!c||!st) return null;
+  state.fixed=state.fixed||{}; const key=fakeKey(c, idx);
+  const cm=CMAP(), rnd=a=>a[Math.floor(Math.random()*a.length)];
+  const people=state.seats.map((st2,i)=>({st2,i,c:st2.char?cm[st2.char]:null})).filter(o=>o.c&&FAKE_PEOPLE_TEAMS.includes(o.c.team)&&o.i!==idx);
+  const alive=people.filter(o=>!o.st2.dead);
+  const inPlay=new Set((state.seats||[]).map(s2=>s2&&s2.char).filter(Boolean));
+  const seatsOf=(n,pool)=>{ const q=(pool||people).map(o=>o.i); const out=[]; while(out.length<n&&q.length){ const k=Math.floor(Math.random()*q.length); out.push(q.splice(k,1)[0]); } return out.sort((x,y)=>x-y); };
+  const roster=teams=>CHARS().filter(x=>teams.includes(x.team)&&x.id!==c.id);   // 본인이 믿는 직업은 뺀다 (1-3)
+  const notInPlay=teams=>roster(teams).filter(x=>!inPlay.has(x.id));
+  const pure=()=>{ try{ return autoAns(c, idx); }catch(e){ return null; } };   // 부작용 없는 직업(수·O/X·방향)에서만 부른다
+  const done=(out, real, alts)=>{ state.fixed[key]={type:out.type, value:out.value, label:(out.type==='num'?out.label:undefined), alts:alts}; save();
+    return Object.assign({fake:true, ambig:[], alts:alts, real:(real===undefined?null:real)}, out, {label:fakeLabel(out)}); };
+  /* 기억이 있으면 — 가리키던 자리가 비었거나, 수·O/X·방향이 실제와 같아졌으면 버리고 새로 */
+  const memo=state.fixed[key];
+  if(memo&&memo.type){
+    const seats=(memo.value&&memo.value.seats)||[];
+    const stale=seats.some(i=>!state.seats[i]||!state.seats[i].char);
+    let real=null, same=false;
+    if(['num','ox','dir'].includes(memo.type)){ real=pure(); same=!!(real&&real.value!==null&&real.value!==undefined&&real.value===memo.value); }
+    if(!stale&&!same){ const o={type:memo.type, value:memo.value, label:memo.label}; return Object.assign({fake:true, ambig:[], alts:(memo.alts===undefined?2:memo.alts), real:real}, o, {label:fakeLabel(o)}); }
+    delete state.fixed[key];
+  }
+  if(isRole(c,'washerwoman')||isRole(c,'librarian')||isRole(c,'investigator')){
+    const team=isRole(c,'washerwoman')?'town':isRole(c,'librarian')?'outsider':'minion';
+    const cand=notInPlay([team]); if(!cand.length||people.length<2) return null;   // «판에 없는 그 팀 직업»이 없으면 진행자가 고른다
+    const fc=rnd(cand); const pair=seatsOf(2);
+    return done({type:'duo', value:{seats:pair, char:fc.id, head:'이 두 사람 중 하나가 이 직업이에요'}}, null, cand.length*Math.max(1, people.length-1));
+  }
+  if(isRole(c,'seunim')||isRole(c,'sage')){
+    if(!(st.dead&&(!st.cause||st.cause==='demon'))) return null;   // 실제 능력과 같은 조건 — 안 깨우는 카드에서 기억을 만들지 않는다 (2-11)
+    const pool=alive.filter(o=>o.c.team!=='demon'); if(pool.length<2) return null;   // 죽은 자리는 흉수일 수 없어 힌트가 된다 (2-3)
+    return done({type:'seats', value:{seats:seatsOf(2, pool), head:'이 둘 중 하나가 흉수예요'}}, null, pool.length);
+  }
+  if(isRole(c,'noble')){
+    if(people.length<3) return null; let tri=null;
+    for(let t=0;t<12&&!tri;t++){ const s3=seatsOf(3); if(s3.filter(i=>ansSeatEvil(state.seats[i])).length!==1) tri=s3; }
+    if(!tri) return null;
+    return done({type:'trio', value:{seats:tri}}, null, people.length);
+  }
+  if(isRole(c,'grandmother')){
+    const cand=notInPlay(['town','outsider']); if(!cand.length||!people.length) return null;
+    const fc=rnd(cand), s1=seatsOf(1)[0];
+    return done({type:'duo', value:{seats:[s1], char:fc.id, head:'돌보는 아이와 그 직업이에요'}}, null, cand.length*people.length);
+  }
+  if(isRole(c,'bountyhunter')){
+    const pool=alive.filter(o=>!ansSeatEvil(o.st2)); if(!pool.length) return null;
+    return done({type:'seats', value:{seats:seatsOf(1, pool), head:'이 사람이 흉수 편이에요'}}, null, pool.length);
+  }
+  if(isRole(c,'flowergirl')||isRole(c,'towncrier')){
+    const real=pure(); const v=(real&&typeof real.value==='boolean')?!real.value:Math.random()<0.5;
+    return done({type:'ox', value:v}, real, 1);
+  }
+  if(isRole(c,'undertaker')){
+    const ex=execSeatToday(); if(!ex) return null;
+    const cand=roster(['town','outsider','minion','demon','mafia']).filter(x=>x.id!==ex.char);   // 손님·신령·중립은 처형자가 될 수 없다 (2-1)
+    const pref=cand.filter(x=>!inPlay.has(x.id)); const pool=pref.length?pref:cand; const fc=rnd(pool); if(!fc) return null;
+    return done({type:'char', value:fc.id}, null, pool.length);
+  }
+  if(isRole(c,'empath')||isRole(c,'chef')||isRole(c,'clockmaker')){
+    const real=pure(); const rv=(real&&typeof real.value==='number')?real.value:null;
+    let lo=0, hi=2;
+    if(isRole(c,'chef')) hi=Math.max(0, people.filter(o=>ansSeatEvil(o.st2)).length-1);   // 이웃한 악인 쌍은 악인 수−1 까지 (1-2)
+    if(isRole(c,'clockmaker')){ lo=1; hi=Math.max(1, Math.floor((people.length+1)/2)); }
+    if(isRole(c,'empath')) hi=Math.min(2, ansNeighbors(idx).length||2);
+    const opts=[]; for(let v=lo; v<=hi; v++) if(v!==rv) opts.push(v); if(!opts.length) return null;   // 다른 값이 없으면 진행자가 고른다
+    return done({type:'num', value:rnd(opts), label:real?real.label:'거짓 수'}, real, opts.length);
+  }
+  if(isRole(c,'pungsujaengi')){
+    const real=pure(); const v=(real&&real.value)?(real.value==='cw'?'ccw':'cw'):(Math.random()<0.5?'cw':'ccw');
+    return done({type:'dir', value:v}, real, 1);
+  }
+  return null;
+}
+/* 고른 뒤 답하는 능력(점쟁이·까마귀지기·…)의 거짓 — 실제 답(targetAns)에서 값만 바꾼다. 같은 밤·같은 대상이면 같은 값 (2026-09-20, 화면-094 확장).
+   O/X·선악은 반대, 수는 다른 값, 직업은 본인·실제를 뺀 사람 직업(판에 없는 것 우선), 자리는 실제·본인을 뺀 산 사람. 꿈(dream)·없음은 안 만든다(진행자가 고른다) */
+function fakeFromAns(a0, c, owner, targets){
+  if(!a0||!c||!state.seats[owner]) return null;
+  state.fixed=state.fixed||{}; const key=fixedKey('fake:'+c.id+':n'+(state.nights||1)+':t'+(targets||[]).join('-'), owner);
+  const cm=CMAP(), rnd=a=>a[Math.floor(Math.random()*a.length)];
+  const lab=o=>{ if(o.type==='ox') return o.value?'O 그렇다':'X 아니다'; if(o.type==='team') return o.value==='good'?'선':'악'; if(o.type==='num') return String(o.value);
+    if(o.type==='char'){ const x=cm[o.value]; return x?x.e+' '+x.ko:''; } if(o.type==='seats') return '좌석 '+((o.value&&o.value.seats)||[]).map(x=>x+1).join('·'); return ''; };
+  const memo=state.fixed[key]; if(memo&&memo.type) return Object.assign({fake:true, ambig:[]}, memo, {label:lab(memo)});
+  const inPlay=new Set((state.seats||[]).map(s2=>s2&&s2.char).filter(Boolean));
+  const others=state.seats.map((s2,i)=>i).filter(i=>i!==owner&&state.seats[i]&&state.seats[i].char&&!state.seats[i].dead&&FAKE_PEOPLE_TEAMS.includes((cm[state.seats[i].char]||{}).team));
+  let out=null;
+  if(a0.type==='ox'){ out={type:'ox', value:!a0.value}; }
+  else if(a0.type==='team'){ out={type:'team', value:a0.value==='good'?'evil':'good'}; }
+  else if(a0.type==='num'){ const rv=Number(a0.value)||0; const opts=[]; for(let v=0; v<=Math.max(2, rv+1); v++) if(v!==rv) opts.push(v); out={type:'num', value:rnd(opts)}; }
+  else if(a0.type==='char'){ const cand=CHARS().filter(x=>x.id!==a0.value&&x.id!==c.id&&['town','outsider','minion','demon','mafia'].includes(x.team)); const pref=cand.filter(x=>!inPlay.has(x.id)); const fc=rnd(pref.length?pref:cand); if(fc) out={type:'char', value:fc.id}; }
+  else if(a0.type==='seats'){ const real=new Set((a0.value&&a0.value.seats)||[]); const pool=others.filter(i=>!real.has(i)); const n=Math.max(1, real.size||1);
+    if(pool.length>=n){ const q=pool.slice(), pick=[]; while(pick.length<n&&q.length) pick.push(q.splice(Math.floor(Math.random()*q.length),1)[0]); pick.sort((x,y)=>x-y);
+      out={type:'seats', value:{seats:pick, head:(a0.value&&a0.value.head)||''}}; } }
+  if(!out) return null;
+  state.fixed[key]={type:out.type, value:out.value}; save();
+  return Object.assign({fake:true, ambig:[]}, out, {label:lab(out)});
+}
 function ansBar(c, idx){
   const ab=c.ab;
   // 거짓 정보 상황(중독·취함 등)이면 자동 잠금 해제 — 진행자가 거짓을 골라야 함
   
   const falsified=pickFalsified(idx).length>0;   // 중독·취함류 토큰 + 취객류 역할 + 미혹귀 판 — 자동 정답 잠금 해제(거짓을 직접)
   let auto=(!falsified && !wz.freeAns) ? autoAns(c, idx) : null;
+  const isFake=!auto&&falsified&&!wz.freeAns;   // 중독·취객·가짜 직업 — 앱이 고른 거짓을 정답 자리에 (2026-09-20, 화면-094)
+  if(isFake) auto=fakeAns(c, idx);
   /* 오인식이 낀 답은 «왜 재량이 있는지»만 알린다 — 판세로 뒤집지 않는다 (2026-09-01) */
   const favorNote = (auto && auto.value!==null && auto.value!==undefined && ambigHasMisid(auto.ambig))
     ? `ℹ️ ${ambigLabel(auto.ambig)}${josaGa(ambigLabel(auto.ambig))} 껴 있어 재량이 있어요 — 다른 답을 주려면 ✋ 직접 고르기.` : '';
   if(auto && auto.value!==null && auto.value!==undefined){
     if(['duo','trio','none','seats'].includes(auto.type)) wz.autoVal=auto.value;
-    const tag=favorNote?'자동 판정 보여주기':'답 보여주기';
+    const tag=isFake?'🎭 거짓 보여주기':(favorNote?'자동 판정 보여주기':'답 보여주기');
     const mainBtn={
       ox:`<button class="ab-p hint" onclick="ansOX(${auto.value})">${tag}: ${auto.value?'O 그렇다':'X 아니다'}</button>`,
       num:`<button class="ab-p hint" onclick="ansNum(${auto.value})">${tag}: ${auto.value}</button>`,
       dir:`<button class="ab-p hint" onclick="ansDir('${auto.value}')">${tag}: ${auto.value==='cw'?'↻ 시계':'↺ 반시계'}</button>`,
-      char:`<button class="ab-p hint" onclick="ansChar('${auto.value}')">답 보여주기: ${auto.label}</button>`,
-      duo:`<button class="ab-p hint" onclick="ansDuo(wz.autoVal.seats, wz.autoVal.char, wz.autoVal.head)">답 보여주기: ${auto.label}</button>`,
-      trio:`<button class="ab-p hint" onclick="ansTrio(wz.autoVal.seats)">답 보여주기: ${auto.label}</button>`,
-      seats:`<button class="ab-p hint" onclick="ansSeats(wz.autoVal.seats, wz.autoVal.head)">답 보여주기: ${auto.label}</button>`,
-      none:`<button class="ab-p hint" onclick="ansNone('${auto.label}')">답 보여주기: ${auto.label}</button>`,
+      char:`<button class="ab-p hint" onclick="ansChar('${auto.value}')">${tag}: ${auto.label}</button>`,
+      duo:`<button class="ab-p hint" onclick="ansDuo(wz.autoVal.seats, wz.autoVal.char, wz.autoVal.head)">${tag}: ${auto.label}</button>`,
+      trio:`<button class="ab-p hint" onclick="ansTrio(wz.autoVal.seats)">${tag}: ${auto.label}</button>`,
+      seats:`<button class="ab-p hint" onclick="ansSeats(wz.autoVal.seats, wz.autoVal.head)">${tag}: ${auto.label}</button>`,
+      none:`<button class="ab-p hint" onclick="ansNone('${auto.label}')">${tag}: ${auto.label}</button>`,
     }[auto.type];
-    const canDecoy=['duo','seats'].includes(auto.type)&&!!decoyOf(c.id, idx);
-    const reroll=(canDecoy?`<button class="ab-p quiet" onclick="decoyPick('${c.id}',${idx})">들러리 고르기</button>`:'')
-      +(['duo','trio','seats'].includes(auto.type)?`<button class="ab-p quiet" onclick="fixedClear('${c.id}',${idx});wzRender()">조합 다시</button>`:'');
+    const canDecoy=!isFake&&['duo','seats'].includes(auto.type)&&!!decoyOf(c.id, idx);
+    const reroll=isFake?((auto.alts||0)>1?`<button class="ab-p quiet" onclick="fakeClear('${c.id}',${idx});wzRender()">다시 뽑기</button>`:''):(canDecoy?`<button class="ab-p quiet" onclick="decoyPick('${c.id}',${idx})">들러리 고르기</button>`:'')
+      +(!isFake&&['duo','trio','seats'].includes(auto.type)?`<button class="ab-p quiet" onclick="fixedClear('${c.id}',${idx});wzRender()">조합 다시</button>`:'');
     const ambNote=favorNote
       ? `<div class="wz-note" style="margin-top:6px">${favorNote}</div>`
       : (auto.ambig.length ? `<div class="wz-note" style="margin-top:6px">⚠️ ${ambigLabel(auto.ambig)} 이(가) 껴 있어 판정 재량이 있어요 — 다른 답을 주려면 직접 고르기.</div>` : '');
     const mn=ansMisidNote(auto.ambig);
     const misidNote=mn?`<div class="wz-note" style="margin-top:6px">${mn}</div>`:'';
-    return `<div class="wz-ansbar"><div class="ab-hd">🗣️ 답 보여주기 — 앱이 좌석·토큰으로 계산한 정답이에요 (${auto.label})</div>
+    const hd=isFake?`🗣️ 답 보여주기 — 🎭 앱이 고른 <b>거짓</b>이에요 (${pickFalsified(idx).map(escH).join(' · ')}). 바꿔도 됩니다`:`🗣️ 답 보여주기 — 앱이 좌석·토큰으로 계산한 정답이에요 (${auto.label})`;
+    return `<div class="wz-ansbar"><div class="ab-hd">${hd}</div>
       <div class="ab-row">${mainBtn}${reroll}<button class="ab-p quiet" onclick="wz.freeAns=true;wzRender()">직접 고르기</button></div>${ambNote}${misidNote}</div>`;
   }
   const hint=ansInfer(ab);
@@ -7945,6 +8106,18 @@ function potReopen(id){
   const p=potUpdate(id, x=>{ x.closedAt=null; x.closedBy=null; x.invite=x.invite||{}; x.invite.open=true; });
   if(p) stSet('botc_pot_now', id);
   return p; }
+/* 그릇 비우기 — 담긴 판·명단을 그릇에서 뺀다. 판 기록 자체는 기록·관리에 남는다(같이 지울지는 다음에 정한다 — 햇살님 2026-09-20). 화면-091.
+   판 기록의 그릇 표시(potId)를 떼야 한다 — 안 떼면 potReconcile 이 시작 때 도로 담는다. */
+function potEmpty(id){
+  const p=potById(id); if(!p) return null;
+  { const logs=logsAll(); let ch=false; logs.forEach(L=>{ if(L&&L.potId===id){ L.potId=null; ch=true; } }); if(ch) logsSave(logs); }
+  return potUpdate(id, x=>{ x.games=[]; x.gameIds=[]; x.members=[]; x.stats=null; x.story=null; x.note='';
+    x.invite=x.invite||{}; x.invite.joins=[]; x.title=''; x.titleEdited=false; x.emptiedAt=Date.now(); x.lastActAt=Date.now(); potTitleAuto(x); }); }
+function potEmptyUi(){ const p=potNow(); if(!p) return; const ko=PKOofHub(p.hub,'그릇');
+  if(gameInProgress()){ alert(`진행 중인 판이 있어요. 먼저 판을 끝내거나 진행 화면의 «새 판»으로 버린 뒤 ${ko}을 비울 수 있어요.`); return; }
+  const n=(p.gameIds||[]).length, m=(p.members||[]).filter(x=>x&&x.state!=='out').length;
+  if(!confirm(`오늘 ${ko}을 비울까요?\n담긴 ${n}판과 명단 ${m}명이 ${ko}에서 빠집니다. 판 기록 자체는 기록·관리에 그대로 남아요.`)) return;
+  potEmpty(p.id); renderHome(); }
 function potTouch(){
   const id=potNowId(); if(!id) return;
   potUpdate(id, p=>{ p.lastActAt=Date.now(); const dk=dayKey(); p.dates=p.dates||[]; if(!p.dates.includes(dk)) p.dates.push(dk); potTitleAuto(p); }); }
@@ -8083,6 +8256,7 @@ function renderPot(){
     ${homeGameRows(p)}
     <div class="sheet-actions" style="margin-top:12px">
       <button class="btn" onclick="sheetOpen()">📄 직업표</button>
+      <button class="btn" onclick="potEmptyUi()">🧹 ${PKO('그릇')} 비우기</button>
       <button class="btn danger" onclick="potCloseUi()">🏁 ${PKO('닫기')} — 통계·해설 정리</button>
     </div>`;
   body.innerHTML=tabs+`<div style="margin-top:var(--sp3)">`+
