@@ -197,6 +197,8 @@ function myAccountSheet(){
   /* 계정 정보 변경(닉네임·사진)은 중앙역 마이페이지로 모았다 (2026-08-20).
      여기는 보기 + 로그아웃만 */
   const ph = PFP[acc.uid];
+  const att = myAttendance();
+  const played = (typeof MYPLAYED !== 'undefined' && MYPLAYED) ? MYPLAYED.size : 0;
   document.getElementById('modal').innerHTML = `
     <h2>내 정보</h2>
     <div class="mdesc"><b style="color:var(--red-lite)">${acc.nick}</b> 으로 접속해 있어요.</div>
@@ -212,10 +214,20 @@ function myAccountSheet(){
       <div class="mrow"><div class="k">가입일</div><div>${(acc.joined||'').replace(/-/g,'.')}</div></div>
       ${acc.aliases?.length?`<div class="mrow"><div class="k">옛 닉네임</div><div>${acc.aliases.join(', ')}</div></div>`:''}
     </div>
+    <div class="mdesc" style="margin:16px 0 6px;font-size:11px;letter-spacing:.14em;color:var(--sub)">전적</div>
+    <div>
+      ${myMemberNo()?`<div class="mrow"><div class="k">회원번호</div><div>No. ${myMemberNo()}</div></div>`:''}
+      <div class="mrow"><div class="k">참석</div><div>${att?att+'회':'아직 없어요'}</div></div>
+      <div class="mrow"><div class="k">해본 게임</div><div>${played?played+'종':'아직 없어요'}</div></div>
+      <div id="dgMe"></div>
+    </div>
     <div class="mbtns"><a class="mbtn" href="../#me" style="text-decoration:none;text-align:center">중앙역에서 정보 바꾸기 ›</a></div>
     <button class="mclose" onclick="logout()">로그아웃</button>
     <button class="mclose" onclick="closeM()">닫기</button>`;
   document.getElementById('ov').style.display='flex';
+  /* 당산나무 전적은 서버에서 따로 온다 — 시트를 먼저 띄우고 채운다. 스키마가 안 열렸거나
+     올라온 판이 없으면 줄이 아예 안 생긴다 (2026-09-20) */
+  try{ dangsanGames().then(gs => { const el = document.getElementById('dgMe'); if(el) el.innerHTML = dangsanProfileHtml(gs, acc); }); }catch(e){}
 }
 /* ══ 뷰 전환 ══ */
 function setView(v, skipHash){
