@@ -3948,9 +3948,12 @@ function prepPeopleHtml(){
   return `<div class="p-list">${rows||'<div class="wz-note">아직 아무도 없어요 — 아래 «＋ 이름»으로 넣으세요.</div>'}</div>
     <div style="margin-top:8px"><span style="font-size:var(--t-body);font-weight:700;color:var(--txt2);cursor:pointer" onclick="attendAdd()">＋ 이름</span>${SRV.on()?'<span style="font-size:var(--t-body);font-weight:700;color:var(--txt2);cursor:pointer;margin-left:14px" onclick="tunelPickOpen()">👥 투넬 회원</span>':''}</div>`;
 }
+let prepLastTab=0;   // 마지막으로 그린 준비 탭 — 같은 탭을 다시 그릴 때 스크롤을 지키려고(저장하지 않는다)
 function prepRender(){
   const card=document.getElementById('prepCard'), act=document.getElementById('prepActions'), tabs=document.getElementById('prepTabs');
   if(!card||!act||!tabs) return;
+  // 같은 탭을 다시 그릴 때(참석 체크·모드 고르기)는 스크롤 자리를 지킨다 — 맨 위로 튀면 긴 명단에서 불편하다(2026-09-21 햇살님)
+  const keepY=(prepLastTab===prep.tab)?(((card.querySelector&&card.querySelector('.wz-scroll'))||{}).scrollTop||0):0;
   const hasChars=(state.seats||[]).some(x=>x&&x.char), named=(state.seats||[]).filter(x=>x&&x.name).length;
   const done={1:named>=5, 2:prep.seatOk, 3:hasChars, 4:false};
   tabs.innerHTML=PREP_TABS.map(([t,ko])=>`<span class="${prep.tab===t?'on':(done[t]?'ok':'')}" onclick="prepGo(${t})">${ko}${done[t]&&prep.tab!==t?' ✓':''}</span>`).join('');
@@ -3986,6 +3989,8 @@ function prepRender(){
     act.innerHTML=btn('이전','prepGo(3)','quiet')+(hasChars?btn('역할 확인 돌리기','openReveal()')+btn('첫밤 시작','prepStartNight()','gold'):btn('먼저 배정하세요','','quiet'));
   }
   try{ uiTicket(card, {left:'준비 '+prep.tab+' / 4', right:(PREP_TABS.find(x=>x[0]===prep.tab)||[])[1]||''}); }catch(e){}
+  try{ const sc=card.querySelector&&card.querySelector('.wz-scroll'); if(sc&&keepY) sc.scrollTop=keepY; }catch(e){}
+  prepLastTab=prep.tab;
   if(prep.tab===2){
     const host=document.getElementById('prepSetupHost'), sb=document.getElementById('setupBar');
     if(host&&sb){ host.id='prepScroll'; host.appendChild(sb); }
