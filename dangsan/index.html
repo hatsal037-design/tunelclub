@@ -3966,7 +3966,8 @@ function homeNext(){ const st=homeStage(); homeClose();
 /* 새 판 진입로 — 마당이 없으면 대문으로 돌려보낸다 (마당 필수 관문). 마당이 있으면 준비 화면 첫 구간(인원·모드)으로 */
 let ngPractice=false;   // 연습판으로 들어왔나 — startNewGame 이 state.practice 로 옮긴다 (N07)
 function newGameEntry(){ ngPractice=false; const p0=potNow(); if(p0&&p0.practice){ try{ potClose('practice'); }catch(e){} potOpen(); }   // 연습 마당은 닫고 실전 마당을 새로 연다
-  if(!potNowId()){ homeOpen('needpot'); return; } prepOpen(1); }
+  if(!potNowId()) potOpen();   // 마당이 없으면 여기서 오늘 마당을 연다 — 대문으로 되돌려 보내면 «새 판 준비»가 제자리를 맴돌았다(2026-09-22 햇살님 «스텝이 맞지 않는다»)
+  prepOpen(1); }
 /* ══════════ 판 준비 — 네 구간 한 화면 (15차 5단계, 3차 구성안 02~05) ══════════
    인원·모드 → 자리 → 구성 → 규칙·전달. 참석 명단(attend)·모드 목록(edPick)·자리 잡기(setup)·구성(newGame)의 기존 함수를
    그대로 쓰되, 각자의 오버레이 대신 이 화면의 승차권 안에 그린다. 판정·배정·기록 시작(startNewGame·logStart)은 건드리지 않는다. */
