@@ -1286,6 +1286,13 @@
   .prep .p-list .lr.on{ background:var(--panel2); margin:0 -20px; padding-left:20px; padding-right:20px; }
   .prep .p-list .lr.on .k{ color:var(--gold); }
   .prep .p-list .lr.off{ opacity:.45; cursor:default; }
+  .prep .p-add{ display:flex; align-items:center; gap:10px; margin-top:10px; border-bottom:1px solid var(--ink); }
+  .prep .p-add input{ flex:1; min-width:0; min-height:var(--tap); border:0; background:transparent; color:var(--txt); font:inherit; font-size:var(--t-lead); outline:none; padding:0; }
+  .prep .p-add input::placeholder{ color:var(--dim); }
+  .prep .p-add-go{ font-size:var(--t-body); font-weight:700; color:var(--gold); cursor:pointer; padding:8px 2px; }
+  /* 회원 고르기 — 찾기 칸과 «몇 명 골랐나»는 목록을 내려도 위에 붙어 있다 */
+  #tunelPickOverlay .tp-top{ position:sticky; top:-1px; z-index:2; background:var(--panel); padding-bottom:6px; }
+  #tunelPickOverlay .tp-cnt{ font-size:var(--t-body); font-weight:700; color:var(--gold); margin:4px 0 2px; }
   .prep .p-ck{ width:22px; height:22px; border-radius:50%; flex:0 0 auto; background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:var(--t-cap); font-weight:800; color:transparent; }
   .prep .p-ck.on{ background:var(--gold); color:var(--on-gold); }
   :root[data-look="검표"] .prep .p-ck{ background:transparent; border:1px solid var(--ink); }
@@ -1796,12 +1803,15 @@
 <!-- 투넬 회원 고르기 — 자리 잡기 «앉을 사람»에서 (2026-09-20) -->
 <div class="overlay" id="tunelPickOverlay" style="z-index:75" onclick="if(event.target===this)closeTunelPick()">
   <div class="sheet">
-    <h3>👥 투넬 회원에서 고르기</h3>
-    <div class="field"><input id="tunelPickQ" placeholder="닉네임 찾기" oninput="renderTunelPick()" autocomplete="off"></div>
+    <div class="tp-top">
+      <h3>👥 투넬 회원에서 고르기</h3>
+      <div class="field"><input id="tunelPickQ" type="search" placeholder="🔍 닉네임 검색" oninput="renderTunelPick()" autocomplete="off"></div>
+      <div class="tp-cnt" id="tunelPickCnt"></div>
+    </div>
     <div id="tunelPickList"></div>
     <div class="sheet-actions" style="margin-top:12px">
       <button class="btn quiet" onclick="closeTunelPick()">취소</button>
-      <button class="btn gold" onclick="tunelPickApply()">앉히기</button>
+      <button class="btn gold" id="tunelPickGo" onclick="tunelPickApply()">앉히기</button>
     </div>
   </div>
 </div>
@@ -3593,7 +3603,7 @@ function autoCompose(N){
 /* ══════════ 참석 체크 ══════════
    판과 판 사이에 사람이 들고 난다. 마당 명단을 체크리스트로 두고, 체크한 사람만 다음 판에 앉는다.
    빠진 사람은 지우지 않고 명단에 그대로 남는다(관전). 사람(pid) 기준이라 통계가 이어진다. */
-let attend={ skipConfirm:false,sel:null};
+let attend={ skipConfirm:false,sel:null, fresh:/** @type {Set<string>|null} */(null)};
 function attendPool(){ const p=potNow(); const out=[];
   if(p) (p.members||[]).forEach(m=>{ if(m.state!=='out') out.push({pid:m.pid||null, name:m.name}); });
   (state.seats||[]).forEach(s2=>{ if(s2&&s2.name&&!out.some(o=>o.name===s2.name)) out.push({pid:s2.pid||null, name:s2.name}); });
@@ -3612,9 +3622,25 @@ function openAttend(){
 function closeAttend(){ document.getElementById('attendOverlay').classList.remove('on');
   if(typeof wz!=='undefined'&&wz.on){ document.getElementById('wizard').classList.add('on'); try{ wzRender(); }catch(e){} } }
 function attendToggle(k){ if(attend.sel.has(k)) attend.sel.delete(k); else attend.sel.add(k); if(typeof prep!=='undefined'&&prep.on) prepRender(); else renderAttend(); }
-function attendAdd(){ const n=(prompt('이름·닉네임을 넣으세요')||'').trim(); if(!n) return;
-  const p=potNow(); if(p) potMemberAdd(n,{guest:true});
-  attend.sel.add('name:'+n); if(typeof prep!=='undefined'&&prep.on) prepRender(); else renderAttend(); }
+function attendAdd(){ const n=(prompt('이름·닉네임을 넣으세요')||'').trim(); if(!n) return; attendAddName(n); }
+function attendAddName(n){ n=String(n||'').trim(); if(!n) return false;
+  const known=!!personByName(n);
+  const m=potNow()?potMemberAdd(n,{guest:true}):null;
+  /* 명단은 사람(pid)으로 센다 — 이름 키로 넣으면 체크가 안 붙어 «관전»으로 들어갔다 (2026-09-22) */
+  const key=(m&&m.pid)?m.pid:('name:'+n);
+  attend.sel.add(key); if(!known) (attend.fresh=attend.fresh||new Set()).add(key); if(typeof prep!=='undefined'&&prep.on) prepRender(); else renderAttend(); return true; }
+/* 준비 화면 «앉을 사람» 입력칸 — 이름 치고 엔터면 들어가고, 칸은 비워진 채 다시 기다린다.
+   잘못 넣었으면 줄의 ✕ 로 뺀다. 이름마다 창을 열고 확인을 누르던 게 번거로웠다 (2026-09-22 햇살님) */
+function attendAddKey(ev){
+  if(ev.key!=='Enter'||ev.isComposing) return;   // 한글 조합 중 엔터는 글자 확정이라 넘긴다
+  ev.preventDefault(); attendAddFromField(); }
+function attendAddFromField(){
+  const el=/** @type {HTMLInputElement|null} */(document.getElementById('attendAddQ')); if(!el) return;
+  const names=el.value.split(/[,\n]/).map(x=>x.trim()).filter(Boolean);   // 쉼표로 여러 명을 한 번에 넣어도 된다
+  if(!names.length) return;
+  names.forEach(n=>attendAddName(n));
+  const again=/** @type {HTMLInputElement|null} */(document.getElementById('attendAddQ'));
+  if(again){ again.value=''; again.focus(); } }
 function renderAttend(){
   const pool=attendPool(), on=pool.filter(o=>attend.sel.has(attendKey(o))).length;
   document.getElementById('attendNote').innerHTML=
@@ -3844,6 +3870,9 @@ function closeTunelPick(){ const ov=document.getElementById('tunelPickOverlay');
 function tunelPickToggle(id){ if(tunelPick.sel.has(id)) tunelPick.sel.delete(id); else tunelPick.sel.add(id); renderTunelPick(); }
 function renderTunelPick(){
   const el=document.getElementById('tunelPickList'); if(!el) return;
+  { const n=tunelPick.sel.size, c=document.getElementById('tunelPickCnt'), g=document.getElementById('tunelPickGo');
+    if(c) c.textContent = n ? `${n}명 골랐어요` : '눌러서 고르세요';
+    if(g) g.textContent = n ? `${n}명 앉히기` : '앉히기'; }
   if(!tunelPick.rows){ el.innerHTML='<div class="wz-note">명단 받는 중…</div>'; return; }
   const qEl=/** @type {HTMLInputElement|null} */(document.getElementById('tunelPickQ'));
   const q=((qEl&&qEl.value)||'').trim().toLowerCase();
@@ -4001,9 +4030,10 @@ function prepPeopleHtml(){
   const pool=attendPool();
   if(!attend.sel){ const seats=(state.seats||[]).filter(s2=>s2&&s2.name); attend.sel=new Set(pool.filter(o=>seats.some(s2=>attendSame(s2,o))).map(attendKey)); if(!attend.sel.size) pool.forEach(o=>attend.sel.add(attendKey(o))); }
   const rows=pool.map(o=>{ const k=attendKey(o), on=attend.sel.has(k);
-    return `<div class="lr" onclick="attendToggle('${k.replace(/'/g,"\\'")}')"><span class="p-ck${on?' on':''}">✓</span><div class="t">${escH(o.name)}<small>${o.pid?'전에도 온 사람':'이번에 처음'}</small></div><span class="k">${on?'참석':'관전'}</span><span class="p-x" title="명단에서 빼기" onclick="event.stopPropagation();attendRemove('${k.replace(/'/g,"\\'")}')">✕</span></div>`; }).join('');
-  return `<div class="p-list">${rows||'<div class="wz-note">아직 아무도 없어요 — 아래 «＋ 이름»으로 넣으세요.</div>'}</div>
-    <div style="margin-top:8px"><span style="font-size:var(--t-body);font-weight:700;color:var(--txt2);cursor:pointer" onclick="attendAdd()">＋ 이름</span>${SRV.on()?'<span style="font-size:var(--t-body);font-weight:700;color:var(--txt2);cursor:pointer;margin-left:14px" onclick="tunelPickOpen()">👥 투넬 회원</span>':''}</div>`;
+    return `<div class="lr" onclick="attendToggle('${k.replace(/'/g,"\\'")}')"><span class="p-ck${on?' on':''}">✓</span><div class="t">${escH(o.name)}<small>${(attend.fresh&&attend.fresh.has(k))||!o.pid?'이번에 처음':'전에도 온 사람'}</small></div><span class="k">${on?'참석':'관전'}</span><span class="p-x" title="명단에서 빼기" onclick="event.stopPropagation();attendRemove('${k.replace(/'/g,"\\'")}')">✕</span></div>`; }).join('');
+  return `<div class="p-list">${rows||'<div class="wz-note">아직 아무도 없어요 — 아래 칸에 이름을 넣고 엔터.</div>'}</div>
+    <div class="p-add"><input id="attendAddQ" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" placeholder="이름 넣고 엔터 — 쉼표로 여러 명" onkeydown="attendAddKey(event)"><span class="p-add-go" onclick="attendAddFromField()">추가</span></div>
+    <div style="margin-top:8px">${SRV.on()?'<span style="font-size:var(--t-body);font-weight:700;color:var(--txt2);cursor:pointer" onclick="tunelPickOpen()">👥 투넬 회원에서 고르기</span>':''}</div>`;
 }
 let prepLastTab=0;   // 마지막으로 그린 준비 탭 — 같은 탭을 다시 그릴 때 스크롤을 지키려고(저장하지 않는다)
 function prepRender(){
