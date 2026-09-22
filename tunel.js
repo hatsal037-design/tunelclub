@@ -559,7 +559,7 @@ const TUNEL = {
           <div><i>PLACE</i><b>${m.place || ''}</b></div>
         </div>`;
     const body  = sm
-      ? `<div class="nm">${TUNEL.title(m)} · ${tbd ? (m.data?.tbdtxt || '날짜 조율 중') : TUNEL.fmt(m.d, m.dow)}</div>`
+      ? `<div class="nm">${TUNEL.title(m)} · ${tbd ? (m.data?.tbdtxt || '날짜 조율 중') : TUNEL.fmt(m.d, m.dow)}${!tbd && m.s ? ` · ${m.s}${m.e ? '~' + m.e : ''}` : ''}</div>`   /* 예정도 시간이 정해졌으면 몇 시부터 몇 시까지 (2026-09-22 햇살님) */
       : `<div class="nm">${TUNEL.title(m)} · ${m.line_name || ''}</div>
         ${xl && m.memo ? `<div class="desc">${m.memo}</div>` : ''}
         ${grid}`;
@@ -601,6 +601,7 @@ const TUNEL = {
         details:[m.place, m.fee ? `참가비 ${m.fee}` : ''].filter(Boolean).join('\n'),
         location:m.addr || m.place || '', ctz:'Asia/Seoul' }).toString();
     return `<div class="tnlx">
+      ${m.s ? `<div class="xr">🕑 ${TUNEL.fmt(m.d, m.dow)} ${m.s}${m.e ? ' ~ ' + m.e : ''}</div>` : ''}
       ${m.addr ? `<div class="xr">📍 ${m.addr}</div>` : ''}
       ${m.memo ? `<div class="xn">${m.memo}</div>` : ''}
       ${m.fee ? `<div class="xr">참가비 ${m.fee}</div>` : ''}
