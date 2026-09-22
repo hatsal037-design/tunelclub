@@ -15,7 +15,25 @@
 const URL  = 'https://yguvfogtzazoawtclqvf.supabase.co';
 const ANON = 'sb_publishable_KeezD9hmEnxSTEWA_w8x-A_Tgk3roUf';
 
-let _sb = null;
+let _sb = null, _sbAnon = null;
+/* 로그인 없이 읽는 클라이언트 — 공개 조회(시각표)용. 세션을 저장·갱신하지 않아 본 클라이언트와 안 엉킨다 */
+function sbAnon(){
+  if(!_sbAnon) _sbAnon = global.supabase.createClient(URL, ANON, { auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false, storageKey:'tnl-anon' } });
+  return _sbAnon;
+}
+/* 로그인 토큰이 서버에서 거절될 때(JWT issued at future · expired 등) — 공개로 읽을 수 있는 것은 잠깐 뒤 다시, 그래도 안 되면 비로그인으로 읽는다.
+   2026-09-22 폰에서 «시각표를 못 불러왔어요 · JWT issued at future» — 인증 서버와 DB 서버 시계가 잠깐 어긋나 새 토큰을 «미래에 발급됐다»고 거절했다 */
+/* 거절 문구는 여러 가지다(JWT issued at future · No suitable key · JWT expired …) — 문구로 가리지 않는다.
+   공개 자료라 비로그인으로 읽어도 같은 결과가 나온다. 로그인 쪽이 한 번 더 실패하면 그쪽으로 읽는다 */
+async function readPublic(build){
+  let r = await build(sb());
+  if(r.error){
+    await new Promise(ok => setTimeout(ok, 1200));
+    r = await build(sb());
+    if(r.error){ const a = await build(sbAnon()); if(!a.error) return a; }
+  }
+  return r;
+}
 function sb(){
   if(!_sb){
     /* 페이지가 자기 클라이언트를 이미 만들었으면 그걸 쓴다 (window.__TNL_SB) —
@@ -203,13 +221,15 @@ const TUNEL = {
        status 'upcoming' | 'past' | 실제 status 값
        from/to 'YYYY-MM-DD'                                */
   async meetings(opt = {}){
-    let q = sb().from('v_meetings').select('*');
-    if(opt.line) q = q.eq('line', opt.line);
-    if(opt.from) q = q.gte('d', opt.from);
-    if(opt.to)   q = q.lte('d', opt.to);
-    if(opt.status && !['upcoming','past'].includes(opt.status))
-      q = q.eq('status', opt.status);
-    const { data, error } = await q.order('d', { ascending:false });
+    const { data, error } = await readPublic(c => {
+      let q = c.from('v_meetings').select('*');
+      if(opt.line) q = q.eq('line', opt.line);
+      if(opt.from) q = q.gte('d', opt.from);
+      if(opt.to)   q = q.lte('d', opt.to);
+      if(opt.status && !['upcoming','past'].includes(opt.status))
+        q = q.eq('status', opt.status);
+      return q.order('d', { ascending:false });
+    });
     if(error) throw error;
     let rows = data || [];
     if(opt.status === 'upcoming') rows = rows.filter(m => !isPast(m)).reverse();
