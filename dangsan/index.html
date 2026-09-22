@@ -218,7 +218,11 @@
   .seat.gap .token{ border-style:dashed; background:transparent; color:var(--dim); }
   .seat.gap .cname{ font-size:var(--fs-xs); color:var(--dim); }
   .seat.gap.dragging{ opacity:.95; z-index:20; }
-  .seat.drop{ outline:2px dashed var(--gold); outline-offset:3px; border-radius:var(--r); }
+  /* 끌어서 놓을 자리 — 원(토큰) 둘레에 점선. 사각 테두리는 좌석이 둥근데 어긋나 보였다 (2026-09-22 햇살님) */
+  .seat.drop .token{ outline:2px dashed var(--gold); outline-offset:4px; }
+  /* 자리 잡기 중에는 사람도 끌어서 자리를 바꾼다 — 스크롤 대신 끌기 */
+  .seat.movable{ touch-action:none; }
+  .seat.movable.dragging{ opacity:.92; z-index:20; pointer-events:none; }
   /* 1번 자리 — 기준점 */
   .seat.origin .seatnum{ color:var(--bg); background:var(--gold); border-radius:999px; padding:0 4px; font-weight:800; }
   /* 자리 잡기 단계 바 — 판을 가리지 않게 아래에 붙는다 */
@@ -2515,9 +2519,33 @@ function gapDragStart(ev, cell){
   if(ev.button!==undefined&&ev.button!==0) return;
   const sq=document.getElementById('square'); if(!sq) return;
   const el=ev.currentTarget; el.setPointerCapture&&el.setPointerCapture(ev.pointerId);
-  gapDrag={cell, el, moved:false, x0:ev.clientX, y0:ev.clientY};
+  gapDrag={kind:'gap', cell, el, moved:false, x0:ev.clientX, y0:ev.clientY};
   el.classList.add('dragging');
   ev.preventDefault();
+}
+/* 사람 끌기 — 자리 잡기(setup) 중에만. 다른 사람 위에 놓으면 둘이 자리를 바꾸고, 빈자리 위에 놓으면 빈자리가 그 사람 자리로 온다.
+   짧게 탭하면 끌기가 아니라 원래 onclick(기준점·이름 붙이기·시트)으로 간다 (2026-09-22 햇살님 «좌석도 끌어서 두 자리 사람이 바뀌는 UX»). */
+let seatDragMoved=false;
+function seatDragStart(ev, i){
+  if(ev.button!==undefined&&ev.button!==0) return;
+  const el=ev.currentTarget; el.setPointerCapture&&el.setPointerCapture(ev.pointerId);
+  gapDrag={kind:'seat', seat:i, el, moved:false, x0:ev.clientX, y0:ev.clientY, left:el.style.left, top:el.style.top};
+  seatDragMoved=false;
+}
+/* 포인터 아래의 좌석 요소(끌고 있는 것 제외) — 원형·사각 어느 배치든 화면 거리로 고른다 */
+function seatElAt(clientX, clientY){
+  const sq=document.getElementById('square'); if(!sq) return null;
+  let best=null, bd=Infinity;
+  sq.querySelectorAll('.seat').forEach(el=>{ if(gapDrag&&el===gapDrag.el) return; const r=el.querySelector('.token')?.getBoundingClientRect()||el.getBoundingClientRect();
+    const d=(r.left+r.width/2-clientX)**2+(r.top+r.height/2-clientY)**2; if(d<bd&&d<(r.width*1.1)**2){ bd=d; best=el; } });
+  return best;
+}
+/* 두 좌석의 사람을 맞바꾼다 — 좌석 번호는 자리에 남고 사람(이름·직업·표식·기록)이 옮겨 간다 */
+function swapSeats(i, j){
+  const n=state.seats.length; if(i===j||!(i>=0&&j>=0&&i<n&&j<n)) return;
+  const a=state.seats[i]; state.seats[i]=state.seats[j]; state.seats[j]=a;
+  remapSeatIndices(k=>k===i?j:(k===j?i:k));
+  save(); render();
 }
 function gapCellAt(clientX, clientY){
   const sq=document.getElementById('square'); if(!sq) return -1;
@@ -2529,24 +2557,32 @@ function gapCellAt(clientX, clientY){
 }
 function gapDragMove(ev){
   if(!gapDrag) return;
-  if(Math.abs(ev.clientX-gapDrag.x0)+Math.abs(ev.clientY-gapDrag.y0)>6) gapDrag.moved=true;
+  if(Math.abs(ev.clientX-gapDrag.x0)+Math.abs(ev.clientY-gapDrag.y0)>6){ gapDrag.moved=true; if(gapDrag.kind==='seat'){ seatDragMoved=true; gapDrag.el.classList.add('dragging'); } }
+  if(!gapDrag.moved) return;
   const sq=document.getElementById('square'); if(!sq) return;
   const r=sq.getBoundingClientRect();
   gapDrag.el.style.left=((ev.clientX-r.left)/r.width*100)+'%';
   gapDrag.el.style.top=((ev.clientY-r.top)/r.height*100)+'%';
-  const t=gapCellAt(ev.clientX, ev.clientY);
   sq.querySelectorAll('.seat.drop').forEach(e=>e.classList.remove('drop'));
-  if(t>=0){ const cells=seatCells(); const si=cells.indexOf(t);
-    const tgt=si>=0 ? sq.querySelectorAll('.seat:not(.gap)')[si] : null; if(tgt) tgt.classList.add('drop'); }
+  const tgt=seatElAt(ev.clientX, ev.clientY);
+  if(tgt&&(gapDrag.kind==='seat'||!tgt.classList.contains('gap'))) tgt.classList.add('drop');
 }
 function gapDragEnd(ev){
   if(!gapDrag) return;
-  const {cell, el, moved}=gapDrag; gapDrag=null;
-  el.classList.remove('dragging');
+  const d=gapDrag; gapDrag=null;
+  d.el.classList.remove('dragging');
   const sq=document.getElementById('square'); if(sq) sq.querySelectorAll('.seat.drop').forEach(e=>e.classList.remove('drop'));
+  if(d.kind==='seat'){
+    if(!d.moved){ return; }                                   // 탭 — onclick 이 이어서 처리한다
+    const tgt=seatElAt(ev.clientX, ev.clientY);
+    if(!tgt){ d.el.style.left=d.left; d.el.style.top=d.top; return; }
+    if(tgt.classList.contains('gap')){ moveGap(+tgt.dataset.cell, cellOfSeat(d.seat)); return; }   // 빈자리로 끌면 빈자리가 이쪽으로 온다
+    const j=+tgt.dataset.seat; if(Number.isInteger(j)) swapSeats(d.seat, j); else render();
+    return;
+  }
   const cap=rectCap();
-  let to = moved ? gapCellAt(ev.clientX, ev.clientY) : (cell+1)%cap;   // 탭만 하면 한 칸 옆으로
-  moveGap(cell, to);
+  let to = d.moved ? gapCellAt(ev.clientX, ev.clientY) : (d.cell+1)%cap;   // 탭만 하면 한 칸 옆으로
+  moveGap(d.cell, to);
 }
 /* 빈자리를 to 칸으로 옮긴다. to 가 이미 빈자리면 아무 일도 없다. */
 function moveGap(from, to){
@@ -2807,9 +2843,12 @@ function renderSquare(){
     const el=document.createElement('div');
     el.className='seat '+teamCls+(s.dead?' dead':'')+(!s.char&&!s.name?' empty':''); el.style.left=x+'%'; el.style.top=y+'%';
     if(i===0) el.classList.add('origin');
+    el.dataset.seat=String(i);
+    if(setup.on&&!pv){ el.classList.add('movable'); el.onpointerdown=ev=>seatDragStart(ev, i); }   // 자리 잡기 중엔 끌어서 자리 바꾸기
     if(pv){ if(!pv.ok.has(i)) el.classList.add('nopick'); else if(pv.sel.includes(i)) el.classList.add('picked');
       if(pv.hint===i) el.classList.add('hinted'); }
-    el.onclick=()=>{ if(pv&&pv.free){ seatChooseTap(i); return; }
+    el.onclick=()=>{ if(seatDragMoved){ seatDragMoved=false; return; }   // 끌어 놓은 뒤 따라오는 click 은 무시
+      if(pv&&pv.free){ seatChooseTap(i); return; }
       if(pv){ pickOvTap(i); return; }
       if(typeof pickOv!=='undefined'&&pickOv.on&&pickOv.view){ pickOvClose(); openSheet(i); return; }
       if(setup.on&&setup.step===3){ setOriginCell(cellOfSeat(i)); return; }
@@ -3413,17 +3452,32 @@ function changeCount(d){
       const nm=last.name||('좌석 '+state.count);
       if(!confirm(`${nm} 자리(${last.char?CMAP()[last.char]?.ko||'':''})가 판에서 없어져요. 줄일까요?`)) return; } }
   const before=state.count;
-  const hi = state.layout==='rect' ? Math.min(20, rectCap()) : 20;   // 사각은 둘레 칸 수가 상한 — 남는 칸은 빈자리
-  state.count=Math.max(5,Math.min(hi,state.count+d));
+  state.count=Math.max(5,Math.min(20,state.count+d));
+  if(state.layout==='rect') fitGrid(state.count);   // 사각에서 인원을 늘리면 칸이 따라 늘어난다 — 사람을 못 앉히는 일이 없게 (2026-09-22)
   if(state.count<before) for(let i=before-1;i>=state.count;i--){ if(state.seats[i]) seatRemoved(i); }   // 줄인 자리의 지목·토큰 기록 정리
   render(); }
-function setLayout(l){ if(l!=='circle'){ const cap=rectCap(); const lost=state.seats.slice(cap).filter(x=>x&&(x.char||x.name));
-    if(lost.length&&!confirm(`이 배치는 ${cap}자리까지예요 — 뒤쪽 ${lost.length}자리(${lost.map(x=>x.name||CMAP()[x.char]?.ko||'').join(', ')})가 판에서 빠집니다. 계속할까요?`)) { render(); return; }
-    for(let i=state.seats.length-1;i>=cap;i--) seatRemoved(i); }
+/* 둘레 칸 수 — rectCap 과 같은 셈, 값만 받는다 */
+function capOf(c,r){ if(c<2||r<2) return Math.max(c,r); return 2*c+2*r-4; }
+/* 인원이 다 앉는 가로·세로 — 지금 값이 맞으면 그대로, 아니면 남는 칸이 가장 적고 네모에 가까운 것(가로 우선).
+   2026-09-22 햇살님 «참석자로 정한 인원이 있으면 그 사람이 앉을 수 있는 배열로 알아서 바뀐 다음 사각으로». */
+function fitGrid(n, force){
+  if(!force&&capOf(state.cols,state.rows)>=n) return;
+  let best=null;
+  for(let c=2;c<=10;c++) for(let r=2;r<=10;r++){ const cap=capOf(c,r); if(cap<n) continue;   // 한 줄(1×n)은 고르지 않는다
+    const k=[cap-n, Math.abs(c-r), c<r?1:0]; if(!best||k[0]<best.k[0]||(k[0]===best.k[0]&&(k[1]<best.k[1]||(k[1]===best.k[1]&&k[2]<best.k[2])))) best={c,r,k}; }
+  if(best){ state.cols=best.c; state.rows=best.r; }
+}
+function setLayout(l){
+  if(l!=='circle') fitGrid(state.count||state.seats.length, true);   // 사람을 빼지 않는다 — 인원에 꼭 맞는 칸으로 새로 잡는다(남는 칸 최소, 네모에 가깝게)
   state.layout=l; render(); }
+/* 가로·세로 조절 — 한쪽을 줄여 인원이 안 들어가면 다른 쪽을 늘려서 맞춘다. 그래도 안 되면(둘 다 10 상한) 되돌린다.
+   2026-09-22 햇살님 «앞을 2로 고치면 뒤를 5로 자동수정해서 튕겨 나가는 인원이 없도록». */
 function changeGrid(which,d){
-  if(which==='cols') state.cols=Math.max(1,Math.min(10,state.cols+d));
-  else state.rows=Math.max(1,Math.min(10,state.rows+d));
+  const n=state.count||0, other=which==='cols'?'rows':'cols';
+  const c0=state.cols, r0=state.rows;
+  state[which]=Math.max(1,Math.min(10,state[which]+d));
+  while(rectCap()<n&&state[other]<10) state[other]++;
+  if(rectCap()<n){ state.cols=c0; state.rows=r0; }
   render();
 }
 function cyclePhase(){ const o=['firstnight','day','night']; state.phase=o[(o.indexOf(state.phase)+1)%3]; render(); bgmSync(); }
