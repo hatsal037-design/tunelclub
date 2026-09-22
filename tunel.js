@@ -571,10 +571,13 @@ const TUNEL = {
       : '/' + (m.line_path ? m.line_path.replace(/^\/+|\/+$/g, '') + '/' : '') + rt.img) : '';
     const st = (d,t) => d.replace(/-/g,'') + 'T' + String(t||'').replace(':','') + '00';
     /* 구글 캘린더 링크 — 첫밤 googleCal() 과 같은 구성 */
-    const gc = (!m.d || !m.s) ? '' :
+    /* 시간이 아직 안 정해진 예정 회차는 «종일»로 넣는다 — 날짜라도 잡아 두게 (2026-09-22) */
+    const nextDay = d => { const t = new Date(d + 'T00:00:00'); t.setDate(t.getDate() + 1);
+      return t.getFullYear() + String(t.getMonth()+1).padStart(2,'0') + String(t.getDate()).padStart(2,'0'); };
+    const gc = !m.d ? '' :
       'https://calendar.google.com/calendar/render?' + new URLSearchParams({ action:'TEMPLATE',
         text:`${m.line_name || ''}${m.r ? ` ${m.r}회차` : ''}`.trim() || TUNEL.title(m),
-        dates:`${st(m.d, m.s)}/${st(m.d, m.e || m.s)}`,
+        dates: m.s ? `${st(m.d, m.s)}/${st(m.d, m.e || m.s)}` : `${m.d.replace(/-/g,'')}/${nextDay(m.d)}`,
         details:[m.place, m.fee ? `참가비 ${m.fee}` : ''].filter(Boolean).join('\n'),
         location:m.addr || m.place || '', ctz:'Asia/Seoul' }).toString();
     return `<div class="tnlx">
@@ -592,7 +595,7 @@ const TUNEL = {
       <div class="xb">
         ${mapq ? `<a href="https://map.naver.com/p/search/${encodeURIComponent(mapq)}" target="_blank" rel="noopener">📍 지도</a>` : ''}
         ${m.d && m.s ? `<a onclick="TUNEL.calSave('${m.id}')">📅 캘린더에 저장</a>` : ''}
-        ${gc ? `<a href="${gc}" target="_blank" rel="noopener">구글 캘린더</a>` : ''}
+        ${gc ? `<a href="${gc}" target="_blank" rel="noopener">${m.s ? '구글 캘린더' : '📅 구글 캘린더(종일)'}</a>` : ''}
         ${opt.more ? `<a href="${opt.more}">${opt.moreLabel || '노선 페이지'} ›</a>` : ''}
       </div>
     </div>`;
@@ -700,7 +703,8 @@ div.btk{cursor:pointer}
 div.btk:hover .tx{opacity:.85}
 .btk.on .tx i{transform:rotate(180deg)}
 .btk.on .tx{opacity:.9}
-.btk.sm .tx{display:none}
+/* 예정(작은 판)도 눌러서 펼친다 — 위치·캘린더가 그 안에 있다. 숨겨 두었더니 누를 수 있는 줄을 몰랐다 (2026-09-22 햇살님) */
+.btk.sm .tx{bottom:8px}
 .btk .stub{position:absolute;right:0;top:0;width:100px;height:100%;
   display:flex;flex-direction:column;align-items:center;justify-content:center}
 .btk .stub img{width:58px;height:58px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
