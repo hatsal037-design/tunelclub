@@ -22,11 +22,11 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Pretendard',system-ui,sans-serif;background:var(--paper);color:var(--ink);
-  -webkit-font-smoothing:antialiased;padding-bottom:60px}
+  -webkit-font-smoothing:antialiased;padding-bottom:60px;word-break:keep-all;overflow-wrap:break-word}
 .wrap{width:var(--w);max-width:calc(100% - 24px);margin:0 auto}
 
 /* ══ 노선 공통 구조 ①중앙역 ②히어로 ③메뉴바 ④콘텐츠 ══ */
-.station{display:flex;justify-content:center;padding:calc(14px + env(safe-area-inset-top)) 14px 0}
+.station{position:relative;display:flex;justify-content:center;padding:calc(14px + env(safe-area-inset-top)) 14px 0}
 .station a{display:inline-flex;align-items:center;gap:9px;text-decoration:none;
   padding:4px 4px}
 .station a:active{transform:translateY(1px)}
@@ -34,18 +34,22 @@ body{font-family:'Pretendard',system-ui,sans-serif;background:var(--paper);color
   filter:drop-shadow(0 1px 3px rgba(0,0,0,.55))}
 
 /* 히어로 — 허브의 초록 전단이 그대로 온다 */
-.lhero{position:relative;width:var(--w);max-width:calc(100% - 24px);margin:56px auto 0}
+.lhero{position:relative;width:var(--w);max-width:calc(100% - 24px);margin:22px auto 0}
 .lhero .veh{position:absolute;left:-6px;top:-42px;height:66px;width:auto;z-index:3;pointer-events:none;
   filter:drop-shadow(0 6px 9px rgba(14,42,22,.3))}
 .fl{background:var(--green);border:2.5px solid var(--ink);padding:15px 17px 15px;position:relative;
   box-shadow:6px 6px 0 var(--ink)}
 .fl::after{content:'';position:absolute;inset:0;pointer-events:none;mix-blend-mode:multiply;opacity:.26;
   background:radial-gradient(circle at 90% 78%, var(--yellow) 0 15%, transparent 16%)}
-.fl .no{font-family:'Nanum Gothic Coding',monospace;font-size:9.5px;letter-spacing:2.5px;
-  color:#CFEDC2;text-align:right}
-.fl .nm{font-family:'Dongle',sans-serif;font-weight:700;font-size:44px;color:var(--ink);line-height:.95;margin-top:2px;
-  transform:rotate(-1.2deg);transform-origin:left}
-.fl .lead{font-size:12.5px;color:#123A1F;line-height:1.75;margin-top:11px;position:relative;z-index:2}
+.fl .scene{position:relative;margin:-15px -17px 0;border-bottom:2.5px solid var(--ink);aspect-ratio:3/2;overflow:hidden}
+.fl .scene img{width:100%;height:100%;object-fit:cover;display:block}
+.fl .scene::before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse 70% 55% at 30% 30%, rgba(14,42,22,.30), transparent 70%)}
+.fl .no{position:absolute;right:12px;top:10px;z-index:2;font-family:'Nanum Gothic Coding',monospace;font-size:9.5px;letter-spacing:2.5px;
+  color:#fffbee;text-shadow:0 1px 3px rgba(14,42,22,.6)}
+.fl .nm{position:absolute;left:16px;top:30px;z-index:2;font-family:'Dongle',sans-serif;font-weight:700;font-size:64px;color:#fffbee;line-height:.9;
+  transform:rotate(-1.2deg);transform-origin:left;text-shadow:0 2px 10px rgba(14,42,22,.45),0 1px 2px rgba(14,42,22,.5)}
+.fl .lead{font-size:12.5px;color:#123A1F;line-height:1.75;margin-top:13px;position:relative;z-index:2}
 .fl .more{margin-top:11px;padding-top:10px;border-top:2px dashed rgba(14,42,22,.25);position:relative;z-index:2}
 .fl .more summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:5px;
   font-size:11.5px;font-weight:700;color:#1B5C2C}
@@ -98,13 +102,18 @@ nav .nb.on::after{content:'';position:absolute;left:-3px;right:-3px;bottom:0;hei
 .tkt.play .tnote{font-size:11px;color:#1B5C2C;margin-top:8px;padding-top:8px;
   border-top:2px dashed rgba(14,42,22,.25);line-height:1.6}
 
-.card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:16px 17px}
+.card{position:relative;padding:22px 18px 18px;border-radius:3px;
+  background:#FFF0B3 url(img/tx_hessian_lt.webp) 0 0/220px;background-blend-mode:multiply;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 10px 18px -8px rgba(14,42,22,.3),0 2px 4px rgba(14,42,22,.12)}
+.card::after{content:'';position:absolute;inset:7px;border:1.5px dashed rgba(160,110,20,.5);pointer-events:none}
+.card::before{content:'';position:absolute;left:50%;top:-11px;width:96px;height:24px;transform:translateX(-50%) rotate(-2deg);
+  background:url(img/tape.webp) center/100% 100% no-repeat;opacity:.92}
 .card h2{font-size:15px;letter-spacing:-.4px;margin-bottom:9px}
-.card p{font-size:13px;line-height:1.75;color:#2B3A2E}
+.card p{font-size:13px;line-height:1.75;color:#2A2416}
 .card p+p{margin-top:9px}
 .card .hi{background:linear-gradient(180deg,transparent 60%,var(--yellow) 60%)}
 ul.pt{margin-top:11px;list-style:none;display:flex;flex-direction:column;gap:7px}
-ul.pt li{font-size:12.5px;color:#2B3A2E;line-height:1.6;padding-left:15px;position:relative}
+ul.pt li{font-size:12.5px;color:#2A2416;line-height:1.6;padding-left:15px;position:relative}
 ul.pt li::before{content:'';position:absolute;left:0;top:8px;width:6px;height:6px;
   border-radius:50%;background:var(--yellow);border:1.5px solid var(--ink)}
 .note{font-size:11.5px;color:var(--sub);line-height:1.7;margin-top:12px;
@@ -112,6 +121,71 @@ ul.pt li::before{content:'';position:absolute;left:0;top:8px;width:6px;height:6p
 footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);
   font-size:11px;color:#8A9188;text-align:center;line-height:1.8}
 footer a{color:#8A9188}
+.fl .intro p{font-size:12.5px;line-height:1.75;color:#3A2A18;margin-bottom:9px}
+.fl .intro .hi{background:linear-gradient(180deg,transparent 60%,var(--yellow) 60%)}
+.fl .intro+.how{margin-top:4px}
+/* 이 페이지는 본문(.wrap)이 이미 358 — 티켓과 신청 바를 그 폭 그대로 꽉 채워 둘을 맞춘다 */
+.wrap .btk,.wrap .tnlbar{max-width:100%}
+.fl.sk::after{display:none}
+.fl.sk .lead,.fl.sk .more summary,.fl.sk .how div{color:#3A2A18}
+
+.fl.sk{background-color:#F4EFDF;
+  background-image:url(img/tx_linen.webp),
+   linear-gradient(115deg,transparent 42%,rgba(255,255,255,.22) 47%,rgba(14,42,22,.10) 52%,transparent 58%),
+   repeating-linear-gradient(0deg,rgba(40,128,64,.5) 0 12px,transparent 12px 24px),
+   repeating-linear-gradient(90deg,rgba(40,128,64,.5) 0 12px,transparent 12px 24px);
+  background-size:256px,100% 100%,auto,auto;background-blend-mode:multiply,normal,normal,normal;
+  border:0;border-radius:8px;padding:18px 16px 22px;
+  box-shadow:inset 0 -6px 8px -4px rgba(14,42,22,.25),0 12px 20px -8px rgba(14,42,22,.5),0 2px 3px rgba(14,42,22,.2)}
+.fl.sk .scene{margin:0;border:7px solid #FFFDF6;border-bottom-width:7px;border-radius:2px;transform:rotate(-1.2deg);
+  box-shadow:0 8px 14px -4px rgba(14,42,22,.45),0 1px 2px rgba(14,42,22,.3);overflow:visible}
+.fl.sk .scene img{border-radius:0}
+.fl.sk .scene .clip{position:absolute;left:50%;top:-24px;width:64px;height:auto;transform:translateX(-50%) rotate(88deg);z-index:4;filter:drop-shadow(0 3px 3px rgba(0,0,0,.35))}
+.fl.sk .scene .tag{top:-14px;right:-14px;width:82px}
+.fl.sk .nm{font-size:58px;top:34px}
+.fl.sk .label{margin-top:18px;padding:16px 17px 12px;background:#FCF8EC url(img/tx_linen.webp) 0 0/180px;background-blend-mode:multiply;
+  transform:rotate(.6deg);border-radius:2px;position:relative;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 3px 6px rgba(14,42,22,.28)}
+.fl.sk .label::before{content:'';position:absolute;inset:6px;border:1.5px dashed rgba(90,60,30,.5);pointer-events:none}
+.fl.sk .label .lead{margin-top:0}
+.fl.sk .label .more{margin-top:10px;border-top:1px solid rgba(90,60,30,.18)}
+
+/* ── 디오라마 소재 (v2 조각·글받침) ── */
+.fl .tag{position:absolute;right:6px;top:4px;z-index:3;width:98px;transform:rotate(8deg);filter:drop-shadow(0 4px 5px rgba(14,42,22,.35))}
+.fl .tag img{width:100%;display:block}
+.fl .tag span{position:absolute;left:24%;top:40%;width:52%;text-align:center;transform:rotate(-12deg);font-family:'Nanum Gothic Coding',monospace;font-size:6.5px;letter-spacing:1px;color:#5A4A32;line-height:1.1}
+.fl .tag b{display:block;font-family:'Dongle',sans-serif;font-size:30px;letter-spacing:0;color:var(--ink);line-height:.8;margin-top:2px}
+nav .nbrow{gap:26px;padding:8px 12px 8px}
+nav .nb{display:flex;flex-direction:column;align-items:center;gap:2px}
+nav .nb img{height:26px;width:auto;opacity:.55;filter:grayscale(.6);transition:opacity .2s,filter .2s,transform .2s}
+nav .nb.on img{opacity:1;filter:none;transform:translateY(-1px) rotate(-4deg)}
+.lab{letter-spacing:1.6px}
+.lab>span,.lab{position:relative}
+.lab{padding-left:0}
+.lab::before{content:'';position:absolute;left:-8px;top:-6px;width:118px;height:26px;z-index:-1;
+  background:url(img/tape.webp) center/100% 100% no-repeat;transform:rotate(-2deg);opacity:.9}
+main.wrap{position:relative;z-index:0}
+.lab{color:#3E4A2E}
+.card.has-board{padding-right:118px;min-height:170px}
+.card .board{position:absolute;right:10px;top:14px;width:98px;transform:rotate(3deg);filter:drop-shadow(0 5px 6px rgba(14,42,22,.35))}
+.card .chalk{position:absolute;right:26px;top:48px;width:66px;text-align:center;transform:rotate(3deg);
+  font-family:'Dongle',sans-serif;font-size:26px;line-height:.85;color:#F4F1E6;opacity:.92}
+.props{position:relative;height:74px;margin-top:-4px}
+.props img{position:absolute;bottom:0;filter:drop-shadow(0 5px 5px rgba(14,42,22,.3))}
+.props .cooler{right:40px;width:64px}.props .cy{right:14px;width:22px;transform:rotate(-6deg)}.props .cg{right:108px;width:22px;transform:rotate(5deg)}
+.card.about{margin-top:8px}
+.card .fig-cheer{position:absolute;right:16px;top:-48px;height:64px;filter:drop-shadow(0 4px 4px rgba(14,42,22,.3))}
+.card .snack{position:relative;height:56px;margin:4px -6px -10px}
+.card .snack img{position:absolute;bottom:0;filter:drop-shadow(0 4px 4px rgba(14,42,22,.3))}
+.card .snack .chips{right:6px;width:84px;transform:rotate(-8deg)}.card .snack .cy{right:92px;width:22px}.card .snack .cg{right:116px;width:22px;transform:rotate(-7deg)}
+.note.photo{position:relative;padding-right:70px;background:#FBF7EC;border:1px solid #E7DFC9;box-shadow:0 4px 10px -4px rgba(14,42,22,.2)}
+.note.photo img{position:absolute;right:12px;bottom:6px;height:68px}
+.crowd{position:relative;height:66px;margin-top:26px}
+.crowd img{position:absolute;bottom:-3px;filter:drop-shadow(0 3px 3px rgba(14,42,22,.25))}
+.crowd .f1{left:18%;height:58px}.crowd .f2{left:40%;height:62px}.crowd .f3{right:12%;width:86px}
+footer{margin-top:0}
+
+.note a{color:var(--green-deep);font-weight:700}
 </style>
 </head>
 <body>
@@ -120,17 +194,23 @@ footer a{color:#8A9188}
   <a href="../" title="투넬 중앙역으로">
     <img src="../v/plate_tunel.webp" alt="TÜNEL 중앙역" width="68" height="26">
   </a>
+  <div id="meCorner"></div>
 </div>
 
 <div class="lhero">
-  <img class="veh" src="../v/A2_bus.webp" alt="">
-  <div class="fl">
-    <div class="no">PLATFORM 01</div>
-    <div class="nm">어른이 놀이터</div>
-    <p class="lead">한강에 돗자리 펴고 맥주 한 잔. 어릴 때 하던 유치한 놀이를
+  <div class="fl sk">
+    <div class="scene"><img class="clip" src="img/clip.webp" alt=""><img src="img/hero_day.webp" alt="한강 잔디 위 장난감 미니버스와 돗자리">
+      <div class="tag"><img src="img/tag.webp" alt=""><span>PLATFORM<b>01</b></span></div>
+      <div class="nm">어른이 놀이터</div></div>
+    <div class="label"><p class="lead">한강에 돗자리 펴고 맥주 한 잔. 어릴 때 하던 유치한 놀이를
       다 커서 술 한 잔 들고 다시 합니다. 크게 모여서 그날 하루 실컷 놀고 헤어져요.</p>
     <details class="more">
       <summary>자세히 <span class="chev">⌄</span></summary>
+      <div class="intro">
+        <p>수건돌리기, 무궁화꽃이 피었습니다, 물총. 초등학교 운동장에서 하던 것들이에요.
+          그걸 <span class="hi">어른이 되어 맥주 한 잔 들고 다시 하면</span> 이상하게 더 재밌습니다.</p>
+        <p>잘하고 못하고가 없는 놀이만 골라요. 규칙이 세 줄을 넘지 않고, 늦게 합류해도 바로 낄 수 있는 것들이요.</p>
+      </div>
       <div class="how">
         <div>야외에서 크게 모이는 게 기본이에요. 인원이 많을수록 재밌는 놀이 위주로 준비합니다</div>
         <div>수건돌리기·무궁화꽃·물총·눈치게임처럼 준비물이 거의 없는 것들이요</div>
@@ -138,16 +218,17 @@ footer a{color:#8A9188}
         <div>밝을 때 몸 쓰는 놀이를 하고, 어두워지면 둘러앉아 카드게임과 치맥으로 넘어가요</div>
         <div>혼자 신청해서 혼자 오셔도 됩니다. 대부분 그렇게 와요</div>
         <div>중간에 먼저 가셔도 되고, 늦게 합류하셔도 됩니다</div>
+        <div>돗자리와 게임 도구는 저희가 챙겨요. 회차마다 드리는 것(맥주·간식 같은)은 일정에 적어 둘게요</div>
       </div>
-    </details>
+    </details></div>
   </div>
 </div>
 
 <nav>
   <div class="nbrow">
-    <div class="nb" data-v="meadow" onclick="setView('meadow')">잔디밭</div>
-    <div class="nb on" data-v="sched" onclick="setView('sched')">일정</div>
-    <div class="nb" data-v="about" onclick="setView('about')">소개</div>
+    <div class="nb" data-v="meadow" onclick="setView('meadow')"><img src="img/i_mat.webp" alt="">잔디밭</div>
+    <div class="nb on" data-v="sched" onclick="setView('sched')"><img src="img/i_sign.webp" alt="">일정</div>
+    <div class="nb" data-v="me" onclick="setView('me')"><img src="img/i_tag.webp" alt="">내 활동</div>
   </div>
 </nav>
 
@@ -157,7 +238,7 @@ footer a{color:#8A9188}
      현장 페이지(play/meadow/, 코덱스 구현)는 서버 개통 전이라 아직 링크를 걸지 않는다 — 열리면 아래 안내를 입장 버튼으로 바꾼다 -->
 <section class="view" id="v-meadow">
   <div class="lab">오늘의 잔디밭</div>
-  <div class="card"><h2>모임 날, 여기가 우리 돗자리예요</h2>
+  <div class="card has-board"><img class="board" src="img/board.webp" alt=""><span class="chalk">10.3<br>OPEN</span><h2>모임 날, 여기가<br>우리 돗자리예요</h2>
     <p>당일 현장에서 찍은 사진을 올리고, 마음에 드는 사진에 한 표. 다음 순서 안내와 뒤풀이 조도 여기서 봐요.</p>
     <ul class="pt"><li>10월 3일 1회 당일에 열려요</li><li>현장에서 알려드리는 행사 코드로 들어와요</li><li>사진은 올린 사람이 동의한 것만 같이 봐요</li></ul></div>
 </section>
@@ -165,31 +246,15 @@ footer a{color:#8A9188}
 <section class="view on" id="v-sched">
   <div class="lab">다가오는 모임</div>
   <div id="schedList"></div>
+  <div class="props" aria-hidden="true"><img class="cooler" src="img/cooler.webp" alt=""><img class="cy" src="img/can_y.webp" alt=""><img class="cg" src="img/can_g.webp" alt=""></div>
 </section>
 
-<section class="view" id="v-about">
-  <div class="lab">어떤 자리인가요</div>
-  <div class="card">
-    <h2>다 커서 다시 노는 자리</h2>
-    <p>수건돌리기, 무궁화꽃이 피었습니다, 물총. 초등학교 운동장에서 하던 것들이에요.
-      그걸 <span class="hi">어른이 되어 맥주 한 잔 들고 다시 하면</span> 이상하게 더 재밌습니다.</p>
-    <p>잘하고 못하고가 없는 놀이만 골라요. 규칙이 세 줄을 넘지 않고,
-      늦게 합류해도 바로 낄 수 있는 것들이요.</p>
-    <ul class="pt">
-      <li>야외에서 크게 모여요 — 인원이 많을수록 재밌는 놀이 위주</li>
-      <li>닉네임으로만. 자기소개 타임 없고 친목 강요 없어요</li>
-      <li>혼자 와도 됩니다. 대부분 혼자 신청해서 혼자 와요</li>
-      <li>먼저 가셔도 되고 늦게 오셔도 됩니다</li>
-    </ul>
-    <p style="margin-top:12px">준비물은 저희가 챙겨요. 돗자리와 게임 도구는 준비돼 있으니
-      마실 것만 들고 오시면 됩니다.</p>
-  </div>
-  <div class="note">
-    어른이 놀이터는 이제 막 문을 여는 중이에요.
-    첫 모임은 한강 수건돌리기 맥주 파티로 준비하고 있습니다.
-  </div>
+<section class="view" id="v-me">
+  <div class="lab">내 활동</div>
+  <div class="card"><div id="actBox"><p>불러오는 중…</p></div></div>
 </section>
 
+  <div class="crowd" aria-hidden="true"><img class="f1" src="img/fig_sit.webp" alt=""><img class="f2" src="img/fig_cards.webp" alt=""><img class="f3" src="img/fig_lie.webp" alt=""></div>
   <footer>
     투넬 · TÜNEL — 일상에서 취향으로 가는 터널<br>
     <a href="../">중앙역으로 돌아가기</a>
@@ -198,14 +263,16 @@ footer a{color:#8A9188}
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="../tunel.js?v=42"></script>
+<script src="../tunel.js?v=43"></script>
 <script>
 function setView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on', x.id==='v-'+v));
   document.querySelectorAll('.nb').forEach(x=>x.classList.toggle('on', x.dataset.v===v));
   history.replaceState(null,'','#'+v);
 }
-setView((location.hash||'#sched').slice(1));
+{ const v=(location.hash||'#sched').slice(1); setView(['meadow','sched','me'].includes(v)?v:'sched'); }
+TUNEL.meCorner(document.getElementById('meCorner'));
+TUNEL.lineActivity(document.getElementById('actBox'), 'play');
 
 /* 일정 — 서버(meetings)에서 이 노선 것만. 날짜 미정(TBD)도 예정으로 보여준다 */
 (async function paintSched(){
@@ -216,7 +283,7 @@ setView((location.hash||'#sched').slice(1));
     if(!rows.length){ el.innerHTML = '<p class="note">아직 잡힌 모임이 없어요.</p>'; return; }
     /* 티켓은 공용 한 벌 — 허브(tunel.kr)와 같은 모양이 나온다 (개발/티켓_규칙.md) */
     el.innerHTML = rows.map(v =>
-      TUNEL.ticketOne(v, { onclick:'TUNEL.ticketToggle(this)' }) + TUNEL.ticketDetail(v)
+      TUNEL.ticketOne(v, { onclick:'TUNEL.ticketToggle(this)', card:'/tk/TK_play_diorama.jpg' }) + TUNEL.ticketDetail(v)
     ).join('');
     try{ await TUNEL.signupInit(); }catch(e){}
   }catch(e){

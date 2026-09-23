@@ -433,7 +433,7 @@ const TUNEL = {
     /* play(놀이터) — 손목밴드 판지 확정 (2026-08-20 햇살님 승인).
        놀이공원·워터밤·클럽 밴드 플랫레이 사진 + 어두운 막 + Dongle 헤드라인.
        시안: 시안/티켓/티켓_플레이_밴드3크기.html · 슬림100(예정)·일반150(모집중)·이벤트180(kind=event) */
-    play:  { t:'band', card:'/tk/TK_play_band.jpg', short:'놀이터' },
+    play:  { t:'band', card:'/tk/TK_play_diorama.jpg', short:'놀이터' },
     snap:  { t:'pass', short:'나들이', card:'/tk/TK_sopung.jpg', cardSm:'/tk/TK_sopung_slim.jpg',
              ink:'#6B4A52', lbl:'#C4788F', rFont:"'Nanum Pen Script',cursive", rMd:27, rSm:21, acc:'#D9407A',
              perf:'rgba(140,80,100,.4)' },
@@ -688,6 +688,75 @@ const TUNEL = {
     return `<div class="shut"><b>신청 마감</b>${dd ? `<small>${dd}</small>` : ''}</div>`;
   },
 
+  /* ── 노선 페이지 공통 두 조각 (2026-09-24 햇살님 «잔디밭 있는 자리 말고 나머지는 모든 노선이 통일»)
+     첫밤 모양이 기본형이다: 우측 상단 내 정보 · 탭 [노선 고유] · 일정 · 내 활동 · 소개는 상단 카드 «자세히».
+     색은 페이지의 --ink · --sub · --line 을 따른다. 첫밤은 자기 로그인(js/auth.js)이 있어 이걸 안 쓴다 */
+  _lineCSS(){
+    if(document.getElementById('tnl-line-css')) return;
+    const st = document.createElement('style');
+    st.id = 'tnl-line-css';
+    st.textContent = `
+.tme{position:absolute;right:14px;top:calc(12px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-end;
+  min-height:44px;justify-content:center;text-decoration:none;color:var(--ink,#222);font-size:12.5px;font-weight:800;line-height:1.25}
+.tme small{font-family:'Nanum Gothic Coding',monospace;font-size:9.5px;font-weight:400;color:var(--sub,#777);letter-spacing:.5px}
+.tme.out{font-weight:700;color:var(--sub,#777);border-bottom:1px dashed currentColor;min-height:0;padding:12px 0 2px;cursor:pointer;background:none;border-top:0;border-left:0;border-right:0;font-family:inherit}
+.tact .sum{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.tact .sum b{font-family:'Dongle',sans-serif;font-size:44px;line-height:.8;color:var(--ink,#222)}
+.tact .sum span{font-size:12.5px;font-weight:700;color:var(--ink,#222)}
+.tact .sum small{margin-left:auto;font-size:11px;color:var(--sub,#777)}
+.tact .row{display:flex;gap:12px;align-items:baseline;padding:9px 0;border-top:1px dashed var(--line,#ccc);font-size:12.5px}
+.tact .row .d{flex:none;width:62px;font-family:'Nanum Gothic Coding',monospace;font-size:11px;color:var(--sub,#777)}
+.tact .row .t{flex:1;min-width:0;font-weight:700}
+.tact .row .t small{display:block;font-weight:400;font-size:11px;color:var(--sub,#777)}
+.tact .all{display:inline-block;margin-top:12px;font-size:11.5px;color:var(--sub,#777)}
+.tact .kko{width:100%;min-height:48px;margin-top:12px;border:0;border-radius:6px;background:#FEE500;color:#191600;font-size:14px;font-weight:800;cursor:pointer}
+.tact .kko:active{transform:translateY(1px)}
+.tact p{font-size:12.5px;line-height:1.7}`;
+    document.head.appendChild(st);
+  },
+  _kakao(){
+    TUNEL.sb().auth.signInWithOAuth({ provider:'kakao',
+      options:{ redirectTo: location.origin + location.pathname + '?li=' + Date.now() + location.hash } });
+  },
+  /* 우측 상단 내 정보 — 로그인하면 닉네임·회원번호(누르면 허브 마이페이지), 아니면 «로그인» */
+  async meCorner(el){
+    if(!el) return;
+    TUNEL._lineCSS();
+    const me = await TUNEL.me();
+    if(me){
+      el.innerHTML = `<a class="tme" href="../#me" title="내 정보">${esc(me.nick)}${me.no ? `<small>No.${String(me.no).padStart(4,'0')}</small>` : ''}</a>`;
+    } else {
+      el.innerHTML = `<button class="tme out" type="button">로그인</button>`;
+      el.querySelector('button').onclick = TUNEL._kakao;
+    }
+  },
+  /* 내 활동 탭 — 이 노선에서의 참석만. 전 노선 기록은 허브 마이페이지 */
+  async lineActivity(el, line){
+    if(!el) return;
+    TUNEL._lineCSS();
+    el.classList.add('tact');
+    try{
+      const me = await TUNEL.me();
+      if(!me){
+        el.innerHTML = `<p>로그인하면 이 노선에서 다녀온 모임이 여기 쌓여요.</p><button class="kko" type="button">카카오 로그인</button>`;
+        el.querySelector('.kko').onclick = TUNEL._kakao;
+        return;
+      }
+      const rows = await TUNEL.myActivity({ line });
+      if(!rows.length){
+        el.innerHTML = `<p><b>${esc(me.nick)}</b>님, 아직 이 노선 기록이 없어요.<br>모임에 다녀오면 운영진이 참석을 기록해요.</p>
+          <a class="all" href="../#me">모든 노선 기록 보기 →</a>`;
+        return;
+      }
+      const first = rows[rows.length-1];
+      el.innerHTML = `<div class="sum"><b>${rows.length}</b><span>번 다녀왔어요</span><small>첫 참석 ${TUNEL.fmt(first.d, first.dow)}</small></div>
+        ${rows.map(m => `<div class="row"><span class="d">${TUNEL.fmt(m.d)}</span><span class="t">${esc(TUNEL.title(m))}<small>${esc(m.place||'')}</small></span></div>`).join('')}
+        <a class="all" href="../#me">모든 노선 기록 보기 →</a>`;
+    }catch(e){
+      el.innerHTML = `<p>기록을 못 불러왔어요.<br>${esc(e.message||'')}</p>`;
+    }
+  },
+
   /* 티켓 CSS 주입 — 페이지마다 복사하지 않고 여기 한 벌만.
      절취선 구멍 색은 페이지 배경 몫이라 --tnl-hole 로 넘겨받는다 */
   _ticketCSS(){
@@ -899,7 +968,7 @@ div.btk .stub{cursor:pointer}
       const st = document.createElement('style');
       st.id = 'tnl-signup-css';
       st.textContent = `
-.tnlbar{display:flex;align-items:center;gap:10px;width:358px;max-width:calc(100% - 8px);
+.tnlbar{display:flex;align-items:center;gap:10px;width:358px;max-width:calc(100% - 24px);  /* 티켓(.btk)과 같은 폭 — 좁은 칸에서 바만 넓어지지 않게 */
   margin:-6px auto 14px;background:#1C1A1F;border:1px solid #35313A;border-top:0;
   border-radius:0 0 9px 9px;padding:9px 13px}
 .tnlbar .seats{flex:1;font-size:11.5px;color:#A79E8F}

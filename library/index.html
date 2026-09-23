@@ -27,7 +27,7 @@ body{font-family:'Pretendard',system-ui,sans-serif;background:var(--paper);color
 
 /* ══ 노선 공통 구조 ══
    ① 중앙역 버튼 ② 이 노선 히어로 카드 ③ 메뉴바 ④ 콘텐츠 */
-.station{display:flex;justify-content:center;padding:calc(14px + env(safe-area-inset-top)) 14px 0}
+.station{position:relative;display:flex;justify-content:center;padding:calc(14px + env(safe-area-inset-top)) 14px 0}
 .station a{display:inline-flex;align-items:center;gap:9px;text-decoration:none;
   padding:4px 4px}
 .station a:active{transform:translateY(1px)}
@@ -141,6 +141,8 @@ ul.pt li::before{content:'';position:absolute;left:0;top:8px;width:6px;height:6p
 footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);
   font-size:11px;color:#98A0A6;text-align:center;line-height:1.8}
 footer a{color:#98A0A6}
+.lhero .intro p{font-size:12.5px;line-height:1.75;color:var(--ink);margin-bottom:9px}
+.lhero .intro .hi{background:linear-gradient(180deg,transparent 60%,#FFE45C 60%)}
 .badge.done{opacity:.55;filter:saturate(.85)}
 .badge .stamp.done{background:#E7E9E5;color:#8A9198;border-color:#C9CEC8}
 .badge .stamp.open{background:#FFE45C;color:#3A3F45}
@@ -152,6 +154,7 @@ footer a{color:#98A0A6}
   <a href="../" title="투넬 중앙역으로">
     <img src="../v/plate_tunel.webp" alt="TÜNEL 중앙역" width="68" height="26">
   </a>
+  <div id="meCorner"></div>
 </div>
 
 <div class="lhero">
@@ -164,12 +167,21 @@ footer a{color:#98A0A6}
         책모임과 자기계발 스터디, AI 나눔회처럼 각자 굴려본 걸 꺼내 놓는 자리가 여기서 열립니다.</p>
       <details class="more">
         <summary>자세히 <span class="chev">⌄</span></summary>
+        <div class="intro">
+          <p>읽다 만 책, 저장만 해두고 안 쓰는 강의, 굴려보다 만 도구. 그런 걸 각자 들고 와서 꺼내 놓는 자리예요.
+            배운 걸 정리해서 알려주는 사람이 따로 있는 게 아니라, <span class="hi">다들 어떻게 하고 있는지</span>를 서로 보는 쪽에 가깝습니다.</p>
+          <p><b>책모임</b> — 같은 책을 읽고 오거나, 각자 읽은 걸 들고 와서 이야기해요.<br>
+            <b>스터디</b> — 배우고 싶은 게 겹치는 사람끼리 한 회차를 잡아요.<br>
+            <b>AI 나눔회</b> — 각자 자기 일에 AI를 어떻게 쓰는지 노트북 펴놓고 보여줘요. 툴은 안 가립니다.</p>
+        </div>
         <div class="how">
-          <div>회차마다 주제가 달라요 — 책모임, 스터디, AI 정보 나눔</div>
+          <div>회차마다 주제가 달라요 — 관심 가는 것만 골라 오셔도 돼요</div>
           <div>한 회차 3시간 안팎, 성수·합정처럼 오기 쉬운 곳에서 10명 안팎으로 모여요</div>
           <div>강의가 아니라 각자 해본 걸 꺼내 놓고 이야기하는 자리예요</div>
           <div>닉네임으로만 불러요. 직업이나 나이는 묻지 않습니다</div>
-          <div>들고 올 게 있으면 좋고, 없어도 괜찮아요</div>
+          <div>들고 올 게 있으면 좋고, 없어도 괜찮아요 — 듣기만 하다 가셔도 됩니다</div>
+          <div>자기소개 타임 없음, 친목 강요 없음, 끝나면 쿨하게 해산</div>
+          <div>하고 싶은 주제가 있으면 말씀해 주세요 — 그게 다음 회차가 됩니다</div>
           <div>다음 회차와 신청은 일정 탭에 올라와요</div>
         </div>
       </details>
@@ -180,7 +192,7 @@ footer a{color:#98A0A6}
 <nav>
   <div class="nbrow">
     <div class="nb on" data-v="sched" onclick="setView('sched')">일정</div>
-    <div class="nb" data-v="about" onclick="setView('about')">소개</div>
+    <div class="nb" data-v="me" onclick="setView('me')">내 활동</div>
   </div>
 </nav>
 
@@ -193,40 +205,9 @@ footer a{color:#98A0A6}
 
 </section>
 
-<section class="view" id="v-about">
-  <div class="lab">어떤 자리인가요</div>
-
-  <div class="card">
-    <h2>강의 말고, 서로 꺼내 놓는 자리</h2>
-    <p>읽다 만 책, 저장만 해두고 안 쓰는 강의, 굴려보다 만 도구.
-       그런 걸 각자 들고 와서 꺼내 놓는 자리예요.
-       배운 걸 정리해서 알려주는 사람이 따로 있는 게 아니라,
-       <span class="hi">다들 어떻게 하고 있는지</span>를 서로 보는 쪽에 가깝습니다.</p>
-    <ul class="pt">
-      <li>발표가 아니라, 책이나 노트북 펴놓고 이야기하는 분위기</li>
-      <li>닉네임으로만 불러요. 직업이나 나이는 묻지 않아요</li>
-      <li>자기소개 타임 없음, 친목 강요 없음, 끝나면 쿨하게 해산</li>
-      <li>들고 올 게 있으면 좋고, 없어도 괜찮아요 — 듣기만 하다 가셔도 됩니다</li>
-    </ul>
-  </div>
-
-  <div class="card">
-    <h2>어떤 회차가 열리나요</h2>
-    <ul class="pt">
-      <li><b>책모임</b> — 같은 책을 읽고 오거나, 각자 읽은 걸 들고 와서 이야기해요</li>
-      <li><b>스터디</b> — 배우고 싶은 게 겹치는 사람끼리 한 회차를 잡아요</li>
-      <li><b>AI 나눔회</b> — 각자 자기 일에 AI를 어떻게 쓰는지 노트북 펴놓고 보여줘요.
-        툴은 안 가립니다(클로드·지피티·제미나이·힉스필드 무엇이든)</li>
-    </ul>
-    <p style="margin-top:12px">회차마다 성격이 달라서, 관심 가는 것만 골라 오셔도 돼요.
-       하고 싶은 주제가 있으면 말씀해 주세요 — 그게 다음 회차가 됩니다.</p>
-  </div>
-
-  <div class="note">
-    낭만 스터디는 이제 막 문을 열었어요. 지금까지는 AI 나눔회로 한 번 모였고,
-    책모임과 스터디도 이 칸에서 이어서 굴러갑니다.
-  </div>
-
+<section class="view" id="v-me">
+  <div class="lab">내 활동</div>
+  <div class="card"><div id="actBox"><p>불러오는 중…</p></div></div>
 </section>
 
   <footer>
@@ -236,14 +217,16 @@ footer a{color:#98A0A6}
 
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="../tunel.js?v=42"></script>
+<script src="../tunel.js?v=43"></script>
 <script>
 function setView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on', x.id==='v-'+v));
   document.querySelectorAll('.nb').forEach(x=>x.classList.toggle('on', x.dataset.v===v));
   history.replaceState(null,'','#'+v);
 }
-setView((location.hash||'#sched').slice(1));
+{ const v=(location.hash||'#sched').slice(1); setView(['sched','me'].includes(v)?v:'sched'); }
+TUNEL.meCorner(document.getElementById('meCorner'));
+TUNEL.lineActivity(document.getElementById('actBox'), 'library');
 
 /* 일정 — 서버(meetings)에서 이 노선 것만. 지난 회차는 아래에 흐리게 */
 (async function paintSched(){
