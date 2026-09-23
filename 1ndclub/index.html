@@ -524,6 +524,112 @@ span[onclick="askNick('login')"]::before{content:'';width:34px;height:34px;backg
 .crowd img{position:absolute;bottom:0;filter:drop-shadow(0 3px 4px rgba(0,0,0,.6))}
 .crowd .c1{left:14%;height:52px}.crowd .c2{left:46%;height:62px}.crowd .c3{right:12%;height:64px}
 
+/* 시안 */
+/* ── 버튼 시안 공통: 둥근 모서리 걷기 · 카드는 각진 돌판 · 배지는 잉크 도장 ── */
+.crew,.game,.searchbox input,.sortrow select,.thumb{border-radius:0 !important}
+.crew,.game{border:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -2px 0 rgba(0,0,0,.45),0 3px 8px rgba(0,0,0,.5)}
+.searchbox input{background:#121014;box-shadow:inset 0 2px 5px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.05);border-color:#2a2427}
+.bd{border-radius:0;background:transparent;border-width:1.5px;letter-spacing:.3px;-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.2 1.6'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.2 1.6'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");mask-size:90px}
+.bd:nth-child(2n){transform:rotate(-1.5deg)}.bd:nth-child(3n){transform:rotate(1deg)}
+.bd.big{background:transparent;color:#FF6168;border-color:#E8323C}
+.chip{border:0;border-radius:0;clip-path:none;padding:9px 14px;font-family:'Do Hyeon',sans-serif;font-size:14px;font-weight:400;color:#B9ADA3;
+  background:#3a3337 url(img/v2/stone.webp) center/200px;background-blend-mode:multiply;
+  text-shadow:0 -1px 0 rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.07);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -2px 0 rgba(0,0,0,.5),0 2px 3px rgba(0,0,0,.6);position:relative;transition:transform .12s}
+.chip:active{transform:translateY(1px)}
+.chip.on{background:#2a2023 url(img/v2/stone.webp) center/200px;background-blend-mode:multiply;color:#FF5A5F;
+  text-shadow:0 0 8px rgba(255,70,80,.55),0 -1px 0 rgba(0,0,0,.9);box-shadow:inset 0 2px 5px rgba(0,0,0,.75),0 1px 0 rgba(255,255,255,.05)}
+.chip.on::after{content:'';position:absolute;right:-6px;top:-7px;width:20px;height:20px;background:url(img/v2/seal.webp) center/contain no-repeat;filter:drop-shadow(0 2px 2px rgba(0,0,0,.6))}
+.cattabs{clip-path:none;border:0;background:#2e282b url(img/v2/stone.webp) center/260px;background-blend-mode:multiply;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 -2px 0 rgba(0,0,0,.5),0 3px 6px rgba(0,0,0,.55)}
+.ctab{font-family:'Do Hyeon',sans-serif;font-size:14px;font-weight:400;color:#A99D93;text-shadow:0 -1px 0 rgba(0,0,0,.85);border-right:1px solid rgba(0,0,0,.55);box-shadow:1px 0 0 rgba(255,255,255,.05);position:relative}
+.ctab:last-child{border-right:0}
+.ctab.on{background:rgba(0,0,0,.35);color:#FF5A5F;text-shadow:0 0 8px rgba(255,70,80,.5);box-shadow:inset 0 2px 6px rgba(0,0,0,.7)}
+.ctab.on::after{content:'';position:absolute;left:22%;right:22%;bottom:5px;height:2px;background:#E8323C;box-shadow:0 0 6px rgba(255,60,70,.8)}
+
+/* 카드 질감 */
+.game{background:#8a7f84 url(img/v2/wall.webp) center/300px !important;background-blend-mode:multiply !important;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.12),inset 2px 0 0 rgba(255,255,255,.05),inset 0 -3px 0 rgba(0,0,0,.55),inset -2px 0 0 rgba(0,0,0,.4),0 4px 10px rgba(0,0,0,.6) !important}
+.game .nm{text-shadow:0 -1px 0 rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.08)}
+.game .desc,.game .meta{color:#b3a79e}
+/* 빨간 점선 띠 걷기 · 탭 간격 넓히기 */
+.checker{display:none}
+nav .nbrow{gap:40px}
+
+/* ══ 내 활동 — 빨강 걷고 돌판·밀랍으로 통일 (2026-09-24) ══ */
+#v-me .hero{border:0;border-radius:0;background:#8a7f84 url(img/v2/wall.webp) center/cover;background-blend-mode:multiply;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.12),inset 0 -3px 0 rgba(0,0,0,.55),0 4px 10px rgba(0,0,0,.6)}
+#v-me .hero .dt{text-shadow:0 -1px 0 rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.08)}
+#v-me .hero .rw{border-top:1px solid rgba(0,0,0,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+#v-me .attbadge{position:relative;border:0;background:#3a3337 url(img/v2/stone.webp) center/160px;background-blend-mode:multiply;
+  box-shadow:inset 0 3px 6px rgba(0,0,0,.7),inset 0 -2px 0 rgba(255,255,255,.08),0 0 0 4px rgba(0,0,0,.35),0 0 0 5px rgba(255,255,255,.06)}
+#v-me .attbadge .an{color:#EDE3D6;text-shadow:0 -1px 0 rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.1)}
+#v-me .attbadge .al{color:#A99D93}
+#v-me .attbadge::after{content:'';position:absolute;right:-8px;top:-6px;width:34px;height:34px;background:url(img/v2/seal.webp) center/contain no-repeat;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+#v-me .label::before{background:#8A7A68;border-radius:0}
+#v-me .notice{border-radius:0;border:1px dashed rgba(200,183,154,.28) !important;background:rgba(0,0,0,.22)}
+#v-me .notice b,#v-me .picked b{color:#E0C9A0 !important}
+#v-me .picked{border-radius:0}
+#v-me .tg{border-radius:0}
+#v-me .abtn.ghost{border:0;border-radius:0;font-family:'Do Hyeon',sans-serif;font-size:15px;font-weight:400;color:#C9BDB2;padding:13px 0;
+  background:#3a3337 url(img/v2/stone.webp) center/220px;background-blend-mode:multiply;text-shadow:0 -1px 0 rgba(0,0,0,.85);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -2px 0 rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.6)}
+#v-me .abtn.ghost:active{box-shadow:inset 0 2px 5px rgba(0,0,0,.75)}
+
+/* 시계탑 전적 · 당산나무 베타 */
+.dgbox{margin:0 14px;padding:14px 14px 12px;background:#8a7f84 url(img/v2/wall.webp) center/cover;background-blend-mode:multiply;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.12),inset 0 -3px 0 rgba(0,0,0,.55),0 4px 10px rgba(0,0,0,.6)}
+.dgsum{display:flex;gap:7px}
+.dgsum div,.dgside>div{background:#3a3337 url(img/v2/stone.webp) center/160px;background-blend-mode:multiply;
+  box-shadow:inset 0 3px 6px rgba(0,0,0,.7),inset 0 -1px 0 rgba(255,255,255,.07)}
+.dgsum div{flex:1;text-align:center;padding:9px 0 7px}
+.dgsum b{display:block;font-family:'Do Hyeon',sans-serif;font-weight:400;font-size:26px;line-height:1;color:#EDE3D6;text-shadow:0 -1px 0 rgba(0,0,0,.9)}
+.dgsum span{font-size:11px;color:#A99D93}
+.dgside{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
+.dgside>div{padding:10px 11px 9px;display:flex;flex-direction:column;gap:2px}
+.dgside em{font-style:normal;font-size:11px;font-weight:700;letter-spacing:.5px}
+.dgside .good em{color:#9FC7A6}.dgside .evil em{color:#E0907C}
+.dgside b{font-family:'Do Hyeon',sans-serif;font-weight:400;font-size:22px;color:#EDE3D6;margin:2px 0}
+.dgside b small{font-size:12px;color:#A99D93;margin:0 3px 0 1px}
+.dgside span{font-size:11px;color:#B9ADA3;line-height:1.5}
+.dgteam{display:flex;flex-wrap:wrap;gap:4px 12px;margin:11px 2px 0;font-size:12px;color:#B9ADA3}
+.dgteam b,.dgfacts b{color:#E0C9A0}
+.dgfacts{display:flex;flex-direction:column;gap:4px;margin:10px 2px 0;padding-top:10px;border-top:1px solid rgba(0,0,0,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.05);font-size:12.5px;color:#C9BDB2}
+.dgh{margin:14px 2px 5px;font-family:'Do Hyeon',sans-serif;font-size:14px;color:#D8CCBF}
+.dgtab{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+.dgtab th{font-size:10.5px;font-weight:600;color:#8f8489;text-align:right;padding:0 4px 4px}
+.dgtab th:first-child,.dgtab td:first-child{text-align:left}
+.dgtab td{padding:7px 4px;color:#EDE3D6;text-align:right;border-top:1px solid rgba(0,0,0,.45)}
+.dgtab td:first-child{font-weight:700}
+.dgtab{table-layout:fixed}.dgtab th:nth-child(2),.dgtab th:nth-child(3),.dgtab td:nth-child(2),.dgtab td:nth-child(3){width:44px}.dgtab th:nth-child(4),.dgtab td:nth-child(4){width:58px}
+.dgtab td:last-child{color:#E0C9A0}
+.dgtab .tm{display:inline-block;width:6px;height:6px;margin-right:7px;vertical-align:2px;background:#6e6368}
+.dgtab .tm.town{background:#8fc9a0}.dgtab .tm.outsider{background:#b9c98a}.dgtab .tm.minion{background:#e0907c}.dgtab .tm.demon{background:#d9614a}
+.dgmore summary{list-style:none;cursor:pointer;font-size:12px;color:#A99D93;padding:8px 4px 2px}
+.dgmore summary::-webkit-details-marker{display:none}
+.dgdetail>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:44px;margin-top:8px;padding:0 4px;
+  font-size:12.5px;font-weight:700;color:#D8CCBF;border-top:1px solid rgba(0,0,0,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.dgdetail>summary::-webkit-details-marker{display:none}
+.dgdetail>summary i{font-style:normal;color:#A99D93;transition:transform .2s}
+.dgdetail[open]>summary i{transform:rotate(180deg)}
+.dgdetail .dgteam{margin-top:4px}
+/* 목록은 촘촘히 — 직업·모드가 많아져도 한 화면에 */
+.dgh{margin:12px 2px 3px;font-size:13px}
+.dgtab{font-size:12px}
+.dgtab th{padding:0 4px 3px}
+.dgtab td{padding:4px 4px;line-height:1.35}
+.dgtab tr:nth-child(even) td{background:rgba(0,0,0,.14)}
+.dgtab .tm{width:5px;height:5px;margin-right:6px}
+.dgfacts{gap:2px;font-size:12px;line-height:1.5}
+.dgmore summary{padding:6px 4px 0}
+.dgnone{font-size:12.5px;color:#B9ADA3;line-height:1.7;text-align:center;padding:6px 0 4px}
+.dglink{display:block;margin-top:12px;padding-top:10px;border-top:1px dashed rgba(200,183,154,.3);font-size:12.5px;font-weight:700;color:#E0C9A0;text-decoration:none;min-height:24px}
+
+/* 우측 상단 명찰 — 모든 노선 공통 모양 (tunel.js .tme) */
+.me{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-height:44px;padding-top:0}
+.me .nk{font-size:12.5px;font-weight:800;color:var(--ink)}
+.me small{font-family:'Nanum Gothic Coding',monospace;font-size:9.5px;color:var(--sub);letter-spacing:.5px}
+.me .nk.out{font-weight:700;color:var(--sub);border-bottom:1px dashed currentColor;padding-bottom:2px}
 </style>
 </head>
 <body>
@@ -533,7 +639,7 @@ span[onclick="askNick('login')"]::before{content:'';width:34px;height:34px;backg
     <img src="../v/plate_tunel.webp" alt="TÜNEL 중앙역" width="68" height="26">
   </a>
   <div class="hbar">
-    <div class="me" id="meBox" onclick="askNick()"></div>
+    <div class="me" id="meBox" role="button" tabindex="0" onclick="if(acc){setView('me');document.querySelector('nav').scrollIntoView({behavior:'smooth',block:'start'})}else askNick('login')"></div>
   </div>
 </div>
 
@@ -564,15 +670,15 @@ span[onclick="askNick('login')"]::before{content:'';width:34px;height:34px;backg
 
 <nav>
   <div class="nbrow">
-    <div class="nb on" data-v="games" onclick="setView('games')"><img class="ic2" src="img/v2/i_skull.webp" alt=""><span class="tx">게임 도감</span></div>
+    <div class="nb on" data-v="games" onclick="setView('games')"><img class="ic2" src="img/v2/i_crow.webp" alt=""><span class="tx">게임 도감</span></div>
     <div class="nb" data-v="sched" onclick="setView('sched')"><img class="ic2" src="img/v2/i_candle.webp" alt=""><span class="tx">일정</span></div>
     <div class="nb" data-v="me"    onclick="setView('me')"><img class="ic2" src="img/v2/i_seal.webp" alt=""><span class="tx">내 활동</span></div>
-    <div class="nb" data-v="members" id="navMembers" style="display:none" onclick="setView('members')"><span class="tx">회원관리</span></div>
+    <div class="nb" data-v="members" id="navMembers" style="display:none" onclick="setView('members')"><img class="ic2" src="img/v2/i_skull.webp" alt=""><span class="tx">회원관리</span></div>
   </div>
 </nav>
 
 
-<div class="checker"></div>
+
 
 <!-- 1. 게임 도감 -->
 <section class="view on" id="v-games">
@@ -626,18 +732,18 @@ span[onclick="askNick('login')"]::before{content:'';width:34px;height:34px;backg
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="../tunel.js?v=43"></script>
+<script src="../tunel.js?v=44"></script>
 <script src="api.js?v=round1"></script>
 <script src="games.js?v=5"></script>
 <script src="games_db.js?v=2"></script>
 <script src="schedule.js?v=way89"></script>
 <script src="js/state.js?v=5"></script>
-<script src="js/auth.js?v=5"></script>
+<script src="js/auth.js?v=6"></script>
 <script src="js/catalog.js?v=1"></script>
 <script src="js/sched.js?v=7"></script>
 <script src="js/people.js?v=3"></script>
-<script src="js/records.js?v=5"></script>
-<script src="js/dangsan.js?v=1"></script>
+<script src="js/records.js?v=6"></script>
+<script src="js/dangsan.js?v=3"></script>
 <script src="js/detail.js?v=1"></script>
 <script src="js/start.js?v=1"></script>
 </body>

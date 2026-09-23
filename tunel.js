@@ -697,7 +697,8 @@ const TUNEL = {
     st.id = 'tnl-line-css';
     st.textContent = `
 .tme{position:absolute;right:14px;top:calc(12px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-end;
-  min-height:44px;justify-content:center;text-decoration:none;color:var(--ink,#222);font-size:12.5px;font-weight:800;line-height:1.25}
+  min-height:44px;justify-content:center;text-decoration:none;color:var(--ink,#222);font-size:12.5px;font-weight:800;line-height:1.25;
+  background:none;border:0;padding:0;cursor:pointer;font-family:inherit}
 .tme small{font-family:'Nanum Gothic Coding',monospace;font-size:9.5px;font-weight:400;color:var(--sub,#777);letter-spacing:.5px}
 .tme.out{font-weight:700;color:var(--sub,#777);border-bottom:1px dashed currentColor;min-height:0;padding:12px 0 2px;cursor:pointer;background:none;border-top:0;border-left:0;border-right:0;font-family:inherit}
 .tact .sum{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
@@ -718,17 +719,28 @@ const TUNEL = {
     TUNEL.sb().auth.signInWithOAuth({ provider:'kakao',
       options:{ redirectTo: location.origin + location.pathname + '?li=' + Date.now() + location.hash } });
   },
-  /* 우측 상단 내 정보 — 로그인하면 닉네임·회원번호(누르면 허브 마이페이지), 아니면 «로그인» */
-  async meCorner(el){
+  /* 우측 상단 내 정보 — 모든 노선이 같은 명찰: 닉네임 + «No.0012 · 이 노선 n회».
+     누르면 이 노선의 내 활동 탭으로 간다(계정·전 노선 기록은 거기서 허브로). 로그인 전이면 «로그인».
+     2026-09-24 햇살님 «첫밤이랑 어른이 놀이터랑 이 버튼 기능이 다른데 통일하자, 의미 있게» */
+  async meCorner(el, line){
     if(!el) return;
     TUNEL._lineCSS();
     const me = await TUNEL.me();
-    if(me){
-      el.innerHTML = `<a class="tme" href="../#me" title="내 정보">${esc(me.nick)}${me.no ? `<small>No.${String(me.no).padStart(4,'0')}</small>` : ''}</a>`;
-    } else {
+    if(!me){
       el.innerHTML = `<button class="tme out" type="button">로그인</button>`;
       el.querySelector('button').onclick = TUNEL._kakao;
+      return;
     }
+    const no = me.no ? `No.${String(me.no).padStart(4,'0')}` : '';
+    el.innerHTML = `<button class="tme" type="button" title="내 활동">${esc(me.nick)}<small>${no}</small></button>`;
+    el.querySelector('button').onclick = () => {
+      if(typeof window.setView === 'function' && document.getElementById('v-me')){
+        window.setView('me'); document.querySelector('nav')?.scrollIntoView({ behavior:'smooth', block:'start' });
+      } else location.href = '../#me';
+    };
+    if(line) TUNEL.myActivity({ line }).then(rows => {
+      const sm = el.querySelector('small'); if(sm && rows.length) sm.textContent = [no, rows.length + '회'].filter(Boolean).join(' · ');
+    }).catch(() => {});
   },
   /* 내 활동 탭 — 이 노선에서의 참석만. 전 노선 기록은 허브 마이페이지 */
   async lineActivity(el, line){
@@ -745,13 +757,13 @@ const TUNEL = {
       const rows = await TUNEL.myActivity({ line });
       if(!rows.length){
         el.innerHTML = `<p><b>${esc(me.nick)}</b>님, 아직 이 노선 기록이 없어요.<br>모임에 다녀오면 운영진이 참석을 기록해요.</p>
-          <a class="all" href="../#me">모든 노선 기록 보기 →</a>`;
+          <a class="all" href="../#me">내 정보 · 모든 노선 기록 →</a>`;
         return;
       }
       const first = rows[rows.length-1];
       el.innerHTML = `<div class="sum"><b>${rows.length}</b><span>번 다녀왔어요</span><small>첫 참석 ${TUNEL.fmt(first.d, first.dow)}</small></div>
         ${rows.map(m => `<div class="row"><span class="d">${TUNEL.fmt(m.d)}</span><span class="t">${esc(TUNEL.title(m))}<small>${esc(m.place||'')}</small></span></div>`).join('')}
-        <a class="all" href="../#me">모든 노선 기록 보기 →</a>`;
+        <a class="all" href="../#me">내 정보 · 모든 노선 기록 →</a>`;
     }catch(e){
       el.innerHTML = `<p>기록을 못 불러왔어요.<br>${esc(e.message||'')}</p>`;
     }

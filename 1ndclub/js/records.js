@@ -297,6 +297,9 @@ function renderMePage(){
     ${next?`<div class="notice" style="text-align:center">다음 모임 <b style="color:var(--red-lite)">${fmt(next.d)} (${next.dow})</b>
       ${dday===0?'· 오늘이에요!':dday>0?`· D-${dday}`:''}</div>`:''}
 
+    <div class="label">시계탑 전적 · 당산나무 베타</div>
+    <div id="dgAct"><div class="dgbox"><div class="dgnone">불러오는 중…</div></div></div>
+
     ${picks.length?`
       <div class="label">이번 회차에 고른 게임 · ${picks.length}개</div>
       <div class="picked" style="margin:0 14px">${picks.join(' · ')}</div>`:''}
@@ -333,6 +336,7 @@ function renderMePage(){
       <span style="font-size:11.5px">갤럭시는 크롬 메뉴 → "홈 화면에 추가", 아이폰은 사파리 공유 → "홈 화면에 추가".
       나중에 회차 알림도 여기로 받을 수 있게 준비 중이에요.</span></div>
     <footer>즐겨찾기는 이 기기에, 고른 게임은 서버에 저장돼요</footer>`;
+  try{ dangsanGames().then(gs => { const el = document.getElementById('dgAct'); if(el) el.innerHTML = dangsanActivityHtml(gs); }); }catch(e){}
 }
 
 /* ══ 회원관리 (관리자 전용) ══ */
