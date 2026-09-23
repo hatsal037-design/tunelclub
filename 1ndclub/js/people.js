@@ -138,7 +138,7 @@ function scribeModal(appointed){
     <h2 style="text-align:center">📜</h2>
     <div class="hero" style="margin:10px 0 0;text-align:center">
       <div class="dt">서기로 임명되었습니다</div>
-      <div class="tm">이제 정모일정 탭에서 지난 모임을 기록할 수 있어요.<br>
+      <div class="tm">이제 일정 탭에서 지난 모임을 기록할 수 있어요.<br>
         그날 한 게임과 참여자를 남겨주세요 — 참석 기록·만난 횟수가 전부 여기서 나옵니다.</div>
     </div>
     <button class="mclose" onclick="closeM();renderSched()">시작하기</button>` : `

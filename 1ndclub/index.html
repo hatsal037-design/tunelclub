@@ -490,6 +490,40 @@ nav .nb:active{transform:translateY(1px)}
 
 footer{font-size:11px;color:#5d6472;line-height:1.75;padding:22px 18px 6px;text-align:center}
 footer a{color:#7a8290}
+/* ══ 2026-09-24 디자인 v2 — 홍보물 소재(밤하늘·시계탑·비석·돌결·양피지·밀랍) ══ */
+.lhero{margin-top:22px}
+.tk.v2{flex-direction:column;background:#141217 url(img/v2/stone.webp) center/320px;background-blend-mode:multiply;border:1px solid #3A2B2E}
+.tk.v2::before{display:none}
+.tk.v2 .scene{position:relative;aspect-ratio:3/2;overflow:hidden;border-bottom:1px solid rgba(232,200,160,.18)}
+.tk.v2 .scene .sky{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tk.v2 .scene::after{content:'';position:absolute;left:0;right:0;bottom:0;height:30%;background:linear-gradient(180deg,transparent,rgba(20,18,23,.85));pointer-events:none}
+.tk.v2 .scene .tower{position:absolute;left:50%;bottom:-30px;height:230px;transform:translateX(-50%);opacity:.9;filter:drop-shadow(0 0 18px rgba(0,0,0,.6))}
+.tk.v2 .scene .grave{position:absolute;right:14px;bottom:-6px;width:70px;z-index:2;filter:drop-shadow(0 4px 6px rgba(0,0,0,.6))}
+.tk.v2 .scene .bone{position:absolute;left:12px;bottom:4px;width:66px;z-index:2;transform:rotate(-8deg);filter:drop-shadow(0 4px 6px rgba(0,0,0,.6))}
+.tk.v2 .scene .no{position:absolute;right:14px;top:12px;z-index:3;font-family:'Nanum Gothic Coding',monospace;font-size:9px;letter-spacing:2px;color:#C8B79A}
+.tk.v2 .scene .nm{position:absolute;left:0;right:0;top:40px;z-index:3;text-align:center;font-family:'Do Hyeon',sans-serif;font-size:40px;color:#F6EEE4;letter-spacing:-1px;
+  text-shadow:0 3px 0 rgba(0,0,0,.55),0 0 18px rgba(0,0,0,.6)}
+.tk.v2 .scene .nm b{font-weight:400;color:#FF5A5F}
+.tk.v2 .lead{color:#CFC4BA}
+.tk.v2 .more[open] .how{background:url(img/v2/parch.webp) center/100% 100% no-repeat;padding:24px 26px 26px;margin:0 -6px}
+.tk.v2 .more[open] .how div{color:#3A2A1E;font-weight:500}
+.tk.v2 .more[open] .how div::before{background:#8E1F24}
+nav .nb{display:flex;flex-direction:column;align-items:center;gap:2px}
+nav .nb .ic2{height:26px;width:auto;opacity:.5;filter:grayscale(.7);transition:opacity .2s,filter .2s}
+nav .nb.on .ic2{opacity:1;filter:none}
+nav .nb.on::after{bottom:-4px}
+.crew,.game{background:#1b181d url(img/v2/stone.webp) center/320px;background-blend-mode:multiply;border-color:#3a3136}
+.chip{border-radius:0;clip-path:polygon(7px 0,100% 0,100% 100%,0 100%,0 7px);border-color:transparent;background:#2a2428}
+.chip.on{background:var(--red)}
+.cattabs{border-radius:0;clip-path:polygon(9px 0,100% 0,100% 100%,0 100%,0 9px)}
+.searchbox input{border-radius:0}
+span[onclick="askNick('login')"]{display:inline-flex !important;align-items:center;gap:10px;background:url(img/v2/parch.webp) center/100% 100% no-repeat !important;
+  color:#3A2A1E !important;border-radius:0 !important;padding:16px 26px 16px 20px !important;font-size:14px !important}
+span[onclick="askNick('login')"]::before{content:'';width:34px;height:34px;background:url(img/v2/seal.webp) center/contain no-repeat;flex:none}
+.crowd{position:relative;height:70px;width:358px;max-width:calc(100% - 24px);margin:10px auto 0;border-bottom:1px solid rgba(232,200,160,.14)}
+.crowd img{position:absolute;bottom:0;filter:drop-shadow(0 3px 4px rgba(0,0,0,.6))}
+.crowd .c1{left:14%;height:52px}.crowd .c2{left:46%;height:62px}.crowd .c3{right:12%;height:64px}
+
 </style>
 </head>
 <body>
@@ -504,11 +538,12 @@ footer a{color:#7a8290}
 </div>
 
 <div class="lhero">
-  <img class="veh" src="../v/A3_night.webp" alt="">
-  <div class="tk">
-    <div class="tbody">
+  <div class="tk v2">
+    <div class="scene" aria-hidden="false">
+      <img class="sky" src="img/v2/symbol_scene.webp" alt="첫밤 사망자 클럽 — 달밤의 비석">
       <div class="no">PLATFORM 02</div>
-      <div class="nm">첫밤 사망자 클럽</div>
+    </div>
+    <div class="tbody">
       <div class="lead">맨날 첫 밤에 죽는 사람들이 모여 마피아와 보드게임을 합니다.
         잘하는 사람만 오는 자리가 아니라, 죽어도 재밌게 죽는 자리예요.</div>
       <details class="more">
@@ -519,7 +554,7 @@ footer a{color:#7a8290}
           <div>그날 할 게임은 미리 다같이 골라요 — 게임 도감에서 찜하면 집계돼요</div>
           <div>끝나면 근처에서 2차. 부담 없이 먼저 가셔도 됩니다</div>
           <div>참가비는 공간 대여비를 나눠 내는 정도예요 (회차당 1만원 안팎)</div>
-          <div>모집은 문토와 오픈채팅으로 열려요. 정모일정에서 신청할 수 있어요</div>
+          <div>모집은 문토와 오픈채팅으로 열려요. 일정에서 신청할 수 있어요</div>
           <div id="hsub"></div>
         </div>
       </details>
@@ -529,9 +564,9 @@ footer a{color:#7a8290}
 
 <nav>
   <div class="nbrow">
-    <div class="nb on" data-v="games" onclick="setView('games')"><span class="tx">게임 도감</span></div>
-    <div class="nb" data-v="sched" onclick="setView('sched')"><span class="tx">정모일정</span></div>
-    <div class="nb" data-v="me"    onclick="setView('me')"><span class="tx">내 활동</span></div>
+    <div class="nb on" data-v="games" onclick="setView('games')"><img class="ic2" src="img/v2/i_skull.webp" alt=""><span class="tx">게임 도감</span></div>
+    <div class="nb" data-v="sched" onclick="setView('sched')"><img class="ic2" src="img/v2/i_candle.webp" alt=""><span class="tx">일정</span></div>
+    <div class="nb" data-v="me"    onclick="setView('me')"><img class="ic2" src="img/v2/i_seal.webp" alt=""><span class="tx">내 활동</span></div>
     <div class="nb" data-v="members" id="navMembers" style="display:none" onclick="setView('members')"><span class="tx">회원관리</span></div>
   </div>
 </nav>
@@ -579,6 +614,8 @@ footer a{color:#7a8290}
 <section class="view" id="v-members"><div id="memBody"></div></section>
 
 
+<div class="crowd" aria-hidden="true"><img class="c1" src="img/v2/twig.webp" alt=""><img class="c2" src="img/v2/candle.webp" alt=""><img class="c3" src="img/v2/crow.webp" alt=""></div>
+
 <div class="overlay" id="ov" style="display:none" onclick="if(event.target===this)closeM()">
   <div class="modal" id="modal"></div>
 </div>
@@ -589,7 +626,7 @@ footer a{color:#7a8290}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="../tunel.js?v=42"></script>
+<script src="../tunel.js?v=43"></script>
 <script src="api.js?v=round1"></script>
 <script src="games.js?v=5"></script>
 <script src="games_db.js?v=2"></script>
@@ -598,7 +635,7 @@ footer a{color:#7a8290}
 <script src="js/auth.js?v=5"></script>
 <script src="js/catalog.js?v=1"></script>
 <script src="js/sched.js?v=7"></script>
-<script src="js/people.js?v=2"></script>
+<script src="js/people.js?v=3"></script>
 <script src="js/records.js?v=5"></script>
 <script src="js/dangsan.js?v=1"></script>
 <script src="js/detail.js?v=1"></script>
