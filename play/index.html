@@ -112,8 +112,6 @@ ul.pt li::before{content:'';position:absolute;left:0;top:8px;width:6px;height:6p
 footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);
   font-size:11px;color:#8A9188;text-align:center;line-height:1.8}
 footer a{color:#8A9188}
-/* 일정 앞 잔디밭 띠 — 노선 판 아래로 잔디가 깔리고 그 위에 티켓이 선다 (2026-09-23 햇살님 «일정 앞에 잔디밭 하나 만들자») */
-.grass{height:84px;margin:-2px 0 16px;background:url(../v/play_grass_band.webp) center bottom/cover no-repeat;border-radius:0 0 10px 10px}
 </style>
 </head>
 <body>
@@ -147,6 +145,7 @@ footer a{color:#8A9188}
 
 <nav>
   <div class="nbrow">
+    <div class="nb" data-v="meadow" onclick="setView('meadow')">잔디밭</div>
     <div class="nb on" data-v="sched" onclick="setView('sched')">일정</div>
     <div class="nb" data-v="about" onclick="setView('about')">소개</div>
   </div>
@@ -154,8 +153,16 @@ footer a{color:#8A9188}
 
 <main class="wrap">
 
+<!-- 잔디밭 — 모임 당일 현장 공간(사진·투표·뒤풀이 조). 2026-09-23 햇살님 «일정 앞에 잔디밭이라는 탭을 만들어».
+     현장 페이지(play/meadow/, 코덱스 구현)는 서버 개통 전이라 아직 링크를 걸지 않는다 — 열리면 아래 안내를 입장 버튼으로 바꾼다 -->
+<section class="view" id="v-meadow">
+  <div class="lab">오늘의 잔디밭</div>
+  <div class="card"><h2>모임 날, 여기가 우리 돗자리예요</h2>
+    <p>당일 현장에서 찍은 사진을 올리고, 마음에 드는 사진에 한 표. 다음 순서 안내와 뒤풀이 조도 여기서 봐요.</p>
+    <ul class="pt"><li>10월 3일 1회 당일에 열려요</li><li>현장에서 알려드리는 행사 코드로 들어와요</li><li>사진은 올린 사람이 동의한 것만 같이 봐요</li></ul></div>
+</section>
+
 <section class="view on" id="v-sched">
-  <div class="grass" aria-hidden="true"></div>
   <div class="lab">다가오는 모임</div>
   <div id="schedList"></div>
 </section>
