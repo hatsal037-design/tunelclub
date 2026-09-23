@@ -217,7 +217,7 @@ footer a{color:#98A0A6}
 
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="../tunel.js?v=43"></script>
+<script src="../tunel.js?v=44"></script>
 <script>
 function setView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on', x.id==='v-'+v));
@@ -225,7 +225,7 @@ function setView(v){
   history.replaceState(null,'','#'+v);
 }
 { const v=(location.hash||'#sched').slice(1); setView(['sched','me'].includes(v)?v:'sched'); }
-TUNEL.meCorner(document.getElementById('meCorner'));
+TUNEL.meCorner(document.getElementById('meCorner'), 'library');
 TUNEL.lineActivity(document.getElementById('actBox'), 'library');
 
 /* 일정 — 서버(meetings)에서 이 노선 것만. 지난 회차는 아래에 흐리게 */

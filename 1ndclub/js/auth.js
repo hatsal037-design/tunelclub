@@ -70,8 +70,9 @@ function myMemberNo(){
 function renderMe(){
   const att = acc ? myAttendance() : 0;
   document.getElementById('meBox').innerHTML = acc
-    ? `<span class="nk">${acc.nick}</span>${att?`<span class="attmini">${att}회</span>`:''}${isAdmin()?'<br><span class="adm">관리자</span>':acc.role==='staff'?'<br><span class="adm staff">운영진</span>':''}`
-    : `<span class="nk">로그인 ›</span>`;
+    /* 모든 노선이 같은 명찰 — 닉네임 + «No.0012 · 이 노선 n회», 누르면 이 노선 내 활동 (tunel.js meCorner 와 같은 말) */
+    ? `<span class="nk">${acc.nick}</span><small>${[myMemberNo()?'No.'+myMemberNo():'', att?att+'회':''].filter(Boolean).join(' · ')}</small>`
+    : `<span class="nk out">로그인</span>`;
   document.getElementById('hsub').textContent =
     `지금 보유 게임 ${GAMES.filter(g=>g.have!==false).length}종 · 잡아둔 회차 ${upcoming.length}개`;
   document.getElementById('navMembers').style.display = isStaff() ? '' : 'none';
