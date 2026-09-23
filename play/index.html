@@ -112,6 +112,8 @@ ul.pt li::before{content:'';position:absolute;left:0;top:8px;width:6px;height:6p
 footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);
   font-size:11px;color:#8A9188;text-align:center;line-height:1.8}
 footer a{color:#8A9188}
+/* 일정 앞 잔디밭 띠 — 노선 판 아래로 잔디가 깔리고 그 위에 티켓이 선다 (2026-09-23 햇살님 «일정 앞에 잔디밭 하나 만들자») */
+.grass{height:84px;margin:-2px 0 16px;background:url(../v/play_grass_band.webp) center bottom/cover no-repeat;border-radius:0 0 10px 10px}
 </style>
 </head>
 <body>
@@ -153,12 +155,9 @@ footer a{color:#8A9188}
 <main class="wrap">
 
 <section class="view on" id="v-sched">
+  <div class="grass" aria-hidden="true"></div>
   <div class="lab">다가오는 모임</div>
   <div id="schedList"></div>
-  <div class="note">
-    날짜가 정해지면 이 자리와 투넬 중앙역 전체일정에 함께 올라와요.
-    비 오면 실내 보드게임카페로 옮기거나 다음 주로 미룹니다.
-  </div>
 </section>
 
 <section class="view" id="v-about">
