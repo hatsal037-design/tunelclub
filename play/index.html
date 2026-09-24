@@ -186,6 +186,9 @@ main.wrap{position:relative;z-index:0}
 footer{margin-top:0}
 
 .note a{color:var(--green-deep);font-weight:700}
+.gobtn{display:flex;align-items:center;justify-content:center;min-height:48px;margin-top:14px;background:var(--yellow);color:var(--ink);font-weight:800;font-size:14px;
+  text-decoration:none;border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.gobtn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
 </style>
 </head>
 <body>
@@ -240,7 +243,8 @@ footer{margin-top:0}
   <div class="lab">오늘의 잔디밭</div>
   <div class="card has-board"><img class="board" src="img/board.webp" alt=""><span class="chalk">10.3<br>OPEN</span><h2>모임 날, 여기가<br>우리 돗자리예요</h2>
     <p>당일 현장에서 찍은 사진을 올리고, 마음에 드는 사진에 한 표. 다음 순서 안내와 뒤풀이 조도 여기서 봐요.</p>
-    <ul class="pt"><li>10월 3일 1회 당일에 열려요</li><li>현장에서 알려드리는 행사 코드로 들어와요</li><li>사진은 올린 사람이 동의한 것만 같이 봐요</li></ul></div>
+    <ul class="pt"><li>10월 3일 1회 당일에 열려요</li><li>현장에서 알려드리는 행사 코드로 들어와요</li><li>사진은 올린 사람이 동의한 것만 같이 봐요</li></ul>
+    <a class="gobtn" href="meadow/">잔디밭 들어가기 →</a></div>
 </section>
 
 <section class="view on" id="v-sched">

@@ -375,12 +375,12 @@ async function renderMembers(){
   body.innerHTML=`
     <div class="label">회원 ${MEMS.length}명</div>
     ${agg}
-    <div class="notice">오픈톡방 닉네임은 단톡방 대조·참가비 확인용이에요. 참가자에게는 안 보입니다.</div>
+    <div class="notice">입금자 실명은 계좌이체 대조용이에요. 참가자에게는 안 보입니다.</div>
     <div style="margin-top:12px">${MEMS.map((m,i)=>`
       <div class="mem${m.admin?' adm':''}${m.role==='banned'?' ban':''}">
         <div class="top">
           <span class="nm">${m.nick}</span>
-          <span class="pn">${m.payname||'톡방닉 없음'}</span>
+          <span class="pn">${m.payname||'실명 없음'}</span>
           ${m.admin?'<span class="tag">관리자</span>':m.role==='banned'?'<span class="tag ban">정지</span>':m.role==='staff'?'<span class="tag staff">운영진</span>':m.scribe?'<span class="tag scribe">서기</span>':m.scribeReady?'<span class="tag ready">서기 대기</span>':''}
         </div>
         <div class="sub2">
@@ -405,7 +405,7 @@ function memEdit(i){
     <h2>${m.nick}</h2>
     <div class="mdesc">닉네임을 바꾸면 옛 이름이 기록에 남아 지난 활동이 계속 잡힙니다.</div>
     <div class="fld"><label>닉네임</label><input id="m_nick" value="${m.nick}"></div>
-    <div class="fld"><label>오픈톡방 닉네임</label><input id="m_pay" value="${m.payname||''}"></div>
+    <div class="fld"><label>입금자 실명</label><input id="m_pay" value="${m.payname||''}"></div>
     <div id="joinErr" style="display:none;color:var(--red-lite);font-size:12px;margin-top:9px"></div>
     <div class="mbtns"><button class="mbtn" id="authBtn" onclick="memSave(${i})">저장</button></div>
     <button class="mclose" onclick="closeM()">닫기</button>`;
