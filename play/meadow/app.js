@@ -174,7 +174,24 @@ function viewVote(){
   ${e.mvp_open?`<div class="people">${others.map(p=>`<button class="pick${mv.my===p.id?' on':''}" data-mvp="${esc(p.id)}" type="button">${esc(p.nick)}</button>`).join('')}</div>
    ${mv.my?`<p class="muted" style="margin-top:8px">내 한 표 → <b>${esc(nickOf(mv.my))}</b></p>`:''}`:''}
   ${mv.tally&&mv.tally.length?`<div class="sep"></div><h3>${e.mvp_reveal?'결과':'지금까지 (운영진만 보여요)'}</h3><ul class="tally">${mv.tally.slice(0,5).map((t,i)=>`<li><span class="rank">${i+1}</span><div>${esc(t.nick)}<div class="bar" style="width:${t.votes*100/mv.tally[0].votes}%"></div></div><span class="n">${t.votes}</span></li>`).join('')}</ul>`:''}
- </section>`;
+ </section>${loveHTML()}`;
+}
+
+
+/* ── 좋알람 (행사) — 운영진이 열면 한 명을 가리키고, 서로 가리키면 둘에게만 연락처가 열린다 ── */
+let lovePick=null;
+function loveHTML(){
+ const L=S.love||{};if(!L.enabled)return '';
+ const others=S.people.filter(p=>p.id!==S.me.id);
+ let body;
+ if(L.matched)body=`<p>서로 가리켰어요</p><div class="big" style="font-size:36px;margin-top:4px">${esc(L.target.nick)}</div><div class="stack" style="margin-top:10px">${TUNEL._jaContact(L.their_insta,L.their_kakao)}</div>`;
+ else if(L.target)body=`<p>가리키는 사람 · <b>${esc(L.target.nick)}</b></p><p class="muted">서로 가리키면 둘에게만 연락처가 열려요.</p><button class="link red" data-loveclear type="button">거두기</button>`;
+ else body=`<p class="muted">한 명을 가리켜요. 서로 가리키면 둘에게만 연락처가 열려요.</p>
+  <div class="people">${others.map(p=>`<button class="pick${lovePick===p.id?' on':''}" data-love="${esc(p.id)}" type="button">${esc(p.nick)}</button>`).join('')}</div>
+  <input id="loveIn" type="text" maxlength="60" autocapitalize="off" placeholder="내 인스타그램 ID" style="margin-top:10px" value="${esc(L.insta||'')}">
+  <input id="loveKa" type="text" maxlength="120" autocapitalize="off" placeholder="내 카카오톡 ID 또는 오픈채팅 링크" style="margin-top:8px" value="${esc(L.kakao||'')}">
+  <button class="btn wide" data-lovego type="button" style="margin-top:10px"${lovePick?'':' disabled'}>가리키기</button>`;
+ return `<div class="lab">좋알람</div><section class="card cream">${body}</section>`;
 }
 
 /* ── 운영 ─────────────────────────────────────────── */
@@ -211,7 +228,7 @@ function viewHost(){
 
  <div class="lab">투표</div>
  <section class="card">${sw('voting_open',e.voting_open,'오늘의 사진 투표','')}${sw('photo_reveal',e.photo_reveal,'사진 결과 공개','')}
-  ${sw('mvp_open',e.mvp_open,'마피아 MVP 투표','')}${sw('mvp_reveal',e.mvp_reveal,'MVP 결과 공개','')}</section>
+  ${sw('mvp_open',e.mvp_open,'마피아 MVP 투표','')}${sw('mvp_reveal',e.mvp_reveal,'MVP 결과 공개','')}${sw('love_open',e.love_open,'좋알람','')}</section>
 
  <div class="lab">뒤풀이</div>
  <section class="card stack"><p>남는다고 한 사람 ${S.people.filter(p=>p.after).length}명 · 지금 ${e.after_mode==='groups'?'작은 조로 나눠 있어요':'다 같이'}</p>
@@ -222,8 +239,14 @@ function viewHost(){
 }
 
 /* ── 그리기 ───────────────────────────────────────── */
+let loveShown=false;
+function loveMatchCheck(){
+ const L=S?.love;if(!L?.new_match||loveShown)return;loveShown=true;
+ TUNEL.joalarmMatch({nick:L.target.nick,insta:L.their_insta,kakao:L.their_kakao},async()=>{try{const d=await server.rpc('love_ack');if(d?.joined!==undefined)S=d;}catch(e){}loveShown=false;render();});
+}
 function render(){
  if(!S)return;
+ loveMatchCheck();
  if(!S.joined)return viewJoin();
  $('#tabs').hidden=false;$('#hostTab').hidden=!S.is_host;
  if(tab==='host'&&!S.is_host)tab='now';
@@ -248,6 +271,10 @@ document.addEventListener('click',async ev=>{
  if(d.chatrm)return act('chat_remove',{id:+d.chatrm});
  if(d.vote)return act('vote',{photo_id:d.vote},'한 표 넣었어요');
  if(d.mvp)return act('mvp_vote',{target_id:d.mvp},'MVP 한 표 넣었어요');
+ if(d.love){lovePick=d.love;document.querySelectorAll('[data-love]').forEach(x=>x.classList.toggle('on',x===b));const g=document.querySelector('[data-lovego]');if(g)g.disabled=false;return;}
+ if(d.lovego!==undefined){const i=($('#loveIn')?.value||'').trim(),k=($('#loveKa')?.value||'').trim();if(!i&&!k)return toast('인스타나 카카오톡 중 하나는 적어 주세요');const r=await act('love_pick',{target_id:lovePick,insta:i,kakao:k},'가리켰어요');if(r)lovePick=null;return;}
+ if(d.kkid)return TUNEL._jaKakao(d.kkid);
+ if(d.loveclear!==undefined){lovePick=null;return act('love_clear',{},'거뒀어요');}
  if(d.photorm){if(b.dataset.sure!=='1'){b.dataset.sure='1';b.textContent='한 번 더 누르면 내려요';return;}
   const r=await act('photo_remove',{id:d.photorm},'사진을 내렸어요');if(r?.removed_path&&!DEMO)TUNEL.sb().storage.from('meadow-photos').remove([r.removed_path]).catch(()=>{});return;}
  if(d.annrm)return act('announce_remove',{id:+d.annrm},'공지를 내렸어요');

@@ -12,7 +12,8 @@
   const ev={id:'demo',slug:'hangang-2026-10-03',title:'어른이 놀이터 1회-한강 수건돌리기 마피아',date:'2026-10-03',capacity:26,
    activity:'모여서 쉬어요',return_at:null,notice:'',voting_open:true,after_mode:'together',revision:1,join_open:true,
    schedule:[['15:00','모여서 인사해요'],['15:20','수건돌리기'],['16:00','쉬는 시간 · 맥주 한 캔'],['16:30','마피아'],['17:30','노을과 사진'],['18:30','사진 투표 · MVP 발표'],['19:00','남는 사람끼리 뒤풀이']],
-   now_idx:1,mvp_open:true,mvp_reveal:false,photo_reveal:false,teams_title:'수건돌리기 조'};
+   now_idx:1,mvp_open:true,mvp_reveal:false,photo_reveal:false,teams_title:'수건돌리기 조',love_open:true};
+  let love={target:null,insta:'',kakao:'',seen:false};
   let seq=10;
   const ann=[{id:2,body:'수건돌리기 시작해요! 돗자리 옆 큰 원으로 모여 주세요.',at:ago(3)},{id:1,body:'도착하면 초록 체크 돗자리로 오세요. 아이스박스에 맥주 있어요.',at:ago(25)}];
   const chat=[[3,'도착! 돗자리 어디예요?',24],[5,'망원 1번 출구 쪽 잔디요',23],[0,'초록 체크 돗자리예요. 버스 모형 있는 데!',22],[8,'수건 누가 갖고 있어요ㅋㅋ',6],[2,'노을 5시 반쯤이래요',4],[11,'맥주 시원하다',2]]
@@ -35,7 +36,9 @@
     photos:photos.filter(p=>!p.removed).map(p=>({id:p.id,member_id:p.member_id,nick:nick(p.member_id),path:p.url,caption:p.caption,contest:p.contest,votes:host||ev.photo_reveal?cnt(p.id):null,mine:p.member_id===meId})),
     my_vote:votes.get(meId)||null,photo_voters:votes.size,groups,teams,team_history:host?history:null,
     announcements:ann.slice(0,20),chat:chat.slice(-80).map(c=>({...c,nick:nick(c.member_id),mine:c.member_id===meId})),
-    mvp:{my:mvp.get(meId)||null,voters:mvp.size,tally:host||ev.mvp_reveal?tally:null}}));
+    mvp:{my:mvp.get(meId)||null,voters:mvp.size,tally:host||ev.mvp_reveal?tally:null},
+    love:{enabled:ev.love_open,target:love.target?{id:love.target,nick:nick(love.target)}:null,insta:love.insta,kakao:love.kakao,
+     matched:love.target==='p5',new_match:love.target==='p5'&&!love.seen,their_insta:love.target==='p5'?'jandi_fairy':null,their_kakao:love.target==='p5'?'https://open.kakao.com/o/demo':null}}));
   }
   const api={
    demo:true,
@@ -54,6 +57,9 @@
      case 'vote':if(!ev.voting_open)return err('VOTING_CLOSED','지금은 투표 시간이 아니에요.');votes.set(meId,p.photo_id);break;
      case 'photo_remove':{const ph=photos.find(x=>x.id===p.id);if(ph&&(ph.member_id===meId||asHost)){ph.removed=true;for(const [k,v] of votes)if(v===ph.id)votes.delete(k);}break;}
      case 'teams':teams=p.teams;ev.teams_title=p.title||'';history=history.concat(p.teams);break;
+     case 'love_pick':if(!ev.love_open)return err('LOVE_CLOSED','지금은 좋알람 시간이 아니에요.');love={target:p.target_id,insta:p.insta||'',kakao:p.kakao||'',seen:false};break; /* 미리보기에선 «잔디요정»을 고르면 서로 가리킨 걸로 보인다 */
+     case 'love_clear':love={target:null,insta:'',kakao:'',seen:false};break;
+     case 'love_ack':love.seen=true;break;
      case 'teams_clear':teams=[];ev.teams_title='';break;
      case 'after':{const me=people.find(x=>x.id===meId);me.after=!!p.enabled;groups=[];break;}
      case 'groups':groups=p.groups;ev.after_mode='groups';break;
