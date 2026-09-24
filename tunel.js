@@ -773,21 +773,82 @@ const TUNEL = {
      들어가는 길: 마이페이지·내 활동의 하트 하나. 한 번 누르면 설명, 2초 안에 다섯 번 누르면 열린다(햇살님 2026-09-25).
      서버는 «내 지목»과 «서로 가리킨 짝»만 돌려준다 — 누가 나를 가리켰는지는 어디에도 없다. */
   _jaN:0, _jaT:0,
+  /* 하트 — 3회 전 회색(가만히), 열린 뒤 빨강(박동). 한 번 = 안내, 네 번 = 좋알람 (2026-09-25 햇살님 «4번 누르기»).
+     계정 설정의 좋알람 줄도 같은 규칙(TUNEL.joalarmTap). */
+  _jaSt:null,
+  async _jaState(){ if(TUNEL._jaSt) return TUNEL._jaSt; try{ const { data } = await sb().rpc('love_state'); TUNEL._jaSt = data || { eligible:false }; }catch(e){ TUNEL._jaSt = { eligible:false }; } return TUNEL._jaSt; },
   joalarmHeart(){
     TUNEL._jaCSS();
+    setTimeout(async () => { const st = await TUNEL._jaState(); document.querySelectorAll('.jaheart').forEach(h => h.classList.toggle('live', !!st.eligible)); }, 0);
     return `<button class="jaheart" type="button" aria-label="좋알람" onclick="TUNEL.joalarmTap(this)"><svg viewBox="0 0 24 22" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.6 2 4.3 5.9 3.6 8.5 3.1 10.6 4.6 12 6.6c1.4-2 3.5-3.5 6.1-3 3.9.7 5.5 5 3.9 8.1C19.5 16.4 12 21 12 21z"/></svg></button>`;
   },
-  joalarmTap(btn){
-    const now=Date.now(); if(now-TUNEL._jaT>2000) TUNEL._jaN=0; TUNEL._jaT=now; TUNEL._jaN++;
-    if(btn){ btn.classList.remove('beat'); void btn.offsetWidth; btn.classList.add('beat'); }
-    if(TUNEL._jaN===1 && btn){
-      let tip=btn.parentElement.querySelector('.jatip');
-      if(tip){ tip.remove(); }
-      else{ tip=document.createElement('div'); tip.className='jatip';
-        tip.innerHTML=`<b>좋알람</b>한 명을 가리키고, 서로 가리키면 두 사람에게만 연락처가 열려요. 누가 나를 가리켰는지는 알 수 없어요.<br><small>3번 넘게 참석하면 열려요 · 하트를 다섯 번 누르면 들어가요</small>`;
-        btn.insertAdjacentElement('afterend',tip); }
+  _jaSheetCSS(){
+    if(!document.getElementById('tnl-ja-css')){
+      const st=document.createElement('style'); st.id='tnl-ja-css'; st.textContent=`
+.jaov{position:fixed;inset:0;z-index:4000;background:rgba(8,6,10,.72);display:flex;align-items:flex-end;justify-content:center}
+.jasheet{width:100%;max-width:430px;max-height:86vh;overflow:auto;background:#1F1C21;color:#EDE4D3;padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+  border-top:2px solid #B08D3E;box-shadow:0 -10px 30px rgba(0,0,0,.5);font-family:'Pretendard',sans-serif}
+.jasheet h3{font-size:18px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.jasheet h3 button{background:none;border:0;color:#9A907F;font-size:22px;cursor:pointer;min-width:44px;min-height:44px}
+.jasheet p{font-size:13px;line-height:1.7;color:#B9AE9A;margin-top:6px}
+.jasheet .big{font-size:24px;font-weight:800;color:#F2E2B8;margin-top:10px}
+.jasheet .ct{margin-top:10px;padding:12px 14px;background:#141216;border:1px dashed #6B5A36;font-family:'Nanum Gothic Coding',monospace;font-size:16px;color:#F2E2B8;word-break:break-all}
+.jasheet .cands{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
+.jasheet .cand{min-height:44px;background:#141216;border:1px solid #4A4038;color:#E2D8C6;font-size:13.5px;font-weight:700;cursor:pointer}
+.jasheet .cand small{display:block;font-size:10.5px;font-weight:400;color:#8F857A}
+.jasheet .cand.on{border-color:#D9B45E;background:#3A2F18;color:#F2E2B8}
+.jasheet input{width:100%;min-height:44px;margin-top:12px;background:#141216;border:0;border-bottom:1.5px solid #6B5A36;color:#EDE4D3;font-size:14px;padding:0 12px;box-sizing:border-box}
+.jasheet .go{width:100%;min-height:46px;margin-top:12px;border:0;border-radius:2px;background:#B08D3E url(/v/bar1_brass.webp) center/cover;color:#2A1D08;font-weight:800;font-size:14.5px;cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,240,200,.5),inset 0 -2px 0 rgba(60,40,10,.45)}
+.jasheet .go[disabled]{opacity:.4}
+.jasheet .lk{display:block;margin:16px auto 0;background:none;border:0;border-bottom:1px dashed currentColor;color:#9A907F;font-size:12px;padding:6px 2px 1px;cursor:pointer}
+.jasheet .err{color:#FF9BA0;font-size:12px;margin-top:8px;min-height:1em}
+.jasheet input[type=search]{margin-top:14px}
+.jalist{margin-top:6px}
+.jarow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:50px;border-bottom:1px dashed #3A332C}
+.jarow span{font-size:14.5px;font-weight:700;color:#EDE4D3}
+.jarow small{display:block;font-size:11px;font-weight:400;color:#8F857A;margin-top:2px}
+.japick{min-width:64px;min-height:36px;border:1px solid #6B5A36;background:none;color:#D9B45E;font-weight:700;font-size:12.5px;cursor:pointer}
+.japick.on{background:#3A2F18;border-color:#D9B45E;color:#F2E2B8}
+.jamiss{font-size:12.5px;color:#8F857A;padding:10px 0}
+.jasel{display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding:12px 0 4px;border-top:1px solid #3A332C}
+.jasel span{font-size:12px;color:#8F857A}.jasel b{font-size:18px;color:#F2E2B8}
+.jawarn{color:#D9B45E !important;font-size:12px !important}
+.jasheet [hidden]{display:none !important}`; document.head.appendChild(st);
     }
-    if(TUNEL._jaN>=5){ TUNEL._jaN=0; btn?.parentElement.querySelector('.jatip')?.remove(); TUNEL.joalarmOpen(); }
+  },
+  _jaTimer:null,
+  joalarmTap(btn){
+    const now=Date.now(); if(now-TUNEL._jaT>1500) TUNEL._jaN=0; TUNEL._jaT=now; TUNEL._jaN++;
+    if(btn){ btn.classList.remove('beat'); void btn.offsetWidth; btn.classList.add('beat'); }
+    clearTimeout(TUNEL._jaTimer);
+    if(TUNEL._jaN>=4){ TUNEL._jaN=0; TUNEL._jaState().then(st => st.eligible ? TUNEL.joalarmOpen() : TUNEL.joalarmGuide()); return; }
+    TUNEL._jaTimer = setTimeout(() => { if(TUNEL._jaN<4){ TUNEL._jaN=0; TUNEL.joalarmGuide(); } }, 450);   /* 더 안 누르면 안내 */
+  },
+  /* 안내 — 크게: 원리 한 문장·그림 / 중간: 쓰는 법 세 장·햇살 한마디 / 작게: 규칙 */
+  async joalarmGuide(){
+    TUNEL._jaCSS(); TUNEL._jaSheetCSS(); document.getElementById('tnlJa')?.remove();
+    const st = await TUNEL._jaState();
+    const P=`<svg class="p" viewBox="0 0 40 48" aria-hidden="true"><circle cx="20" cy="13" r="9"/><path d="M3 47c0-10 7.6-17 17-17s17 7 17 17z"/></svg>`;
+    const H=`<svg viewBox="0 0 24 22" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.6 2 4.3 5.9 3.6 8.5 3.1 10.6 4.6 12 6.6c1.4-2 3.5-3.5 6.1-3 3.9.7 5.5 5 3.9 8.1C19.5 16.4 12 21 12 21z"/></svg>`;
+    const shot=(n,t)=>`<figure><img src="/v/ja_${n}.webp" alt="" loading="lazy"><figcaption><i>${n}</i>${t}</figcaption></figure>`;
+    const ov=document.createElement('div'); ov.id='tnlJa'; ov.className='jaov';
+    ov.innerHTML=`<div class="jaguide" role="dialog" aria-label="좋알람 안내">
+      <div class="jg-top"><span class="jg-h${st.eligible?'':' g'}">${H}</span>좋알람<button type="button" data-x aria-label="닫기">×</button></div>
+      <div class="jg-big">서로 가리킬 때만<br><em>두 사람에게</em> 열려요</div>
+      <div class="jg-fig">
+        <div class="lane one">${P}<div class="ar"></div>${P}</div><p class="cap">한쪽만이면 상대도 운영진도 몰라요</p>
+        <div class="lane on">${P}<div class="ar">${H}</div>${P}</div><p class="cap">서로면 그 순간 인스타·카톡이 열려요</p>
+      </div>
+      <div class="jg-how">${shot(1,'검색해 고르기')}${shot(2,'연락처 적고 확인')}${shot(3,'서로면 바로 연결')}</div>
+      <p class="jg-why">지내다 보면 호감이 생기는 건 자연스러워요. 다만 고백했다 어색해지면 누군가는 모임을 떠나게 돼요. 고백 대신 여기를 써 주세요.<span>— 햇살</span></p>
+      <div class="jg-rules">세 번 참석하면 열려요 · 세 번 넘게 만난 사람만<br>정하면 한 달은 못 바꿔요 · 끌 수 있어요<br>
+        <b>${st.eligible?'하트를 네 번 누르면 들어가요':'아직 열리지 않았어요'}</b></div></div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => {
+      if(e.target===ov || e.target.closest('[data-x]')) return ov.remove();
+      const img=e.target.closest('.jg-how img'); if(img){ const z=document.createElement('div'); z.className='jgzoom'; z.innerHTML=`<img src="${img.src}" alt="">`; z.onclick=()=>z.remove(); document.body.appendChild(z); }
+    });
   },
   /* 연락처 버튼 — 인스타는 프로필로, 카카오톡은 오픈채팅 링크면 바로 열고 ID 면 복사한 뒤 카카오톡을 연다 */
   _jaContact(insta, kakao){
@@ -829,16 +890,40 @@ const TUNEL = {
     if(document.getElementById('tnl-jah-css')) return;
     const st=document.createElement('style'); st.id='tnl-jah-css'; st.textContent=`
 .jaheart{position:absolute;right:10px;top:10px;z-index:3;width:44px;height:44px;border:0;background:none;padding:10px;cursor:pointer}
-.jaheart svg{width:100%;height:100%;display:block;fill:#C8323C;filter:drop-shadow(0 1px 0 rgba(255,180,180,.35)) drop-shadow(0 2px 3px rgba(0,0,0,.5));
-  transform-origin:50% 60%;animation:jalub 1.3s ease-in-out infinite}
+.jaheart svg{width:100%;height:100%;display:block;fill:#5A5450;transform-origin:50% 60%}
+.jaheart.live svg{fill:#C8323C;filter:drop-shadow(0 1px 0 rgba(255,180,180,.35)) drop-shadow(0 2px 3px rgba(0,0,0,.5));animation:jalub 1.3s ease-in-out infinite}
 .jaheart.beat svg{animation:jabeat .28s ease-out}
 /* 심장 박동 — 쿵(크게)·쿵(작게) 두 번 뛰고 쉰다 */
 @keyframes jalub{0%,100%{transform:scale(1)}12%{transform:scale(1.16)}22%{transform:scale(.98)}32%{transform:scale(1.1)}46%{transform:scale(1)}}
 @keyframes jabeat{40%{transform:scale(1.25)}}
-@media (prefers-reduced-motion:reduce){.jaheart svg,.jaheart.beat svg{animation:none}}
-.jatip{position:absolute;right:10px;top:54px;z-index:4;width:min(260px,80%);text-align:left;background:#141216;color:#E2D8C6;border:1px solid #6B5A36;padding:11px 13px;font-size:12px;line-height:1.65;box-shadow:0 8px 18px rgba(0,0,0,.5)}
-.jatip b{display:block;font-size:13px;color:#F2E2B8;margin-bottom:3px}
-.jatip small{display:block;margin-top:6px;color:#B08D3E;font-size:11px}
+@media (prefers-reduced-motion:reduce){.jaheart svg,.jaheart.beat svg,.jaheart.live svg{animation:none}}
+.jaguide{width:100%;max-width:430px;max-height:94vh;overflow:auto;background:#1F1C21;color:#EDE4D3;border-top:2px solid #B08D3E;padding:14px 24px calc(22px + env(safe-area-inset-bottom));box-sizing:border-box;font-family:'Pretendard',sans-serif}
+.jg-top{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:3px;color:#B08D3E}
+.jg-top button{margin-left:auto;background:none;border:0;color:#8F857A;font-size:24px;width:44px;height:44px;cursor:pointer}
+.jg-h svg{width:18px;height:17px;fill:#C8323C;display:block}.jg-h.g svg{fill:#5A5450}
+.jg-big{font-size:28px;font-weight:800;line-height:1.3;letter-spacing:-.8px;margin-top:10px}
+.jg-big em{font-style:normal;color:#E0535B}
+.jg-fig{margin-top:22px}
+.jg-fig .lane{display:grid;grid-template-columns:48px 1fr 48px;align-items:center}
+.jg-fig .cap+.lane{margin-top:16px}
+.jg-fig .p{width:36px;height:44px;fill:#5A5450;justify-self:center}.jg-fig .on .p{fill:#EDE4D3}
+.jg-fig .ar{position:relative;height:38px;display:flex;align-items:center;justify-content:center}
+.jg-fig .ar::before{content:'';position:absolute;left:6px;right:6px;top:50%;border-top:2px dashed #4A4038}
+.jg-fig .one .ar::after{content:'';position:absolute;right:4px;top:calc(50% - 5px);border:5px solid transparent;border-left:8px solid #4A4038}
+.jg-fig .on .ar::before{border-top:2px solid #C8323C}
+.jg-fig .ar svg{position:relative;width:42px;height:38px;fill:#D8343E;background:#1F1C21;padding:0 8px;filter:drop-shadow(0 0 12px rgba(216,52,62,.6));transform-origin:50% 60%;animation:jalub 1.3s ease-in-out infinite}
+.jg-fig .cap{text-align:center;font-size:12px;color:#8F857A;margin:4px 0 0}
+.jg-how{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:22px}
+.jg-how figure{margin:0}
+.jg-how img{width:100%;aspect-ratio:1;object-fit:cover;object-position:top;display:block;border:1px solid #3A332C;border-radius:6px;cursor:zoom-in}
+.jg-how figcaption{font-size:11px;color:#B9AE9A;margin-top:6px;display:flex;gap:5px;align-items:center}
+.jg-how i{font-style:normal;flex:none;width:15px;height:15px;border:1px solid #B08D3E;color:#D9B45E;font-size:9.5px;display:flex;align-items:center;justify-content:center}
+.jg-why{margin:22px 0 0;font-size:14px;line-height:1.8;color:#D8CCBC}
+.jg-why span{display:block;color:#B08D3E;font-size:12.5px;margin-top:2px}
+.jg-rules{margin-top:18px;border-top:1px dashed #3A332C;padding-top:10px;font-size:11.5px;line-height:1.9;color:#7E7570}
+.jg-rules b{color:#B9AE9A;font-weight:600}
+.jgzoom{position:fixed;inset:0;z-index:4500;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out}
+.jgzoom img{max-width:100%;max-height:100%}
 .jamatch{position:fixed;inset:0;z-index:5000;background:radial-gradient(ellipse at 50% 30%,#3A1A22,#120E12 70%);color:#F2E6D6;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Pretendard',sans-serif;overflow:auto}
 .jm-in{width:100%;max-width:360px;text-align:center}
 .jm-heart{width:88px;height:80px;fill:#D8343E;filter:drop-shadow(0 0 24px rgba(216,52,62,.55));transform-origin:50% 60%;animation:jalub 1.1s ease-in-out infinite}
@@ -864,40 +949,9 @@ const TUNEL = {
   async joalarmOpen(){
     const { data, error } = await sb().rpc('love_state');
     if(error) return;
-    if(!data?.eligible){ const t=document.querySelector('.jaheart'); if(t){ const tip=document.createElement('div'); tip.className='jatip'; tip.innerHTML='<b>좋알람</b>3번 넘게 참석하면 열려요.'; t.insertAdjacentElement('afterend',tip); setTimeout(()=>tip.remove(),2600); } return; }
-    if(!document.getElementById('tnl-ja-css')){
-      const st=document.createElement('style'); st.id='tnl-ja-css'; st.textContent=`
-.jaov{position:fixed;inset:0;z-index:4000;background:rgba(8,6,10,.72);display:flex;align-items:flex-end;justify-content:center}
-.jasheet{width:100%;max-width:430px;max-height:86vh;overflow:auto;background:#1F1C21;color:#EDE4D3;padding:22px 20px calc(22px + env(safe-area-inset-bottom));
-  border-top:2px solid #B08D3E;box-shadow:0 -10px 30px rgba(0,0,0,.5);font-family:'Pretendard',sans-serif}
-.jasheet h3{font-size:18px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
-.jasheet h3 button{background:none;border:0;color:#9A907F;font-size:22px;cursor:pointer;min-width:44px;min-height:44px}
-.jasheet p{font-size:13px;line-height:1.7;color:#B9AE9A;margin-top:6px}
-.jasheet .big{font-size:24px;font-weight:800;color:#F2E2B8;margin-top:10px}
-.jasheet .ct{margin-top:10px;padding:12px 14px;background:#141216;border:1px dashed #6B5A36;font-family:'Nanum Gothic Coding',monospace;font-size:16px;color:#F2E2B8;word-break:break-all}
-.jasheet .cands{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
-.jasheet .cand{min-height:44px;background:#141216;border:1px solid #4A4038;color:#E2D8C6;font-size:13.5px;font-weight:700;cursor:pointer}
-.jasheet .cand small{display:block;font-size:10.5px;font-weight:400;color:#8F857A}
-.jasheet .cand.on{border-color:#D9B45E;background:#3A2F18;color:#F2E2B8}
-.jasheet input{width:100%;min-height:44px;margin-top:12px;background:#141216;border:0;border-bottom:1.5px solid #6B5A36;color:#EDE4D3;font-size:14px;padding:0 12px;box-sizing:border-box}
-.jasheet .go{width:100%;min-height:46px;margin-top:12px;border:0;border-radius:2px;background:#B08D3E url(/v/bar1_brass.webp) center/cover;color:#2A1D08;font-weight:800;font-size:14.5px;cursor:pointer;
-  box-shadow:inset 0 1px 0 rgba(255,240,200,.5),inset 0 -2px 0 rgba(60,40,10,.45)}
-.jasheet .go[disabled]{opacity:.4}
-.jasheet .lk{display:block;margin:16px auto 0;background:none;border:0;border-bottom:1px dashed currentColor;color:#9A907F;font-size:12px;padding:6px 2px 1px;cursor:pointer}
-.jasheet .err{color:#FF9BA0;font-size:12px;margin-top:8px;min-height:1em}
-.jasheet input[type=search]{margin-top:14px}
-.jalist{margin-top:6px}
-.jarow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:50px;border-bottom:1px dashed #3A332C}
-.jarow span{font-size:14.5px;font-weight:700;color:#EDE4D3}
-.jarow small{display:block;font-size:11px;font-weight:400;color:#8F857A;margin-top:2px}
-.japick{min-width:64px;min-height:36px;border:1px solid #6B5A36;background:none;color:#D9B45E;font-weight:700;font-size:12.5px;cursor:pointer}
-.japick.on{background:#3A2F18;border-color:#D9B45E;color:#F2E2B8}
-.jamiss{font-size:12.5px;color:#8F857A;padding:10px 0}
-.jasel{display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding:12px 0 4px;border-top:1px solid #3A332C}
-.jasel span{font-size:12px;color:#8F857A}.jasel b{font-size:18px;color:#F2E2B8}
-.jawarn{color:#D9B45E !important;font-size:12px !important}
-.jasheet [hidden]{display:none !important}`; document.head.appendChild(st);
-    }
+    TUNEL._jaSt = data || { eligible:false };
+    if(!data?.eligible) return TUNEL.joalarmGuide();
+    TUNEL._jaSheetCSS();
     let ov=document.getElementById('tnlJa'); if(!ov){ ov=document.createElement('div'); ov.id='tnlJa'; ov.className='jaov'; document.body.appendChild(ov);
       ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); }); }
     let pick=null;

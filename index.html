@@ -203,6 +203,34 @@ main{flex:1;width:100%;max-width:560px;margin:0 auto;padding:8px 16px 30px}
   padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px}
 .acct .kko{width:100%;border:0;background:#FEE500;color:#191600;border-radius:9px;
   padding:13px 0;font-size:14px;font-weight:800;cursor:pointer}
+
+/* 계정 설정 v2 (2026-09-25) — 제톤 속 얼굴 · 황동 버튼 · 알약·빨강 걷기 · 좋알람 줄 */
+.acct .idrow{display:flex;align-items:center;justify-content:flex-start;gap:16px;width:100%;text-align:left}
+.acct .jeton{position:relative;flex:none;width:84px;height:84px;border:0;padding:0;margin:0;background:url(v/A9_jeton.webp) center/cover;border-radius:50%;cursor:pointer;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,.55))}
+.acct .jeton .av2{position:absolute;inset:17px;width:auto;height:auto;font-size:20px;box-shadow:inset 0 2px 6px rgba(0,0,0,.6),0 0 0 2px rgba(60,40,10,.6)}
+.acct .jeton:active{transform:scale(.97)}
+.acct .idtx{min-width:0;flex:1}
+.acct .an{font-size:22px}
+.acct .as{margin-top:4px}
+.acct .pfplinks{display:flex;gap:14px;margin-top:8px;padding-left:4px}
+.acct .lk{background:none;border:0;border-bottom:1px dashed currentColor;color:#B9AE9A;font-size:11.5px;padding:4px 0 1px;cursor:pointer;font-family:inherit}
+.acct .flab{display:block;font-size:11px;font-weight:700;letter-spacing:1px;color:#B08D3E;margin-bottom:6px}
+.acct .fld2{margin-top:0}
+.acct .fld2 input{border-radius:0;background:#1C1A1F;border:0;border-bottom:1.5px solid #6B5A36;box-shadow:inset 0 2px 5px rgba(0,0,0,.55);min-height:44px;font-size:14px}
+.acct .fld2 input:focus{outline:none;border-bottom-color:#D9B45E}
+.acct .fld2 button{border-radius:2px;min-width:72px;min-height:44px;background:#B08D3E url(v/bar1_brass.webp) center/cover;color:#2A1D08;font-weight:800;
+  text-shadow:0 1px 0 rgba(255,235,190,.45);box-shadow:inset 0 1px 0 rgba(255,240,200,.5),inset 0 -2px 0 rgba(60,40,10,.45),0 2px 4px rgba(0,0,0,.5)}
+.acct .fld2 button:active{box-shadow:inset 0 2px 4px rgba(60,40,10,.6);transform:translateY(1px)}
+.acct .hint2{font-size:10.5px}
+.acct .jarow{display:grid;grid-template-columns:26px 1fr 12px;gap:12px;align-items:center;width:100%;min-height:56px;padding:0 4px;background:none;border:0;cursor:pointer;text-align:left;font-family:inherit;color:#EDE4D3}
+.acct .jarow svg{width:24px;height:22px;fill:#C8323C;transform-origin:50% 60%;animation:jalub2 1.3s ease-in-out infinite}
+@keyframes jalub2{0%,100%{transform:scale(1)}12%{transform:scale(1.16)}22%{transform:scale(.98)}32%{transform:scale(1.1)}46%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.acct .jarow svg{animation:none}}
+.acct .jarow b{display:block;font-size:14.5px}
+.acct .jarow small{display:block;font-size:11.5px;color:#9A907F;margin-top:2px}
+.acct .jarow .ja{font-size:22px;color:#8F857A}
+.acct .out{border:0;border-bottom:1px dashed currentColor;border-radius:0;width:auto;display:block;margin:4px auto 0;padding:8px 2px 2px;color:#C98A8E;font-weight:600;font-size:12.5px}
 @media (min-width:600px){
   .mdl{align-items:center}
   .mdl .sh{border-radius:14px;border-bottom:1px solid #3A342B;max-height:80vh}
@@ -757,7 +785,7 @@ footer .ft{font-size:10.5px;color:#A79E8F;letter-spacing:1px;line-height:1.8}
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="tunel.js?v=50"></script>
+<script src="tunel.js?v=51"></script>
 <script>
 /* ══ 탭 전환 + 좌우 스와이프 — 버튼도 같은 슬라이드로 넘어간다 ══ */
 (function(){
@@ -989,31 +1017,32 @@ document.getElementById('pastMore').onclick = () => keepView(() => {
   function acctIn(m){
     window.__tnlAuthed = true;
     abody.className = 'bodyw acct';
-    abody.innerHTML = `<div class="an">${m.nick}</div>
-      <div class="ao">NO.${String(m.no||0).padStart(4,'0')}</div>
-      <p class="as">가입 ${(m.joined||'').replace(/-/g,'.')}
-        ${m.role==='banned'?'<br><b class="ban">활동 정지 중 — 참석·기록이 막혀 있어요</b>':''}
-        ${m.is_admin?'<br>관리자':''}</p>
-      <hr>
-      <div class="avrow">
-        <div class="av2" id="aAv">${m.nick[0]||''}</div>
-        <div style="display:flex;gap:6px">
-          <button class="avbtn" id="aPfp">📷 사진 바꾸기</button>
-          <button class="avbtn" id="aPfpDel" style="display:none">기본으로</button>
-        </div>
+    abody.innerHTML = `<div class="idrow">
+        <button class="jeton" id="aPfp" type="button" aria-label="사진 바꾸기"><span class="av2" id="aAv">${m.nick[0]||''}</span></button>
+        <div class="idtx"><div class="an">${m.nick}</div>
+          <div class="ao">NO.${String(m.no||0).padStart(4,'0')}</div>
+          <p class="as">가입 ${(m.joined||'').replace(/-/g,'.')}${m.is_admin?' · 관리자':''}
+          ${m.role==='banned'?'<br><b class="ban">활동 정지 중 — 참석·기록이 막혀 있어요</b>':''}</p></div>
       </div>
+      <div class="pfplinks"><button class="lk" id="aPfp2" type="button">사진 바꾸기</button><button class="lk" id="aPfpDel" type="button" style="display:none">기본으로</button></div>
+      <hr>
+      <label class="flab" for="aNick">닉네임</label>
       <div class="fld2">
         <input id="aNick" value="${m.nick}" maxlength="10" placeholder="닉네임 (한글 1~10자)">
-        <button id="aRename">닉네임 변경</button>
+        <button id="aRename">바꾸기</button>
       </div>
       <p class="err2" id="aErr"></p>
       <p class="hint2">닉네임은 6개월에 한 번 바꿀 수 있어요.</p>
-      <div class="fld2" style="margin-top:14px">
+      <label class="flab" for="aPay" style="margin-top:16px">입금자 실명</label>
+      <div class="fld2">
         <input id="aPay" maxlength="20" placeholder="입금자 실명" autocomplete="name">
-        <button id="aPaySave">실명 저장</button>
+        <button id="aPaySave">저장</button>
       </div>
       <p class="err2" id="aPayErr"></p>
       <p class="hint2">실명은 어디에도 보이지 않아요. 계좌이체를 받았을 때 닉네임과 맞춰 보는 데만 써요.</p>
+      <hr>
+      <button class="jarow" id="aJa" type="button"><svg viewBox="0 0 24 22" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.6 2 4.3 5.9 3.6 8.5 3.1 10.6 4.6 12 6.6c1.4-2 3.5-3.5 6.1-3 3.9.7 5.5 5 3.9 8.1C19.5 16.4 12 21 12 21z"/></svg>
+        <span class="jt"><b>좋알람</b><small id="aJaSt">&nbsp;</small></span><span class="ja" aria-hidden="true">›</span></button>
       <hr>
       <button class="out" id="aOut">로그아웃</button>`;
 
@@ -1026,6 +1055,14 @@ document.getElementById('pastMore').onclick = () => keepView(() => {
     };
     sb.from('profiles').select('pfp').eq('member_id', m.id).maybeSingle()
       .then(({data}) => applyPfp(data?.pfp || null));
+    /* 좋알람 — 상태 한 줄, 누르면 좋알람 창 (3회 참석 전이면 안내만) */
+    const jaSt = document.getElementById('aJaSt');
+    sb.rpc('love_state').then(({data:st}) => {
+      jaSt.textContent = !st?.eligible ? '세 번 참석하면 열려요' : st.off ? '꺼짐' : st.matched ? '서로 좋알람 · '+st.target.nick : st.target ? '지정 · '+st.target.nick : '아직 지정 안 함';
+      TUNEL._jaSt = st || { eligible:false };
+      document.getElementById('aJa').onclick = () => { TUNEL.joalarmTap(); if(TUNEL._jaN===0) closeAcct(); };   /* 한 번 = 안내, 네 번 = 좋알람 */
+    }).catch(()=>{});
+    document.getElementById('aPfp2').onclick = () => document.getElementById('aPfp').click();
     document.getElementById('aPfp').onclick = () => {
       const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
       inp.onchange = async () => {
@@ -1065,7 +1102,7 @@ document.getElementById('pastMore').onclick = () => keepView(() => {
       if(!v || v === payIn.dataset.was) return;
       const { error } = await sb.rpc('set_my_payname', { p_payname: v });
       if(error){ payErr.textContent = error.message; payErr.style.display='block'; return; }
-      payIn.dataset.was = v; payBtn.textContent = '저장했어요'; setTimeout(()=>payBtn.textContent='실명 저장', 1600);
+      payIn.dataset.was = v; payBtn.textContent = '저장했어요'; setTimeout(()=>payBtn.textContent='저장', 1600);
     };
   }
 
