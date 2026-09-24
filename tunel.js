@@ -769,6 +769,179 @@ const TUNEL = {
     }
   },
 
+  /* ── 좋알람 — 2026-09-25 서버가 지키는 방식으로 다시 짰다 (public.love_*).
+     들어가는 길: 마이페이지·내 활동의 하트 하나. 한 번 누르면 설명, 2초 안에 다섯 번 누르면 열린다(햇살님 2026-09-25).
+     서버는 «내 지목»과 «서로 가리킨 짝»만 돌려준다 — 누가 나를 가리켰는지는 어디에도 없다. */
+  _jaN:0, _jaT:0,
+  joalarmHeart(){
+    TUNEL._jaCSS();
+    return `<button class="jaheart" type="button" aria-label="좋알람" onclick="TUNEL.joalarmTap(this)"><svg viewBox="0 0 24 22" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.6 2 4.3 5.9 3.6 8.5 3.1 10.6 4.6 12 6.6c1.4-2 3.5-3.5 6.1-3 3.9.7 5.5 5 3.9 8.1C19.5 16.4 12 21 12 21z"/></svg></button>`;
+  },
+  joalarmTap(btn){
+    const now=Date.now(); if(now-TUNEL._jaT>2000) TUNEL._jaN=0; TUNEL._jaT=now; TUNEL._jaN++;
+    if(btn){ btn.classList.remove('beat'); void btn.offsetWidth; btn.classList.add('beat'); }
+    if(TUNEL._jaN===1 && btn){
+      let tip=btn.parentElement.querySelector('.jatip');
+      if(tip){ tip.remove(); }
+      else{ tip=document.createElement('div'); tip.className='jatip';
+        tip.innerHTML=`<b>좋알람</b>한 명을 가리키고, 서로 가리키면 두 사람에게만 연락처가 열려요. 누가 나를 가리켰는지는 알 수 없어요.<br><small>3번 넘게 참석하면 열려요 · 하트를 다섯 번 누르면 들어가요</small>`;
+        btn.insertAdjacentElement('afterend',tip); }
+    }
+    if(TUNEL._jaN>=5){ TUNEL._jaN=0; btn?.parentElement.querySelector('.jatip')?.remove(); TUNEL.joalarmOpen(); }
+  },
+  /* 연락처 버튼 — 인스타는 프로필로, 카카오톡은 오픈채팅 링크면 바로 열고 ID 면 복사한 뒤 카카오톡을 연다 */
+  _jaContact(insta, kakao){
+    const b=[];
+    const IG=`<svg class="ji" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.3" fill="currentColor"/></svg>`;
+    const KK=`<svg class="ji" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3.5c-5.2 0-9.4 3.3-9.4 7.4 0 2.6 1.7 4.9 4.3 6.2l-1 3.6c-.1.3.3.6.6.4l4.2-2.8c.4 0 .9.1 1.3.1 5.2 0 9.4-3.3 9.4-7.4S17.2 3.5 12 3.5z"/></svg>`;
+    const row=(icon,t,sub)=>`${icon}<span class="jt"><b>${t}</b><small>${sub}</small></span><span class="ja" aria-hidden="true">›</span>`;
+    if(insta) b.push(`<a class="jact ig" href="https://instagram.com/${encodeURIComponent(insta)}" target="_blank" rel="noopener">${row(IG,'인스타그램','@'+esc(insta))}</a>`);
+    if(kakao){
+      if(/^https?:\/\//.test(kakao)) b.push(`<a class="jact kk" href="${esc(kakao)}" target="_blank" rel="noopener">${row(KK,'카카오톡','오픈채팅으로 연결')}</a>`);
+      else b.push(`<button class="jact kk" type="button" data-kkid="${esc(kakao)}">${row(KK,'카카오톡','ID '+esc(kakao))}</button>`);
+    }
+    return b.join('');
+  },
+  _jaKakao(id){ try{ navigator.clipboard.writeText(id); }catch(e){} location.href='kakaotalk://'; },
+  /* 서로 가리킨 순간 — 전체 화면. «연락했어요»·«연락이 왔어요» 로만 닫힌다 */
+  joalarmMatch(m, onAck){
+    TUNEL._jaCSS(); document.getElementById('tnlJa')?.remove();
+    const ov=document.createElement('div'); ov.className='jamatch'; ov.setAttribute('role','dialog'); ov.setAttribute('aria-label','서로 좋알람');
+    ov.innerHTML=`<div class="jm-in"><svg class="jm-heart" viewBox="0 0 24 22" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.6 2 4.3 5.9 3.6 8.5 3.1 10.6 4.6 12 6.6c1.4-2 3.5-3.5 6.1-3 3.9.7 5.5 5 3.9 8.1C19.5 16.4 12 21 12 21z"/></svg>
+      <p class="jm-t">서로 좋알람</p><div class="jm-n">${esc(m.nick||'')}</div>
+      <div class="jm-c">${TUNEL._jaContact(m.insta, m.kakao)}</div>
+      <div class="jm-ack"><button type="button" data-ack>연락했어요</button><button type="button" data-ack>연락이 왔어요</button></div></div>`;
+    document.body.appendChild(ov); document.body.style.overflow='hidden';
+    ov.addEventListener('click', async e=>{
+      const k=e.target.closest('[data-kkid]'); if(k) return TUNEL._jaKakao(k.dataset.kkid);
+      if(e.target.closest('[data-ack]')){ try{ await onAck(); }catch(err){} ov.remove(); document.body.style.overflow=''; }
+    });
+  },
+  /* 투넬을 열 때 — 먼저 가리켜 둔 사람에게 «짝이 됐다»를 알린다 */
+  async joalarmCheck(){
+    try{
+      const { data:ss } = await sb().auth.getSession(); if(!ss?.session) return;
+      const { data } = await sb().rpc('love_pending'); if(!data) return;
+      TUNEL.joalarmMatch(data, async()=>{ await sb().rpc('love_ack'); });
+    }catch(e){}
+  },
+  _jaCSS(){
+    if(document.getElementById('tnl-jah-css')) return;
+    const st=document.createElement('style'); st.id='tnl-jah-css'; st.textContent=`
+.jaheart{position:absolute;right:10px;top:10px;z-index:3;width:44px;height:44px;border:0;background:none;padding:10px;cursor:pointer}
+.jaheart svg{width:100%;height:100%;display:block;fill:#C8323C;filter:drop-shadow(0 1px 0 rgba(255,180,180,.35)) drop-shadow(0 2px 3px rgba(0,0,0,.5));
+  transform-origin:50% 60%;animation:jalub 1.3s ease-in-out infinite}
+.jaheart.beat svg{animation:jabeat .28s ease-out}
+/* 심장 박동 — 쿵(크게)·쿵(작게) 두 번 뛰고 쉰다 */
+@keyframes jalub{0%,100%{transform:scale(1)}12%{transform:scale(1.16)}22%{transform:scale(.98)}32%{transform:scale(1.1)}46%{transform:scale(1)}}
+@keyframes jabeat{40%{transform:scale(1.25)}}
+@media (prefers-reduced-motion:reduce){.jaheart svg,.jaheart.beat svg{animation:none}}
+.jatip{position:absolute;right:10px;top:54px;z-index:4;width:min(260px,80%);text-align:left;background:#141216;color:#E2D8C6;border:1px solid #6B5A36;padding:11px 13px;font-size:12px;line-height:1.65;box-shadow:0 8px 18px rgba(0,0,0,.5)}
+.jatip b{display:block;font-size:13px;color:#F2E2B8;margin-bottom:3px}
+.jatip small{display:block;margin-top:6px;color:#B08D3E;font-size:11px}
+.jamatch{position:fixed;inset:0;z-index:5000;background:radial-gradient(ellipse at 50% 30%,#3A1A22,#120E12 70%);color:#F2E6D6;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Pretendard',sans-serif;overflow:auto}
+.jm-in{width:100%;max-width:360px;text-align:center}
+.jm-heart{width:88px;height:80px;fill:#D8343E;filter:drop-shadow(0 0 24px rgba(216,52,62,.55));transform-origin:50% 60%;animation:jalub 1.1s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.jm-heart{animation:none}}
+.jm-t{margin-top:14px;font-size:14px;letter-spacing:3px;color:#D9B45E;font-weight:700}
+.jm-n{margin-top:6px;font-size:34px;font-weight:800}
+.jm-c{display:flex;flex-direction:column;gap:10px;margin-top:26px}
+.jact{display:grid;grid-template-columns:30px 1fr 14px;align-items:center;gap:14px;width:100%;min-height:66px;padding:0 18px;border:0;border-radius:16px;
+  text-decoration:none;text-align:left;cursor:pointer;font-family:inherit;box-sizing:border-box;transition:transform .12s}
+.jact:active{transform:scale(.98)}
+.jact .ji{width:30px;height:30px;display:block}
+.jact .jt b{display:block;font-size:16px;font-weight:800;letter-spacing:-.2px}
+.jact .jt small{display:block;font-size:12px;font-weight:500;opacity:.85;margin-top:2px;word-break:break-all}
+.jact .ja{font-size:26px;line-height:1;opacity:.7}
+.jact.ig{color:#fff;background:linear-gradient(45deg,#FEDA75 0%,#FA7E1E 22%,#D62976 50%,#962FBF 76%,#4F5BD5 100%);box-shadow:0 8px 22px -6px rgba(214,41,118,.55)}
+.jact.kk{color:#191919;background:#FEE500;box-shadow:0 8px 22px -6px rgba(254,229,0,.35)}
+.jm-ack{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:30px}
+.jm-ack button{min-height:50px;background:rgba(255,255,255,.08);border:0;border-radius:14px;color:#EDE4D3;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+.jm-ack button:active{background:rgba(255,255,255,.14)}
+.jasheet .jact{margin-top:10px}`;
+    document.head.appendChild(st);
+  },
+  async joalarmOpen(){
+    const { data, error } = await sb().rpc('love_state');
+    if(error) return;
+    if(!data?.eligible){ const t=document.querySelector('.jaheart'); if(t){ const tip=document.createElement('div'); tip.className='jatip'; tip.innerHTML='<b>좋알람</b>3번 넘게 참석하면 열려요.'; t.insertAdjacentElement('afterend',tip); setTimeout(()=>tip.remove(),2600); } return; }
+    if(!document.getElementById('tnl-ja-css')){
+      const st=document.createElement('style'); st.id='tnl-ja-css'; st.textContent=`
+.jaov{position:fixed;inset:0;z-index:4000;background:rgba(8,6,10,.72);display:flex;align-items:flex-end;justify-content:center}
+.jasheet{width:100%;max-width:430px;max-height:86vh;overflow:auto;background:#1F1C21;color:#EDE4D3;padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+  border-top:2px solid #B08D3E;box-shadow:0 -10px 30px rgba(0,0,0,.5);font-family:'Pretendard',sans-serif}
+.jasheet h3{font-size:18px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.jasheet h3 button{background:none;border:0;color:#9A907F;font-size:22px;cursor:pointer;min-width:44px;min-height:44px}
+.jasheet p{font-size:13px;line-height:1.7;color:#B9AE9A;margin-top:6px}
+.jasheet .big{font-size:24px;font-weight:800;color:#F2E2B8;margin-top:10px}
+.jasheet .ct{margin-top:10px;padding:12px 14px;background:#141216;border:1px dashed #6B5A36;font-family:'Nanum Gothic Coding',monospace;font-size:16px;color:#F2E2B8;word-break:break-all}
+.jasheet .cands{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
+.jasheet .cand{min-height:44px;background:#141216;border:1px solid #4A4038;color:#E2D8C6;font-size:13.5px;font-weight:700;cursor:pointer}
+.jasheet .cand small{display:block;font-size:10.5px;font-weight:400;color:#8F857A}
+.jasheet .cand.on{border-color:#D9B45E;background:#3A2F18;color:#F2E2B8}
+.jasheet input{width:100%;min-height:44px;margin-top:12px;background:#141216;border:0;border-bottom:1.5px solid #6B5A36;color:#EDE4D3;font-size:14px;padding:0 12px;box-sizing:border-box}
+.jasheet .go{width:100%;min-height:46px;margin-top:12px;border:0;border-radius:2px;background:#B08D3E url(/v/bar1_brass.webp) center/cover;color:#2A1D08;font-weight:800;font-size:14.5px;cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,240,200,.5),inset 0 -2px 0 rgba(60,40,10,.45)}
+.jasheet .go[disabled]{opacity:.4}
+.jasheet .lk{display:block;margin:16px auto 0;background:none;border:0;border-bottom:1px dashed currentColor;color:#9A907F;font-size:12px;padding:6px 2px 1px;cursor:pointer}
+.jasheet .err{color:#FF9BA0;font-size:12px;margin-top:8px;min-height:1em}
+.jasheet input[type=search]{margin-top:14px}
+.jalist{margin-top:6px}
+.jarow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:50px;border-bottom:1px dashed #3A332C}
+.jarow span{font-size:14.5px;font-weight:700;color:#EDE4D3}
+.jarow small{display:block;font-size:11px;font-weight:400;color:#8F857A;margin-top:2px}
+.japick{min-width:64px;min-height:36px;border:1px solid #6B5A36;background:none;color:#D9B45E;font-weight:700;font-size:12.5px;cursor:pointer}
+.japick.on{background:#3A2F18;border-color:#D9B45E;color:#F2E2B8}
+.jamiss{font-size:12.5px;color:#8F857A;padding:10px 0}
+.jasel{display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding:12px 0 4px;border-top:1px solid #3A332C}
+.jasel span{font-size:12px;color:#8F857A}.jasel b{font-size:18px;color:#F2E2B8}
+.jawarn{color:#D9B45E !important;font-size:12px !important}
+.jasheet [hidden]{display:none !important}`; document.head.appendChild(st);
+    }
+    let ov=document.getElementById('tnlJa'); if(!ov){ ov=document.createElement('div'); ov.id='tnlJa'; ov.className='jaov'; document.body.appendChild(ov);
+      ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); }); }
+    let pick=null;
+    const call = async (fn,args) => { const r=await sb().rpc(fn,args); if(r.error){ const el=ov.querySelector('.err'); if(el) el.textContent=r.error.message; return; }
+      if(fn==='love_pick' && r.data?.matched){ ov.remove(); TUNEL.joalarmMatch({ nick:r.data.target.nick, insta:r.data.their_insta, kakao:r.data.their_kakao }, async()=>{ await sb().rpc('love_ack'); }); return; }
+      draw(r.data); };
+    const draw = st => {
+      const cl=`<h3>좋알람<button type="button" data-x aria-label="닫기">×</button></h3>`;
+      let h;
+      if(st.off) h=`${cl}<p>꺼져 있어요. 켜면 나를 가리킬 수 있어요.</p><button class="go" data-on type="button">켜기</button>`;
+      else if(st.matched) h=`${cl}<p>서로 가리켰어요</p><div class="big">${esc(st.target.nick)}</div>${TUNEL._jaContact(st.their_insta, st.their_kakao)}`;
+      else if(st.target) h=`${cl}<p>가리키는 사람</p><div class="big">${esc(st.target.nick)}</div><p>서로 가리키면 둘에게만 연락처가 열려요.</p>
+        ${st.days_left?`<p>${st.days_left}일 뒤에 바꿀 수 있어요.</p>`:''}<button class="lk" data-clear type="button">거두기</button>`;
+      else if(st.days_left) h=`${cl}<p>${st.days_left}일 뒤에 다시 정할 수 있어요.</p>`;
+      else h=`${cl}<input id="jaQ" type="search" maxlength="10" placeholder="닉네임 검색" autocomplete="off">
+        <div class="jalist" id="jaList"></div>
+        <div id="jaSel" hidden><div class="jasel"><span>지정할 사람</span><b id="jaSelNick"></b></div>
+          <input id="jaIn" maxlength="60" placeholder="내 인스타그램 ID" autocapitalize="off" value="${esc(st.insta||'')}">
+          <input id="jaKa" maxlength="120" placeholder="내 카카오톡 ID 또는 오픈채팅 링크" autocapitalize="off" value="${esc(st.kakao||'')}">
+          <p class="jawarn">한 번 지정하면 한 달 동안 바꿀 수 없어요.</p>
+          <button class="go" data-go type="button">확인</button></div>`;
+      ov.innerHTML=`<div class="jasheet" role="dialog" aria-label="좋알람">${h}<p class="err"></p>${st.off?'':'<button class="lk" data-off type="button">좋알람 끄기</button>'}</div>`;
+      const q=ov.querySelector('#jaQ');
+      if(q){ const list=ov.querySelector('#jaList');
+        const show=()=>{ const v=q.value.trim(); const hits=v?st.candidates.filter(c=>c.nick.includes(v)):[];
+          list.innerHTML=!v?'':hits.length?hits.map(c=>`<div class="jarow"><span>${esc(c.nick)}<small>${c.met}번 만남</small></span><button type="button" class="japick${pick===c.id?' on':''}" data-pick="${c.id}" data-nick="${esc(c.nick)}">${pick===c.id?'선택됨':'선택'}</button></div>`).join('')
+            :'<p class="jamiss">세 번 넘게 만난 사람 중에 없어요.</p>'; };
+        q.oninput=show; setTimeout(()=>q.focus(),50); }
+      ov.onclick=async e=>{
+        if(e.target===ov) return ov.remove();
+        const b=e.target.closest('button'); if(!b) return;
+        if(b.hasAttribute('data-x')) return ov.remove();
+        if(b.dataset.pick){ pick=b.dataset.pick; ov.querySelectorAll('.japick').forEach(x=>{ const on=x===b; x.classList.toggle('on',on); x.textContent=on?'선택됨':'선택'; });
+          ov.querySelector('#jaSel').hidden=false; ov.querySelector('#jaSelNick').textContent=b.dataset.nick; return; }
+        if(b.hasAttribute('data-go')) return call('love_pick',{ p_target:pick, p_insta:ov.querySelector('#jaIn').value, p_kakao:ov.querySelector('#jaKa').value });
+        if(b.dataset.kkid) return TUNEL._jaKakao(b.dataset.kkid);
+        if(b.hasAttribute('data-clear')) return call('love_clear',{});
+        if(b.hasAttribute('data-off')) return call('love_off',{ p_off:true });
+        if(b.hasAttribute('data-on')) return call('love_off',{ p_off:false });
+      };
+    };
+    draw(data);
+  },
+
   /* 티켓 CSS 주입 — 페이지마다 복사하지 않고 여기 한 벌만.
      절취선 구멍 색은 페이지 배경 몫이라 --tnl-hole 로 넘겨받는다 */
   _ticketCSS(){
@@ -1643,4 +1816,6 @@ div.btk .stub{cursor:pointer}
 })();
 
 global.TUNEL = TUNEL;
+/* 좋알람 — 짝이 됐는데 아직 못 본 사람에게 투넬을 열자마자 전체 화면으로 */
+document.addEventListener('DOMContentLoaded', () => setTimeout(() => TUNEL.joalarmCheck(), 900));
 })(window);

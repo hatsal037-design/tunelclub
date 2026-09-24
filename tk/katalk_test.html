@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>카톡 알림 시험</title>
+<style>
+body{font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;background:#17151A;color:#EDE4D3;margin:0;padding:28px 18px;max-width:420px;margin:auto}
+h1{font-size:19px}p{font-size:13.5px;line-height:1.7;color:#B9AE9A}
+button{width:100%;min-height:50px;margin-top:12px;border:0;font-size:15px;font-weight:800;cursor:pointer}
+.k{background:#FEE500;color:#191600}.s{background:#B08D3E;color:#1C1408}
+pre{white-space:pre-wrap;font-size:12px;background:#0E0C10;padding:12px;color:#9FE0A8;min-height:40px}
+</style>
+</head>
+<body>
+<!-- 카카오톡 «나와의 채팅» 알림 시험 페이지 (2026-09-25). 링크 없음 · 운영진 시험용.
+     ① 카톡 메시지 동의까지 받는 로그인 → ② 로그인 직후에만 받을 수 있는 카카오 토큰으로 나에게 보내기.
+     토큰은 이 화면 메모리에만 두고 어디에도 저장하지 않는다. -->
+<h1>카톡 알림 시험</h1>
+<p>① 로그인 버튼 → 카카오 화면에서 «카카오톡 메시지 전송»에 동의 → ② 보내기. 폰 카카오톡 «나와의 채팅»에 알림이 울리는지 봐 주세요.</p>
+<button class="k" id="login">① 카카오 로그인 (메시지 동의 포함)</button>
+<button class="s" id="send" disabled>② 나에게 시험 메시지 보내기</button>
+<pre id="log">준비됨</pre>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../tunel.js?v=50"></script>
+<script>
+const log=t=>document.getElementById('log').textContent=t;
+const sb=TUNEL.sb();
+let token=null;
+document.getElementById('login').onclick=()=>sb.auth.signInWithOAuth({provider:'kakao',
+  options:{scopes:'talk_message',redirectTo:location.origin+location.pathname}});
+sb.auth.onAuthStateChange((ev,s)=>{ if(s?.provider_token){ token=s.provider_token; document.getElementById('send').disabled=false; log('로그인 됨 · 보낼 준비 끝'); } });
+sb.auth.getSession().then(({data})=>{ if(data.session?.provider_token){ token=data.session.provider_token; document.getElementById('send').disabled=false; log('로그인 됨 · 보낼 준비 끝'); }
+  else if(data.session) log('로그인은 돼 있지만 카카오 토큰이 없어요. ① 을 한 번 더 눌러 주세요.'); });
+document.getElementById('send').onclick=async()=>{
+  log('보내는 중…');
+  const tpl={object_type:'text',text:'💗 좋알람이 울렸어요\n투넬에서 확인해 보세요.',
+    link:{web_url:'https://tunel.kr/',mobile_web_url:'https://tunel.kr/'},button_title:'투넬 열기'};
+  try{
+    const r=await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send',{method:'POST',
+      headers:{Authorization:'Bearer '+token,'Content-Type':'application/x-www-form-urlencoded;charset=utf-8'},
+      body:'template_object='+encodeURIComponent(JSON.stringify(tpl))});
+    const j=await r.json(); log(r.ok&&j.result_code===0?'보냈어요 ✓ 폰 카카오톡을 확인해 주세요':'실패: '+JSON.stringify(j));
+  }catch(e){ log('실패(연결): '+e.message); }
+};
+</script>
+</body>
+</html>

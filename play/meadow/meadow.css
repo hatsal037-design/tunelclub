@@ -174,3 +174,4 @@ input.codein{text-align:center;font-family:'Nanum Gothic Coding',monospace;font-
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .filepick{cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .filepick span{overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.tabs button[hidden]{display:none}
