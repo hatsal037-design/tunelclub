@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#F4F3EA">
+<title>오늘의 잔디밭 — 어른이 놀이터</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dongle:wght@700&family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="meadow.css?v=2">
+</head>
+<body>
+<!-- 2026-09-24 v2 (Claude) — 코덱스 초안(보관/meadow_코덱스초안_2026-09-24) 위에 공지·이야기·MVP·조 섞기·지금 순서를 더해 다시 짰다.
+     ?demo=1 은 가짜 데이터 미리보기(운영진 화면), ?demo=guest 는 참가자 화면. 서버에는 아무것도 보내지 않는다. -->
+<div id="demo" class="demo" hidden></div>
+<header class="top">
+  <a class="back" href="../#meadow">← 놀이터</a>
+  <h1>오늘의 잔디밭</h1>
+  <div class="who" id="who"></div>
+</header>
+<main class="wrap" id="view" aria-live="polite"><p class="sync">잔디밭 여는 중…</p></main>
+<nav class="tabs" id="tabs" aria-label="잔디밭 메뉴" hidden><div class="in">
+  <button type="button" data-tab="now"><img src="img/t_now.webp" alt="">지금</button>
+  <button type="button" data-tab="sched"><img src="img/t_sched.webp" alt="">일정</button>
+  <button type="button" data-tab="chat"><img src="img/t_chat.webp" alt="">이야기<span class="dot" id="chatDot" hidden></span></button>
+  <button type="button" data-tab="photo"><img src="img/t_photo.webp" alt="">사진</button>
+  <button type="button" data-tab="vote"><img src="img/t_vote.webp" alt="">투표</button>
+  <button type="button" data-tab="host" id="hostTab" hidden><img src="img/t_host.webp" alt="">운영</button>
+</div></nav>
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../../tunel.js?v=44"></script>
+<script src="model.js?v=2"></script>
+<script src="demo.js?v=1"></script>
+<script src="app.js?v=5"></script>
+</body>
+</html>

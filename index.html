@@ -993,7 +993,7 @@ document.getElementById('pastMore').onclick = () => keepView(() => {
       <div class="ao">NO.${String(m.no||0).padStart(4,'0')}</div>
       <p class="as">가입 ${(m.joined||'').replace(/-/g,'.')}
         ${m.role==='banned'?'<br><b class="ban">활동 정지 중 — 참석·기록이 막혀 있어요</b>':''}
-        ${m.is_admin?'<br>관리자 — 마이페이지 아래에서 회원 관리를 볼 수 있어요':''}</p>
+        ${m.is_admin?'<br>관리자':''}</p>
       <hr>
       <div class="avrow">
         <div class="av2" id="aAv">${m.nick[0]||''}</div>
@@ -1007,9 +1007,14 @@ document.getElementById('pastMore').onclick = () => keepView(() => {
         <button id="aRename">닉네임 변경</button>
       </div>
       <p class="err2" id="aErr"></p>
-      <p class="hint2">닉네임은 6개월에 한 번 바꿀 수 있어요. 바꿔도 활동 기록은 그대로 따라옵니다.</p>
+      <p class="hint2">닉네임은 6개월에 한 번 바꿀 수 있어요.</p>
+      <div class="fld2" style="margin-top:14px">
+        <input id="aPay" maxlength="20" placeholder="입금자 실명" autocomplete="name">
+        <button id="aPaySave">실명 저장</button>
+      </div>
+      <p class="err2" id="aPayErr"></p>
+      <p class="hint2">실명은 어디에도 보이지 않아요. 계좌이체를 받았을 때 닉네임과 맞춰 보는 데만 써요.</p>
       <hr>
-      <a class="ar" href="#me" id="aAct">내 활동<span>모든 노선의 참석 기록</span></a>
       <button class="out" id="aOut">로그아웃</button>`;
 
     /* 사진 — 불러오기·바꾸기·기본으로 */
@@ -1050,11 +1055,17 @@ document.getElementById('pastMore').onclick = () => keepView(() => {
       location.reload();   // 히어로·팝업·알림함이 새 닉네임으로
     };
     document.getElementById('aOut').onclick = async () => { await signOutAll(); };
-    document.getElementById('aAct').onclick = (ev) => {
-      ev.preventDefault(); closeAcct();
-      const tab = document.querySelector('.tn[data-v="me"]'); if(tab) tab.click();
-      setTimeout(()=>{ const el=document.getElementById('myAct');
-        if(el) el.scrollIntoView({behavior:'smooth', block:'center'}); }, 260);
+
+    /* 입금자 실명 — 본인·운영진만 읽는 칸(member_private). 고치기는 set_my_payname 으로만 (2026-09-25) */
+    const payIn = document.getElementById('aPay'), payErr = document.getElementById('aPayErr'), payBtn = document.getElementById('aPaySave');
+    sb.from('member_private').select('payname').eq('member_id', m.id).maybeSingle()
+      .then(({data}) => { payIn.value = data?.payname || ''; payIn.dataset.was = payIn.value; });
+    payBtn.onclick = async () => {
+      const v = payIn.value.trim(); payErr.style.display='none';
+      if(!v || v === payIn.dataset.was) return;
+      const { error } = await sb.rpc('set_my_payname', { p_payname: v });
+      if(error){ payErr.textContent = error.message; payErr.style.display='block'; return; }
+      payIn.dataset.was = v; payBtn.textContent = '저장했어요'; setTimeout(()=>payBtn.textContent='실명 저장', 1600);
     };
   }
 
@@ -1523,7 +1534,7 @@ async function initMemAdmin(sb){
       btn.addEventListener('click', async ()=>{
         const m = rows.find(x=>x.id===btn.dataset.edit);
         const nick = prompt('닉네임', m.nick); if(nick===null) return;
-        const pay  = prompt('오픈톡방 닉네임', m.member_private?.payname||''); if(pay===null) return;
+        const pay  = prompt('입금자 실명', m.member_private?.payname||''); if(pay===null) return;
         const { error } = await sb.rpc('admin_update_member', { p_mid:m.id, p_nick:nick.trim()||m.nick, p_payname:pay.trim() });
         if(error){ alert('저장 실패: '+error.message); return; }
         load();

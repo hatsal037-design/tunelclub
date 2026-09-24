@@ -85,7 +85,7 @@ function renderMe(){
    bootSession이 기존 회원이면 자동 연결, 처음이면 가입 시트(kakaoOnboard)를 연다. */
 function kakaoStart(){ API.kakaoAuthorize(); }
 
-/* 카카오 인증은 됐지만 아직 회원이 아닌 사람 — 닉네임·톡방닉만 받으면 끝 */
+/* 카카오 인증은 됐지만 아직 회원이 아닌 사람 — 닉네임·입금자 실명만 받으면 끝 (2026-09-25 톡방닉 → 실명으로 되돌림) */
 function kakaoOnboard(){
   document.getElementById('modal').innerHTML = `
     <h2>거의 다 됐어요</h2>
@@ -93,11 +93,10 @@ function kakaoOnboard(){
       <span style="color:var(--sub);font-size:12px">카톡 이름·프로필은 가져오지 않아요. 닉네임은 여기서 정한 것만 씁니다.</span></div>
     <div class="fld"><label>닉네임 (한글만)</label>
       <input id="kkNick" placeholder="예: 투넬" autocomplete="off"></div>
-    <div class="fld"><label>오픈톡방 닉네임</label>
-      <input id="kkPay" placeholder="단톡방에서 쓰는 이름" autocomplete="off"></div>
+    <div class="fld"><label>입금자 실명</label>
+      <input id="kkPay" placeholder="계좌이체 할 때 이름" autocomplete="name"></div>
     <div id="joinErr" style="display:none;color:var(--red-lite);font-size:12px;margin-top:9px;line-height:1.6"></div>
-    <div class="notice" style="margin:13px 0 0">오픈톡방 닉네임은 단톡방의 누구인지 알아보고, 참가비 입금을 대조하려고 받아요.
-      <b style="color:var(--red-lite)">모임장만 볼 수 있어요.</b></div>
+    <div class="notice" style="margin:13px 0 0">실명은 어디에도 보이지 않아요. 계좌이체를 받았을 때 닉네임과 맞춰 보는 데만 써요.</div>
     <div class="mbtns"><button class="mbtn" id="authBtn" onclick="kakaoJoin()">시작하기</button></div>
     <button class="mclose" onclick="closeM()">닫기</button>`;
   document.getElementById('ov').style.display='flex';
@@ -107,7 +106,7 @@ async function kakaoJoin(){
   const pn=document.getElementById('kkPay').value.trim();
   if(!n) return joinErr('닉네임을 적어주세요.');
   if(!NICK_RE.test(n)) return joinErr('닉네임은 한글만 쓸 수 있어요 (1~10자).');
-  if(!pn) return joinErr('오픈톡방 닉네임을 적어주세요.');
+  if(!pn) return joinErr('입금자 실명을 적어 주세요.');
   busy('가입 중');
   try{ await afterAuth(await API.signupMember(n, pn)); welcomeChat(); }
   catch(e){ joinErr(e.message); }
@@ -211,7 +210,7 @@ function myAccountSheet(){
     </div>
     <div style="margin-top:10px">
       <div class="mrow"><div class="k">닉네임</div><div>${acc.nick}</div></div>
-      <div class="mrow"><div class="k">톡방 닉</div><div>${acc.payname||'—'}</div></div>
+      <div class="mrow"><div class="k">입금자명</div><div>${acc.payname||'—'}</div></div>
       <div class="mrow"><div class="k">가입일</div><div>${(acc.joined||'').replace(/-/g,'.')}</div></div>
       ${acc.aliases?.length?`<div class="mrow"><div class="k">옛 닉네임</div><div>${acc.aliases.join(', ')}</div></div>`:''}
     </div>
