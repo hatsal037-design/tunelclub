@@ -287,6 +287,9 @@
   .sh-cell .e{ font-size:var(--sh-e-fs); line-height:1.1; text-align:center; }
   .sh-cell .e img{ display:block; width:var(--sh-icon); height:var(--sh-icon); object-fit:contain; }
   .sh-cell .e img[hidden]{ display:none; }
+  .sh-link{ width:100%; padding:0; border:0; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+  .sh-link:focus-visible{ outline:2px solid var(--gold); outline-offset:3px; }
+  .sh-link .n,.sh-link .a{ display:block; }
   .sh-cell .n{ font-size:var(--sh-n-fs); font-weight:800; color:var(--sh-c); line-height:1.25; }
   .sh-cell .a{ font-size:var(--sh-a-fs); font-weight:500; color:var(--sh-txt2); line-height:1.5; margin-top:2px; text-wrap:pretty; }
   .sh-foot{ display:flex; justify-content:space-between; color:var(--sh-dim); border-top:1px solid var(--sh-rule); }
@@ -314,12 +317,17 @@
   /* ══ 설정집 — 캐릭터(원형)·모드·컨셉 한 장 (2026-09-02). 크기는 --lo-* 변수, 인쇄 채움은 --lo-s(배율)·--lo-k(간격) ══ */
   .sheetov .lo-hd{ display:grid; grid-template-columns:36px 1fr; align-items:center; gap:6px; padding:10px 14px 8px 8px; }
   .sheetov .lo-hd button{ border:0; background:transparent; font:inherit; font-size:var(--t-title); color:var(--txt); cursor:pointer; padding:4px; }
+  .sheetov .lo-hd button:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
   .lo{ --lo-c:var(--txt); --lo-s:1; }
   .lo.team-town{ --lo-c:var(--sh-c-town) } .lo.team-outsider{ --lo-c:var(--sh-c-outsider) } .lo.team-minion{ --lo-c:var(--sh-c-minion) } .lo.team-demon{ --lo-c:var(--sh-c-demon) } .lo.team-neutral, .lo.team-traveler{ --lo-c:var(--sh-c-neutral) }
   .lo-kicker{ font-size:calc(var(--lo-kicker) * var(--lo-s)); font-weight:800; letter-spacing:.18em; color:var(--lo-c); }
-  /* 캐릭터 아트 자리 — 지금은 문양만. 그림이 오면 이 칸에 들어간다 */
+  /* 직업 도판 — 그림이 없는 모드는 기존 문양 */
   .lo-art{ height:var(--lo-art); background:var(--lo-chip); border-radius:var(--r); display:flex; align-items:center; justify-content:center; }
   .lo-art span{ font-size:calc(var(--lo-e) * 2.2); line-height:1; opacity:.9; }
+  .lo-art.role-icon{ position:relative; border-top:1px solid var(--lo-c); border-bottom:1px solid var(--lo-c); background:#e6dec9; }
+  .lo-art.role-icon::before{ content:''; position:absolute; inset:calc(12px * var(--lo-s)); border:1px solid rgba(42,36,28,.22); pointer-events:none; }
+  .lo-art.role-icon img{ display:block; width:min(70%,calc(var(--lo-art) * .82)); height:82%; object-fit:contain; }
+  .lo-art.role-icon img[hidden]{ display:none; }
   /* 이름패 — 한 장을 보여주는 카드라 가운데 정렬(디자인 규칙 7의 예외) */
   .lo-name{ text-align:center; padding-top:calc(6px * var(--lo-s)); }
   .lo-name .k{ font-size:calc(var(--lo-kicker) * var(--lo-s)); font-weight:800; letter-spacing:.2em; color:var(--lo-c); }
@@ -1284,6 +1292,17 @@
   .prep .setupbar{ position:static; left:auto; bottom:auto; transform:none; width:auto; max-width:none; margin:0; box-shadow:none; border:0; background:transparent; padding:0; display:none; z-index:auto; }
   .prep .setupbar.on{ display:flex; flex-direction:column; align-items:stretch; gap:8px; }
   .prep .setupbar .sb-step{ font-family:var(--mono); font-size:var(--t-label); letter-spacing:.06em; }
+  .setupbar .sb-track{ display:none; }
+  .prep .setupbar .sb-track{ display:flex; flex-wrap:wrap; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .prep .setupbar .sb-track .tk{ flex:1 1 0; min-width:0; min-height:44px; padding:6px 2px; background:none; border:0; border-left:1px solid var(--line); color:var(--dim); font:inherit; font-size:var(--t-cap); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; cursor:pointer; }
+  .prep .setupbar .sb-track .tk:first-child{ border-left:0; }
+  .prep .setupbar .sb-track .tk .v{ color:var(--txt); font-size:var(--t-cap); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .prep .setupbar .sb-track .tk.done .n{ color:var(--txt2); }
+  .prep .setupbar .sb-track .tk.now{ color:var(--gold); font-weight:800; box-shadow:inset 0 -2px 0 var(--gold); }
+  .prep .setupbar .sb-track .tk.now .v{ color:var(--gold); }
+  .prep .setupbar .sb-step{ display:none; }
+  .prep .setupbar .sb-body{ font-size:var(--t-lead); line-height:1.45; }
+  .prep .setupbar .sb-hint{ font-size:var(--t-label); margin-top:6px; }
   .prep .setupbar .sb-act{ margin-top:8px; }
   .prep #prepBoard{ position:relative; width:100%; height:min(42vh,84vw); display:flex; align-items:center; justify-content:center; margin:14px 0 10px; overflow:visible; }
   .prep #prepBoard .seat{ width:72px; transform:translate(-50%,-50%) scale(var(--sk,1)); }   /* 사각이 좁으면 renderSquare 가 --sk 로 줄인다 */
@@ -2670,6 +2689,7 @@ function gapsSpread(){
    원형 배치에서는 빈자리 걸음(2)을 건너뛰는데 «/6» 으로 박혀 있어 2/6 다음이 4/6 으로 뛰었다.
    건너뛰는 규칙은 setupGo 와 같은 것을 본다 — 둘이 갈라지면 번호와 실제 걸음이 어긋난다 (2026-09-14) */
 function setupStepPasses(i){ return !(i===2 && !(state.layout==='rect' && gapsNeeded()>0)); }
+function setupJump(i){ if(i===setup.step) return; setup.step=i; setupRender(); render(); }   // 단계 길에서 바로 가기
 function setupStepNo(st){
   const all=[0,1,2,3,4,5];
   return { now: all.filter(i=>i<=st).filter(setupStepPasses).length,
@@ -2720,7 +2740,11 @@ function setupRender(){
   ].filter(Boolean).join('');
   bar.classList.add('wide');
   const no=setupStepNo(st);
-  bar.innerHTML=`<div class="sb-step">${no.now}/${no.total} · ${SETUP_STEPS[st]}</div>
+  /* 단계 길 — 무엇을 정하며 넘어가는지 한 줄로: 지난 단계는 정한 값, 지금 단계는 금색 (2026-09-25 햇살님 «넘기면서 정해야 하는 게 뭔지 잘 보이게») */
+  const val=i=>i===0?(state.layout==='rect'?`사각 ${state.cols}×${state.rows}`:'원형'):i===1?`${state.count}명`:i===2?`${gapsNeeded()}칸`
+    :i===3?((state.seats[0]&&state.seats[0].name)||'1번'):i===4?`${named}/${state.count}`:'';
+  const track=[0,1,2,3,4,5].filter(setupStepPasses).map(i=>`<button class="tk${i===st?' now':i<st?' done':''}" onclick="setupJump(${i})"><span class="n">${SETUP_STEPS[i]}</span>${i<=st&&val(i)?`<b class="v">${val(i)}</b>`:''}</button>`).join('');
+  bar.innerHTML=`<div class="sb-track">${track}</div><div class="sb-step">${no.now}/${no.total} · ${SETUP_STEPS[st]}</div>
     <div class="sb-body">${body}<div class="sb-hint">${hint}</div></div>
     <div class="sb-act">${acts}</div>`;
 }
@@ -4824,16 +4848,18 @@ function sheetModel(mod, chars){
   const cs=src.filter(c=>c&&c.team!=='host'&&c.team!=='fabled');
   const tko=t=>TKOof(m, t);
   const bands=SHEET_ORDER.map(t=>({ team:t, label:SHEET_SPINE[t], teamKo:tko(t),
-      chars:cs.filter(c=>c.team===t).map(c=>({ko:koOf(c), e:String(c.e||''), ab:c.ab||'',
+      chars:cs.filter(c=>c.team===t).map(c=>({uid:c.uid||uidOf(c.id)||'', ko:koOf(c), e:String(c.e||''), ab:c.ab||'',
         icon:(SKINS[m.id]||[]).includes(c.id)?`스킨/${m.id}/${c.id}.webp`:''})) }))
     .filter(b=>b.chars.length);
-  return { name:String(m.name||'').split(' (')[0].trim(), bands, n:cs.length,
+  return { name:String(m.name||'').split(' (')[0].trim(), modeId:m.id||'', bands, n:cs.length,
     evil:cs.filter(c=>c.team==='minion'||c.team==='demon').length,
     hasStar:cs.some(c=>/밤\*/.test(c.ab||'')) };
 }
 function sheetHtml(m, kind){
   const bands=m.bands.map(b=>`<div class="sh-band ${b.team}"><div class="sh-spine">${b.label}</div><div class="sh-grid">`+
-    b.chars.map(c=>`<div class="sh-cell"><div class="e">${c.icon?`<img src="${escH(c.icon)}" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>${escH(c.e)}</span>`:escH(c.e)}</div><div><div class="n">${escH(c.ko)}</div><div class="a">${escH(c.ab)}</div></div></div>`).join('')+
+    b.chars.map(c=>{ const tag=kind==='screen'&&c.uid?'button':'div', child=tag==='button'?'span':'div';
+      const act=tag==='button'?` type="button" class="sh-cell sh-link" onclick="loreOpen('char','${c.uid}','${m.modeId}')"`:' class="sh-cell"';
+      return `<${tag}${act}><${child} class="e">${c.icon?`<img src="${escH(c.icon)}" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>${escH(c.e)}</span>`:escH(c.e)}</${child}><${child}><${child} class="n">${escH(c.ko)}</${child}><${child} class="a">${escH(c.ab)}</${child}></${child}></${tag}>`; }).join('')+
     `</div></div>`).join('');
   const foot=`<div class="sh-foot"><span>${m.hasStar?'* 첫날 밤 제외':''}</span><span>당산나무</span></div>`;
   const lead='이 모드에 나올 수 있는 직업 전부. 판마다 이 중 몇 개만 들어가고, 누가 무엇인지는 비밀.';
@@ -5019,6 +5045,7 @@ function sheetPrint(){
    능력·토큰·팀·문양·밤 순서·나오는 모드는 등록부·모드 데이터에서 그때그때 뽑는다(저장 안 함).
    화면 한 장(#loreOv, 직업표와 같은 틀) · 이미지(A4 300dpi) · 인쇄(A4 채움) — sheet* 의 canvas·채움·공유 경로를 같이 쓴다. */
 const lore={view:'toc', key:null, mode:'', q:'', stack:[]};   // mode = 직업 한 장을 «어느 판 기준» 으로 보는가(들어온 모드)
+let loreOrigin=null;
 function loreHas(){ return typeof LORE!=='undefined'&&!!(LORE&&LORE.직업); }
 /* 이 빌드에서 보이는 원형 — 실제로 어떤 모드 로스터에 든 것만(스토어 빌드에선 시계탑 전용 uid 가 자연히 빠진다) */
 function loreVisibleUids(){
@@ -5046,11 +5073,13 @@ function loreCharModel(uid, modId){
   const rep=v.rep||(v.ids||[])[0]; const base=(v.기본||{})[rep]||{}; const lab=(v.표기||{})[rep]||{};
   const c=cur?cur.c:{id:rep, ko:lab.ko||rep, e:lab.e||'', team:base.team||'town', ab:base.ab||'', tk:base.tk||[], fn:0, on:0};
   const names=[...new Set(Object.values(v.이름||{}))].filter(n=>n&&n!==c.ko);
-  const L=(loreHas()&&LORE.직업[uid])||null;
+  const clockRole=!!(cur&&['botc-tb','botc-snv','botc-bmr'].includes(cur.id));
+  const L=clockRole?null:(loreHas()&&LORE.직업[uid])||null;
   return { uid, key:uid, variants, curVariant:(cur&&cur.c.variant)||'', glyph:variantGlyph(c), vid:variantId(c), ko:c.ko, e:String(c.e||''), team:c.team, teamKo:TKO(c.team), ab:c.ab||base.ab||'', baseAb:(plain[0]&&plain[0].c.ab)||base.ab||'',
     tk:(c.tk||[]).slice(), night:{first:c.fn||0, later:c.on||0}, names, curMode:cur?cur.name:'', curModeId:cur?cur.id:'',
     modes:appear.map(a=>({id:a.id, name:a.name, first:a.c.fn||0, later:a.c.on||0})),
-    테마:L?L.테마:'', 요령:L?L.요령.slice():[], 실수:L?L.실수.slice():[], 상태:L?L.상태:'', hasLore:!!L };
+    icon:clockRole&&SKINS[cur.id].includes(c.id)?`스킨/${cur.id}/${c.id}.webp`:'', clockRole,
+    hostSay:clockRole?(c.say||''):'', 테마:L?L.테마:'', 요령:L?L.요령.slice():[], 실수:L?L.실수.slice():[], 상태:L?L.상태:'', hasLore:!!L };
 }
 function loreModeModel(id){
   const mods=allMods(), m=mods[id]; if(!m) return null;
@@ -5073,14 +5102,15 @@ function loreConceptModel(){ const C=loreHas()&&LORE.컨셉; return (C&&C.세계
 function loreCharBlocks(m){
   const B=[];
   /* 위는 캐릭터 아트 자리(지금은 문양만) → 가운데 이름패 → 이야기 → 능력·토큰 → 밤 순서 → 요령 → 실수. «나오는 모드» 는 뺐다(햇살님, 2026-09-02) */
-  B.push({type:'art', e:m.e});
-  B.push({type:'nameplate', kicker:m.teamKo+(m.curVariant?' · '+m.curVariant:''), text:m.ko, glyph:m.glyph, sub:m.names.length?'다른 판본: '+m.names.join(' · '):''});
-  B.push({type:'para', text:m.테마||'설정 준비 중 — 이 직업의 이야기는 아직 쓰는 중이에요.', cls:m.테마?'':'dim'});
+  B.push({type:'art', e:m.e, icon:m.icon});
+  B.push({type:'nameplate', kicker:m.teamKo+(m.curVariant?' · '+m.curVariant:''), text:m.ko, glyph:m.glyph, sub:!m.clockRole&&m.names.length?'다른 판본: '+m.names.join(' · '):''});
+  if(!m.clockRole) B.push({type:'para', text:m.테마||'설정 준비 중 — 이 직업의 이야기는 아직 쓰는 중이에요.', cls:m.테마?'':'dim'});
   B.push({type:'h2', text:'능력'+(m.curMode?' — '+m.curMode+' 기준':'')}); B.push({type:'para', text:m.ab});
   if(m.tk.length){ B.push({type:'chips', items:m.tk}); }
-  if(m.variants.length){ B.push({type:'h2', text:'판에 따라 다른 조항'}); B.push({type:'list', items:m.variants.map(x=>`${x.glyph?x.glyph+' ':''}${x.name} — ${x.modes.map(y=>y.short).join('·')}에서. ${x.ab}`)}); }
+  if(!m.clockRole&&m.variants.length){ B.push({type:'h2', text:'판에 따라 다른 조항'}); B.push({type:'list', items:m.variants.map(x=>`${x.glyph?x.glyph+' ':''}${x.name} — ${x.modes.map(y=>y.short).join('·')}에서. ${x.ab}`)}); }
   const f=m.night.first, l=m.night.later;
   B.push({type:'h2', text:'밤 순서'}); B.push({type:'para', text:(f?`첫밤 ${f}번째`:'첫밤엔 깨지 않음')+' · '+(l?`이후 밤 ${l}번째`:'이후 밤엔 깨지 않음')});
+  if(m.hostSay){ B.push({type:'h2', text:'진행자 메모'}); B.push({type:'para', text:m.hostSay}); }
   if(m.요령.length){ B.push({type:'h2', text:'요령'}); B.push({type:'list', items:m.요령}); }
   if(m.실수.length){ B.push({type:'h2', text:'자주 하는 실수'}); B.push({type:'list', items:m.실수}); }
   return B;
@@ -5108,7 +5138,7 @@ function loreConceptBlocks(C){
 }
 function blocksHtml(blocks, teamCls, kind){
   return blocks.map(b=>{
-    if(b.type==='art') return `<div class="lo-art"><span>${escH(b.e)}</span></div>`;
+    if(b.type==='art') return `<div class="lo-art${b.icon?' role-icon':''}">${b.icon?`<img src="${escH(b.icon)}" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>${escH(b.e)}</span>`:`<span>${escH(b.e)}</span>`}</div>`;
     if(b.type==='nameplate') return `<div class="lo-name"><div class="k">${escH(b.kicker)}</div><div class="t">${escH(b.text)}${b.glyph?` <span class="vg">${escH(b.glyph)}</span>`:''}</div>${b.sub?`<div class="s">${escH(b.sub)}</div>`:''}</div>`;
     if(b.type==='kicker') return `<div class="lo-kicker">${escH(b.text)}</div>`;
     if(b.type==='title') return `<div class="lo-title">${b.e?`<span class="e">${escH(b.e)}</span>`:''}<span class="t">${escH(b.text)}</span></div>`+(b.sub?`<div class="lo-sub">${escH(b.sub)}</div>`:'');
@@ -5137,16 +5167,23 @@ function loreHtml(model, kind, what){
 }
 /* ── 화면 ── */
 function loreOpen(view, key, mode){
+  const ov=document.getElementById('loreOv');
+  const entering=!!(ov&&!ov.classList.contains('on'));
+  if(entering) loreOrigin=document.activeElement;
   refEnter();
   if(view&&view!==lore.view||key!==undefined&&key!==lore.key){ if(lore.view!=='toc') lore.stack.push({view:lore.view,key:lore.key,mode:lore.mode}); }
   lore.view=view||'toc'; if(key!==undefined) lore.key=key;
   if(lore.view==='mode') lore.mode=key; else if(mode) lore.mode=mode;
   if(lore.view==='toc'){ lore.stack=[]; lore.mode=''; }
   loreRender();
-  const ov=document.getElementById('loreOv'); if(ov) ov.classList.add('on');
+  if(ov) ov.classList.add('on');
+  if(entering){ const back=document.getElementById('loBack'); if(back&&back.style.visibility!=='hidden') back.focus(); }
 }
-function loreBack(){ const p=lore.stack.pop(); if(p){ lore.view=p.view; lore.key=p.key; lore.mode=p.mode||''; } else { lore.view='toc'; lore.key=null; lore.mode=''; } loreRender(); }
-function loreClose(){ const ov=document.getElementById('loreOv'); if(ov) ov.classList.remove('on'); lore.view='toc'; lore.key=null; lore.mode=''; lore.stack=[]; refLeave(); }
+function loreBack(){ const p=lore.stack.pop(); if(p){ lore.view=p.view; lore.key=p.key; lore.mode=p.mode||''; }
+  else if(document.getElementById('sheetOv')?.classList.contains('on')){ loreClose(); return; }
+  else { lore.view='toc'; lore.key=null; lore.mode=''; } loreRender(); }
+function loreClose(){ const ov=document.getElementById('loreOv'); if(ov) ov.classList.remove('on'); lore.view='toc'; lore.key=null; lore.mode=''; lore.stack=[]; refLeave();
+  if(loreOrigin&&typeof loreOrigin.focus==='function') loreOrigin.focus(); loreOrigin=null; }
 function loreSearch(q){ lore.q=q||''; if(lore.view!=='toc'){ lore.view='toc'; lore.key=null; lore.stack=[]; } loreRender(); }
 function loreCurrentModel(){
   if(lore.view==='char') return loreCharModel(lore.key, lore.mode||state.edition);
@@ -5188,7 +5225,7 @@ function loreRender(){
     if(B) B.innerHTML=loreTocHtml();
   } else {
     if(K) K.style.visibility='';
-    if(lore.view==='char'){ if(T) T.textContent=m.e+' '+m.ko; if(S) S.textContent=m.teamKo+(m.curMode?' · '+m.curMode+' 기준':'')+(m.상태==='검토중'?' · 검토중':''); }
+    if(lore.view==='char'){ if(T) T.textContent=m.clockRole?'직업 설명':m.e+' '+m.ko; if(S) S.textContent=m.teamKo+(m.curMode?' · '+m.curMode+' 기준':'')+(m.상태==='검토중'?' · 검토중':''); }
     else if(lore.view==='mode'){ if(T) T.textContent='📖 '+m.name; if(S) S.textContent=m.hook||m.tag||''; }
     else { if(T) T.textContent='🏮 당산나무'; if(S) S.textContent='어떤 게임인가'; }
     if(B) B.innerHTML=loreHtml(m,'screen');
@@ -5244,11 +5281,15 @@ function blocksLayout(g, blocks, s, innerW, K, F){
   });
   return {need, items, s, px, font};
 }
-function blocksPaint(g, L, x, y0, innerW, C, teamColor){
+function blocksPaint(g, L, x, y0, innerW, C, teamColor, icons){
   const {px,font}=L; let y=y0; g.textBaseline='top'; g.textAlign='left';
   L.items.forEach(it=>{ const b=it.b; y+=it.gap||0;
-    if(b.type==='art'){ const h=Math.round(LO_BASE.art*L.K); g.fillStyle=C.chip; g.fillRect(x, y, innerW, h);
-      g.font=Math.round(LO_BASE.e*2.2*L.K)+'px '+L.F; g.fillStyle=C.txt; g.textAlign='center'; g.textBaseline='middle'; g.fillText(b.e, x+innerW/2, y+h/2); g.textAlign='left'; g.textBaseline='top'; y+=h; }
+    if(b.type==='art'){ const h=Math.round(LO_BASE.art*L.K); g.fillStyle=b.icon?'#e6dec9':C.chip; g.fillRect(x, y, innerW, h);
+      if(b.icon){ g.strokeStyle='rgba(42,36,28,.22)'; g.strokeRect(x+px(12),y+px(12),innerW-2*px(12),h-2*px(12)); }
+      const img=icons&&icons.get(b.icon);
+      if(img){ const size=h*.82; g.drawImage(img,x+(innerW-size)/2,y+(h-size)/2,size,size); }
+      else { g.font=Math.round(LO_BASE.e*2.2*L.K)+'px '+L.F; g.fillStyle=C.txt; g.textAlign='center'; g.textBaseline='middle'; g.fillText(b.e, x+innerW/2, y+h/2); g.textAlign='left'; g.textBaseline='top'; }
+      y+=h; }
     else if(b.type==='nameplate'){ g.textAlign='center'; const cx=x+innerW/2;
       g.fillStyle=teamColor||C.dim; g.font=font('800',LO_BASE.kicker); g.fillText(b.kicker.split('').join(' '), cx, y); y+=px(LO_BASE.kicker*1.5);
       g.fillStyle=C.txt; g.font=font('800',LO_BASE.name); it.lines.forEach((t,i)=>g.fillText(t, cx, y+i*px(LO_BASE.name*1.15)));
@@ -5276,7 +5317,7 @@ function blocksPaint(g, L, x, y0, innerW, C, teamColor){
   });
   return y;
 }
-function loreCanvas(model, what){
+function loreCanvas(model, what, icons){
   const w=what||lore.view; const P=pageCanvas(w==='concept'?'A3':'A4'); if(!P) return null;
   const {cv,g,W,H,K}=P; const C=sheetPalette(hubOf(ED())==='클래식'); const F='"Pretendard","Apple SD Gothic Neo",system-ui,sans-serif';
   const blocks=w==='char'?loreCharBlocks(model):w==='mode'?loreModeBlocks(model):loreConceptBlocks(model);
@@ -5291,14 +5332,15 @@ function loreCanvas(model, what){
   cv.width=W; cv.height=Math.ceil(height);
   g.fillStyle=C.bg; g.fillRect(0,0,W,cv.height);
   const teamColor=w==='char'?(C.team[model.team]||C.txt):null;
-  blocksPaint(g, L, padL, padT, innerW, C, teamColor);
+  blocksPaint(g, L, padL, padT, innerW, C, teamColor, icons);
   const fy=cv.height-padB-footH; g.fillStyle=C.rule; g.fillRect(padL, fy, innerW, 2);
   g.textBaseline='top'; g.textAlign='right'; g.fillStyle=C.dim; g.font=`500 ${Math.round(LO_BASE.foot*K)}px ${F}`; g.fillText('당산나무', W-padR, fy+Math.round(8*K));
   return cv;
 }
-function loreSave(){
+async function loreSave(){
   const m=loreCurrentModel(); if(!m) return;
-  const cv=loreCanvas(m); if(!cv){ sheetNote('이 기기에서는 이미지를 만들 수 없어요.'); return; }
+  const icons=m.icon?await sheetLoadIcons({bands:[{chars:[m]}]}):null;
+  const cv=loreCanvas(m,undefined,icons); if(!cv){ sheetNote('이 기기에서는 이미지를 만들 수 없어요.'); return; }
   const name=lore.view==='char'?`설정집_${m.ko}.png`:lore.view==='mode'?`소개_${m.name}.png`:'당산나무_컨셉카드.png';
   cv.toBlob(bl=>{ if(bl) shareOrDownload(bl, name, name.replace(/\.png$/,'')); },'image/png');
 }
