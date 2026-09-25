@@ -403,7 +403,7 @@
   :root[data-hub="classic"] .seat.minion .token, :root[data-hub="mafia"] .seat.minion .token{ box-shadow:0 0 12px -2px var(--evil); }
   :root[data-hub="classic"] .seat.demon .token, :root[data-hub="mafia"] .seat.demon .token{ box-shadow:0 0 14px -1px var(--demon); }
   .seat.dead .token{ border-color:var(--dead); opacity:.5; filter:grayscale(1); }
-  .seat.dead .token::after{ content:'✝'; position:absolute; font-size:38px; color:var(--dim); opacity:.9; }
+  .seat.dead .token::after{ content:'\271D\FE0E'; position:absolute; font-size:38px; color:var(--dim); opacity:.9; font-family:'Apple SD Gothic Neo','Noto Sans KR',serif; }   /* 사망 표시 — 아이폰이 ✝ 를 보라색 이모지로 그려서 글자꼴(VS15)로 고정 (2026-09-26) */
   .pname{ font-size:var(--t-lead); margin-top:7px; font-weight:800; color:var(--txt);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .cname{ font-size:var(--t-cap); color:var(--dim); margin-top:1px; white-space:nowrap; }
@@ -1388,6 +1388,10 @@
   .pk-open .btn{ justify-content:flex-start; padding:6px 0; min-height:var(--tap); color:var(--gold); font-weight:700; }
 /* 자리표에서 고르기 — 밤·낮의 첫 행동이라 한 줄 가득, 금색 반전(고른 것은 반전 규칙과 같은 말) (햇살님 2026-09-20 «버튼이 좀 더 잘 보이게») */
 .pk-open .btn.pick, .s-act .btn.pick{ width:100%; justify-content:center; min-height:52px; padding:12px 14px; background:var(--gold); color:var(--bg); font-weight:800; font-size:var(--t-lead); border-radius:var(--r); }
+/* 고르기 카드의 적용 동작(붙이기·사망 처리·결과 보기…)도 누르는 버튼으로 — 2026-09-26 햇살님 «글자만 있어서 불편해» */
+.pk-act .btn{ flex:1 1 100%; justify-content:center; min-height:52px; padding:12px 14px; border:1px solid var(--gold); border-radius:var(--r); color:var(--gold); font-weight:800; font-size:var(--t-lead); }
+.pk-act .btn.gold{ background:var(--gold); color:var(--bg); }
+.pk-act .btn.danger{ border-color:var(--warn-txt); color:var(--warn-txt); background:transparent; }
   .pk-chosen{ padding:0; }
   .wz-ansbar{ margin:2px 0 6px; }
   .wz-ansbar .ab-hd{ display:none; }
@@ -4783,7 +4787,7 @@ function popWho(){
   return '<div class="list">'+state.seats.map((s2,i)=>{ const c=s2.char?cm[s2.char]:null;
     const tags=(s2.rem||[]).map(r=>`<span class="rem${rb.has(r)?' blue':''}">${TK(r)}</span>`).join('');
     return `<div class="pw-row${s2.dead?' past':''}"><div class="no">${i+1}</div>
-      <div class="pw-l"><span class="pw-nm">${s2.name||'—'}${s2.dead?' ✝':''}</span>${tags}</div>
+      <div class="pw-l"><span class="pw-nm">${s2.name||'—'}${s2.dead?' ✝\uFE0E':''}</span>${tags}</div>
       <div class="pw-mid">${whoLastNight(i)}</div>
       <div class="pw-role">${c?CE(c)+' '+c.ko:'—'}</div>
     </div>`; }).join('')+'</div>';
@@ -6059,7 +6063,7 @@ function wzRenderBody(){
     const rows='<div class="list">'+state.seats.map((s2,i)=>{ const c=s2.char?cm[s2.char]:null; if(!c) return '';
       return `<div class="lrow"><div class="no">${i+1}</div>
         <div class="mn"><div class="t">${escH(s2.name||'—')}</div><div class="s">${CE(c)} ${c.ko} · ${teamIco(c.team)} ${TKO(c.team)}</div></div>
-        <div class="v">${s2.dead?'✝ 사망':'생존'}</div></div>`; }).join('')+'</div>';
+        <div class="v">${s2.dead?'✝\uFE0E 사망':'생존'}</div></div>`; }).join('')+'</div>';
     const a=wz.again||{};
     const tg=(k,lb)=>`<button class="btn${a[k]?' gold':''}" onclick="wzAgainToggle('${k}')">${lb} · ${a[k]?'바꿈':'유지'}</button>`;
     const on=['mode','seat','people'].filter(k=>a[k]||(k==='seat'&&a.people));
