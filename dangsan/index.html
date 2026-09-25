@@ -222,6 +222,10 @@
   .seat.gap.dragging{ opacity:.95; z-index:20; }
   /* 끌어서 놓을 자리 — 원(토큰) 둘레에 점선. 사각 테두리는 좌석이 둥근데 어긋나 보였다 (2026-09-22 햇살님) */
   .seat.drop .token{ outline:2px dashed var(--gold); outline-offset:4px; }
+  #square.dragmode .seat:not(.dragging):not(.slotghost):not(.drop) .token{ outline:1px solid var(--gold); outline-offset:4px; }   /* 끄는 동안 놓을 수 있는 자리 */
+  .seat.slotghost{ pointer-events:none; }
+  .seat.slotghost .token{ background:transparent; border:1.5px dashed var(--gold); box-shadow:none; opacity:.85; }   /* 끌기 전 원래 자리 */
+  .seat.slotghost.drop .token{ outline:none; border-style:solid; }
   /* 자리 잡기 중에는 사람도 끌어서 자리를 바꾼다 — 스크롤 대신 끌기 */
   .seat.movable{ touch-action:none; }
   .seat.movable.dragging{ opacity:.92; z-index:20; pointer-events:none; }
@@ -244,6 +248,7 @@
   /* 자리 잡기 단계 안 조절기 — 옛 헤더 자리 */
   .sb-ctl{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:7px; }
   .sb-step-ctl{ display:inline-flex; align-items:center; gap:4px; }
+  .sb-grid{ display:flex; flex-basis:100%; flex-wrap:nowrap; gap:18px; }   /* 가로·세로는 한 줄에 나란히 (2026-09-25 햇살님) */
   .sb-step-ctl .l{ font-size:var(--t-cap); color:var(--dim); margin-right:2px; }
   .sb-step-ctl .v{ min-width:1.6em; text-align:center; font-variant-numeric:tabular-nums; }
   .chip-empty{ font-size:var(--fs-xs); color:var(--dim); }
@@ -1269,7 +1274,7 @@
   .prep .setupbar .sb-step{ font-family:var(--mono); font-size:var(--t-label); letter-spacing:.06em; }
   .prep .setupbar .sb-act{ margin-top:8px; }
   .prep #prepBoard{ position:relative; width:100%; height:min(42vh,84vw); display:flex; align-items:center; justify-content:center; margin:14px 0 10px; overflow:visible; }
-  .prep #prepBoard .seat{ width:72px; }
+  .prep #prepBoard .seat{ width:72px; transform:translate(-50%,-50%) scale(var(--sk,1)); }   /* 사각이 좁으면 renderSquare 가 --sk 로 줄인다 */
   .prep .wz-scroll{ overflow-x:hidden; }
   .prep #prepBoard .hub{ display:none; }
   .prep #ngSheet{ position:static; max-width:none; width:auto; border:0; border-radius:0; padding:0; background:transparent; box-shadow:none; max-height:none; overflow:visible; }
@@ -2545,11 +2550,11 @@ function seatDragStart(ev, i){
   seatDragMoved=false;
 }
 /* 포인터 아래의 좌석 요소(끌고 있는 것 제외) — 원형·사각 어느 배치든 화면 거리로 고른다 */
-function seatElAt(clientX, clientY){
+function seatElAt(clientX, clientY, skip){
   const sq=document.getElementById('square'); if(!sq) return null;
   let best=null, bd=Infinity;
-  sq.querySelectorAll('.seat').forEach(el=>{ if(gapDrag&&el===gapDrag.el) return; const r=el.querySelector('.token')?.getBoundingClientRect()||el.getBoundingClientRect();
-    const d=(r.left+r.width/2-clientX)**2+(r.top+r.height/2-clientY)**2; if(d<bd&&d<(r.width*1.1)**2){ bd=d; best=el; } });
+  sq.querySelectorAll('.seat').forEach(el=>{ if(el===(skip||(gapDrag&&gapDrag.el))) return; const r=el.querySelector('.token')?.getBoundingClientRect()||el.getBoundingClientRect();
+    const d=(r.left+r.width/2-clientX)**2+(r.top+r.height/2-clientY)**2; if(d<bd&&d<(r.width*1.6)**2){ bd=d; best=el; } });   // 1.1 → 1.6: 폰에서 손가락이 조금 빗겨도 잡히게 (2026-09-25 «여유를 주고»)
   return best;
 }
 /* 두 좌석의 사람을 맞바꾼다 — 좌석 번호는 자리에 남고 사람(이름·직업·표식·기록)이 옮겨 간다 */
@@ -2569,7 +2574,7 @@ function gapCellAt(clientX, clientY){
 }
 function gapDragMove(ev){
   if(!gapDrag) return;
-  if(Math.abs(ev.clientX-gapDrag.x0)+Math.abs(ev.clientY-gapDrag.y0)>6){ gapDrag.moved=true; if(gapDrag.kind==='seat'){ seatDragMoved=true; gapDrag.el.classList.add('dragging'); } }
+  if(Math.abs(ev.clientX-gapDrag.x0)+Math.abs(ev.clientY-gapDrag.y0)>6){ if(!gapDrag.moved&&gapDrag.kind==='seat') seatDragBegin(gapDrag); gapDrag.moved=true; if(gapDrag.kind==='seat'){ seatDragMoved=true; gapDrag.el.classList.add('dragging'); } }
   if(!gapDrag.moved) return;
   const sq=document.getElementById('square'); if(!sq) return;
   const r=sq.getBoundingClientRect();
@@ -2586,8 +2591,8 @@ function gapDragEnd(ev){
   const sq=document.getElementById('square'); if(sq) sq.querySelectorAll('.seat.drop').forEach(e=>e.classList.remove('drop'));
   if(d.kind==='seat'){
     if(!d.moved){ return; }                                   // 탭 — onclick 이 이어서 처리한다
-    const tgt=seatElAt(ev.clientX, ev.clientY);
-    if(!tgt){ d.el.style.left=d.left; d.el.style.top=d.top; return; }
+    const tgt=seatElAt(ev.clientX, ev.clientY, d.el);   // 끌던 좌석 자신은 빼고 — gapDrag 를 이미 비워서 자기 자신이 «놓은 자리»로 잡혀 제자리에 멈춰 겹쳤다 (2026-09-25 햇살님 폰)
+    if(!tgt||tgt.classList.contains('slotghost')){ render(); return; }   // 빈 곳·원래 자리 표시 위에 놓으면 제자리로
     if(tgt.classList.contains('gap')){ moveGap(+tgt.dataset.cell, cellOfSeat(d.seat)); return; }   // 빈자리로 끌면 빈자리가 이쪽으로 온다
     const j=+tgt.dataset.seat; if(Number.isInteger(j)) swapSeats(d.seat, j); else render();
     return;
@@ -2672,8 +2677,8 @@ function setupRender(){
       <div class="sb-ctl">
         <button class="btn sm${state.layout==='circle'?' gold':''}" onclick="setLayout('circle')">◯ 원형</button>
         <button class="btn sm${state.layout==='rect'?' gold':''}" onclick="setLayout('rect')">▢ 사각</button>
-        ${state.layout==='rect'?stepper('가로',"changeGrid('cols',-1)",state.cols,"changeGrid('cols',1)")
-          +stepper('세로',"changeGrid('rows',-1)",state.rows,"changeGrid('rows',1)"):''}
+        ${state.layout==='rect'?`<span class="sb-grid">${stepper('가로',"changeGrid('cols',-1)",state.cols,"changeGrid('cols',1)")
+          +stepper('세로',"changeGrid('rows',-1)",state.rows,"changeGrid('rows',1)")}</span>`:''}
       </div>`;
     hint=state.layout==='rect'?`둘레 ${rectCap()}칸 — 인원은 그 이하로 정하고, 남는 칸이 빈자리가 됩니다.`
                               :'둥글게 둘러앉는 기본 배치예요.'; }
@@ -2800,11 +2805,22 @@ function boardAvailH(wrap){
   return Math.max(160, wrap.clientHeight-cut);
 }
 function renderSquare(){
-  const sq=document.getElementById('square'); sq.querySelectorAll('.seat').forEach(e=>e.remove());
+  const sq=document.getElementById('square'); sq.querySelectorAll('.seat').forEach(e=>e.remove()); sq.classList.remove('dragmode');
   sq.dataset.layout=state.layout;   // 계열 장식(오리지널 마피아 탁자 소품)이 원형일 때만 붙는다
   const N=state.count, cm=CMAP(), rb=new Set(ED().remBlue||[]), tkm=TKMAP();
   // 컨테이너 비율
-  if(state.layout==='rect'){
+  const inPrep=sq.parentElement&&sq.parentElement.id==='prepBoard';
+  sq.style.removeProperty('--sk'); if(inPrep) sq.parentElement.style.height='';
+  if(state.layout==='rect'&&inPrep){
+    /* 준비 화면(폰): 배치 비율대로 — 가로·세로 둘 중 먼저 닿는 쪽에 맞춰 줄인다. 좁으면 좌석도 같이 줄여 안 겹치게
+       (2026-09-25 햇살님 «상하로 넓어지면 대지도 커지게» → «가로를 무조건 채우지 말고 비율 봐서, 너무 채우면 세로가 엄청 길어지니까»).
+       칸 간격 = 폭의 74%/(가로-1) · 높이의 70%/(세로-1) (rectPositions) · 좌석 한 칸 약 80×104px */
+    const W=Math.max(200, sq.parentElement.clientWidth), c=Math.max(2,state.cols), r=Math.max(2,state.rows);
+    const Wn=80*(c-1)/.74, Hn=104*(r-1)/.70, Hmax=Math.max(260, innerHeight*.55);
+    const k=Math.max(.55, Math.min(1, W/Wn, Hmax/Hn));
+    const H=Math.max(160, Hn*k); sq.style.width=Math.min(W, Math.max(Wn*k, 140))+'px'; sq.style.height=H+'px'; sq.style.aspectRatio='auto';
+    sq.style.setProperty('--sk', k.toFixed(3)); sq.parentElement.style.height=Math.round(H+24)+'px';
+  } else if(state.layout==='rect'){
     const asp=state.cols/state.rows;
     sq.style.width=`min(62vw, ${(76*asp).toFixed(1)}vh)`;
     sq.style.height=`min(76vh, ${(62/asp).toFixed(1)}vw)`;
@@ -12031,6 +12047,9 @@ if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.s
 window.addEventListener('pointermove', gapDragMove);
 window.addEventListener('pointerup', gapDragEnd);
 window.addEventListener('pointercancel', ()=>{ if(gapDrag){ gapDrag.el.classList.remove('dragging'); gapDrag=null; render(); } });
+/* 사람 끌기를 시작할 때 — 원래 자리에 점선 동그라미, 다른 자리마다 «놓을 수 있는 자리» 가는 테 (2026-09-25 햇살님 «위치 표기를 하자, 가는 선이든») */
+function seatDragBegin(d){ const sq=document.getElementById('square'); if(!sq) return; sq.classList.add('dragmode');
+  const gh=document.createElement('div'); gh.className='seat slotghost'; gh.style.left=d.left; gh.style.top=d.top; gh.innerHTML='<div class="token"></div>'; sq.appendChild(gh); }
 
 render();
 /* 진행 상태 되살리기 — 낮 단계·처형 결과는 화면을 열기 전에. 대문이 먼저 열리면 저장본을 기본값으로 덮어썼다 (감사 2026-09-13).
