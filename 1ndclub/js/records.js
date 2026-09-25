@@ -278,7 +278,7 @@ function renderMePage(){
   const dday = next ? Math.round((TUNEL.at(next.d) - TODAY)/86400000) : null;
 
   body.innerHTML=`
-    <div class="hero" style="text-align:center;position:relative">${TUNEL.joalarmHeart()}
+    <div class="hero" style="text-align:center;position:relative">
       <div class="attbadge"><div class="an">${cnt}</div><div class="al">회 참석</div></div>
       <div class="dt" style="margin-top:12px">${acc.nick}</div>
       <div class="tm">${isAdmin()?'관리자':acc.role==='staff'?'운영진':acc.scribe?'서기':'첫밤 사망자 클럽 멤버'}</div>

@@ -155,4 +155,3 @@ function scribeModal(appointed){
 /* ══ 좋알람 (히든) ══
    들어가는 길: 내 활동의 하트(한 번 = 설명, 다섯 번 = 열기). 2026-09-25 부터 서버가 지키는 공용 좋알람(tunel.js joalarm*)으로 바뀌었다.
    옛 방식(폰에서 암호화한 public.crush)은 저장된 지목이 없어 옮길 것 없이 걷었다 — 코드는 git 기록에 있다. */
-function jaTap(){ TUNEL.joalarmTap(); }
