@@ -774,7 +774,7 @@ const TUNEL = {
      서버는 «내 지목»과 «서로 가리킨 짝»만 돌려준다 — 누가 나를 가리켰는지는 어디에도 없다. */
   _jaN:0, _jaT:0,
   /* 하트 — 3회 전 회색(가만히), 열린 뒤 빨강(박동). 한 번 = 안내, 네 번 = 좋알람 (2026-09-25 햇살님 «4번 누르기»).
-     계정 설정의 좋알람 줄도 같은 규칙(TUNEL.joalarmTap). */
+     좋알람은 중앙역 마이페이지 하트로만 들어간다(2026-09-25 — 계정 설정·노선 페이지에서 뺌). */
   _jaSt:null,
   async _jaState(){ if(TUNEL._jaSt) return TUNEL._jaSt; try{ const { data } = await sb().rpc('love_state'); TUNEL._jaSt = data || { eligible:false }; }catch(e){ TUNEL._jaSt = { eligible:false }; } return TUNEL._jaSt; },
   joalarmHeart(){
