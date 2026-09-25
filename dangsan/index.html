@@ -226,6 +226,11 @@
   .seat.slotghost{ pointer-events:none; }
   .seat.slotghost .token{ background:transparent; border:1.5px dashed var(--gold); box-shadow:none; opacity:.85; }   /* 끌기 전 원래 자리 */
   .seat.slotghost.drop .token{ outline:none; border-style:solid; }
+  .seat.slotghost.preview .token{ border-style:solid; color:var(--gold); display:flex; align-items:center; justify-content:center; font-weight:800; }
+  .seat.slotghost .pname{ color:var(--gold); }
+  #square.dragmode .seat.drop .token{ outline:none; transform:scale(1.16); box-shadow:0 0 0 3px var(--gold), 0 0 22px var(--gold); transition:transform .12s, box-shadow .12s; }   /* 올라간 자리 — 커지며 빛남 */
+  #square.dragmode .seat.movable.dragging .token{ transform:scale(1.12); box-shadow:0 12px 22px rgba(0,0,0,.45); }   /* 들어 올린 사람 */
+  @media (prefers-reduced-motion:reduce){ #square.dragmode .seat.drop .token, #square.dragmode .seat.movable.dragging .token{ transition:none; } }
   /* 자리 잡기 중에는 사람도 끌어서 자리를 바꾼다 — 스크롤 대신 끌기 */
   .seat.movable{ touch-action:none; }
   .seat.movable.dragging{ opacity:.92; z-index:20; pointer-events:none; }
@@ -275,6 +280,8 @@
   .sh-grid{ display:grid; grid-template-columns:1fr 1fr; column-gap:var(--sh-col-gap); row-gap:calc(var(--sh-row-gap) * var(--sh-k,1)); align-items:start; }
   .sh-cell{ display:grid; grid-template-columns:var(--sh-icon) 1fr; gap:var(--sh-cell-gap); align-items:start; }
   .sh-cell .e{ font-size:var(--sh-e-fs); line-height:1.1; text-align:center; }
+  .sh-cell .e img{ display:block; width:var(--sh-icon); height:var(--sh-icon); object-fit:contain; }
+  .sh-cell .e img[hidden]{ display:none; }
   .sh-cell .n{ font-size:var(--sh-n-fs); font-weight:800; color:var(--sh-c); line-height:1.25; }
   .sh-cell .a{ font-size:var(--sh-a-fs); font-weight:500; color:var(--sh-txt2); line-height:1.5; margin-top:2px; text-wrap:pretty; }
   .sh-foot{ display:flex; justify-content:space-between; color:var(--sh-dim); border-top:1px solid var(--sh-rule); }
@@ -2387,7 +2394,7 @@ function gripInit(){
   g.addEventListener('pointercancel', end);
 }
 
-const SKINS={"botc-tb": ["baron", "beggar", "bureaucrat", "butler", "chef", "drunk", "empath", "fortuneteller", "gunslinger", "imp", "investigator", "librarian", "mayor", "monk", "poisoner", "ravenkeeper", "recluse", "saint", "scapegoat", "scarletwoman", "slayer", "soldier", "spy", "thief", "undertaker", "virgin", "washerwoman"]};   /* tools/스킨_목록_갱신.py 가 이 줄을 다시 씀 — 손으로 고치지 말 것 */
+const SKINS={"botc-bmr": ["apprentice", "assassin", "bishop", "chambermaid", "courtier", "devilsadvocate", "exorcist", "fool", "gambler", "godfather", "goon", "gossip", "grandmother", "innkeeper", "judge", "lunatic", "mastermind", "matron", "minstrel", "moonchild", "pacifist", "po", "professor", "pukka", "sailor", "shabaloth", "tealady", "tinker", "voudon", "zombuul"], "botc-snv": ["artist", "barber", "barista", "bonecollector", "butcher", "cerenovus", "clockmaker", "deviant", "dreamer", "eviltwin", "fanggu", "flowergirl", "harlot", "juggler", "klutz", "mathematician", "mutant", "nodashii", "oracle", "philosopher", "pithag", "sage", "savant", "seamstress", "snakecharmer", "sweetheart", "towncrier", "vigormortis", "vortox", "witch"], "botc-tb": ["baron", "beggar", "bureaucrat", "butler", "chef", "drunk", "empath", "fortuneteller", "gunslinger", "imp", "investigator", "librarian", "mayor", "monk", "poisoner", "ravenkeeper", "recluse", "saint", "scapegoat", "scarletwoman", "slayer", "soldier", "spy", "thief", "undertaker", "virgin", "washerwoman"]};   /* tools/스킨_목록_갱신.py 가 이 줄을 다시 씀 — 손으로 고치지 말 것 */
 /* 그림이 있는 모드·직업만 <img> 로 낸다. 예전엔 무조건 요청해서 스킨 없는 모드마다
    직업 수만큼 404 가 났다 — 화면은 이모지로 폴백돼 안 보였을 뿐 (2026-08-29) */
 /* 상징 아이템(2026-09-12, docs/보고서/상징_아이템_기획_2026-09-12.md) — 직업 id → img/icons 마스크. 스킨이 있는 모드(시계탑)는 스킨이 먼저, 없으면 아이템, 그다음 이모지 */
@@ -2577,12 +2584,13 @@ function gapDragMove(ev){
   if(Math.abs(ev.clientX-gapDrag.x0)+Math.abs(ev.clientY-gapDrag.y0)>6){ if(!gapDrag.moved&&gapDrag.kind==='seat') seatDragBegin(gapDrag); gapDrag.moved=true; if(gapDrag.kind==='seat'){ seatDragMoved=true; gapDrag.el.classList.add('dragging'); } }
   if(!gapDrag.moved) return;
   const sq=document.getElementById('square'); if(!sq) return;
-  const r=sq.getBoundingClientRect();
+  const r=sq.getBoundingClientRect(), Y=ev.clientY-(gapDrag.kind==='seat'?SEAT_LIFT:0);   // 사람은 손가락 위로 띄워 든다 — 손가락에 가려 안 보이던 것 (2026-09-25)
   gapDrag.el.style.left=((ev.clientX-r.left)/r.width*100)+'%';
-  gapDrag.el.style.top=((ev.clientY-r.top)/r.height*100)+'%';
+  gapDrag.el.style.top=((Y-r.top)/r.height*100)+'%';
   sq.querySelectorAll('.seat.drop').forEach(e=>e.classList.remove('drop'));
-  const tgt=seatElAt(ev.clientX, ev.clientY);
+  const tgt=seatElAt(ev.clientX, Y);
   if(tgt&&(gapDrag.kind==='seat'||!tgt.classList.contains('gap'))) tgt.classList.add('drop');
+  if(gapDrag.kind==='seat'&&tgt!==gapDrag.tgt){ gapDrag.tgt=tgt; seatDragPreview(gapDrag, tgt); }
 }
 function gapDragEnd(ev){
   if(!gapDrag) return;
@@ -2591,7 +2599,7 @@ function gapDragEnd(ev){
   const sq=document.getElementById('square'); if(sq) sq.querySelectorAll('.seat.drop').forEach(e=>e.classList.remove('drop'));
   if(d.kind==='seat'){
     if(!d.moved){ return; }                                   // 탭 — onclick 이 이어서 처리한다
-    const tgt=seatElAt(ev.clientX, ev.clientY, d.el);   // 끌던 좌석 자신은 빼고 — gapDrag 를 이미 비워서 자기 자신이 «놓은 자리»로 잡혀 제자리에 멈춰 겹쳤다 (2026-09-25 햇살님 폰)
+    const tgt=seatElAt(ev.clientX, ev.clientY-SEAT_LIFT, d.el);   // 끌던 좌석 자신은 빼고 — gapDrag 를 이미 비워서 자기 자신이 «놓은 자리»로 잡혀 제자리에 멈춰 겹쳤다 (2026-09-25 햇살님 폰)
     if(!tgt||tgt.classList.contains('slotghost')){ render(); return; }   // 빈 곳·원래 자리 표시 위에 놓으면 제자리로
     if(tgt.classList.contains('gap')){ moveGap(+tgt.dataset.cell, cellOfSeat(d.seat)); return; }   // 빈자리로 끌면 빈자리가 이쪽으로 온다
     const j=+tgt.dataset.seat; if(Number.isInteger(j)) swapSeats(d.seat, j); else render();
@@ -4792,7 +4800,7 @@ function popPath(){
 /* ══════════ 직업표 — 모드의 직업 전체를 참가자에게 (2026-09-02) ══════════
    모임 전에 나눠 주는 시트. 시계탑 «스크립트 시트» 자리 — 팀마다 띠, 왼쪽 세로 팀 라벨, 띠 안은 2열.
    화면 한 장(#sheetOv) · 이미지로 저장(canvas→PNG→공유 시트) · 인쇄(#sheetPrint, A4 채움 맞춤).
-   그림은 이모지만 — 스킨(CE)은 앱 밖으로 나가는 이미지에 넣지 않는다. 능력 문구는 데이터의 ab 그대로. */
+   새로 확정한 시계탑 3모드 아이콘은 화면·저장·인쇄에 공통 사용한다. 다른 모드는 이모지. 능력 문구는 데이터의 ab 그대로. */
 /* 파생 글자 — 그 판에서 능력 조항이 다른 직업(c.variant)은 이름 뒤에 한자 한 글자. 열쇠는 gid(FIXED.GLYPH), 한자는 표기(glyph) — «의원 神» */
 /* 파생 고정값 — 파생 이름(c.variant) → gid(FIXED.VARIANT_GLYPH). 파생 직업의 정체 = 원형 uid + gid (햇살님 2026-09-02: «원형 uid 에 파생 고정값을 붙이면 파생 직업») */
 function variantGid(c){ const vn=c&&c.variant; if(!vn) return ''; const F=/** @type {any} */((typeof FIXED!=='undefined'&&FIXED)||{}); return ((F.VARIANT_GLYPH||{})[vn])||''; }
@@ -4807,7 +4815,8 @@ function sheetModel(mod, chars){
   const cs=src.filter(c=>c&&c.team!=='host'&&c.team!=='fabled');
   const tko=t=>TKOof(m, t);
   const bands=SHEET_ORDER.map(t=>({ team:t, label:SHEET_SPINE[t], teamKo:tko(t),
-      chars:cs.filter(c=>c.team===t).map(c=>({ko:koOf(c), e:String(c.e||''), ab:c.ab||''})) }))
+      chars:cs.filter(c=>c.team===t).map(c=>({ko:koOf(c), e:String(c.e||''), ab:c.ab||'',
+        icon:(SKINS[m.id]||[]).includes(c.id)?`스킨/${m.id}/${c.id}.webp`:''})) }))
     .filter(b=>b.chars.length);
   return { name:String(m.name||'').split(' (')[0].trim(), bands, n:cs.length,
     evil:cs.filter(c=>c.team==='minion'||c.team==='demon').length,
@@ -4815,7 +4824,7 @@ function sheetModel(mod, chars){
 }
 function sheetHtml(m, kind){
   const bands=m.bands.map(b=>`<div class="sh-band ${b.team}"><div class="sh-spine">${b.label}</div><div class="sh-grid">`+
-    b.chars.map(c=>`<div class="sh-cell"><div class="e">${escH(c.e)}</div><div><div class="n">${escH(c.ko)}</div><div class="a">${escH(c.ab)}</div></div></div>`).join('')+
+    b.chars.map(c=>`<div class="sh-cell"><div class="e">${c.icon?`<img src="${escH(c.icon)}" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>${escH(c.e)}</span>`:escH(c.e)}</div><div><div class="n">${escH(c.ko)}</div><div class="a">${escH(c.ab)}</div></div></div>`).join('')+
     `</div></div>`).join('');
   const foot=`<div class="sh-foot"><span>${m.hasStar?'* 첫날 밤 제외':''}</span><span>당산나무</span></div>`;
   const lead='이 모드에 나올 수 있는 직업 전부. 판마다 이 중 몇 개만 들어가고, 누가 무엇인지는 비밀.';
@@ -4858,10 +4867,17 @@ function shareOrDownload(bl, name, title){
     navigator.share({files:[f], title:title||name}).catch(()=>seatMapDownload(bl,name)); return; }
   seatMapDownload(bl,name);
 }
-function sheetSave(){
-  const m=sheetModel(); const cv=sheetCanvas(m);
+async function sheetSave(){
+  const m=sheetModel(); const icons=await sheetLoadIcons(m); const cv=sheetCanvas(m,icons);
   if(!cv){ sheetNote('이 기기에서는 이미지를 만들 수 없어요.'); return; }
   cv.toBlob(bl=>{ if(bl) shareOrDownload(bl, `직업표_${m.name}.png`, '직업표 · '+m.name); },'image/png');
+}
+async function sheetLoadIcons(m){
+  const paths=[...new Set(m.bands.flatMap(b=>b.chars.map(c=>c.icon).filter(Boolean)))];
+  const loaded=await Promise.all(paths.map(src=>new Promise(resolve=>{
+    const img=new Image(); img.onload=()=>resolve([src,img]); img.onerror=()=>resolve([src,null]); img.src=src;
+  })));
+  return new Map(loaded);
 }
 /* 어절 단위 줄바꿈 — 공백에서 끊고, 한 어절이 폭을 넘으면 글자 단위 */
 function wrapText(g, text, maxW){
@@ -4888,7 +4904,7 @@ function sheetFitScale(need, avail, hi){
 }
 /* 이미지 — A4 300dpi(2480×3508) 한 장. 인쇄와 같은 규칙으로 종이를 채운다. 안 들어가면 아래로 길어진다.
    벡터가 필요하면 «인쇄 · PDF» — 인쇄 창의 «PDF 로 저장» 이 글자를 벡터로 남긴다(라이브러리 없이 되는 유일한 길) */
-function sheetCanvas(m){
+function sheetCanvas(m, icons){
   const cv=document.createElement('canvas'); const g=cv.getContext&&cv.getContext('2d'); if(!g) return null;
   try{ if(typeof g.measureText('가').width!=='number') return null; }catch(e){ return null; }
   const dark=hubOf(ED())==='클래식';
@@ -4945,7 +4961,9 @@ function sheetCanvas(m){
     bd.rows.forEach((r,ri)=>{
       r.forEach((cell,ci)=>{ if(!cell) return;
         const x=L.innerX+ci*(L.colW+L.colGap);
-        g.font=L.fE; g.fillStyle=C.txt; g.fillText(cell.c.e, x, yy-px(1));
+        const img=icons&&icons.get(cell.c.icon);
+        if(img) g.drawImage(img,x,yy,L.iconW,L.iconW);
+        else { g.font=L.fE; g.fillStyle=C.txt; g.fillText(cell.c.e, x, yy-px(1)); }
         g.font=L.fN; g.fillStyle=C.team[bd.b.team]||C.txt; g.fillText(cell.c.ko, x+L.iconW+L.cellGap, yy);
         g.font=L.fA; g.fillStyle=C.txt2; cell.lines.forEach((t,li)=>g.fillText(t, x+L.iconW+L.cellGap, yy+L.nameH+px(2)+li*L.lineA));
       });
@@ -12048,8 +12066,19 @@ window.addEventListener('pointermove', gapDragMove);
 window.addEventListener('pointerup', gapDragEnd);
 window.addEventListener('pointercancel', ()=>{ if(gapDrag){ gapDrag.el.classList.remove('dragging'); gapDrag=null; render(); } });
 /* 사람 끌기를 시작할 때 — 원래 자리에 점선 동그라미, 다른 자리마다 «놓을 수 있는 자리» 가는 테 (2026-09-25 햇살님 «위치 표기를 하자, 가는 선이든») */
+const SEAT_LIFT=38;   // 끄는 사람을 손가락보다 이만큼(px) 위에 띄운다 — 놓을 자리도 이 점으로 고른다
 function seatDragBegin(d){ const sq=document.getElementById('square'); if(!sq) return; sq.classList.add('dragmode');
-  const gh=document.createElement('div'); gh.className='seat slotghost'; gh.style.left=d.left; gh.style.top=d.top; gh.innerHTML='<div class="token"></div>'; sq.appendChild(gh); }
+  const gh=document.createElement('div'); gh.className='seat slotghost'; gh.style.left=d.left; gh.style.top=d.top; gh.innerHTML='<div class="token"></div><div class="pname"></div>'; sq.appendChild(gh); d.ghost=gh;
+  try{ navigator.vibrate&&navigator.vibrate(8); }catch(e){} }
+/* 다른 사람·빈자리 위에 올라가면 — 그 자리가 커지며 빛나고, 원래 자리 표시에 «그 사람이 이리 온다»를 미리 보여 준다 (2026-09-25 햇살님
+   «끌고 가서 다른 자리나 사람 아이콘 위에 올라가면 효과가 나면서 자리가 바뀌는 거지») */
+function seatDragPreview(d, tgt){ const gh=d.ghost; if(!gh) return;
+  const nm=gh.querySelector('.pname'), tk=gh.querySelector('.token');
+  const on=tgt&&!tgt.classList.contains('slotghost');
+  gh.classList.toggle('preview', !!on);
+  if(nm) nm.textContent=on?(tgt.classList.contains('gap')?'빈자리':((tgt.querySelector('.pname')||{}).textContent||'')):'';
+  if(tk) tk.textContent=on?'↔':'';
+  if(on){ try{ navigator.vibrate&&navigator.vibrate(6); }catch(e){} } }
 
 render();
 /* 진행 상태 되살리기 — 낮 단계·처형 결과는 화면을 열기 전에. 대문이 먼저 열리면 저장본을 기본값으로 덮어썼다 (감사 2026-09-13).
