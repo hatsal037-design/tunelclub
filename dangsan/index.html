@@ -236,6 +236,11 @@
   .seat.movable.dragging{ opacity:.92; z-index:20; pointer-events:none; }
   /* 1번 자리 — 기준점 */
   .seat.origin .seatnum{ color:var(--bg); background:var(--gold); border-radius:999px; padding:0 4px; font-weight:800; }
+  #square.pickorigin .seat.origin .token{ background:var(--gold); border-color:var(--gold-lit); box-shadow:0 0 0 4px color-mix(in srgb, var(--gold) 35%, transparent), 0 0 26px var(--gold); transform:scale(1.12); }
+  #square.pickorigin .seat.origin .pname{ color:var(--gold); font-weight:800; }
+  #square.pickorigin .seat:not(.origin) .token{ opacity:.72; }
+  .orihint{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:2px; color:var(--gold); text-align:center; pointer-events:none; font-size:var(--t-cap); line-height:1.3; }
+  .orihint b{ font-size:2.4em; line-height:1; }
   /* 자리 잡기 단계 바 — 판을 가리지 않게 아래에 붙는다 */
   .setupbar{ position:fixed; left:50%; bottom:14px; transform:translateX(-50%); z-index:40;
     display:none; align-items:center; gap:12px; max-width:min(720px, calc(100% - 20px));
@@ -2695,8 +2700,8 @@ function setupRender(){
     hint=state.layout==='rect' ? '칸보다 적으면 남는 칸이 빈자리가 됩니다.' : '5명부터 20명까지 됩니다.'; }
   else if(st===2){ body=`빈자리 <b>${gapsNeeded()}칸</b> — 어디를 비울지 정하세요`;
     hint='판에서 빈자리를 끌어 옮기세요(탭하면 한 칸씩). 빈자리는 이웃 계산에서 건너뛰므로 순서는 안 바뀝니다.'; }
-  else if(st===3){ body=`1번 자리(기준점)를 고르세요`;
-    hint='자리를 누르면 그 자리가 1번이 되고, 시계 방향으로 2번·3번… 이 됩니다. 앉은 사람은 움직이지 않고 번호만 돌아갑니다.'; }
+  else if(st===3){ body=`<b>1번</b>으로 할 자리를 누르세요`;
+    hint='누른 자리부터 시계 방향으로 2·3번… (사람은 그대로)'; }
   else if(st===4){ const left=seatPool().length;
     body=`앉은 사람 <b>${named} / ${state.count}자리</b>`+(left?` · 남은 사람 <b style="color:var(--gold)">${left}</b>`:'')
       +`<div class="chiprow" id="seatChips">${seatChipsHtml()}</div>`;
@@ -2814,6 +2819,10 @@ function boardAvailH(wrap){
 }
 function renderSquare(){
   const sq=document.getElementById('square'); sq.querySelectorAll('.seat').forEach(e=>e.remove()); sq.classList.remove('dragmode');
+  sq.querySelectorAll('.orihint').forEach(e=>e.remove());
+  /* 기준점 고르는 단계 — 1번 자리를 금빛으로, 가운데에 «1번부터 시계 방향» (2026-09-25 햇살님 «1번 자리 더 눈에 띄게») */
+  const pickOrigin=typeof setup!=='undefined'&&setup.on&&setup.step===3; sq.classList.toggle('pickorigin', !!pickOrigin);
+  if(pickOrigin){ const h=document.createElement('div'); h.className='orihint'; h.innerHTML='<b>↻</b><span>1번부터<br>시계 방향</span>'; sq.appendChild(h); }
   sq.dataset.layout=state.layout;   // 계열 장식(오리지널 마피아 탁자 소품)이 원형일 때만 붙는다
   const N=state.count, cm=CMAP(), rb=new Set(ED().remBlue||[]), tkm=TKMAP();
   // 컨테이너 비율
