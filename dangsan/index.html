@@ -719,6 +719,48 @@
   .popboard .hub .lbl, .popboard .hub{ display:none !important; }
   .popboard .seat{ width:74px; }
   .popboard-link{ display:block; text-align:right; font-size:var(--t-cap); color:var(--txt2); font-weight:700; margin:-4px 0 8px; cursor:pointer; }
+  .first-tag{ display:inline-block; margin-left:8px; padding:1px 7px; font-size:var(--t-label); font-weight:800; letter-spacing:.04em; color:var(--gold); box-shadow:inset 0 0 0 1px var(--gold); vertical-align:2px; }
+  /* ── 여행자 고르기 (화면-099) ── */
+  .tv-chips{ display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 12px; }
+  .tv-c{ min-height:var(--tap); padding:0 14px; border:1px solid var(--line); background:transparent; color:var(--txt2); font:inherit; font-weight:700; border-radius:var(--r); }
+  .tv-c.on{ border-color:var(--gold); color:var(--gold); box-shadow:inset 0 0 0 1px var(--gold); }
+  .tv-n{ float:right; font-family:var(--mono); color:var(--dim); }
+  /* ── 테마 고르기 (시공 3단계 · 2026-09-28) ── */
+  .hm-top .hm-t.th-pick{ cursor:pointer; }
+  .th-row{ display:flex; align-items:center; gap:14px; width:100%; min-height:72px; padding:10px 4px; background:transparent; border:0; border-bottom:1px solid var(--line); font:inherit; color:var(--txt); text-align:left; cursor:pointer; }
+  .th-row.big{ min-height:88px; }
+  .th-sw{ flex:none; width:52px; height:52px; border-radius:50%; object-fit:cover; display:block; box-shadow:0 0 0 1px var(--line); }
+  .th-nm{ flex:1; font-family:var(--f-disp); font-size:var(--t-title); font-weight:700; }
+  .th-rd{ flex:none; width:22px; height:22px; border-radius:50%; box-shadow:inset 0 0 0 2px var(--line); }
+  .th-row.on .th-rd{ box-shadow:inset 0 0 0 2px var(--gold), inset 0 0 0 6px var(--panel), inset 0 0 0 11px var(--gold); }
+  .th-row.on .th-nm{ color:var(--gold); }
+  .th-warn{ margin-top:12px; padding:10px 12px; background:var(--warn-bg); color:var(--warn-txt); font-size:var(--t-body); font-weight:700; }
+  .th-first{ padding:22px 14px; display:flex; flex-direction:column; min-height:100%; }
+  .th-first h2{ font-family:var(--f-disp); font-size:var(--t-title); margin:0 0 14px; }
+  .th-first .th-go{ margin-top:22px; }
+  .th-first .th-go:disabled{ opacity:.4; }
+  /* ── 반 접힘 (화면-108 시안 2026-09-28) — 머리 한 줄 · 판 · 행동 띠 ── */
+  .wz-foldboard{ display:none; }
+  #wizard.fold .wz-foldboard{ display:flex; flex:1; min-height:0; align-items:center; justify-content:center; position:relative; margin:0 6px; }
+  #wizard.fold .wz-card{ flex:none; }
+  #wizard.fold .wz-card .wz-scroll, #wizard.fold .wz-card .wz-why{ display:none; }
+  #wizard.fold .wz-card .wz-head{ padding:10px 6px 8px; }
+  #wizard.fold .wz-card .wz-mark{ display:none; }
+  #wizard.fold .wz-card .wz-who{ font-size:var(--t-lead); padding-right:84px; }
+  #wizard.fold .wz-card .wz-seat{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:84px; }
+  #wizard.fold .wz-gaze{ display:none; }
+  .wz-card .wz-head{ position:relative; }
+  .wz-fold{ position:absolute; right:0; bottom:4px; min-height:var(--tap); min-width:var(--tap); padding:0 8px; background:transparent; border:0;
+    font:inherit; font-size:var(--t-body); font-weight:700; color:var(--gold); cursor:pointer; }
+  #wizard.fold .wz-fold{ bottom:auto; top:50%; transform:translateY(-50%); }
+  .wz-foldboard .hub{ display:none !important; }
+  /* 좌석 시트 (화면-109 A안) — 거의 전면, 판 | 명단 */
+  #wzPopOv.seatA .wzpop-sheet{ height:calc(100% - 20px); max-height:none; }
+  #wzPopOv.seatA .wzpop-body{ flex:1; display:flex; flex-direction:column; min-height:0; }
+  .pop-tabs{ display:flex; border-bottom:1px solid var(--line); margin:-11px -16px 8px; }
+  .pop-tabs button{ flex:1; min-height:var(--tap); background:transparent; border:0; font:inherit; font-size:var(--t-body); font-weight:700; color:var(--txt2); }
+  .pop-tabs button.on{ color:var(--gold); background:linear-gradient(transparent 62%, color-mix(in srgb, var(--gold) 22%, transparent) 62% 88%, transparent 88%); }
+  .popboard.big{ flex:1; height:auto; min-height:0; }
   /* 아이패드 가로 — 좌석판을 승차권 옆에 (폭 960·높이 600 이상) */
   body.wide .wz-side{ display:flex; align-items:center; justify-content:center; }
   body.wide .wz-side .hub{ display:none; }
@@ -1814,7 +1856,7 @@
   <div class="wz-rail" id="wzRail" style="display:none"></div>
   <div class="wz-main" id="wzMain">
     <div class="wz-side" id="wzSide"><div class="side-hd" id="wzSideHd"></div><div class="side-board" id="wzSideBoard"></div></div>   <!-- 태블릿 가로: 판 60 (v6 «판 전체 | 기준점·주체·대상» 머리) -->
-    <div class="wz-body"><div class="wz-sheet"><div class="wz-card tk" id="wzCard"></div><div class="wz-actions" id="wzActions"></div></div></div>
+    <div class="wz-body"><div class="wz-sheet"><div class="wz-card tk" id="wzCard"></div><div class="wz-foldboard" id="wzFoldBoard"></div><div class="wz-actions" id="wzActions"></div></div></div>
   </div>
 </div>
 <div class="wz-bar" id="wzBar">
@@ -1994,7 +2036,7 @@
 
 <!-- 판 준비 — 인원·모드 / 자리 / 구성 / 규칙·전달 네 구간이 한 화면 (15차 5단계, 3차 구성안 02~05). 참석·자리 잡기·구성의 기존 부품을 이 안으로 빌려 온다 -->
 <div class="wizard prep" id="prep">
-  <div class="wz-top"><button class="wz-ic" onclick="prepClose()">시작으로</button><span class="sp"></span><div class="wz-ph">이번 판 준비</div><span class="sp"></span></div>
+  <div class="wz-top"><button class="wz-ic" onclick="prepClose()">시작으로</button><span class="sp"></span><div class="wz-ph">이번 판 준비</div><span class="sp"></span><button class="wz-ic acc" id="prepTheme" onclick="themeSheetOpen()"></button></div>
   <div class="ptab" id="prepTabs"></div>
   <div class="wz-main"><div class="wz-side" id="prepSide"></div><div class="wz-body"><div class="wz-sheet"><div class="wz-card tk" id="prepCard"></div><div class="wz-actions" id="prepActions"></div></div></div></div>
 </div>
@@ -2008,6 +2050,14 @@
   <div class="hm-body" id="homeBody"></div>
 </div>
 
+<!-- 테마 시트 — 머리 «테마 ▾» (시공 3단계 · 화면-096) -->
+<div class="overlay" id="themeOv" onclick="if(event.target===this)themeSheetClose()">
+  <div class="sheet th-sheet">
+    <h3>테마</h3>
+    <div id="themeBody"></div>
+    <div class="sheet-actions"><button class="btn quiet" onclick="themeSheetClose()">취소</button><button class="btn gold" id="themeGo" onclick="themeSheetApply()">이 테마로</button></div>
+  </div>
+</div>
 <!-- 모드 고르기 — 자리 다음, 직업 앞 -->
 <div class="overlay" id="edPickOverlay" onclick="if(event.target===this)closeEdPick()">
   <div class="sheet">
@@ -2697,16 +2747,49 @@ function themeDefaultMode(rep){ const ms=themeModes(rep); if(!ms.length) return 
 function firstNightBegun(){ const S=state.seats||[]; if(!S.some(x=>x&&x.char)) return false;
   return !!state.nightBegun||(state.nights||1)>1||state.phase==='day'||Object.keys(state.picks||{}).length>0||S.some(x=>x&&(x.dead||(x.rem&&x.rem.length&&!(x.rem.length===1&&setupTokOf(CMAP()[x.char])===x.rem[0])))); }
 /* 테마를 바꾼다. 돌려주는 값: 'same' | 'locked' | 'cancel' | 'ok' */
-function setTheme(rep){
+function setTheme(rep, o){
   if(!rep) return 'cancel';
   if(rep===themeRep()&&state.theme) return 'same';
   if(firstNightBegun()) return 'locked';
   const hasChars=(state.seats||[]).some(x=>x&&x.char);
-  if(hasChars&&!confirm('역할을 이미 나눴어요. 테마를 바꾸면 역할을 다시 나눠요. 바꿀까요?')) return 'cancel';
+  if(hasChars&&!(o&&o.sure)&&!confirm('역할을 이미 나눴어요. 테마를 바꾸면 역할을 다시 나눠요. 바꿀까요?')) return 'cancel';   // 테마 시트는 «역할 비우고 변경»으로 이미 물었다
   const id=themeDefaultMode(rep); if(!id) return 'cancel';
   state.theme=allMods()[id].hub; state.modePicked=false;
   if(id!==state.edition) switchEdition(id, {quiet:true}); else if(hasChars){ switchEdition(id, {quiet:true, force:true}); }
-  save(); try{ render(); }catch(e){} return 'ok'; }
+  save(); try{ localStorage.setItem('dangsan_theme_seen','1'); }catch(e){} try{ render(); }catch(e){} return 'ok'; }
+/* ══ 테마 표 (시공 3단계 · 화면-096·102, 2026-09-28) — 테마마다 다른 건 여기 한 곳. 이름은 등록부 hub 표기.
+   art 가 없는 테마(오리지널 마피아)는 배경 천(tex)만 — 대문 그림은 5단계 디자인에서 */
+const THEMES=[
+  {rep:'dangsan', art:'img/home-tree-v1.jpg'},
+  {rep:'classic', art:'img/home-clocktower-v1.jpg'},
+  {rep:'mafia', art:null, tex:'img/tex/tex-suede.png'},
+];
+function themeName(rep){ const k=Object.keys(KREG.개념).find(x=>KREG.개념[x].kind==='hub'&&KREG.개념[x].rep===rep); return k?KREG.개념[k].ko:rep; }
+function themeOf(rep){ return THEMES.find(t=>t.rep===rep)||THEMES[0]; }
+function themeUsable(){ return THEMES.filter(t=>themeModes(t.rep).length); }
+function themeSwatch(t){ return t.art?`<img class="th-sw" src="${t.art}" alt="">`:`<i class="th-sw" style="background:url(${t.tex}) center/120px, #232326; background-blend-mode:soft-light"></i>`; }
+/* 처음 설치 — 판도 기록도 테마 선택도 없으면 테마 고르기 한 장부터(화면-102). 옛 설치는 강요하지 않는다 */
+function themeFirstRun(){ try{ if(localStorage.getItem('dangsan_theme_seen')) return false; }catch(e){ return false; }
+  if(state.theme||(state.seats||[]).some(x=>x&&(x.name||x.char))||logsAll().length) return false; return true; }
+/* 대문의 큰 행동 — 진행 판 / 준비 초안 / 새 판 (코덱스 세부안 4절: 역할이 있다는 것만으로 «진행 중»이 아니다) */
+function gameEnded(){ return !!((state.log&&state.log.endedAt)||(state.wz&&state.wz.mode==='done')); }
+function homeState(){ const S=state.seats||[];
+  if(firstNightBegun()&&!gameEnded()) return 'play';
+  if(!gameEnded()&&(S.some(x=>x&&(x.name||x.char))||(state.bench||[]).length)) return 'draft';
+  return 'new'; }
+let themeSel=null;
+function themeSheetOpen(){ if(firstNightBegun()&&!gameEnded()) return; themeSel=themeRep(); themeSheetRender(); document.getElementById('themeOv').classList.add('on'); }
+function themeSheetClose(){ document.getElementById('themeOv').classList.remove('on'); themeSel=null; }
+function themeSheetRender(){ const el=document.getElementById('themeBody'); if(!el) return;
+  const cur=themeRep(), chars=(state.seats||[]).some(x=>x&&x.char)&&!gameEnded();
+  el.innerHTML=themeUsable().map(t=>`<button class="th-row${themeSel===t.rep?' on':''}" onclick="themeSel='${t.rep}';themeSheetRender()">${themeSwatch(t)}<span class="th-nm">${escH(themeName(t.rep))}</span><i class="th-rd"></i></button>`).join('')
+    +(chars&&themeSel!==cur?'<div class="th-warn">역할을 다시 나눠야 합니다</div>':'');
+  const go=/** @type {HTMLButtonElement|null} */(document.getElementById('themeGo')); if(go){ go.textContent=chars&&themeSel!==cur?'역할 비우고 변경':'이 테마로'; go.disabled=themeSel===cur; } }
+function themeSheetApply(){ const rep=themeSel; if(!rep) return; const r=setTheme(rep, {sure:true}); themeSheetClose();
+  if(r==='ok'){ try{ applyTheme(); }catch(e){} if(home.on) renderHome(); if(typeof prep!=='undefined'&&prep.on) prepRender(); } }
+/* 처음 설치 화면에서 고른다 */
+function themeFirstPick(rep){ themeSel=rep; renderHome(); }
+function themeFirstGo(){ if(!themeSel) return; setTheme(themeSel, {sure:true}); try{ localStorage.setItem('dangsan_theme_seen','1'); }catch(e){} themeSel=null; try{ applyTheme(); }catch(e){} renderHome(); }
 function switchHub(h){
   // 계열을 바꾸면 그 계열의 첫 모드로 전환 — 대본·팀 용어·토큰·인원 가이드가 통째로 따라온다
   const first=Object.values(allMods()).find(m=>hubOf(m)===h);
@@ -3209,11 +3292,12 @@ function renderSquare(){
   // 컨테이너 비율
   const inPrep=sq.parentElement&&sq.parentElement.id==='prepBoard';
   sq.style.removeProperty('--sk'); if(inPrep) sq.parentElement.style.height='';
-  if(state.layout==='rect'&&inPrep){
+  const inFold=sq.parentElement&&sq.parentElement.id==='wzFoldBoard';
+  if(state.layout==='rect'&&(inPrep||inFold)){
     /* 준비 화면(폰): 배치 비율대로 — 가로·세로 둘 중 먼저 닿는 쪽에 맞춰 줄인다. 좁으면 좌석도 같이 줄여 안 겹치게
        (2026-09-25 햇살님 «상하로 넓어지면 대지도 커지게» → «가로를 무조건 채우지 말고 비율 봐서, 너무 채우면 세로가 엄청 길어지니까»).
        칸 간격 = 폭의 74%/(가로-1) · 높이의 70%/(세로-1) (rectPositions) · 좌석 한 칸 약 80×104px */
-    const stage=document.getElementById('prep').classList.contains('stage'), wrap=sq.parentElement;
+    const stage=inFold||document.getElementById('prep').classList.contains('stage'), wrap=sq.parentElement;
     const W=Math.max(200, wrap.clientWidth-(stage?40:0)), c=Math.max(2,state.cols), r=Math.max(2,state.rows);
     const Wn=80*(c-1)/.74, Hn=104*(r-1)/.70, Hmax=stage?Math.max(200, wrap.clientHeight-64):Math.max(260, innerHeight*.55);
     const k=Math.max(.55, Math.min(1, W/Wn, Hmax/Hn));
@@ -3225,7 +3309,7 @@ function renderSquare(){
     sq.style.width=`min(62vw, ${(76*asp).toFixed(1)}vh)`;
     sq.style.height=`min(76vh, ${(62/asp).toFixed(1)}vw)`;
     sq.style.aspectRatio='auto';
-  } else if(inPrep&&document.getElementById('prep').classList.contains('stage')){
+  } else if((inPrep&&document.getElementById('prep').classList.contains('stage'))||(sq.parentElement&&sq.parentElement.id==='wzFoldBoard')){
     /* 자리 작업판(화면-107): 판을 칸 가득 — 원은 세로로 늘어난 타원이 된다(화면-057). 너무 길쭉하면 1.35배에서 멈춘다.
        좌석 라벨(번호·이름)이 판 밖으로 나오는 만큼 가로 40·세로 64 를 비운다 */
     const wrap=sq.parentElement, W=Math.max(200, wrap.clientWidth-40), H=Math.max(200, wrap.clientHeight-64);
@@ -3989,6 +4073,9 @@ function autoCompose(N){
      기존 모드에는 이 칸이 없으므로 아래 표준 편성이 그대로 돈다. */
   const ct=ED().composeTable; if(ct&&ct[N]){ Object.keys(ct[N]).forEach(id=>{ if(ct[N][id]>0) counts[id]=ct[N][id]; }); return counts; }
   const pool=t=>chars.filter(c=>c.team===t);
+  /* 시계탑 16명 이상 = 공식처럼 기본 15 + 나머지 여행자 (화면-099, 2026-09-28). 누가 여행자가 될지는 사람이 고른다(tvPick) */
+  if(ED().botcRules&&N>15){ const base=autoCompose(15), tv=shuffle(pool('traveler').slice()).slice(0,N-15);
+    if(tv.length===N-15){ tv.forEach(c=>{ base[c.id]=(base[c.id]||0)+1; }); return base; } }
   const demonPool=[...pool('demon'),...pool('mafia')];
   const filler=chars.find(c=>isRoleAny(c, ['villager', 'citizen', 'maeulsaram', 'townsfolk']))||pool('town').find(c=>c.fn===0&&c.on===0&&!(c.tk||[]).length&&!(c.rule&&c.rule.act)&&/능력이 없|특별한 능력|아무 능력/.test(c.ab||''));   // 능력 있는 직업(금줄쟁이·처녀 등)을 '마을사람 필러'로 쓰지 않는다
   const add=c=>counts[c.id]=(counts[c.id]||0)+1;
@@ -4374,13 +4461,19 @@ function renderHome(){
     try{ renderPot(); }catch(e){}
     return;
   }
-  if(top) top.textContent='당산나무';
   if(left){ left.textContent='☰'; left.title='메뉴'; }
-  const cm=CMAP(), playing=(state.seats||[]).some(x=>x&&x.char);
+  if(themeFirstRun()){   // 처음 설치 — 테마 고르기 한 장(화면-102). 모드는 여기서 고르지 않는다
+    if(top){ top.textContent='테마'; top.onclick=null; top.classList.remove('th-pick'); }
+    document.getElementById('homeBody').innerHTML=`<div class="th-first"><h2>함께 할 테마를 고르세요</h2>
+      ${themeUsable().map(t=>`<button class="th-row big${themeSel===t.rep?' on':''}" onclick="themeFirstPick('${t.rep}')">${themeSwatch(t)}<span class="th-nm">${escH(themeName(t.rep))}</span><i class="th-rd"></i></button>`).join('')}
+      <button class="btn gold hm-big th-go" ${themeSel?'':'disabled'} onclick="themeFirstGo()">이 테마로 시작</button></div>`;
+    return; }
+  const hs=homeState(), locked=hs==='play';
+  if(top){ top.textContent=themeName(themeRep())+(locked?'':' ▾'); top.onclick=locked?null:themeSheetOpen; top.classList.toggle('th-pick', !locked); }
+  const cm=CMAP(), playing=hs==='play';
   /* 15차 시작 화면 ② «밤마당에 떠 있는 글» (2026-09-12, 코덱스 2차 구상 + 햇살님 선택): 삽화를 세로로 다 쓰고 주행동이 마당 위에 떠 있다.
      나머지는 글자 한 줄씩(상징 아이템 + 느티나무 잎). 다섯 공간의 기능은 그대로 — homeResume·newGameEntry·uiPracticeStart·loreOpen·openMods */
-  const brick=(hubOf(ED())||'')==='클래식';
-  const art=brick?'img/home-clocktower-v1.jpg':'img/home-tree-v1.jpg';
+  const TH=themeOf(themeRep()), art=TH.art;
   const ico=(n,cls)=>`<i class="ico${cls?' '+cls:''}" style="--m:url(img/icons/${n}.webp)"></i>`;
   const pt='';   // 가리키기 잎은 뺐다(햇살님 2026-09-12 «나뭇잎은 지우자») — 글자와 상징 아이템만
   const row=(icon,label,sub,on)=>`<button class="hm-link" onclick="${on}">${ico(icon)}<span class="tx"><span class="t">${label}</span>${sub?`<span class="s">${sub}</span>`:''}</span>${pt}</button>`;
@@ -4390,6 +4483,9 @@ function renderHome(){
     const ph=state.phase==='day'?'낮 '+(state.nights||1):((state.nights||1)===1?'첫밤':'밤 '+(state.nights||1));
     const wzs=state.wz||{}; const cur=(wzs.mode==='night'&&wzs.idx>0)?'행동 '+wzs.idx:(wzs.mode==='day'?'낮 진행':'준비 중');
     main={icon:'lantern', lb:'이어 할 판', t:`${escH(ED().name)} · ${tot}명 · ${ph}`, s:`${cur} · 생존 ${alive}/${tot}`, go:'이어서 진행하기', on:'homeResume()'};
+  } else if(hs==='draft'){
+    const S=state.seats||[], n=S.filter(x=>x&&x.name).length+(state.bench||[]).length, tab=S.some(x=>x&&x.char)?4:(S.some(x=>x&&x.name)?2:1);
+    main={icon:'mat', lb:'준비 계속', t:`${escH(themeName(themeRep()))} · ${n}명`, s:['','사람','자리','역할','전달'][tab]+' 걸음부터', go:'준비 이어서', on:`prepOpen(${tab})`};
   } else {
     main={icon:'mat', lb:'새 판 준비', t:'인원부터 시작해요', s:p?`오늘 ${ko} 열려 있음 · 이어 할 판 없음`:`이어 할 판 없음 · 누르면 오늘 ${ko}이 열려요`, go:'새 판 준비', on:'newGameEntry()'};
   }
@@ -4404,7 +4500,7 @@ function renderHome(){
   if(recent.length){ const L=recent[0]; const w=L.winner==='good'?'마을 승리':L.winner==='evil'?'악 승리':L.winner?'기타':'진행 중';
     links+=row('footprints','최근 판',`${escH(String(L.modeName||L.mode||'').split(' (')[0])} · ${w}`,'openLogs()'); }
   let h=`<div class="hm-front">
-    <div class="hm-art"><img src="${art}" alt=""><div class="veil"></div>
+    <div class="hm-art"${art?'':` style="background:url(${TH.tex}) center/360px, var(--bg); background-blend-mode:soft-light"`}>${art?`<img src="${art}" alt="">`:''}<div class="veil"></div>
       <div class="over" onclick="${main.on}"><div class="lb2">${ico(main.icon,'big')}<span class="lb">${main.lb}</span></div><div class="h2">${main.t}</div><div class="st">${main.s}</div><div class="resume">${main.go} <i class="ln"></i></div></div></div>
     <div class="hm-links">${links}</div>`;
   if(stale) h+=`<div class="hm-warn">지난 ${ko}(${(stale.dates||[]).join('·')})이 아직 열려 있어요 — 먼저 닫아야 새 ${ko}을 열 수 있습니다. <button class="btn sm" onclick="homeClosePot()">지난 ${ko} 닫기</button></div>`;
@@ -4460,9 +4556,10 @@ function prepModeHtml(n){
   const mods=allMods(); if(!edPick.hub){ const h=MODE_TREE.find(x=>x.series.some(se=>se.items.some(it=>it.id===state.edition))); edPick.hub=(h||MODE_TREE[0]).hub; }
   const hub=MODE_TREE.find(h=>h.hub===edPick.hub)||MODE_TREE[0];
   const tabs=`<div class="p-tabs">${MODE_TREE.map(h=>`<span class="${h.hub===edPick.hub?'on':''}" onclick="edPick.hub='${h.hub}';prepRender()">${HUBKO(h.hub)}</span>`).join('')}</div>`;
-  const rows=hub.series.flatMap(se=>se.items).map(it=>{ const m=it.id?mods[it.id]:null; if(!m) return '';
+  const items=hub.series.flatMap(se=>se.items), fi=items.findIndex(it=>it.id&&modeIsFirst(mods[it.id])); if(fi>0) items.unshift(items.splice(fi,1)[0]);   // 첫 판 추천을 맨 위로
+  const rows=items.map(it=>{ const m=it.id?mods[it.id]:null; if(!m) return '';
     const cur=m.id===state.edition&&state.modePicked, why=edWhyNot(m,n), off=!edFits(m,n); if(off) return '';   // 그 인원으로 안 되는 모드는 목록에서 뺀다(화면-097)
-    return `<div class="lr${cur?' on':''}${off?' off':''}" ${off?'':`onclick="edPickChoose('${m.id}')"`}><div class="t">${m.name}<small>직업 ${m.chars.length}${why?' · '+why:''}</small></div><span class="k" onclick="event.stopPropagation();loreOpen('mode','${m.id}')">소개</span></div>`; }).join('');
+    return `<div class="lr${cur?' on':''}${off?' off':''}" ${off?'':`onclick="edPickChoose('${m.id}')"`}><div class="t">${m.name}${modeIsFirst(m)?'<span class="first-tag">첫 판 추천</span>':''}<small>직업 ${m.chars.length}${why?' · '+why:''}</small></div><span class="k" onclick="event.stopPropagation();loreOpen('mode','${m.id}')">소개</span></div>`; }).join('');
   return tabs+`<div class="p-list">${rows}</div>`;
 }
 function prepPeopleHtml(){
@@ -4476,6 +4573,7 @@ function prepPeopleHtml(){
 }
 let prepLastTab=0;   // 마지막으로 그린 준비 탭 — 같은 탭을 다시 그릴 때 스크롤을 지키려고(저장하지 않는다)
 function prepRender(){
+  try{ const pt=/** @type {HTMLButtonElement|null} */(document.getElementById('prepTheme')); if(pt){ const L=firstNightBegun(); pt.textContent=themeName(themeRep())+(L?'':' ▾'); pt.disabled=L; } }catch(e){}   // 머리 «테마 ▾» — 첫밤 전까지만(화면-096)
   const card=document.getElementById('prepCard'), act=document.getElementById('prepActions'), tabs=document.getElementById('prepTabs');
   if(!card||!act||!tabs) return;
   // 같은 탭을 다시 그릴 때(참석 체크·모드 고르기)는 스크롤 자리를 지킨다 — 맨 위로 튀면 긴 명단에서 불편하다(2026-09-21 햇살님)
@@ -4506,7 +4604,7 @@ function prepRender(){
       card.innerHTML=`<div class="wz-who">역할 · ${n}명</div><div class="wz-seat">모드를 고르세요</div>${prepModeHtml(n)}`;
       act.innerHTML=btn('← 자리','prepGo(2)','quiet');
     } else {
-      card.innerHTML=`<div class="wz-who">역할 · ${escH(ED().name)} <span class="p-chg" onclick="state.modePicked=false;prepRender()">바꾸기</span></div><div class="wz-seat">${n}명${nb?` · 아직 안 앉은 사람 ${nb}명`:''}</div><div id="prepNgHost"></div>`;
+      card.innerHTML=`<div class="wz-who">역할 · ${escH(ED().name)} <span class="p-chg" onclick="state.modePicked=false;prepRender()">바꾸기</span></div><div class="wz-seat">${n}명${nb?` · 아직 안 앉은 사람 ${nb}명`:''}</div>${prepTvHtml()}<div id="prepNgHost"></div>`;
       act.innerHTML=btn('← 자리','prepGo(2)','quiet')+(nb?btn('먼저 모두 앉히세요','prepGo(2)','quiet'):btn('이 구성으로 배정','startNewGame()','gold'));
     }
   } else {
@@ -4536,7 +4634,8 @@ function prepRender(){
   if(prep.tab===3&&document.getElementById('prepNgHost')){
     const host=document.getElementById('prepNgHost'), ng=document.getElementById('ngSheet');
     if(host&&ng){ host.appendChild(ng); }
-    if(typeof ngTarget!=='number'||ngTarget<5||!Object.keys(ngCounts||{}).length) openNewGame(); else renderNewGame();
+    /* 전에 짠 구성이 다른 모드·다른 인원 것이면 새로 짠다 — 12명 판에 지난 6명 구성이 그대로 남아 직업이 어긋났다 (2026-09-28 햇살님 «오리지널 마피아 돌리니 중복 직업이 엄청») */
+    if(typeof ngTarget!=='number'||ngTarget<5||!Object.keys(ngCounts||{}).length||ngFor!==ngKey()) openNewGame(); else renderNewGame();
   }
 }
 function prepStartNight(){
@@ -4568,6 +4667,7 @@ function edPlayable(m){
   for(let n=5;n<=20;n++){ const t=TEAM_SETUP[n]; if(!t) continue;
     if(t.t<=(T.town||0)&&t.o<=(T.outsider||0)&&t.m<=(T.minion||0)&&t.d<=(T.demon||0)) ok.push(n); }
   if(!ok.length) return m.composeFix?{special:true}:{none:true};
+  if(m.botcRules&&ok.indexOf(15)>=0){ for(let n=16;n<=Math.min(20,15+(T.traveler||0));n++) if(ok.indexOf(n)<0) ok.push(n); }   // 16명부터는 기본 15 + 여행자 (화면-099)
   return {min:ok[0], max:ok[ok.length-1], set:ok};
 }
 function edFits(m,n){ const p=edPlayable(m);
@@ -4578,6 +4678,18 @@ function edWhyNot(m,n){ const p=edPlayable(m);
   if(p.any||p.set.indexOf(n)>=0) return '';
   return n<p.min ? `${p.min}명부터` : `${p.max}명까지`;
 }
+/* 여행자 고르기 — 자리 사람의 고정 키(sbKey)로 기억한다. 자리를 바꿔도 사람을 따라간다 */
+function tvNeed(){ const n=prepCount?prepCount():state.count; return (ED().botcRules&&n>15)?n-15:0; }
+function tvSeatIdx(){ const K=state.tvPick||[]; return (state.seats||[]).map((x,i)=>K.indexOf(sbKey(x))>=0?i:-1).filter(i=>i>=0); }
+function tvToggle(i){ const k=sbKey(state.seats[i]); state.tvPick=state.tvPick||[]; const at=state.tvPick.indexOf(k);
+  if(at>=0) state.tvPick.splice(at,1); else if(tvSeatIdx().length<tvNeed()) state.tvPick.push(k);
+  save(); prepRender(); }
+function prepTvHtml(){ const need=tvNeed(); if(!need) return '';
+  const on=new Set(tvSeatIdx());
+  return `<div class="p-sec">기본 15 · 여행자 ${need} <span class="tv-n">${on.size}/${need}</span></div><div class="tv-chips">${(state.seats||[]).map((x,i)=>x&&x.name?`<button class="tv-c${on.has(i)?' on':''}" onclick="tvToggle(${i})">${escH(x.name)}</button>`:'').join('')}</div>`; }
+/* 첫 판 추천 — 테마마다 가장 쉬운 판 하나 (화면-098, 2026-09-28 햇살님 «테마별로 다르게, 일단은 쉬운 것부터»). 난이도 딱지는 나중에 따로 */
+const MODE_FIRST={dangsan:'basic', classic:'botc-tb', mafia:'om_basic'};
+function modeIsFirst(m){ return !!m&&MODE_FIRST[hubRepOf(m)]===m.id; }
 let edPick={hub:null, next:null, open:{}};
 function openEdPick(next){ edPick.next=next||null;
   if(!edPick.hub){ const h=MODE_TREE.find(x=>x.series.some(se=>se.items.some(it=>it.id===state.edition)));
@@ -4617,9 +4729,12 @@ function renderEdPick(){
 }
 function ngTargetStep(d){ ngTarget=Math.max(5,Math.min(20,ngTarget+d)); renderNewGame(); }
 function ngAutoFill(){ ngCounts=autoCompose(ngTarget); renderNewGame(); }
+let ngFor='';   // 지금 구성이 어느 모드·인원 것인가 — 준비 역할 걸음에서 둘 중 하나라도 바뀌면 새로 짠다 (2026-09-28)
+function ngKey(){ return state.edition+':'+Math.max(5,Math.min(20,state.count||8)); }
 function openNewGame(){
   ngTarget=Math.max(5,Math.min(20,state.count||8));
   ngCounts=autoCompose(ngTarget);   // 인원 맞춤 자동 구성으로 시작
+  ngFor=ngKey();
   document.getElementById('ngEdName').textContent='';
   document.getElementById('ngEdName2').innerHTML='🎮 '+ED().name+
     ' <button class="btn sm quiet" style="margin-left:6px" onclick="if(typeof prep!==\'undefined\'&&prep.on){prepGo(1);}else{closeNewGame();openEdPick(\'newgame\');}">모드 바꾸기</button>';
@@ -4810,7 +4925,7 @@ function rvRender(){
 /* ── 진행 위저드: '다음' 하나로 흘러가는 단계별 진행 ── */
 let wz={on:false, mode:'prep', idx:0, voteOpen:null, nightSnap:null, finishPick:null, nomStep:null, dayStep:'talk'};
 /* 화면 층 런타임 문맥(15차 UI 개편) — 저장하지 않는다. board: #square 가 지금 어디 붙어 있나(wrap·side·pop·pick) · aux: 열린 보조 시트와 복귀 스크롤 · sheetFrom: 좌석 시트를 어느 시트에서 열었나 */
-let ui={board:'wrap', aux:null, sheetFrom:null, subject:null, targets:[]};   // mode: prep | night | day | verdict
+let ui={board:'wrap', aux:null, sheetFrom:null, subject:null, targets:[], fold:false, foldKey:'', seatTab:'board'};   // mode: prep | night | day | verdict
 const WZ_WARN={'숙주':'찰거머리의 숙주예요 — 숙주로 있는 동안 상시 중독. 정보는 거짓, 능력은 무효.', '중독':'이 사람은 지금 중독 상태예요 — 능력·정보를 무효로 하고, 정보역이면 그럴듯한 거짓을 주세요.',
   '취함':'이 사람은 지금 취해 있어요 — 능력이 어긋납니다. 정보역이면 거짓 정보를 주세요.',
   '능력봉인':'이 사람의 능력은 오늘 봉인돼 있어요 — 깨우되 아무 일도 일어나지 않게 하세요.',
@@ -5094,7 +5209,7 @@ function uiSyncSurface(){
   try{ document.body.classList.toggle('wide', wide); }catch(e){}
   try{ const sb=document.getElementById('wzSound'); if(sb) sb.textContent=(typeof bgm!=='undefined'&&bgm&&bgm.on)?'🔊 소리':'소리'; }catch(e){}
   /* 좌석판은 한 벌 — 빌려간 데(보조 시트·지목)가 없으면 판 화면 또는 아이패드 옆 칸에 둔다 */
-  if(ui.board!=='pop'&&ui.board!=='pick'&&ui.board!=='prep') uiBoardMount(wide?'side':'wrap');
+  if(ui.board!=='pop'&&ui.board!=='pick'&&ui.board!=='prep'&&!(ui.fold&&ui.board==='fold')) uiBoardMount(wide?'side':'wrap');
   /* 바가 생기거나 사라지면 판이 쓸 수 있는 높이가 48px 달라진다 — 그 자리에서 다시 재지 않으면
      가로 폰처럼 높이가 빠듯한 화면에서 판이 바 밑으로 잘렸다 (2026-09-02 기기 매트릭스에서) */
   if(was!==null&&was!==on){ try{ renderSquare(); }catch(e){} }
@@ -5106,6 +5221,7 @@ function uiBoardMount(host){
     : host==='pop'?document.getElementById('popBoard')
     : host==='pick'?document.getElementById('pvBoard')
     : host==='prep'?document.getElementById('prepBoard')
+    : host==='fold'?document.getElementById('wzFoldBoard')
     : document.querySelector('.square-wrap');
   if(!target){ if(host!=='wrap') return uiBoardMount('wrap'); return; }
   ui.board=host;
@@ -5144,7 +5260,7 @@ function uiZoom(fromEl, toEl){
 /* 조회를 마치고 호출한 곳으로 돌아온다 — 처리한 표식·사망·투표를 원복하는 함수가 아니다 (설계도 uiReturn) */
 function uiReturn(){
   const aux=ui.aux; ui.aux=null; wzPopKind=null;
-  popReturn(); document.getElementById('wzPopOv').classList.remove('on');
+  popReturn(); document.getElementById('wzPopOv').classList.remove('on','seatA');
   try{ document.querySelectorAll('#wzBar button').forEach(b=>b.classList.remove('on')); }catch(e){}
   try{ if(aux&&wz.on){ const s2=document.querySelector('#wzCard .wz-scroll'); if(s2) s2.scrollTop=aux.scroll||0; } }catch(e){}
   try{ uiSyncSurface(); }catch(e){}
@@ -5845,8 +5961,12 @@ function renderPop(){
     body.innerHTML=popSound();
   } else if(wzPopKind==='seat'){
     /* 좌석 = 좌석판 + 참가자 목록 한 장 (N02). 자리를 누르면 사람 상세, 닫으면 같은 카드로 */
-    body.innerHTML=`<div class="popboard" id="popBoard"></div><span class="popboard-link" onclick="boardOpen()">전체 화면으로 ▸</span>`+popWho();
-    uiBoardMount('pop');
+    {   // 화면-109 A안 — 큰 판이 먼저, 명단은 따로
+      const tb=`<div class="pop-tabs"><button class="${ui.seatTab!=='list'?'on':''}" onclick="ui.seatTab='board';renderPop()">판</button><button class="${ui.seatTab==='list'?'on':''}" onclick="ui.seatTab='list';renderPop()">명단</button></div>`;
+      body.innerHTML=tb+(ui.seatTab==='list'?popWho():`<div class="popboard big" id="popBoard"></div>`);
+      document.getElementById('wzPopOv').classList.add('seatA');
+      if(ui.seatTab!=='list') uiBoardMount('pop');
+    }
   } else if(wzPopKind==='path'){
     body.innerHTML=popPath();   // 전체 밤 순서는 «남은 행동 N» 안에서만 연다(3차안 26)
   } else if(wzPopKind==='book'){
@@ -6144,8 +6264,24 @@ function dayBriefHtml(alive,need){
     dayAb?`낮에 쓰는 능력 ${dayAb}개 — 그 사람들이 말 걸면 받아주세요`:''].filter(Boolean);
   return {say, keep, deadN:dead.length};
 }
-function wzRender(){ ui.why=''; ui.subject=null; ui.targets=[]; wz.markLeft=null; wz.markRight=null; wzRenderBody();
-  try{ uiTicket(document.getElementById('wzCard'), (wz.markLeft||wz.markRight)?{left:wz.markLeft||'',right:wz.markRight||''}:null); }catch(e){} try{ uiSyncSurface(); }catch(e){} try{ uiSideHead(); }catch(e){} }
+function wzRender(){ ui.why=''; ui.subject=null; ui.targets=[]; wz.markLeft=null; wz.markRight=null;
+  if(ui.fold&&ui.foldKey!==uiFoldKey()) uiFold(false, true);   // 다음 사람 카드는 다시 펼쳐서 (2026-09-28 햇살님 «다시 펼쳐서»)
+  wzRenderBody();
+  try{ uiTicket(document.getElementById('wzCard'), (wz.markLeft||wz.markRight)?{left:wz.markLeft||'',right:wz.markRight||''}:null); }catch(e){} try{ uiFoldBtn(); }catch(e){} try{ uiSyncSurface(); }catch(e){} try{ uiSideHead(); }catch(e){} }
+/* ══ 반 접힘 (화면-108 · 2026-09-28 시안) — 밤·낮 카드를 머리 한 줄 + 행동 띠만 남기고 그 사이에 좌석판.
+   코덱스 세부안(docs/UI틀_재검토_2026-09-27/codex_상세/답.md 2절): 판은 남은 공간으로 다시 재고, 다음 사람 카드는 다시 펼친다.
+   좌석 단추는 반 접힘과 따로 — 큰 좌석 시트(판|명단)를 연다(화면-109, 2026-09-28 햇살님 «A안이 좋아») */
+function uiFoldKey(){ return (wz.mode||'')+':'+(wz.idx||0)+':'+(wz.dayStep||'')+':'+(state.nights||1); }
+function uiFold(on, quiet){
+  const w=document.getElementById('wizard'); if(!w) return;
+  ui.fold=!!on; ui.foldKey=on?uiFoldKey():''; w.classList.toggle('fold', ui.fold);
+  if(ui.fold){ uiBoardMount('fold'); try{ renderSquare(); }catch(e){} }
+  else if(ui.board==='fold'){ ui.board='wrap'; uiBoardMount(uiHomeHost()); }
+  if(!quiet){ uiFoldBtn(); try{ uiNotch(document.getElementById('wzCard')); }catch(e){} }
+}
+function uiFoldBtn(){ const head=document.querySelector('#wzCard .wz-head'); if(!head) return;
+  let b=/** @type {HTMLButtonElement|null} */(head.querySelector('.wz-fold')); if(!b){ b=document.createElement('button'); b.className='wz-fold'; b.onclick=()=>uiFold(!ui.fold); head.appendChild(b); }
+  b.textContent=ui.fold?'펼치기':'판 보기'; }
 /* 태블릿 가로 왼쪽 판의 머리 — «판 전체 | 기준점 ① · 주체 ⑤ · 대상 ②⑧» (v6 09 iPad) */
 function uiSideHead(){ const el=document.getElementById('wzSideHd'); if(!el) return;
   const r=['기준점 ①']; if(ui.subject!==null&&ui.subject!==undefined) r.push('주체 '+uiSeatNo(ui.subject)); if(ui.targets&&ui.targets.length) r.push('대상 '+ui.targets.map(uiSeatNo).join(''));
@@ -8697,6 +8833,8 @@ function renderNewGame(){
   let rec;
   const fixC=ED().composeFix||null;
   if(fixC&&fixC.legion){ const dm=Math.max(1,ngTarget-(ngTarget<=11?4:5)); rec=`이 모드 구성: <b>사람 ${ngTarget-dm}</b> · <b>흉수 ${dm}</b> (특집 편성)`; }
+  else if(ED().botcRules&&ngTarget>15&&TEAM_SETUP[15]){ const b=TEAM_SETUP[15];   // 시계탑 16명 이상 = 기본 15 + 여행자 (화면-099)
+    rec=`권장 구성: <b>마을 ${b.t}</b> · <b>외지인 ${b.o}</b> · <b>${TKO('minion')} ${b.m}</b> · <b>${TKO('demon')} ${b.d}</b> · <b>여행자 ${ngTarget-15}</b>`; }
   else if(villageType()&&s){ const o=fixC&&fixC.o!==undefined?(fixC.o==='half'?Math.max(2,Math.floor(ngTarget/2)-1):fixC.o):s.o;
     const m=fixC&&fixC.m!==undefined?fixC.m:s.m; const d=fixC&&fixC.d!==undefined?fixC.d:s.d;
     rec=`권장 구성: <b>마을 ${Math.max(0,ngTarget-o-m-d)}</b> · <b>외지인 ${o}</b> · <b>${TKO('minion')} ${m}</b> · <b>${TKO('demon')} ${d}</b>`+(fixC?' <span style="color:var(--dim)">(이 모드 전용 편성)</span>':''); }
@@ -8811,8 +8949,15 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
   if(total<5){ alert('최소 5명 이상으로 구성해주세요.'); return; }
   if(total>20){ alert('최대 20명까지 가능해요.'); return; }
   if(total>ngTarget){ alert(`직업이 자리보다 ${total-ngTarget}개 많아요 — 한 직업을 줄이거나 인원을 늘려주세요.`); return; }
-  const pool=[]; CHARS().forEach(c=>{ for(let k=0;k<(ngCounts[c.id]||0);k++) pool.push(c.id); });
+  let pool=[]; CHARS().forEach(c=>{ for(let k=0;k<(ngCounts[c.id]||0);k++) pool.push(c.id); });
   shuffle(pool);
+  /* 여행자는 진행자가 고른 자리에 (화면-099) — 고른 수가 맞을 때만. 나머지 직업은 남은 자리에 무작위 */
+  { const cm0=CMAP(), tvIds=pool.filter(id=>cm0[id]&&cm0[id].team==='traveler'), seatsTv=tvSeatIdx();
+    if(tvIds.length&&ED().botcRules){
+      if(seatsTv.length!==tvIds.length){ alert(`여행자 ${tvIds.length}명을 먼저 고르세요.`); return; }
+      const rest=pool.filter(id=>!(cm0[id]&&cm0[id].team==='traveler')), out=[]; let r=0, t=0;
+      for(let i=0;i<pool.length;i++) out.push(seatsTv.indexOf(i)>=0?tvIds[t++]:rest[r++]);
+      pool=out; } }
   foldReset();   // 상태성 접기는 판마다 초기화 — 지난 판에서 열어둔 보조 입력이 따라오지 않게
   { const fits=state.layout==='rect'&&typeof rectCap==='function'&&(rectCap()-((state.gaps||[]).length))===total;
     if(!fits) state.layout='circle'; }   // 준비에서 잡은 사각 배치·빈자리·기준점을 지우지 않는다 — 딱 맞을 때만 (감사 2026-09-13)
