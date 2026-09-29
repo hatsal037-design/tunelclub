@@ -622,6 +622,7 @@ var NativeCore = (function () {
       var keep = editing; editing = i; try { asking({ force: true }, function () { toggleDead(); }); } finally { editing = keep; } return null; },
     'record.setWinner': function (p) { if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0) return rejected('invalidSelection', '승자를 골라 주세요.');
       if (!logsAll().some(function (x) { return x.id === p.id; })) return rejected('invalidSelection', '기록을 못 찾았어요.'); logSetWinner(p.id, p.winner); return null; },
+    'director.setRoleStats': function (p) { try { localStorage.setItem('dangsan_rolestats', JSON.stringify(p.rows || {})); } catch (e) {} return null; },   // 직업별 승률 합계(서버) — 구성 기울이기
     'director.setEnabled': function (p) { try { localStorage.setItem('dangsan_tilt', p.on ? 'on' : 'off'); } catch (e) {} return null; },
     'director.setServer': function (p) { state.director = state.director || {};
       if (p.skill && typeof p.skill.gap === 'number') state.director.skillSrv = { gap: p.skill.gap, n: p.skill.n | 0 };

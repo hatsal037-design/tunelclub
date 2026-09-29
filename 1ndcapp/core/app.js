@@ -4096,7 +4096,10 @@ function autoCompose(N){
   const demonPool=[...pool('demon'),...pool('mafia')];
   const filler=chars.find(c=>isRoleAny(c, ['villager', 'citizen', 'maeulsaram', 'townsfolk']))||pool('town').find(c=>c.fn===0&&c.on===0&&!(c.tk||[]).length&&!(c.rule&&c.rule.act)&&/능력이 없|특별한 능력|아무 능력/.test(c.ab||''));   // 능력 있는 직업(금줄쟁이·처녀 등)을 '마을사람 필러'로 쓰지 않는다
   const add=c=>counts[c.id]=(counts[c.id]||0)+1;
-  const pick=(arr,k)=>{ if(!arr.length||k<=0)return; const bag=shuffle(arr.slice()); for(let i=0;i<k;i++)add(bag[i%bag.length]); };
+  /* 판세 보정(2026-09-29) — 같은 모드·인원에서 악이 자주 이겨 왔으면(구조 기울기 +) 센 악 직업은 덜, 센 정보 직업은 더 앞에 온다. 기록이 없으면 세기 0 = 그냥 무작위 */
+  const Tc=tiltOn()?structTilt().S:0, strengthH=c=>TILT_H.roleStrength*(isEvilTeam(c)?-1:1)*roleStrength(c.id);
+  const order=arr=>Tc?dirOrderT(arr, strengthH, Tc):shuffle(arr.slice());
+  const pick=(arr,k)=>{ if(!arr.length||k<=0)return; const bag=order(arr); for(let i=0;i<k;i++)add(bag[i%bag.length]); };
   let out=0,minion=Math.max(0,Math.ceil(N/4)-1),demon=1;
   if(villageType()){ const s=TEAM_SETUP[N]; if(s){ out=s.o; demon=s.d; minion=s.m; } }
   const fix=ED().composeFix||null;
@@ -4125,14 +4128,14 @@ function autoCompose(N){
   if(out){ let opool=pool('outsider');
     const ex=ED().exclusive||[];   // 같은 판에 하나만 넣을 그룹(예: 전향 경로)
     ex.forEach(g=>{ if(g.some(id=>counts[id])){ opool=opool.filter(c=>!g.includes(c.id)); } });
-    const chosen=[]; const bag=shuffle(opool.slice());
+    const chosen=[]; const bag=order(opool);
     for(const c of bag){ if(chosen.length>=out) break; if(counts[c.id]) continue;
       if(ex.some(g=>g.includes(c.id)&&chosen.some(x=>g.includes(x.id)))) continue;   // 한 그룹에서 둘 이상 뽑지 않기
       chosen.push(c); add(c); }
     for(let i=chosen.length;i<out&&bag.length;i++) add(bag[i%bag.length]); }
   const usedEvil=Object.keys(counts).reduce((a,id)=>a+(isBL(id)?0:counts[id]),0);
   const townNeed=N-usedEvil;
-  const abilityTown=shuffle(pool('town').filter(c=>(!filler||c.id!==filler.id)&&!counts[c.id]));   // must로 이미 들어간 직업은 다시 뽑지 않는다(도편수·포교 중복 방지)
+  const abilityTown=order(pool('town').filter(c=>(!filler||c.id!==filler.id)&&!counts[c.id]));   // must로 이미 들어간 직업은 다시 뽑지 않는다(도편수·포교 중복 방지)
   const variety=Math.max(0,Math.min(abilityTown.length, townNeed-1));
   for(let i=0;i<variety;i++) add(abilityTown[i]);
   const rest=townNeed-variety;
@@ -4842,7 +4845,7 @@ function rvFakeFor(seatIdx){
   const inPlay=new Set(state.seats.map(x=>x.char).filter(Boolean));
   let pool=CHARS().filter(c=>c.team===team&&(team==='demon'||!inPlay.has(c.id)));
   if(!pool.length) pool=CHARS().filter(c=>c.team===team);
-  return pool.length?shuffle(pool.slice())[0].id:null;
+  return pool.length?dirPick(pool, c=>isInfoRole(c)?TILT_H.drunkFakeInfo:0, null, '주정뱅이 가짜 직업').id:null;
 }
 function openReveal(resume){
   const cm=CMAP();
@@ -5125,7 +5128,7 @@ function ensureFalsePos(){
     if((state.setupTok||{})['fp|'+tok]) return;           // 한 판에 한 번만 — 이야기꾼이 지워도 다시 안 깐다
     if(falsePosSeat(tok)>=0){ state.setupTok=state.setupTok||{}; state.setupTok['fp|'+tok]=1; ch=true; return; }
     const c=falsePosCands(tok); if(!c.length) return;
-    falsePosSet(tok, c[Math.floor(Math.random()*c.length)]); ch=true;
+    const cm2=CMAP(); falsePosSet(tok, dirPick(c, i=>{ const x=cm2[state.seats[i].char]; return isInfoRole(x)?TILT_H.redHerringInfo:(x&&x.team==='outsider'?TILT_H.redHerringOutsider:0); }, null, '붉은 청어')); ch=true;
   });
   return ch;
 }
@@ -7292,7 +7295,7 @@ function targetAns(c, owner, targets){
   if(id==='eolteugi') return {type:'ox', value:realEvil(T[0]), label:'악팀인가(맞으면 마을 패배)'};   // 판정은 실제 진영
   if(id==='yabawikkun'){ const hit=(T[0].rem||[]).includes('야바위 취함'); const dem=state.seats.map((x,k)=>({x,k})).filter(o=>o.x.char&&['demon','mafia'].includes(cm[o.x.char].team));
     if(hit&&dem.length) return {type:'seats', value:{seats:[dem[0].k], head:'흉수'}, label:'적중 → 흉수 좌석(적중 여부는 말하지 않기)'};
-    const memo=fixedGet('yabawi', owner); let d=memo?memo.value:null; if(d===null||d===undefined){ const pool=state.seats.map((x,k)=>({x,k})).filter(o=>o.x.char&&o.k!==owner&&!['demon','mafia','host'].includes(cm[o.x.char].team)); if(!pool.length) return null; d=pool[Math.floor(Math.random()*pool.length)].k; fixedSet('yabawi', owner, {type:'seat', value:d}); }
+    const memo=fixedGet('yabawi', owner); let d=memo?memo.value:null; if(d===null||d===undefined){ const pool=state.seats.map((x,k)=>({x,k})).filter(o=>o.x.char&&o.k!==owner&&!['demon','mafia','host'].includes(cm[o.x.char].team)); if(!pool.length) return null; d=dirPick(pool, o=>isInfoRole(cm[o.x.char])?TILT_H.yabawiInfo:0, null, '야바위꾼 거짓 자리').k; fixedSet('yabawi', owner, {type:'seat', value:d}); }
     return {type:'seats', value:{seats:[d], head:'흉수'}, label:'빗나감 → 거짓 좌석(고정)을 흉수인 양 보여주기'}; }
   if(id==='bobusang'){ const prev=Object.keys(state.picks||{}).filter(n=>+n<(state.nights||1)).map(n=>(state.picks[n]||{})[owner]).filter(v=>v&&v.length).map(v=>cm[state.seats[v[0]].char]?.team); const tm=cm[T[0].char].team; return {type:'seats', value:{seats:[targets[0]], head:`계층: ${TKO(tm)}`}, label:'사람'+(prev.includes(tm)?' ⚠️ 전에 본 계층과 같음 — 매번 다른 계층이어야 해요':'') }; }   // 풍선장이 규칙(2026-09-03): 답은 좌석, 계층은 머리말
   if(id==='chilpuni'||id==='yeotjangsu'){ const amb=(id==='chilpuni'&&(state.seats[owner].rem||[]).includes('취한 칠푼이'))?['취한 칠푼이']:[]; return withAmb({type:'team', value:side(T[0]), label:'선/악', ambig:amb}); }
@@ -7312,7 +7315,7 @@ function targetAns(c, owner, targets){
      오인식의 재량은 ambig 로 따로 알리므로 진영 구성은 문구대로 «선 1·악 1» 을 지킨다 */
   if(id==='haemongga'){ const real=cm[T[0].char]; const want=fxSide(real.team)==='evil'?'good':'evil';
     const memo=fixedGet('dream'+n, owner); let decoy=memo?cm[memo.value]:null; let first=memo?!!memo.first:Math.random()<.5;
-    if(!decoy){ const pool=CHARS().filter(x=>x.team!=='host'&&x.id!==real.id&&fxSide(x.team)===want); decoy=pool.length?pool[Math.floor(Math.random()*pool.length)]:null; if(decoy) fixedSet('dream'+n, owner, {type:'char', value:decoy.id, first}); }
+    if(!decoy){ const pool=CHARS().filter(x=>x.team!=='host'&&x.id!==real.id&&fxSide(x.team)===want); { const ip=new Set(state.seats.map(x=>x.char).filter(Boolean)); decoy=pool.length?dirPick(pool, null, x=>ip.has(x.id)&&!isEvilTeam(x)?0.8:0, null):null; } if(decoy) fixedSet('dream'+n, owner, {type:'char', value:decoy.id, first}); }
     return {type:'dream', value:decoy?(first?[real.id,decoy.id]:[decoy.id,real.id]):[real.id], label:'꿈 — 진짜 하나 + 반대편 하나(순서 무작위·고정)'}; }
   // 규칙 없는(추정) 직업: 문구 유형대로 최선의 기본값
   if(kind==='info'){ if(arg==='team') return {type:'team', value:side(T[0]), label:'선/악(추정)'}; if(arg==='char') return {type:'char', value:T[0].char, label:'직업'}; if(arg==='seats') return {type:'seats', value:{seats:targets}, label:'사람'}; if(arg==='ox') return {type:'ox', value:ansSeatEvil(T[0]), label:'악팀인가(추정 — 문구 확인)'}; }
@@ -8592,18 +8595,31 @@ const TILT_H={
   bluffInfo: -1, bluffOutsider: 0.5,       // 블러프
 };
 const isEvilTeam=c=>!!c&&['minion','demon','mafia'].includes(c.team);
+const isInfoRole=c=>{ if(!c||c.team!=='town') return false; const R=fxRule(c)||{}; return /info|auto/.test(R.act||''); };   // 정보 직업 — 확인되면 선에 큰 도움, 의심받으면 악에 도움
+Object.assign(TILT_H, {
+  duoTargetInfo: 0.3,      // 두 사람 중 하나 — 진짜 대상이 정보 직업이면 그 사람이 확인된다
+  trioGoodInfo: -0.3,      // 세 사람 중 악 — 섞인 선이 정보 직업이면 애먼 의심(한 명마다)
+  childInfo: 0.3,          // 첫밤 아이가 정보 직업 — 확인된 선
+  drunkFakeInfo: -0.5,     // 주정뱅이가 정보 직업이라 믿음 — 틀린 정보를 퍼뜨린다
+  redHerringInfo: -0.5, redHerringOutsider: 0.3,   // 점술가 붉은 청어
+  yabawiInfo: -0.5,        // 야바위꾼이 흉수로 짚은 거짓 자리가 정보 직업
+  fakeNumPerStep: -0.3,    // 거짓 숫자 — 진짜와 차이 1마다
+  roleStrength: 1,         // 구성 — 직업 세기(실제 승률 차이)에 곱하는 값
+  dealGap: 4,              // 역할 나누기 — 두 편 평균 실력 차이(0~0.5)에 곱하는 값. 12번 나눠 본 것 중 몰림이 적은 배치가 조금 더
+});
 /* 거짓 답에 댈 직업 — 선한 직업은 판에 있으면 진짜 그 사람이 반박한다(위험), 악 직업은 판에 있으면 단서·없으면 헛갈림(점수표) */
 const fakeRoleH=(x,inPlay)=>isEvilTeam(x)?(inPlay.has(x.id)?TILT_H.evilRoleInPlay:TILT_H.evilRoleNotInPlay):0;
 const fakeRoleR=(x,inPlay)=>(!isEvilTeam(x)&&inPlay.has(x.id))?0.8:0;
 function tiltOn(){ try{ return localStorage.getItem('dangsan_tilt')!=='off'; }catch(e){ return true; } }
 let _skillMemo=null;
+const logsKey=()=>{ try{ return (localStorage.getItem('botc_logs')||'').length; }catch(e){ return 0; } };   // 기록이 바뀌었나 — 풀지 않고 길이로(뽑을 때마다 300판을 풀면 무겁다)
 /* 전적 차이 — 악 편 평균 실력 − 선 편 평균 실력(+면 잘하는 사람이 악에 몰림 → 선을 돕는다). 실력 = (승+2)/(판+4): 판이 적으면 50% 로 당긴다.
    이 기기 기록(사람별)과 서버 회원 전적(director.setSkill 로 받은 값)을 사람 수만큼 섞는다 */
 function skillGap(){
-  const logs=logsAll(), key=logs.length+':'+state.seats.map(s=>(s&&s.pid)||(s&&s.name)||'').join('|');
+  const key=logsKey()+':'+state.seats.map(s=>((s&&s.pid)||(s&&s.name)||'')+'/'+((s&&s.char)||'')).join('|');
   let loc=null;
   if(_skillMemo&&_skillMemo.key===key) loc=_skillMemo.v;
-  else { const P=statsOf(logs), ev=[], gd=[];
+  else { const P=statsAll(), ev=[], gd=[];
     state.seats.forEach(s=>{ if(!s||!s.char) return; const who=s.pid?personById(s.pid):null, st=P[(who&&who.name)||(s.name||'').trim()];
       if(!st||!(st.승+st.패)) return; const k=(st.승+2)/(st.승+st.패+4); (realEvil(s)?ev:gd).push(k); });
     const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0.5;
@@ -8614,14 +8630,16 @@ function skillGap(){
 }
 /* 구조 기울기 — 이 모드·이 인원에서 실제로 누가 더 이겼나(이 기기 기록 + 서버 전체 판). 판이 적으면 인원 구간 추정으로.
    +면 악이 더 이겨 온 판 → 선을 돕는다. 판이 쌓일수록 실제 승률 쪽으로 넘어간다(10판이면 반반) — 햇살님 «평균값을 찾으면 수시로 보정» */
+let _structMemo=null;
 function structTilt(){
-  const n=inPlaySeats().length, mid=state.edition;
+  const n=inPlaySeats().length, mid=state.edition, sv0=(state.director&&state.director.rateSrv)||null, key=logsKey()+'|'+mid+'|'+n+'|'+JSON.stringify(sv0);
+  if(_structMemo&&_structMemo.key===key) return _structMemo.v;
   let good=0, evil=0;
   logsAll().forEach(L=>{ if(!L||L.practice||(L.mid||L.mode)!==mid) return; const cnt=(L.players||[]).length; if(cnt!==n) return; if(L.winner==='good') good++; else if(L.winner==='evil') evil++; });
   const sv=(state.director&&state.director.rateSrv)||null; if(sv){ good+=sv.good||0; evil+=sv.evil||0; }
   const g=good+evil, prior=-0.6*(plateauPos()-0.5), w=g/(g+10);
   const calib=2*((evil+5)/(g+10)-0.5);
-  return { S:Math.max(-0.6,Math.min(0.6,w*calib+(1-w)*prior)), games:g };
+  const v={ S:Math.max(-0.6,Math.min(0.6,w*calib+(1-w)*prior)), games:g }; _structMemo={key, v}; return v;
 }
 function tiltValue(){
   if(!tiltOn()) return {T:0, why:'꺼짐'};
@@ -8635,17 +8653,43 @@ function plateauPos(){ const n=inPlaySeats().length, ev=k=>{ const t=TEAM_SETUP[
   if(ev(n)===null) return 0.5; let a=n, b=n; while(ev(a-1)===ev(n)) a--; while(ev(b+1)===ev(n)) b++; return b>a?(n-a)/(b-a):0.5; }
 /* 후보 중 하나를 뽑는다 — p ∝ exp(K·T·h − L·r). h: 선에 도움(+)/악에 도움(−), r: 교차 검증 위험(0~1). dT 는 곳마다 더하는 기울기(블러프 구간) */
 function dirPick(list, hOf, rOf, where, dT){
+  const tv=tiltValue(); return dirPickT(list, hOf, rOf, where, tiltOn()?Math.max(-1,Math.min(1,tv.T+(dT||0))):0, tv.why);
+}
+/* T 를 직접 받는 판 — 판이 시작되기 전(구성·역할 나누기)엔 자리 전적이 아직 없어 구조 기울기만 쓴다. where 가 없으면 기록하지 않는다 */
+function dirPickT(list, hOf, rOf, where, T, why){
   if(!list||!list.length) return undefined; if(list.length===1) return list[0];
-  const tv=tiltValue(), T=tiltOn()?Math.max(-1,Math.min(1,tv.T+(dT||0))):0;
+  const tv={why:why||''};
   let p=list.map(x=>Math.exp(TILT.K*T*(hOf?hOf(x):0)-TILT.L*(rOf?rOf(x):0)));
   const sum=a=>a.reduce((x,y)=>x+y,0); let z=sum(p); p=p.map(x=>(1-TILT.FLOOR)*x/z+TILT.FLOOR/p.length);
   /* 천장 — 후보가 적으면 45% 가 산수상 안 맞는다(둘이면 합이 100%). 1.5/n 보다 낮게는 안 잡고, 넘친 몫은 나머지에 «비율대로» 나눈다(몰아주면 방향이 뒤집힌다) */
   const cap=Math.max(TILT.CAP, 1.5/p.length);
   for(let it=0;it<10;it++){ const ex=sum(p.map(x=>Math.max(0,x-cap))); if(ex<1e-9) break; const under=sum(p.filter(x=>x<cap)); p=p.map(x=>x>=cap?cap:x+ex*x/Math.max(under,1e-9)); }
   z=sum(p); let u=Math.random()*z, k=0; while(k<p.length-1&&(u-=p[k])>0) k++;
-  if(Math.abs(T)>0.05){ try{ logEvent('판세 개입', {곳:where, 기울기:Math.round(T*100)/100, 근거:tv.why}); }catch(e){} }
+  if(where&&Math.abs(T)>0.05){ try{ state.director=state.director||{}; const lk=(state.nights||1)+'|'+where; state.director.logged=state.director.logged||{};
+    if(!state.director.logged[lk]){ state.director.logged[lk]=1; logEvent('판세 개입', {곳:where, 기울기:Math.round(T*100)/100, 근거:tv.why}); } }catch(e){} }
   return list[k];
 }
+/* 가중 순서 — 셔플 대신. 앞에 올 확률만 기울인다 */
+function dirOrderT(arr, hOf, T){ const a=arr.slice(), out=[]; while(a.length){ const x=dirPickT(a, hOf, null, null, T); out.push(x); a.splice(a.indexOf(x),1); } return out; }
+/* 사람 실력 — (승+2)/(판+4), 이 기기 기록. 기록 없으면 null */
+function statsAll(){ const k=logsKey(); if(!_statsMemo||_statsMemo.n!==k) _statsMemo={n:k, P:statsOf(logsAll())}; return _statsMemo.P; }
+function personSkill(pid, name){ const P=statsAll();
+  const who=pid?personById(pid):null, st=P[(who&&who.name)||(name||'').trim()];
+  return (st&&(st.승+st.패))?(st.승+2)/(st.승+st.패+4):null; }
+let _statsMemo=null;
+/* 직업 세기 — 그 직업이 속한 편의 평균 승률보다 얼마나 더 이겼나(이 기기 기록 + 서버 전체 합계). 판이 적으면 0 에 가깝다 */
+function roleStrength(id){
+  const key=logsKey(); if(!_roleMemo||_roleMemo.key!==key){ const R={}, T={};
+    logsAll().forEach(L=>{ (L.players||[]).forEach(p=>{ if(p.won===undefined||p.won===null||!p.roleId) return; const side=isEvilTeam(CMAP()[p.roleId]||{team:p.team})?'evil':'good';
+      (R[p.roleId]=R[p.roleId]||{g:0,w:0,side}); R[p.roleId].g++; if(p.won) R[p.roleId].w++; (T[side]=T[side]||{g:0,w:0}); T[side].g++; if(p.won) T[side].w++; }); });
+    _roleMemo={key, R, T}; }
+  let srv={}; try{ srv=JSON.parse(localStorage.getItem('dangsan_rolestats')||'{}')||{}; }catch(e){}
+  const c=CMAP()[id]||CHARS().find(x=>x.id===id); if(!c) return 0; const side=isEvilTeam(c)?'evil':'good';
+  const r=_roleMemo.R[id]||{g:0,w:0}, sv=srv[id]||{g:0,w:0}, tl=_roleMemo.T[side]||{g:0,w:0}, ts=(srv['_'+side]||{g:0,w:0});
+  const g=r.g+sv.g, w=r.w+sv.w, tg=tl.g+ts.g, tw=tl.w+ts.w;
+  return (w+2)/(g+4)-(tw+2)/(tg+4);
+}
+let _roleMemo=null;
 /* 다른 정보가 이미 가리킨 자리 — 교차 검증 위험 */
 function fixedSeatsOthers(owner){ const used=new Set();
   Object.keys(state.fixed||{}).forEach(k=>{ if(+k.split('#').pop()===owner) return; const v=(state.fixed[k]||{}).value; if(!v) return;
@@ -8808,7 +8852,7 @@ function autoAns(c0, idx){
     if(memo&&memo.type==='duo'){ const mc=cm[memo.value.char];
       if(mc) return {type:'duo', value:memo.value,
         label:`${mc.e} ${mc.ko} (좌석 ${memo.value.seats.map(x=>x+1).join('·')} 중 하나)`, ambig:[]}; }
-    const t=pickRand(targets);
+    const t=dirPick(targets, o=>isInfoRole(o.c)?TILT_H.duoTargetInfo:0, null, '두 사람 중 하나 — 대상');
     const decoys=occAll().filter(o=>o.i!==t.i);
     if(!decoys.length) return null;
     const ref=fixedSeatsOthers(idx);
@@ -8853,7 +8897,7 @@ function autoAns(c0, idx){
     const evil=occAll().filter(o=>ansSeatEvil(o.st2));
     const good=occAll().filter(o=>!ansSeatEvil(o.st2));
     if(!evil.length||good.length<2) return null;
-    const e=dirPick(evil, o=>o.c.team==='demon'?TILT_H.trioDemon:0, null, '세 사람 중 악'), g=good.sort(()=>Math.random()-.5).slice(0,2);
+    const e=dirPick(evil, o=>o.c.team==='demon'?TILT_H.trioDemon:0, null, '세 사람 중 악'), g0=dirPick(good, o=>isInfoRole(o.c)?TILT_H.trioGoodInfo:0, null, '세 사람 중 악 — 선'), g=[g0, dirPick(good.filter(o=>o!==g0), o=>isInfoRole(o.c)?TILT_H.trioGoodInfo:0, null, null)];
     const tri=[e.i,g[0].i,g[1].i].sort((a,b)=>a-b);
     fixedSet(c0.id, idx, {type:'trio', value:{seats:tri}});
     return {type:'trio', value:{seats:tri}, label:`좌석 ${tri.map(x=>x+1).join('·')} 중 정확히 하나가 악팀`, ambig:[]};
@@ -8865,7 +8909,7 @@ function autoAns(c0, idx){
     const pre=occAll().find(o=>(o.st2.rem||[]).some(r=>r==='아이'||r==='손주'));   // 진행자가 미리 찍어둔 아이가 있으면 그대로
     const good=pre?[pre]:occAll().filter(o=>!ansSeatEvil(o.st2)&&['town','outsider'].includes(o.c.team));
     if(!good.length) return null;
-    const t=pre||pickRand(good);
+    const t=pre||dirPick(good, o=>isInfoRole(o.c)?TILT_H.childInfo:0, null, '첫밤 아이');
     const val={seats:[t.i], char:t.c.id, head:'돌보는 아이와 그 직업이에요'};
     fixedSet(c0.id, idx, {type:'duo', value:val});
     state.seats.forEach((x,xi)=>{ if(xi!==t.i&&(x.rem||[]).includes('아이')){ x.rem=x.rem.filter(r=>r!=='아이'); tokAtDel(xi,'아이'); } });   // 아이는 한 사람만
@@ -9031,7 +9075,7 @@ function fakeFromAns(a0, c, owner, targets){
   let out=null;
   if(a0.type==='ox'){ out={type:'ox', value:!a0.value}; }
   else if(a0.type==='team'){ out={type:'team', value:a0.value==='good'?'evil':'good'}; }
-  else if(a0.type==='num'){ const rv=Number(a0.value)||0; const opts=[]; for(let v=0; v<=Math.max(2, rv+1); v++) if(v!==rv) opts.push(v); out={type:'num', value:rnd(opts)}; }
+  else if(a0.type==='num'){ const rv=Number(a0.value)||0; const opts=[]; for(let v=0; v<=Math.max(2, rv+1); v++) if(v!==rv) opts.push(v); out={type:'num', value:dirPick(opts, v=>TILT_H.fakeNumPerStep*Math.abs(v-rv), null, '거짓 숫자')}; }
   else if(a0.type==='char'){ const cand=CHARS().filter(x=>x.id!==a0.value&&x.id!==c.id&&['town','outsider','minion','demon','mafia'].includes(x.team)); const fc=dirPick(cand, x=>fakeRoleH(x,inPlay), x=>fakeRoleR(x,inPlay)+(inPlay.has(x.id)?0:0), '거짓 답 직업'); if(fc) out={type:'char', value:fc.id}; }
   /* 두 사람+직업(세탁부·사서·조사관 꼴)·세 사람 — 같은 꼴의 거짓. 가짜 직업을 받은 주정뱅이도 그 직업 방식 그대로 받는다 (2026-09-29 햇살님).
      «없음»이었으면 있는 척 두 사람+직업을 준다. 직업은 그 능력이 찾는 계층(마을·외지인·하수인)에서, 진짜 답과 다른 것으로 */
@@ -9267,6 +9311,15 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
   let pool=[]; CHARS().forEach(c=>{ for(let k=0;k<(ngCounts[c.id]||0);k++) pool.push(c.id); });
   const blId=pool.find(id=>bodilessId(CMAP()[id]))||null; pool=pool.filter(id=>id!==blId);   // 꼬마 괴물·업귀 — 카드를 아무도 받지 않는다
   shuffle(pool);
+  /* 판세 보정(2026-09-29 햇살님 «살짝 기울인다») — 무작위로 12번 나눠 보고, 악 편·선 편 평균 실력 차이가 작은 배치가 뽑힐 확률만 높인다.
+     누가 악이 될지는 여전히 운. 실력은 이 기기 기록만(한 사람 전적을 서버에서 받지 않는다). 기록 있는 사람이 셋 미만이면 그냥 무작위 */
+  { const keepN0=(state.seats||[]).map(x=>(x&&x.name)||''), keepP0=(state.seats||[]).map(x=>(x&&x.pid)||null);
+    const sk=pool.map((_,i)=>personSkill(keepP0[i], keepN0[i]));
+    if(tiltOn()&&sk.filter(x=>x!==null).length>=3){ const cm1=CMAP();
+      const gap=arr=>{ const e=[], g=[]; arr.forEach((id,i)=>{ if(sk[i]===null) return; (isEvilTeam(cm1[id])?e:g).push(sk[i]); }); const av=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0.5; return Math.abs(av(e)-av(g)); };
+      const tries=[pool.slice()]; for(let k=0;k<11;k++) tries.push(shuffle(pool.slice()));
+      const pickd=dirPickT(tries, t=>-TILT_H.dealGap*gap(t), null, null, 1);   // h = −차이(작을수록 좋음), T=1 고정 — 세기는 K(1.6)·바닥·천장이 «살짝»으로 묶는다
+      pool.splice(0, pool.length, ...pickd); } }
   /* 여행자는 진행자가 고른 자리에 (화면-099) — 고른 수가 맞을 때만. 나머지 직업은 남은 자리에 무작위 */
   { const cm0=CMAP(), tvIds=pool.filter(id=>cm0[id]&&cm0[id].team==='traveler'), seatsTv=tvSeatIdx();
     if(tvIds.length&&ED().botcRules){
