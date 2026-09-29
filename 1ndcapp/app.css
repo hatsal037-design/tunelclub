@@ -305,3 +305,5 @@ h1, h2, p { margin: 0; }
 .hstack { display: flex; align-items: center; gap: 8px; }
 .pill-note { font-size: 13px; color: var(--sec); }
 .nobr { white-space: nowrap; }
+.rowx { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--gray4); color: var(--card); display: grid; place-items: center; }
+.rowx:active { background: var(--gray); }
