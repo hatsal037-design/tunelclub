@@ -22,6 +22,25 @@ export async function boot() {
     if (saved && !readable(saved)) saved = null;
   }
   start(saved);
+  migrateOld();
+}
+
+/** 옛 웹(tunel.kr/dangsan/)의 판 기록을 한 번 옮긴다 — 같은 사이트라 기기 저장소를 같이 쓴다.
+ *  옛 저장본으로 코어를 하나 더 띄워 백업을 뽑고, 새 코어의 «백업 가져오기»로 합친다(없던 기록만 더해진다). 옛 저장소는 건드리지 않는다 */
+function migrateOld() {
+  const FLAG = '1ndc_migrated';
+  try {
+    if (localStorage.getItem(FLAG)) return;
+    const logs = readable(localStorage.getItem('botc_logs') || '[]');
+    if (!Array.isArray(logs) || !logs.length) { localStorage.setItem(FLAG, 'none'); return; }
+    const old = {};
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k.startsWith('1ndc')) old[k] = localStorage.getItem(k); }
+    const tmp = new Function('__boot_storage', 'print', SRC + '\n;__flushTimers(); return NativeCore;')(JSON.stringify(old), () => {});
+    const text = (readable(tmp.query('backup.export')) || {}).data;
+    if (!text) return;
+    const r = dispatch('backup.import', { json: text });
+    if (r.status === 'ok') localStorage.setItem(FLAG, new Date().toISOString() + ' · ' + logs.length);
+  } catch (e) { console.warn('옛 기록 옮기기 실패', e); }
 }
 
 export const currentRevision = () => revision;
