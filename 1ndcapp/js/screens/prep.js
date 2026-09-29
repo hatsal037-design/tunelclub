@@ -47,7 +47,10 @@ const PrepPage = ({ c, children, bottom }) => html`<${Page} title=${c.title} lef
 function PeopleView({ c, next }) {
   const [names, setNames] = useState(() => { const n = store.board.seats.map(s => s.name); while (n.length < 5) n.push(''); return n; });
   const [members, setMembers] = useState(() => { const m = store.board.seats.map(s => s.member || null); while (m.length < 5) m.push(null); return m; });   // 칸마다 투넬 회원 번호(없으면 이름만)
-  const [picking, setPicking] = useState(false);
+  const [picking, setPicking] = useState(false), [clearAsk, setClearAsk] = useState(false);
+  const pad = (n, m) => { while (n.length < 5) { n.push(''); m.push(null); } setNames(n); setMembers(m); };
+  const removeAt = i => pad(names.filter((_, j) => j !== i), members.filter((_, j) => j !== i));   // 그 칸을 빼고 아래가 올라온다(5칸 아래로는 빈 칸)
+  const clearAll = () => pad([], []);
   const addMembers = rows => {   // 빈 칸부터 채우고 모자라면 늘린다 — 이미 있는 회원은 건너뛴다
     const n = names.slice(), m = members.slice();
     rows.filter(r => !m.includes(r.member_id)).forEach(r => { let k = n.findIndex(x => !x.trim()); if (k < 0) { if (n.length >= 20) return; n.push(''); m.push(null); k = n.length - 1; } n[k] = r.nick; m[k] = r.member_id; });
@@ -66,11 +69,14 @@ function PeopleView({ c, next }) {
   return html`<${PrepPage} c=${c} bottom=${html`<${Primary} title="자리 정하기" enabled=${valid} loading=${R.busy} onClick=${() => commit(false)} />`}>
     <${LargeTitle}>인원<//>
     <${Section}><${Stepper} value=${names.length} min=${5} max=${20} onChange=${setCount}>참가 인원 ${names.length}명<//><//>
-    <${Section}><${Row} tint onClick=${() => account.user ? setPicking(true) : account.login()}><${Icon} name="person2" size=${20} />${account.user ? '투넬 회원에서 고르기' : '투넬 회원에서 고르기 · 로그인'}<//><//>
+    <${Section}><${Row} tint onClick=${() => account.user ? setPicking(true) : account.login()}><${Icon} name="person2" size=${20} />${account.user ? '투넬 회원에서 고르기' : '투넬 회원에서 고르기 · 로그인'}<//>
+      <${Row} danger disabled=${!names.some(n => n.trim())} onClick=${() => setClearAsk(true)}><${Icon} name="xmark" size=${20} />모두 비우기<//><//>
     <${Section} header="닉네임">${names.map((n, i) => html`<div class="row" key=${i}><span class="sec num" style="width:28px">${i + 1}</span>
       <input class="textin" ref=${el => inputs.current[i] = el} value=${n} placeholder="닉네임" enterkeyhint=${i + 1 < names.length ? 'next' : 'done'}
         onInput=${e => { const v = e.currentTarget.value; setNames(a => a.map((x, j) => j === i ? v : x)); if (members[i]) setMembers(a => a.map((x, j) => j === i ? null : x)); }}
-        onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); const nx = inputs.current[i + 1]; if (nx) nx.focus(); else e.currentTarget.blur(); } }} />${members[i] && html`<span class="tag">회원</span>`}</div>`)}<//>
+        onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); const nx = inputs.current[i + 1]; if (nx) nx.focus(); else e.currentTarget.blur(); } }} />${members[i] && html`<span class="tag">회원</span>`}
+      ${(n.trim() || names.length > 5) && html`<button class="rowx" aria-label=${`${i + 1}번 지우기`} onClick=${() => removeAt(i)}><${Icon} name="xmark" size=${12} stroke=${3} /></button>`}</div>`)}<//>
+    <${ActionSheet} open=${clearAsk} title="닉네임을 모두 비울까요?" onClose=${() => setClearAsk(false)} actions=${[{ label: '모두 비우기', role: 'destructive', onClick: clearAll }]} />
     <${Sheet} open=${picking} onClose=${() => setPicking(false)}>${picking && html`<${MemberPicker} taken=${members.filter(Boolean)} close=${() => setPicking(false)} done=${addMembers} />`}<//>
     <${ActionSheet} open=${!!ask} title=${ask} onClose=${() => setAsk(null)} actions=${[{ label: '역할 비우고 변경', role: 'destructive', onClick: () => commit(true) }]} />
     ${R.alert}
