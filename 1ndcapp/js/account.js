@@ -56,6 +56,13 @@ export const account = {
   async friends() { if (!this.user) return null; try { return (await rpc('friends_list')) || []; } catch { return null; } },
   async friendDo(fn, id) { try { return await rpc(fn, { p_member: id }); } catch { return null; } },
   async stats(id) { try { return id ? await rpc('member_stats', { p_member: id }) : await rpc('my_stats'); } catch { return null; } },
+  /** 판세 보정 — 첫밤 시작 때 서버에서 숫자 둘(회원 편별 실력 차이 · 이 모드·인원의 선·악 승수)을 받아 코어에 넣는다 */
+  async director() {
+    if (!this.user) return; const c = store.get('director.context'); if (!c) return;
+    const safe = p => p.then(x => x, () => null);
+    const [skill, rate] = await Promise.all([c.good.length + c.evil.length >= 5 ? safe(rpc('team_skill_gap', { p_good: c.good, p_evil: c.evil })) : null, safe(rpc('mode_stats', { p_mode: c.mode, p_n: c.n }))]);
+    if (skill || rate) await store.dispatch('director.setServer', { skill, rate });
+  },
   /** 서버에 있는 내 판 중 이 기기에 없는 것을 받는다 — 기기를 바꿨을 때 */
   async pull() {
     if (!this.user) return null;
@@ -68,4 +75,4 @@ export const account = {
   },
 };
 // 판이 끝나면(기록이 쌓이면) 조용히 올린다
-store.afterCommit = type => { if ((type === 'game.finish' || type === 'backup.import') && account.user) account.sync(); };
+store.afterCommit = type => { if ((type === 'game.finish' || type === 'backup.import') && account.user) account.sync(); if (type === 'game.beginFirstNight') account.director(); };

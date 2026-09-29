@@ -46,6 +46,7 @@ export function SettingsView() {
     <${Section} header="진행">
       <${Toggle} checked=${settings.get('haptics')} onChange=${v => set('haptics', v)}>진동 피드백<//>
       <${Toggle} checked=${settings.get('sound')} onChange=${v => set('sound', v)}>진행 소리<//>
+      <${Toggle} checked=${!!store.get('director.enabled')} onChange=${async v => { await store.dispatch('director.setEnabled', { on: v }); rerender(); }}>판세 보정<//>
       ${settings.get('sound') && html`<${Row} tint onClick=${() => say('간밤에 한 사람이 돌아오지 못했습니다. 이제 이야기를 나눠 주세요.')}>들어 보기<//>`}
     <//>
     <${Section} header="화면">
