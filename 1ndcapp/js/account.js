@@ -20,7 +20,8 @@ export const account = {
     await this.load();
   },
   async load() {
-    if (this.user) { try { const d = await rpc('me_info'); this.info = (d && d[0]) || null; } catch { this.info = null; } this.sync(); }
+    if (this.user) { try { const d = await rpc('me_info'); this.info = (d && d[0]) || null; } catch { this.info = null; } this.sync();
+      rpc('role_stats').then(rows => rows && store.dispatch('director.setRoleStats', { rows }), () => {}); }   // 직업 세기 — 구성 기울이기
     else this.info = null;
     this.emit();
   },
