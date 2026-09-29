@@ -11,7 +11,8 @@ import { Search } from '../ui.js';
 /** 투넬 회원 고르기 — 오늘 참석 → 최근 → 모든 회원. 이미 넣은 회원은 체크된 채 */
 function MemberPicker({ taken, close, done }) {
   const [rows, setRows] = useState(undefined), [sel, setSel] = useState(() => new Set()), [q, setQ] = useState('');
-  useEffect(() => { account.members().then(setRows); }, []);
+  const [friends, setFriends] = useState([]);
+  useEffect(() => { account.members().then(setRows); account.friends().then(l => setFriends((l || []).filter(x => x.state === 'friend').map(x => x.member_id))); }, []);
   const list = (rows || []).filter(r => !q || String(r.nick || '').toLowerCase().includes(q.toLowerCase()));
   const row = r => { const on = sel.has(r.member_id) || taken.includes(r.member_id);
     return html`<${Row} disabled=${taken.includes(r.member_id)} sel=${on} onClick=${() => setSel(s => { const n = new Set(s); n.has(r.member_id) ? n.delete(r.member_id) : n.add(r.member_id); return n; })}>
@@ -21,7 +22,7 @@ function MemberPicker({ taken, close, done }) {
     right=${html`<${NavButton} label=${sel.size ? sel.size + '명 넣기' : '넣기'} bold disabled=${!sel.size} onClick=${() => { done((rows || []).filter(r => sel.has(r.member_id))); close(); }} />`}>
     <${Search} value=${q} onInput=${setQ} placeholder="닉네임 검색" />
     ${rows === undefined ? html`<${Empty} title="명단 받는 중…" />` : rows === null ? html`<${Empty} icon="warn" title="명단을 못 받았어요" text="로그인·연결을 확인해 주세요." />`
-      : html`${grp('오늘 참석', list.filter(r => r.today))}${grp('최근', list.filter(r => !r.today && r.recent))}${grp(q ? '찾은 회원' : '모든 회원', list.filter(r => !r.today && !r.recent))}
+      : html`${grp('친구', list.filter(r => friends.includes(r.member_id)))}${grp('오늘 참석', list.filter(r => r.today && !friends.includes(r.member_id)))}${grp('최근', list.filter(r => !r.today && r.recent && !friends.includes(r.member_id)))}${grp(q ? '찾은 회원' : '모든 회원', list.filter(r => !r.today && !r.recent && !friends.includes(r.member_id)))}
         ${!list.length && html`<${Empty} title="해당하는 회원이 없어요" />`}`}
   <//>`;
 }
