@@ -44,7 +44,7 @@ function dgTop(list){ const c = {}; list.forEach(x => { const r = dgRole(x.p); i
   return Object.entries(c).sort((a,b) => b[1]-a[1])[0]; }
 function dangsanActivityHtml(games){
   const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const link = `<a class="dglink" href="../dangsan/">당산나무로 판 열기 (베타) →</a>`;
+  const link = `<a class="dglink" href="../1ndcapp/">첫밤사망자클럽으로 판 열기 →</a>`;
   if(games === null) return `<div class="dgbox"><div class="dgnone">전적을 못 불러왔어요. 잠시 뒤 다시 열어 주세요.</div>${link}</div>`;
   const rows = (games||[]).map(g => ({ g, p: (g.players||[]).find(p => p.me) })).filter(x => x.p);
   if(!rows.length) return `<div class="dgbox"><div class="dgnone">아직 올라온 판이 없어요.<br>당산나무에서 판을 마감하면 여기 저절로 쌓여요.</div>${link}</div>`;
