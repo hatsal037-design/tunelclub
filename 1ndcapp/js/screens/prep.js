@@ -5,6 +5,26 @@ import { Icon } from '../icons.js';
 import { Page, Section, Row, RowLabel, CheckRow, Labeled, Primary, Stepper, Segmented, Sheet, Cover, ActionSheet, Menu, NavButton, RoleArt, HoldButton, Disclosure, useRun, LargeTitle, Empty, cx } from '../ui.js';
 import { NavStack, useNav, Back } from '../nav.js';
 import { SeatBoard, boardLayout } from '../seatboard.js';
+import { account } from '../account.js';
+import { Search } from '../ui.js';
+
+/** 투넬 회원 고르기 — 오늘 참석 → 최근 → 모든 회원. 이미 넣은 회원은 체크된 채 */
+function MemberPicker({ taken, close, done }) {
+  const [rows, setRows] = useState(undefined), [sel, setSel] = useState(() => new Set()), [q, setQ] = useState('');
+  useEffect(() => { account.members().then(setRows); }, []);
+  const list = (rows || []).filter(r => !q || String(r.nick || '').toLowerCase().includes(q.toLowerCase()));
+  const row = r => { const on = sel.has(r.member_id) || taken.includes(r.member_id);
+    return html`<${Row} disabled=${taken.includes(r.member_id)} sel=${on} onClick=${() => setSel(s => { const n = new Set(s); n.has(r.member_id) ? n.delete(r.member_id) : n.add(r.member_id); return n; })}>
+      <span class="grow">${r.nick}</span>${on && html`<span class="blue"><${Icon} name="check" size=${20} stroke=${2.4} /></span>`}<//>`; };
+  const grp = (t, l) => l.length ? html`<${Section} header=${t}>${l.map(row)}<//>` : null;
+  return html`<${Page} title="투넬 회원" left=${html`<${NavButton} label="취소" onClick=${close} />`}
+    right=${html`<${NavButton} label=${sel.size ? sel.size + '명 넣기' : '넣기'} bold disabled=${!sel.size} onClick=${() => { done((rows || []).filter(r => sel.has(r.member_id))); close(); }} />`}>
+    <${Search} value=${q} onInput=${setQ} placeholder="닉네임 검색" />
+    ${rows === undefined ? html`<${Empty} title="명단 받는 중…" />` : rows === null ? html`<${Empty} icon="warn" title="명단을 못 받았어요" text="로그인·연결을 확인해 주세요." />`
+      : html`${grp('오늘 참석', list.filter(r => r.today))}${grp('최근', list.filter(r => !r.today && r.recent))}${grp(q ? '찾은 회원' : '모든 회원', list.filter(r => !r.today && !r.recent))}
+        ${!list.length && html`<${Empty} title="해당하는 회원이 없어요" />`}`}
+  <//>`;
+}
 
 const STEPS = [['people', '인원'], ['seats', '자리'], ['roles', '역할'], ['handoff', '넘기기']];
 
@@ -22,15 +42,22 @@ export function PreparationFlow({ step, go, close }) {
 }
 const PrepPage = ({ c, children, bottom }) => html`<${Page} title=${c.title} left=${c.left} right=${c.right} top=${c.header} bottom=${bottom}>${children}<//>`;
 
-/** P01 · 인원 — 인원 스테퍼 + 닉네임 입력. «자리 정하기»가 명단을 코어에 확정한다 */
+/** P01 · 인원 — 인원 스테퍼 + 닉네임 입력 + 투넬 회원에서 고르기. «자리 정하기»가 명단을 코어에 확정한다 */
 function PeopleView({ c, next }) {
   const [names, setNames] = useState(() => { const n = store.board.seats.map(s => s.name); while (n.length < 5) n.push(''); return n; });
+  const [members, setMembers] = useState(() => { const m = store.board.seats.map(s => s.member || null); while (m.length < 5) m.push(null); return m; });   // 칸마다 투넬 회원 번호(없으면 이름만)
+  const [picking, setPicking] = useState(false);
+  const addMembers = rows => {   // 빈 칸부터 채우고 모자라면 늘린다 — 이미 있는 회원은 건너뛴다
+    const n = names.slice(), m = members.slice();
+    rows.filter(r => !m.includes(r.member_id)).forEach(r => { let k = n.findIndex(x => !x.trim()); if (k < 0) { if (n.length >= 20) return; n.push(''); m.push(null); k = n.length - 1; } n[k] = r.nick; m[k] = r.member_id; });
+    setNames(n); setMembers(m);
+  };
   const [ask, setAsk] = useState(null);
   const R = useRun();
   const valid = names.length >= 5 && names.every(n => n.trim());
-  const setCount = n => setNames(a => n > a.length ? a.concat(Array(n - a.length).fill('')) : a.slice(0, n));
+  const setCount = n => { setNames(a => n > a.length ? a.concat(Array(n - a.length).fill('')) : a.slice(0, n)); setMembers(a => n > a.length ? a.concat(Array(n - a.length).fill(null)) : a.slice(0, n)); };
   const commit = async force => {
-    const p = { people: names.map(n => ({ name: n.trim() })) }; if (force) p.force = true;
+    const p = { people: names.map((n, i) => members[i] ? { name: n.trim(), member: members[i] } : { name: n.trim() }) }; if (force) p.force = true;
     const r = await R.run('preparation.commitPeople', p);
     if (r.ok) next(); else if (r.confirm) setAsk(r.choices[0] || '역할을 다시 나눠요.');
   };
@@ -38,10 +65,12 @@ function PeopleView({ c, next }) {
   return html`<${PrepPage} c=${c} bottom=${html`<${Primary} title="자리 정하기" enabled=${valid} loading=${R.busy} onClick=${() => commit(false)} />`}>
     <${LargeTitle}>인원<//>
     <${Section}><${Stepper} value=${names.length} min=${5} max=${20} onChange=${setCount}>참가 인원 ${names.length}명<//><//>
+    <${Section}><${Row} tint onClick=${() => account.user ? setPicking(true) : account.login()}><${Icon} name="person2" size=${20} />${account.user ? '투넬 회원에서 고르기' : '투넬 회원에서 고르기 · 로그인'}<//><//>
     <${Section} header="닉네임">${names.map((n, i) => html`<div class="row" key=${i}><span class="sec num" style="width:28px">${i + 1}</span>
       <input class="textin" ref=${el => inputs.current[i] = el} value=${n} placeholder="닉네임" enterkeyhint=${i + 1 < names.length ? 'next' : 'done'}
-        onInput=${e => { const v = e.currentTarget.value; setNames(a => a.map((x, j) => j === i ? v : x)); }}
-        onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); const nx = inputs.current[i + 1]; if (nx) nx.focus(); else e.currentTarget.blur(); } }} /></div>`)}<//>
+        onInput=${e => { const v = e.currentTarget.value; setNames(a => a.map((x, j) => j === i ? v : x)); if (members[i]) setMembers(a => a.map((x, j) => j === i ? null : x)); }}
+        onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); const nx = inputs.current[i + 1]; if (nx) nx.focus(); else e.currentTarget.blur(); } }} />${members[i] && html`<span class="tag">회원</span>`}</div>`)}<//>
+    <${Sheet} open=${picking} onClose=${() => setPicking(false)}>${picking && html`<${MemberPicker} taken=${members.filter(Boolean)} close=${() => setPicking(false)} done=${addMembers} />`}<//>
     <${ActionSheet} open=${!!ask} title=${ask} onClose=${() => setAsk(null)} actions=${[{ label: '역할 비우고 변경', role: 'destructive', onClick: () => commit(true) }]} />
     ${R.alert}
   <//>`;
