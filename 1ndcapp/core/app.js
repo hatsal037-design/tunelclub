@@ -4819,7 +4819,7 @@ function autoBluff(){
   const pool=shuffle(bluffPool().filter(c=>!inPlay.has(c.id)));
   /* 판세 보정 — 정보 직업 블러프는 악이 믿을 만한 거짓말을 하게 해 악에 도움. 인원 구간 끝일수록 악 쪽으로 더 기운다 */
   const dT=0, info=c=>{ const R=fxRule(c)||{}; return c.team==='town'&&/info|auto/.test(R.act||''); };
-  const out=[]; for(let k=0;k<bluffNeed()&&pool.length;k++){ const c=dirPick(pool, x=>info(x)?-1:(x.team==='outsider'?0.5:0), null, '블러프', dT); out.push(c.id); pool.splice(pool.indexOf(c),1); }
+  const out=[]; for(let k=0;k<bluffNeed()&&pool.length;k++){ const c=dirPick(pool, x=>info(x)?TILT_H.bluffInfo:(x.team==='outsider'?TILT_H.bluffOutsider:0), null, '블러프', dT); out.push(c.id); pool.splice(pool.indexOf(c),1); }
   state.bluffIds=out;
   renderBluff(); save();
 }
@@ -8576,6 +8576,25 @@ function dirEyeC(seats, info0, eyeRatio){
    오인식(나그네·은둔자·스파이)은 여기 안 탄다 — 9/1 부터 판세와 무관하게 고정(«혼란이 너무 커진다»). 설정 «판세 보정»으로 끈다(기본 켬).
    근거 비교: docs/보고서/자동정보_비교_2026-09-29/비교.html (규칙+점수 안) */
 const TILT={K:1.6, L:1.5, FLOOR:0.15, CAP:0.45};
+/* «어느 편에 도움» 점수표 — +면 선에 도움, −면 악에 도움. 판 기록(«판세 개입»)으로 효과를 보고 숫자만 고친다 (2026-09-29 햇살님 «고려해볼 수 있게») */
+const TILT_H={
+  duoGoodDecoyEvil: 1,     // 두 사람 중 하나가 선한 직업 — 나머지가 악: 후보에 끼면 의심받는다(햇살님 «악에게 불리»)
+  duoGoodDecoyGood: -0.3,
+  duoMinionDecoyEvil: 1,   // 두 사람 중 하나가 하수인 — 나머지도 악: 둘 다 악
+  duoMinionDecoyGood: -0.5,// 애먼 선이 의심받음
+  fakeEvilSeat: 0.5,       // 거짓 답이 우연히 짚은 악 한 명마다
+  fakeNoEvil: -0.5,
+  evilRoleInPlay: 0.5,     // 답에 뜬 악 직업이 판에 있다 — 단서
+  evilRoleNotInPlay: -0.5, // 판에 없는 악 직업 — 헛갈림
+  demonPlusEvil: 1, demonPlusGood: -0.5,   // 흉수+한 명
+  evilSeatDemon: 1, evilSeatMinion: 0.2,   // 악 한 명 자리 알려 주기
+  trioDemon: 1,            // 세 사람 중 악이 흉수
+  bluffInfo: -1, bluffOutsider: 0.5,       // 블러프
+};
+const isEvilTeam=c=>!!c&&['minion','demon','mafia'].includes(c.team);
+/* 거짓 답에 댈 직업 — 선한 직업은 판에 있으면 진짜 그 사람이 반박한다(위험), 악 직업은 판에 있으면 단서·없으면 헛갈림(점수표) */
+const fakeRoleH=(x,inPlay)=>isEvilTeam(x)?(inPlay.has(x.id)?TILT_H.evilRoleInPlay:TILT_H.evilRoleNotInPlay):0;
+const fakeRoleR=(x,inPlay)=>(!isEvilTeam(x)&&inPlay.has(x.id))?0.8:0;
 function tiltOn(){ try{ return localStorage.getItem('dangsan_tilt')!=='off'; }catch(e){ return true; } }
 let _skillMemo=null;
 /* 전적 차이 — 악 편 평균 실력 − 선 편 평균 실력(+면 잘하는 사람이 악에 몰림 → 선을 돕는다). 실력 = (승+2)/(판+4): 판이 적으면 50% 로 당긴다.
@@ -8620,7 +8639,9 @@ function dirPick(list, hOf, rOf, where, dT){
   const tv=tiltValue(), T=tiltOn()?Math.max(-1,Math.min(1,tv.T+(dT||0))):0;
   let p=list.map(x=>Math.exp(TILT.K*T*(hOf?hOf(x):0)-TILT.L*(rOf?rOf(x):0)));
   const sum=a=>a.reduce((x,y)=>x+y,0); let z=sum(p); p=p.map(x=>(1-TILT.FLOOR)*x/z+TILT.FLOOR/p.length);
-  for(let it=0;it<5;it++){ const over=p.filter(x=>x>TILT.CAP); if(!over.length) break; const ex=sum(over.map(x=>x-TILT.CAP)), rest=p.filter(x=>x<TILT.CAP).length; p=p.map(x=>x>TILT.CAP?TILT.CAP:x+ex/Math.max(rest,1)); }
+  /* 천장 — 후보가 적으면 45% 가 산수상 안 맞는다(둘이면 합이 100%). 1.5/n 보다 낮게는 안 잡고, 넘친 몫은 나머지에 «비율대로» 나눈다(몰아주면 방향이 뒤집힌다) */
+  const cap=Math.max(TILT.CAP, 1.5/p.length);
+  for(let it=0;it<10;it++){ const ex=sum(p.map(x=>Math.max(0,x-cap))); if(ex<1e-9) break; const under=sum(p.filter(x=>x<cap)); p=p.map(x=>x>=cap?cap:x+ex*x/Math.max(under,1e-9)); }
   z=sum(p); let u=Math.random()*z, k=0; while(k<p.length-1&&(u-=p[k])>0) k++;
   if(Math.abs(T)>0.05){ try{ logEvent('판세 개입', {곳:where, 기울기:Math.round(T*100)/100, 근거:tv.why}); }catch(e){} }
   return list[k];
@@ -8791,7 +8812,7 @@ function autoAns(c0, idx){
     const decoys=occAll().filter(o=>o.i!==t.i);
     if(!decoys.length) return null;
     const ref=fixedSeatsOthers(idx);
-    const d=dirPick(dirDecoyPool(decoys, c0.id+':'+idx), o=>team==='minion'?(realEvil(o.st2)?1:-0.5):(realEvil(o.st2)?-1:0.5), o=>ref.has(o.i)?0.5:0, '두 사람 중 하나');   // 좋은 직업을 알려 줄 때 나머지가 악이면 선이 악을 믿는다 · 하수인을 알려 줄 때 나머지도 악이면 선에 큰 도움
+    const d=dirPick(dirDecoyPool(decoys, c0.id+':'+idx), o=>team==='minion'?(realEvil(o.st2)?TILT_H.duoMinionDecoyEvil:TILT_H.duoMinionDecoyGood):(realEvil(o.st2)?TILT_H.duoGoodDecoyEvil:TILT_H.duoGoodDecoyGood), o=>ref.has(o.i)?0.5:0, '두 사람 중 하나');   // 좋은 직업을 알려 줄 때 나머지가 악이면 선이 악을 믿는다 · 하수인을 알려 줄 때 나머지도 악이면 선에 큰 도움
     const pair=[t.i,d.i].sort((a,b)=>a-b);
     const conv=isConv(t.st2)&&team==='minion';
     const val=conv?{seats:pair, head:`이 두 사람 중 하나가 ${TKO('minion')}(창귀·전향자)예요`}:{seats:pair, char:t.c.id, head:'이 두 사람 중 하나가 이 직업이에요'};
@@ -8806,7 +8827,7 @@ function autoAns(c0, idx){
     const given=new Set(memo&&memo.value?(memo.value.given||memo.value.seats):[]);   // 죽은 표적은 빼고 새 표적(전에 준 사람 제외)
     const evilList=occAll().filter(o=>ansSeatEvil(o.st2)&&!o.st2.dead&&!given.has(o.i));
     if(!evilList.length) return null;
-    const t2=dirPick(evilList, o=>o.c.team==='demon'?1:0.2, null, '악 한 명 자리');
+    const t2=dirPick(evilList, o=>o.c.team==='demon'?TILT_H.evilSeatDemon:TILT_H.evilSeatMinion, null, '악 한 명 자리');
     const val2={seats:[t2.i], head:'이 사람이 악팀이에요', given:[...given, t2.i]};
     fixedSet(c0.id, idx, {type:'seats', value:val2});
     state.seats.forEach((x,xi)=>{ if(xi!==t2.i&&(x.rem||[]).includes('표적')){ x.rem=x.rem.filter(r=>r!=='표적'); tokAtDel(xi,'표적'); } });   // 표적은 한 사람만 — 새 표적을 주면 옛 표식을 뗀다
@@ -8820,7 +8841,7 @@ function autoAns(c0, idx){
     const dem=occAll().filter(o=>o.c.team==='demon');
     const oth=occAll().filter(o=>o.c.team!=='demon');
     if(!dem.length||!oth.length) return null;
-    const d2=pickRand(dem), o3=dirPick(dirDecoyPool(oth, 'seunim:'+idx), o=>realEvil(o.st2)?1:-0.5, null, '흉수+한 명');
+    const d2=pickRand(dem), o3=dirPick(dirDecoyPool(oth, 'seunim:'+idx), o=>realEvil(o.st2)?TILT_H.demonPlusEvil:TILT_H.demonPlusGood, null, '흉수+한 명');
     const pr=[d2.i,o3.i].sort((a,b)=>a-b);
     const val3={seats:pr, head:'이 둘 중 하나가 흉수예요'};
     fixedSet(c0.id, idx, {type:'seats', value:val3});
@@ -8832,7 +8853,7 @@ function autoAns(c0, idx){
     const evil=occAll().filter(o=>ansSeatEvil(o.st2));
     const good=occAll().filter(o=>!ansSeatEvil(o.st2));
     if(!evil.length||good.length<2) return null;
-    const e=dirPick(evil, o=>o.c.team==='demon'?1:0, null, '세 사람 중 악'), g=good.sort(()=>Math.random()-.5).slice(0,2);
+    const e=dirPick(evil, o=>o.c.team==='demon'?TILT_H.trioDemon:0, null, '세 사람 중 악'), g=good.sort(()=>Math.random()-.5).slice(0,2);
     const tri=[e.i,g[0].i,g[1].i].sort((a,b)=>a-b);
     fixedSet(c0.id, idx, {type:'trio', value:{seats:tri}});
     return {type:'trio', value:{seats:tri}, label:`좌석 ${tri.map(x=>x+1).join('·')} 중 정확히 하나가 악팀`, ambig:[]};
@@ -9011,7 +9032,7 @@ function fakeFromAns(a0, c, owner, targets){
   if(a0.type==='ox'){ out={type:'ox', value:!a0.value}; }
   else if(a0.type==='team'){ out={type:'team', value:a0.value==='good'?'evil':'good'}; }
   else if(a0.type==='num'){ const rv=Number(a0.value)||0; const opts=[]; for(let v=0; v<=Math.max(2, rv+1); v++) if(v!==rv) opts.push(v); out={type:'num', value:rnd(opts)}; }
-  else if(a0.type==='char'){ const cand=CHARS().filter(x=>x.id!==a0.value&&x.id!==c.id&&['town','outsider','minion','demon','mafia'].includes(x.team)); const pref=cand.filter(x=>!inPlay.has(x.id)); const fc=rnd(pref.length?pref:cand); if(fc) out={type:'char', value:fc.id}; }
+  else if(a0.type==='char'){ const cand=CHARS().filter(x=>x.id!==a0.value&&x.id!==c.id&&['town','outsider','minion','demon','mafia'].includes(x.team)); const fc=dirPick(cand, x=>fakeRoleH(x,inPlay), x=>fakeRoleR(x,inPlay)+(inPlay.has(x.id)?0:0), '거짓 답 직업'); if(fc) out={type:'char', value:fc.id}; }
   /* 두 사람+직업(세탁부·사서·조사관 꼴)·세 사람 — 같은 꼴의 거짓. 가짜 직업을 받은 주정뱅이도 그 직업 방식 그대로 받는다 (2026-09-29 햇살님).
      «없음»이었으면 있는 척 두 사람+직업을 준다. 직업은 그 능력이 찾는 계층(마을·외지인·하수인)에서, 진짜 답과 다른 것으로 */
   else if(a0.type==='duo'||a0.type==='trio'||(a0.type==='none'&&(isRole(c,'washerwoman')||isRole(c,'librarian')||isRole(c,'investigator')))){
@@ -9025,13 +9046,12 @@ function fakeFromAns(a0, c, owner, targets){
     const q=(fresh.length>=n?fresh:others).slice(), combos=[];
     const walk=(st,acc)=>{ if(combos.length>=80) return; if(acc.length===n){ combos.push(acc.slice()); return; } for(let j=st;j<q.length;j++){ acc.push(q[j]); walk(j+1,acc); acc.pop(); } };
     walk(0,[]); for(let j=combos.length-1;j>0;j--){ const r=Math.floor(Math.random()*(j+1)); [combos[j],combos[r]]=[combos[r],combos[j]]; }
-    const pick=(dirPick(combos, cb=>0.5*cb.filter(i=>realEvil(state.seats[i])).length-(cb.some(i=>realEvil(state.seats[i]))?0:0.5), null, '거짓 답')||[]).slice().sort((x,y)=>x-y);
+    const pick=(dirPick(combos, cb=>{ const k=cb.filter(i=>realEvil(state.seats[i])).length; return k?TILT_H.fakeEvilSeat*k:TILT_H.fakeNoEvil; }, null, '거짓 답')||[]).slice().sort((x,y)=>x-y);
     if(pick.length===n&&!(pick.every(i=>realSeats.has(i))&&realSeats.size===n)){
       if(a0.type==='trio') out={type:'trio', value:{seats:pick}};
       else { const team=(a0.value&&a0.value.char&&cm[a0.value.char])?cm[a0.value.char].team:(isRole(c,'washerwoman')?'town':isRole(c,'librarian')?'outsider':'minion');
         const cand=CHARS().filter(x=>x.team===team&&x.id!==c.id&&!(a0.value&&x.id===a0.value.char)&&!rvDeceptOf(x));
-        const quiet=cand.filter(x=>!inPlay.has(x.id));   // 판에 없는 직업 — 진짜 그 직업인 사람이 나서서 반박할 수 없다
-        const fc=rnd(quiet.length?quiet:cand.length?cand:CHARS().filter(x=>x.team===team&&x.id!==c.id));
+        const fc=dirPick(cand.length?cand:CHARS().filter(x=>x.team===team&&x.id!==c.id), x=>fakeRoleH(x,inPlay), x=>fakeRoleR(x,inPlay), '거짓 답 직업');   // 선한 직업은 판에 없는 쪽(반박할 사람이 없게), 악 직업은 점수표대로
         if(fc) out={type:'duo', value:{seats:pick, char:fc.id, head:(a0.value&&a0.value.head)||'이 두 사람 중 하나가 이 직업이에요'}}; } } }
   else if(a0.type==='seats'){ const real=new Set((a0.value&&a0.value.seats)||[]); const pool=others.filter(i=>!real.has(i)); const n=Math.max(1, real.size||1);
     if(pool.length>=n){ const q=pool.slice(), pick=[]; while(pick.length<n&&q.length) pick.push(q.splice(Math.floor(Math.random()*q.length),1)[0]); pick.sort((x,y)=>x-y);
