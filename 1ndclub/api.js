@@ -69,7 +69,7 @@ API.save = async function(acc){
   throwErr(error, '저장에 실패했어요');
   return acc;
 };
-/* 닉변은 서버 RPC 로만 — 6개월 제한과 운영진 알림을 서버가 강제한다.
+/* 닉변은 서버 RPC 로만 — 한 달 제한(2026-09-29 6개월→한 달)과 운영진 알림을 서버가 강제한다.
    (2026-08-20 정책. members.nick 직접 update 권한은 회수됨) */
 API.rename = async function(acc, newNick){
   const { error } = await sb.rpc('rename_me', { p_nick: newNick });
