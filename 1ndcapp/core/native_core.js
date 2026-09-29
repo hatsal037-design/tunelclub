@@ -5,6 +5,7 @@
    · 응답·조회는 순수 JSON 문자열. 아직 명령에 잇지 못한 것은 notConnected 로 거부한다 — 성공한 척하지 않는다. */
 var NativeCore = (function () {
   var revision = 0, replies = {}, lastImport = null, lastNote = '';
+  var lastMerged = 0;   // 서버에서 내려받아 합친 판 수(sync.merge 결과)
   var J = function (o) { return JSON.stringify(o); };
   var cm = function () { return CMAP(); };
   var rejected = function (code, recovery) { return { status: 'rejected', code: code, revision: revision, recovery: recovery || '' }; };
@@ -440,7 +441,11 @@ var NativeCore = (function () {
   function winPick() { try { var w = JSON.parse(localStorage.getItem('dangsan_win') || 'null'); if (w && w.mode) return w; } catch (e) {} return { mode: (state.win && state.win.mode) || 'std', text: (state.win && state.win.text) || '' }; }
   var STAY = { 'seat.toggleToken': 1, 'seat.kill': 1, 'seat.revive': 1, 'day.call': 1 };   // 보던 밤 카드를 지켜야 하는 명령
   var QUERIES = { home: home, 'preparation.board': board, 'game.current': nightCard, 'preparation.roles': roles, 'preparation.handoff': handoff, 'handoff.public': handoffPublic, 'game.stage': stage, 'game.process': process, reference: reference, 'roles.art': function () { var mid = state.edition || 'basic'; return CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, mid); return { ko: c.ko, icon: r.icon, e: r.e }; }); }, 'game.day': day, 'game.verdict': function () { return { items: verdict(), winner: endWinner() }; }, 'game.result': result, 'day.voters': function (k) { return voters(+k); }, records: records, record: record, library: library, 'library.mode': libraryMode,
-    'seat.detail': seatDetail, 'backup.export': function () { var x = buildExport('backup'); return x ? x.text : null; } };
+    'seat.detail': seatDetail,
+    /* 서버 올리기 — 아직 안 올라간 판을 서버 모양 그대로(코어 SRV.payloadOf). 보내는 건 웹앱·아이폰 앱 몫 (2026-09-29) */
+    'sync.merged': function () { return lastMerged; },
+    'sync.pending': function () { return SRV.pending().map(function (L) { return SRV.payloadOf(L); }); },
+    'backup.export': function () { var x = buildExport('backup'); return x ? x.text : null; } };
 
   /* 진행 중인 판 — 첫밤을 시작했고 아직 끝나지 않은 판. 끝난 판(새 판 — 자리 그대로 뒤)은 다시 준비할 수 있다 */
   function inGame() { return firstNightBegun() && !gameEnded(); }
@@ -604,6 +609,9 @@ var NativeCore = (function () {
       var keep = editing; editing = i; try { asking({ force: true }, function () { toggleDead(); }); } finally { editing = keep; } return null; },
     'record.setWinner': function (p) { if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0) return rejected('invalidSelection', '승자를 골라 주세요.');
       if (!logsAll().some(function (x) { return x.id === p.id; })) return rejected('invalidSelection', '기록을 못 찾았어요.'); logSetWinner(p.id, p.winner); return null; },
+    'sync.markUploaded': function (p) { var ids = p.ids || []; if (!ids.length) return rejected('invalidSelection', '올린 판이 없어요.');
+      logsAll().filter(function (L) { return L && ids.indexOf(L.uuid || L.id) >= 0; }).forEach(function (L) { SRV.markUploaded(L); }); return null; },
+    'sync.merge': function (p) { var n = SRV.mergeRows(p.rows || []); if (n === null) return rejected('coreFailure', '기록을 합치지 못했어요.'); lastMerged = n; return null; },
     'record.delete': function (p) { var a = logsAll(), i = a.findIndex(function (x) { return x.id === p.id; }); if (i < 0) return rejected('invalidSelection', '기록을 못 찾았어요.'); deleteLog(i); return null; },
     'backup.import': function (p) { var data; try { data = JSON.parse(p.json); } catch (e) { return rejected('invalidSelection', '백업 파일을 읽지 못했어요.'); }
       try { var r = importBackup(data); lastImport = r; } catch (e) { return rejected('invalidSelection', String(e.message || e)); } return null; },
