@@ -10,6 +10,7 @@ import { RecordsView } from './screens/records.js';
 import { LibraryView } from './screens/library.js';
 import { PreparationFlow } from './screens/prep.js';
 import { GameFlow } from './screens/game.js';
+import { account } from './account.js';
 
 function useStore() { const [, f] = useState(0); useEffect(() => store.subscribe(() => f(x => x + 1)), []); }
 
@@ -18,7 +19,6 @@ function App() {
   const [tab, setTab] = useState('today');
   const [space, setSpace] = useState(null);   // {prep:'people'|'seats'|'roles'|'handoff'} | {game:true}
   const close = () => { setSpace(null); stopSpeaking(); store.refresh(); };
-  useEffect(() => { history.replaceState(null, ''); }, []);
   if (space) {
     const go = s => setSpace(s);
     return html`<div class="shell">${space.game
@@ -35,6 +35,6 @@ function App() {
 }
 
 applyAppearance();
-bootStore().then(() => render(html`<${App} />`, document.getElementById('app')))
+bootStore().then(() => { account.init(); }).then(() => render(html`<${App} />`, document.getElementById('app')))
   .catch(e => { document.getElementById('app').innerHTML = '<div class="boot">불러오지 못했어요. 새로고침해 주세요.</div>'; console.error(e); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -4295,6 +4295,13 @@ const SRV = {
       if(error) throw error; return data||null; }catch(e){ return null; } },
   /* 판 하나 올리기 — 같은 판을 두 번 올려도 서버가 하나로 친다 */
   async uploadGame(L){ const cl=SRV.client(); if(!cl||!L) return false;
+    const { game, players, people:ppl }=SRV.payloadOf(L);
+    try{
+      if(ppl.length && !await SRV.syncPeople(ppl)) return false;
+      const { error } = await cl.schema('dangsan').rpc('upload_game', { p_game: game, p_players: players });
+      if(error) throw error; return true; }catch(e){ return false; } },
+  /* 올릴 모양만 만든다(네트워크 없음) — 웹앱·아이폰 앱은 이걸 받아 저마다 보낸다 (2026-09-29) */
+  payloadOf(L){
     const S=SRV.stored(L)||L;                                   // 저장판이 원본. 없으면(옛 판) 메모리 판으로
     const iso=v=>{ if(!v) return null; const d=new Date(v); return isNaN(d.getTime())?null:d.toISOString(); };
     const game={ client_game_id:L.uuid||L.id, legacy_local_id:L.id||null,   // 보내는 번호는 uuid. 옛 'g…' 는 마당·pin 이 가리키니 같이 남긴다
@@ -4319,14 +4326,11 @@ const SRV = {
        옛 판 도출이나 백업 합치기에서 겹칠 수 있어 보내기 직전에 접는다 (코덱스 검토 2026-09-14) */
     { const ax={}; for(let i=players.length-1;i>=0;i--){ const k=players[i].client_aid;
         if(!k) continue; if(ax[k]) players.splice(i,1); else ax[k]=1; } }
-    try{
-      /* 같은 pid 가 두 번 들어가면 서버가 한 문장에서 같은 행을 두 번 고치려다 오류를 낸다 — 여기서 한 번 접는다.
-         그리고 사람 맞추기가 실패했는데 그냥 올리면 기록이 사람에게 안 붙은 채 «성공»이 된다 (코덱스 검토 2026-09-13) */
-      const seen={}, ppl=[];
-      players.forEach(p=>{ if(p.local_pid&&!seen[p.local_pid]){ seen[p.local_pid]=1; ppl.push({ pid:p.local_pid, name:p.name, tunel_member_id:p.tunel_member_id||null }); } });
-      if(ppl.length && !await SRV.syncPeople(ppl)) return false;
-      const { error } = await cl.schema('dangsan').rpc('upload_game', { p_game: game, p_players: players });
-      if(error) throw error; return true; }catch(e){ return false; } },
+    /* 같은 pid 가 두 번 들어가면 서버가 한 문장에서 같은 행을 두 번 고치려다 오류를 낸다 — 여기서 한 번 접는다.
+       그리고 사람 맞추기가 실패했는데 그냥 올리면 기록이 사람에게 안 붙은 채 «성공»이 된다 (코덱스 검토 2026-09-13) */
+    const seen={}, people=[];
+    players.forEach(p=>{ if(p.local_pid&&!seen[p.local_pid]){ seen[p.local_pid]=1; people.push({ pid:p.local_pid, name:p.name, tunel_member_id:p.tunel_member_id||null }); } });
+    return { id:L.uuid||L.id, game, players, people }; },
   /* 내 정보 — 초기 참여자 번호와 올라간 판 수. 화면에 보여줄 것만 온다 */
   async info(){ const cl=SRV.client(); if(!cl) return null;
     try{ const { data, error } = await cl.schema('dangsan').rpc('me_info');
@@ -4356,7 +4360,9 @@ const SRV = {
       if(error) throw error; return data||[]; }catch(e){ return null; } },
   /* 서버에 있는 내(이야기꾼) 판 중 이 기기에 없는 것을 내려받는다 — 기기를 바꿨을 때.
      payload 는 올릴 때 보낸 저장꼴 그대로라, 저장소에 그대로 넣고 logsAll() 이 다시 읽게 둔다(변환은 경계에서만) */
-  async pull(){ const rows=await SRV.myGames(true); if(!rows) return null;
+  async pull(){ const rows=await SRV.myGames(true); if(!rows) return null; return SRV.mergeRows(rows); },
+  /* 서버 행(my_games payload)을 이 기기 기록에 합친다 — 없던 판만. 웹앱·아이폰 앱도 이걸 쓴다 (2026-09-29) */
+  mergeRows(rows){
     let raw=[]; try{ raw=JSON.parse(localStorage.getItem('botc_logs')||'[]'); if(!Array.isArray(raw)) raw=[]; }catch(e){ raw=[]; }
     let n=0;
     rows.forEach(r=>{ if(!r||!r.owner_me||!r.payload||typeof r.payload!=='object') return; const P=r.payload;

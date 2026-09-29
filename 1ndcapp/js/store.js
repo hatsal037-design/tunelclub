@@ -50,6 +50,7 @@ export const store = {
       const notes = r.effects.filter(e => e.kind === 'notice').map(e => e.text).filter(Boolean);
       if (notes.length) { store.notice = notes.join('\n'); store.emit(); }
     }
+    if (reply.ok && store.afterCommit) { try { store.afterCommit(type); } catch {} }
     if (reply.ok && STEP.has(type) && settings.get('haptics') && navigator.vibrate) { try { navigator.vibrate(12); } catch {} }
     return reply;
   },
