@@ -444,6 +444,12 @@ var NativeCore = (function () {
     'seat.detail': seatDetail,
     /* 서버 올리기 — 아직 안 올라간 판을 서버 모양 그대로(코어 SRV.payloadOf). 보내는 건 웹앱·아이폰 앱 몫 (2026-09-29) */
     'sync.merged': function () { return lastMerged; },
+    /* 판세 보정 — 서버에 물을 것(이 판 모드·인원, 회원 자리의 편). 켜짐 여부 (2026-09-29) */
+    'director.context': function () { var cm = CMAP(), good = [], evil = [];
+      state.seats.forEach(function (s) { if (!s || !s.char || !s.pid) return; var w = personById(s.pid); if (!w || !w.tunelId) return; (realEvil(s) ? evil : good).push(w.tunelId); });
+      return { mode: state.edition, n: inPlaySeats().length, good: good, evil: evil }; },
+    'director.enabled': function () { return tiltOn(); },
+    'director.tilt': function () { var t = tiltValue(); return { T: Math.round(t.T * 100) / 100, why: t.why }; },
     'sync.pending': function () { return SRV.pending().map(function (L) { return SRV.payloadOf(L); }); },
     'backup.export': function () { var x = buildExport('backup'); return x ? x.text : null; } };
 
@@ -616,6 +622,11 @@ var NativeCore = (function () {
       var keep = editing; editing = i; try { asking({ force: true }, function () { toggleDead(); }); } finally { editing = keep; } return null; },
     'record.setWinner': function (p) { if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0) return rejected('invalidSelection', '승자를 골라 주세요.');
       if (!logsAll().some(function (x) { return x.id === p.id; })) return rejected('invalidSelection', '기록을 못 찾았어요.'); logSetWinner(p.id, p.winner); return null; },
+    'director.setEnabled': function (p) { try { localStorage.setItem('dangsan_tilt', p.on ? 'on' : 'off'); } catch (e) {} return null; },
+    'director.setServer': function (p) { state.director = state.director || {};
+      if (p.skill && typeof p.skill.gap === 'number') state.director.skillSrv = { gap: p.skill.gap, n: p.skill.n | 0 };
+      if (p.rate) state.director.rateSrv = { good: p.rate.good | 0, evil: p.rate.evil | 0 };
+      save(); return null; },
     'sync.markUploaded': function (p) { var ids = p.ids || []; if (!ids.length) return rejected('invalidSelection', '올린 판이 없어요.');
       logsAll().filter(function (L) { return L && ids.indexOf(L.uuid || L.id) >= 0; }).forEach(function (L) { SRV.markUploaded(L); }); return null; },
     'sync.merge': function (p) { var n = SRV.mergeRows(p.rows || []); if (n === null) return rejected('coreFailure', '기록을 합치지 못했어요.'); lastMerged = n; return null; },
