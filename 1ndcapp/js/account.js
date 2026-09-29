@@ -50,6 +50,8 @@ export const account = {
     this.busy = false; this.emit();
     return { ok, bad };
   },
+  /** 투넬 회원 명단 — 오늘 참석·최근 두 달·전체(서버가 닉·참석 여부만 준다) */
+  async members() { if (!this.user) return null; try { return (await rpc('list_members')) || []; } catch { return null; } },
   /** 서버에 있는 내 판 중 이 기기에 없는 것을 받는다 — 기기를 바꿨을 때 */
   async pull() {
     if (!this.user) return null;

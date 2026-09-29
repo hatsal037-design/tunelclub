@@ -38,7 +38,7 @@ var NativeCore = (function () {
       var rem = (s.rem || []).filter(function (t) { return t !== '유령표'; }), dead = !!s.dead;
       var causeKo = { exec: '처형', demon: '흉수 습격', night: '밤', day: '낮', curse: '저주', succession: '계승' };
       var tokens = rem.map(function (t) { return TK(t); });
-      return { id: seatKey(s, i), index: i, number: i + 1, name: s.name || '', dead: dead, tonight: diedTonight(s), ghost: dead && (s.rem || []).indexOf('유령표') >= 0, tokens: tokens,
+      return { id: seatKey(s, i), index: i, number: i + 1, name: s.name || '', member: (function () { var w = s.pid ? personById(s.pid) : null; return (w && w.tunelId) || null; })(), dead: dead, tonight: diedTonight(s), ghost: dead && (s.rem || []).indexOf('유령표') >= 0, tokens: tokens,
         status: [dead ? '사망' + (s.cause && causeKo[s.cause] ? ' · ' + causeKo[s.cause] : '') : '생존'].concat(tokens).join(' · ') };
     });
     var cells = [];
@@ -456,9 +456,15 @@ var NativeCore = (function () {
   var COMMANDS = {
     'preparation.commitPeople': function (p) {
       var people = (p.people || []).filter(function (x) { return x && String(x.name || '').trim(); });
+      /* 투넬 회원에서 고른 사람 — 사람 명부에 회원 번호를 잇고 그 사람(pid)으로 앉힌다. 판을 올릴 때 회원 전적으로 붙는다 (2026-09-29) */
+      people = people.map(function (x) {
+        var nm = String(x.name).trim(); if (!x.member) return { name: nm };
+        var who = personByTunelId(x.member) || personByName(nm) || personNew(nm);
+        personLinkTunel(who.id, x.member); return { name: who.name, pid: who.id };
+      });
       if (people.length < 5 || people.length > 20) return rejected('invalidSelection', '5명에서 20명까지 넣을 수 있어요.');
       if (inGame()) return rejected('notAllowedInPhase', '진행 중인 판이 있어요 — 판을 끝내거나 버린 뒤 바꿀 수 있어요.');
-      var same = people.length === state.seats.length && people.every(function (x, i) { return state.seats[i] && state.seats[i].name === String(x.name).trim(); });
+      var same = people.length === state.seats.length && people.every(function (x, i) { return state.seats[i] && state.seats[i].name === String(x.name).trim() && (!x.pid || state.seats[i].pid === x.pid); });
       if (same && !gameEnded()) return null;   // 같은 명단을 다시 누름 — 역할도 자리도 그대로
       if (gameEnded()) {   // 끝난 판 다음 새 준비 — 판 흔적(역할·밤·기록 위치)을 걷고 사람(이름·pid)만 이어받는다 (2026-09-29 «자리 정하기 처리 못함»)
         switchEdition(state.edition, { quiet: true, force: true });
@@ -466,6 +472,7 @@ var NativeCore = (function () {
       } else if (hasRoles() && !p.force) return clearAsk();
       var ok = false; asking({ force: true }, function () { ok = partyApply(people); });
       if (!ok) return rejected('notAllowedInPhase', '지금은 명단을 바꿀 수 없어요.');
+      people.forEach(function (x) { if (!x.pid) return; state.seats.concat(state.bench || []).forEach(function (st) { if (st && !st.pid && st.name === x.name) st.pid = x.pid; }); });   // 이름으로 남아 있던 자리에 회원 사람(pid)을 잇는다
       /* 새로 더한 사람은 웹에선 대기자 — 아이폰 자리 화면엔 대기자 칸이 없으니 자리 끝에 앉힌다(자리가 비었을 때의 partyApply 와 같은 방식) */
       if ((state.bench || []).length) { state.bench.forEach(function (b) { state.seats.push(Object.assign(blankSeat(), personOf(b))); }); state.bench = []; state.count = state.seats.length; if (state.layout === 'rect') fitGrid(state.count, true); save(); }
       return null;
