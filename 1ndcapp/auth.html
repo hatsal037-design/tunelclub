@@ -1,0 +1,9 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>첫밤사망자클럽</title>
+<!-- 아이폰 앱 로그인 중계 — 카카오 로그인이 끝나면 여기로 오고, 받은 토큰을 앱(kr.tunel.dangsan://)으로 넘긴다 -->
+<body style="font:17px -apple-system,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#8e8e93">
+<p id="m">앱으로 돌아가는 중…</p>
+<script>
+var h = location.hash || '', q = location.search || '';
+if (/access_token|error/.test(h) || /code=|error/.test(q)) location.replace('kr.tunel.dangsan://auth' + q + h);
+else document.getElementById('m').textContent = '로그인 정보가 없어요. 앱에서 다시 시도해 주세요.';
+</script>
