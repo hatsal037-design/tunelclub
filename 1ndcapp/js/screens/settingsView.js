@@ -13,11 +13,11 @@ import { Alert } from '../ui.js';
 function AccountSection() {
   const [, f] = useState(0), [msg, setMsg] = useState(null);
   useEffect(() => account.subscribe(() => f(x => x + 1)), []);
-  if (!account.on) return html`<${Section} header="계정" footer="서버에 연결하지 못했어요 — 기록은 이 기기에만 남아요."><div class="row"><${Labeled} label="투넬 계정" value="연결 안 됨" /></div><//>`;
-  if (!account.user) return html`<${Section} header="계정" footer="투넬과 같은 카카오 계정이에요. 투넬(tunel.kr)에 로그인돼 있으면 여기도 같이 켜져요. 로그인하면 판이 끝날 때 기록이 계정에 올라가 첫밤 사망자 클럽 전적에 쌓여요.">
+  if (!account.on) return html`<${Section} header="투넬 계정"><div class="row"><${Labeled} label="서버" value="연결 안 됨" /></div><//>`;
+  if (!account.user) return html`<${Section} header="투넬 계정">
     <${Row} tint onClick=${() => account.login()}>카카오로 로그인<//><//>`;
   const i = account.info || {}, bits = [i.title && '🏅 ' + i.title, i.founder_no && '초기 참여자 No.' + i.founder_no].filter(Boolean).join(' · ');
-  return html`<${Section} header="계정" footer=${`올라간 판 ${i.games ?? '?'} · 아직 안 올라간 판 ${account.pending}. 판이 끝나면 자동으로 올라가요.`}>
+  return html`<${Section} header="투넬 계정" footer=${`올라간 판 ${i.games ?? '?'} · 안 올라간 판 ${account.pending}`}>
     <div class="row"><div class="grow"><div>${account.nick() || '이름 없음'}</div><div class="sub">${bits || '투넬 계정으로 로그인됨'}</div></div><span class="sub">로그인</span></div>
     ${account.pending > 0 && html`<${Row} tint disabled=${account.busy} onClick=${async () => { const r = await account.sync(); setMsg('올림 ' + r.ok + '판' + (r.bad ? ' · 실패 ' + r.bad + '판' : '')); }}>${account.busy ? '올리는 중…' : '밀린 기록 올리기'}<//>`}
     <${Row} tint onClick=${async () => { const n = await account.pull(); setMsg(n === null ? '내려받지 못했어요. 로그인·연결을 확인해 주세요.' : n ? n + '판을 내려받았어요.' : '새로 내려받을 판이 없어요.'); }}>서버에서 내려받기<//>
