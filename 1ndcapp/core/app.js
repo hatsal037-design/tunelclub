@@ -8936,7 +8936,9 @@ function fakeFromAns(a0, c, owner, targets){
   state.fixed=state.fixed||{}; const key=fixedKey('fake:'+c.id+':n'+(state.nights||1)+':t'+(targets||[]).join('-'), owner);
   const cm=CMAP(), rnd=a=>a[Math.floor(Math.random()*a.length)];
   const lab=o=>{ if(o.type==='ox') return o.value?'O 그렇다':'X 아니다'; if(o.type==='team') return o.value==='good'?'선':'악'; if(o.type==='num') return String(o.value);
-    if(o.type==='char'){ const x=cm[o.value]; return x?x.e+' '+x.ko:''; } if(o.type==='seats') return '좌석 '+((o.value&&o.value.seats)||[]).map(x=>x+1).join('·'); return ''; };
+    if(o.type==='char'){ const x=cm[o.value]; return x?x.e+' '+x.ko:''; } if(o.type==='seats') return '좌석 '+((o.value&&o.value.seats)||[]).map(x=>x+1).join('·');
+    if(o.type==='duo'){ const x=cm[o.value.char]; return `${x?x.e+' '+x.ko:''} (좌석 ${o.value.seats.map(v=>v+1).join('·')} 중 하나)`; }
+    if(o.type==='trio') return `좌석 ${o.value.seats.map(v=>v+1).join('·')} 중 정확히 하나가 악팀`; return ''; };
   const memo=state.fixed[key]; if(memo&&memo.type) return Object.assign({fake:true, ambig:[]}, memo, {label:lab(memo)});
   const inPlay=new Set((state.seats||[]).map(s2=>s2&&s2.char).filter(Boolean));
   const others=state.seats.map((s2,i)=>i).filter(i=>i!==owner&&state.seats[i]&&state.seats[i].char&&!state.seats[i].dead&&FAKE_PEOPLE_TEAMS.includes((cm[state.seats[i].char]||{}).team));
@@ -8945,6 +8947,24 @@ function fakeFromAns(a0, c, owner, targets){
   else if(a0.type==='team'){ out={type:'team', value:a0.value==='good'?'evil':'good'}; }
   else if(a0.type==='num'){ const rv=Number(a0.value)||0; const opts=[]; for(let v=0; v<=Math.max(2, rv+1); v++) if(v!==rv) opts.push(v); out={type:'num', value:rnd(opts)}; }
   else if(a0.type==='char'){ const cand=CHARS().filter(x=>x.id!==a0.value&&x.id!==c.id&&['town','outsider','minion','demon','mafia'].includes(x.team)); const pref=cand.filter(x=>!inPlay.has(x.id)); const fc=rnd(pref.length?pref:cand); if(fc) out={type:'char', value:fc.id}; }
+  /* 두 사람+직업(세탁부·사서·조사관 꼴)·세 사람 — 같은 꼴의 거짓. 가짜 직업을 받은 주정뱅이도 그 직업 방식 그대로 받는다 (2026-09-29 햇살님).
+     «없음»이었으면 있는 척 두 사람+직업을 준다. 직업은 그 능력이 찾는 계층(마을·외지인·하수인)에서, 진짜 답과 다른 것으로 */
+  else if(a0.type==='duo'||a0.type==='trio'||(a0.type==='none'&&(isRole(c,'washerwoman')||isRole(c,'librarian')||isRole(c,'investigator')))){
+    const n=a0.type==='trio'?3:2, realSeats=new Set((a0.value&&a0.value.seats)||[]);
+    /* 교차 검증 피하기(2026-09-29 햇살님 «다른 직업이 조회하지 않는 정보») — 다른 자동 정보 직업의 답을 먼저 굳혀 두고, 그 답에 나온 자리는 피한다 */
+    const used=new Set(), seatsOf=v=>{ const x=v&&v.value; if(!x) return; if(Array.isArray(x.seats)) x.seats.forEach(i=>used.add(i)); else if(typeof x==='number') used.add(x); };
+    state.seats.forEach((s2,i)=>{ if(i===owner||!s2||!s2.char||s2.dead) return; const c2=seatActChar(i)||cm[s2.char]; const R2=pickRuleOf(c2)||{};
+      if(R2.act==='auto'&&!pickFalsified(i).length){ try{ autoAns(c2, i); }catch(e){} } });
+    Object.keys(state.fixed||{}).forEach(k=>{ if(+k.split('#').pop()!==owner) seatsOf(state.fixed[k]); });
+    const fresh=others.filter(i=>!used.has(i));
+    const q=(fresh.length>=n?fresh:others).slice(), pick=[]; while(pick.length<n&&q.length) pick.push(q.splice(Math.floor(Math.random()*q.length),1)[0]); pick.sort((x,y)=>x-y);
+    if(pick.length===n&&!(pick.every(i=>realSeats.has(i))&&realSeats.size===n)){
+      if(a0.type==='trio') out={type:'trio', value:{seats:pick}};
+      else { const team=(a0.value&&a0.value.char&&cm[a0.value.char])?cm[a0.value.char].team:(isRole(c,'washerwoman')?'town':isRole(c,'librarian')?'outsider':'minion');
+        const cand=CHARS().filter(x=>x.team===team&&x.id!==c.id&&!(a0.value&&x.id===a0.value.char)&&!rvDeceptOf(x));
+        const quiet=cand.filter(x=>!inPlay.has(x.id));   // 판에 없는 직업 — 진짜 그 직업인 사람이 나서서 반박할 수 없다
+        const fc=rnd(quiet.length?quiet:cand.length?cand:CHARS().filter(x=>x.team===team&&x.id!==c.id));
+        if(fc) out={type:'duo', value:{seats:pick, char:fc.id, head:(a0.value&&a0.value.head)||'이 두 사람 중 하나가 이 직업이에요'}}; } } }
   else if(a0.type==='seats'){ const real=new Set((a0.value&&a0.value.seats)||[]); const pool=others.filter(i=>!real.has(i)); const n=Math.max(1, real.size||1);
     if(pool.length>=n){ const q=pool.slice(), pick=[]; while(pick.length<n&&q.length) pick.push(q.splice(Math.floor(Math.random()*q.length),1)[0]); pick.sort((x,y)=>x-y);
       out={type:'seats', value:{seats:pick, head:(a0.value&&a0.value.head)||''}}; } }

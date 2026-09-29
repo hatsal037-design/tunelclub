@@ -165,7 +165,7 @@ function NightCardView({ card, draft, setDraft, pick, skip, shown, reveal, setSh
       ${(card.actions || []).map(it => it.label && html`<${Row} disabled=${!it.call} danger=${it.danger} onClick=${() => R.run('day.call', { call: it.call })}><span class="grow">${it.label}</span>${it.on && html`<span class="blue">✓</span>`}<//>`)}
       ${(card.onceUsed || []).map(t => html`<${DoubleTap} cls="row sec" onDouble=${() => undoOnce(t)}><${Icon} name="seal" size=${20} /><span>${t}</span><span class="grow"></span><span class="pill-note">두 번 눌러 되돌리기</span><//>`)}
     <//>`}
-    ${card.resolved || (card.answer && card.pickCount === 0) ? html`<${Section} header="처리 결과">
+    ${card.resolved || ((card.answer || card.falseReason) && card.pickCount === 0) ? html`<${Section} header="처리 결과">
         ${card.chosen.length > 0 && html`<div class="row"><${Labeled} label="대상" value=${chosen.join(', ')} /></div>`}
         ${card.falseReason ? html`
           <div class="row orange" style="font-size:15px"><${Icon} name="theater" size=${20} />거짓 답을 줘요 · ${card.falseReason}</div>
