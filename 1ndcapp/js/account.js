@@ -21,7 +21,8 @@ export const account = {
   },
   async load() {
     if (this.user) { try { const d = await rpc('me_info'); this.info = (d && d[0]) || null; } catch { this.info = null; } this.sync();
-      rpc('role_stats').then(rows => rows && store.dispatch('director.setRoleStats', { rows }), () => {}); }   // 직업 세기 — 구성 기울이기
+      rpc('role_stats').then(rows => rows && store.dispatch('director.setRoleStats', { rows }), () => {});   // 직업 세기 — 구성 기울이기
+      rpc('mode_stats_all').then(rows => rows && store.dispatch('director.setModeStats', { rows }), () => {}); }   // 모드·인원별 승수 — 구조 기울기
     else this.info = null;
     this.emit();
   },
@@ -57,12 +58,11 @@ export const account = {
   async friends() { if (!this.user) return null; try { return (await rpc('friends_list')) || []; } catch { return null; } },
   async friendDo(fn, id) { try { return await rpc(fn, { p_member: id }); } catch { return null; } },
   async stats(id) { try { return id ? await rpc('member_stats', { p_member: id }) : await rpc('my_stats'); } catch { return null; } },
-  /** 판세 보정 — 첫밤 시작 때 서버에서 숫자 둘(회원 편별 실력 차이 · 이 모드·인원의 선·악 승수)을 받아 코어에 넣는다 */
+  /** 판세 보정 — 역할을 나눈 직후 회원 편별 실력 차이(숫자 하나)를 받아 코어에 넣는다. 5명 미만이면 서버가 주지 않는다 */
   async director() {
-    if (!this.user) return; const c = store.get('director.context'); if (!c) return;
-    const safe = p => p.then(x => x, () => null);
-    const [skill, rate] = await Promise.all([c.good.length + c.evil.length >= 5 ? safe(rpc('team_skill_gap', { p_good: c.good, p_evil: c.evil })) : null, safe(rpc('mode_stats', { p_mode: c.mode, p_n: c.n }))]);
-    if (skill || rate) await store.dispatch('director.setServer', { skill, rate });
+    if (!this.user) return; const c = store.get('director.context'); if (!c || c.good.length + c.evil.length < 5) return;
+    let skill = null; try { skill = await rpc('team_skill_gap', { p_good: c.good, p_evil: c.evil }); } catch {}
+    if (skill) await store.dispatch('director.setServer', { skill });
   },
   /** 서버에 있는 내 판 중 이 기기에 없는 것을 받는다 — 기기를 바꿨을 때 */
   async pull() {
@@ -74,6 +74,14 @@ export const account = {
       this.emit(); return store.get('sync.merged');
     } catch { return null; }
   },
+  /** 진행 중인 판을 서버에 두기 — 밤·낮 경계와 처형 뒤. 결과가 정해진 채 12시간 방치되면 서버가 닫는다 (2026-09-30) */
+  async snapshot() {
+    if (!this.user) return; const g = store.get('sync.snapshot'); if (!g) return;
+    try { await rpc('claim_me', { p_nick: '' }); if (g.people.length) { try { await rpc('sync_people', { p_people: g.people }); } catch {} } await rpc('upload_game', { p_game: g.game, p_players: g.players }); } catch {}
+  },
+  /** 앱을 켤 때 — 결과가 정해진 판을 12시간 안 건드렸으면 그 결과로 닫는다(코어가 알림을 낸다) */
+  async autoClose() { try { const r = await store.dispatch('game.autoClose', {}); return !!(r && r.ok); } catch { return false; } },
 };
 // 판이 끝나면(기록이 쌓이면) 조용히 올린다
-store.afterCommit = type => { if ((type === 'game.finish' || type === 'backup.import') && account.user) account.sync(); if (type === 'game.beginFirstNight') account.director(); };
+store.afterCommit = type => { if ((type === 'game.finish' || type === 'backup.import' || type === 'game.autoClose') && account.user) account.sync(); if (type === 'roles.assign') account.director();
+  if (type === 'phase.enterDay' || type === 'phase.enterNight' || type === 'day.execute') account.snapshot(); };

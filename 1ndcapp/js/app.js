@@ -35,6 +35,6 @@ function App() {
 }
 
 applyAppearance();
-bootStore().then(() => { account.init(); }).then(() => render(html`<${App} />`, document.getElementById('app')))
+bootStore().then(() => { account.init(); account.autoClose(); }).then(() => render(html`<${App} />`, document.getElementById('app')))
   .catch(e => { document.getElementById('app').innerHTML = '<div class="boot">불러오지 못했어요. 새로고침해 주세요.</div>'; console.error(e); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
