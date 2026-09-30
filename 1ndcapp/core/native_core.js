@@ -321,6 +321,7 @@ var NativeCore = (function () {
   }
   function day() {
     if (state.phase !== 'day') return null;
+    var pend = null; try { pend = pendingResult(); } catch (e) {}   // 처형해 봤다가 되돌리므로 다른 것을 읽기 전에 먼저(되돌린 뒤의 판을 읽어야 한다)
     var D = dayRec(), n = state.nights || 1, cm = CMAP();
     var alive = state.seats.filter(function (x) { return x.char && !x.dead && cm[x.char].team !== 'host'; }).length;
     var G = execGate();
@@ -332,6 +333,9 @@ var NativeCore = (function () {
         var pv = null; if (k === G.k) { try { var v = execVerdicts(state.seats[o.t], o.t).find(function (x) { return x.lv === 'end'; }); if (v) pv = textOf(v.t); } catch (e) {} }
         return { k: k, target: seatLabel(o.t), by: o.by === null || o.by === undefined ? null : seatLabel(o.by), votes: o.v || 0, voters: (o.voters || []).length ? o.voters : [], done: !!o.done,
         blocked: o.blockedBy || null, dead: !!(state.seats[o.t] && state.seats[o.t].dead), canExecute: k === G.k, tag: st, preview: pv }; }),
+      /* 처형만 누르면 판이 끝나는 상태 — 처형 버튼 대신 승패 판정을 앞세운다(2026-09-30 햇살님 «끝났다고 판단해서 처형 안 누르고 얼렁뚱땅 끝나버릴 수 있으니까»). 실제로 처형해 본 뒤 되돌린 판정이라 사후 능력·계승까지 본 값 */
+      endIfExecuted: (function () { var pr = pend; if (!pr || pr.how !== '처형 가정') return null; var k = D.noms.findIndex(function (o) { return o.t === pr.seat - 1 && !o.done; }); if (k < 0) return null;
+        return { k: k, seat: pr.seat, winner: pr.winner, winnerKo: (WINKO[pr.winner] || pr.winner), text: seatLabel(pr.seat - 1).number + '번 ' + seatLabel(pr.seat - 1).name + ' 처형 → ' + (WINKO[pr.winner] || pr.winner) }; })(),
       noExecReason: D.noms.some(function (o) { return o.done; }) ? null : G.reason,
       executed: D.noms.some(function (o) { return o.done; }),
       notes: htmlItems((D.notes || []).join('<br>')).concat(voterCount() !== alive ? [{ kind: 'text', text: '판사만 투표합니다 — 투표권 ' + voterCount() + '명', label: null, call: null, on: false }] : []),   // 판사 모드 — 문턱이 생존 수보다 낮은 까닭(웹 dayBriefHtml)
@@ -600,6 +604,12 @@ var NativeCore = (function () {
       var nToday = state.nights || 1, execedToday = D.noms.some(function (o) { return o.done; }) || state.seats.some(function (x) { return x && x.dead && x.cause === 'exec' && x.causeN === nToday; });   // 웹 uiDayExec 와 같은 잣대 — 하늘의 벌·좌석 시트 처형도 센다
       if (execedToday && !p.ok_exec2 && !p.force) return { status: 'needsConfirmation', token: 'exec2', revision: revision, reasonCode: 'secondExecution', choices: ['오늘 이미 처형이 있었어요(하루 1회). 예외일 때만 계속하세요.'] };
       return shieldRun(p, function () { uiDayExec(k); }); },
+    /* 처형하고 바로 마감 — 처형만 남은 판에서 승패 판정 버튼이 부른다. 처형 뒤 판정이 안 나면(예: 보호로 안 죽음) 처형만 하고 멈춘다 */
+    'day.executeAndFinish': function (p) {
+      var r = COMMANDS['day.execute'](p); if (r) return r;
+      if (!endWinner()) return null;
+      wzFinish(); return wz.mode === 'done' ? null : null;
+    },
     'day.executeUndo': function (p) { var n = dayRec().noms[+p.k]; if (!n || !n.done) return rejected('invalidSelection', '되돌릴 처형이 없어요.'); uiDayExecUndo(+p.k); return null; },
     'day.call': function (p) { var c = String(p.call || ''); if (!ALLOW.test(c)) return rejected('invalidSelection', '허용하지 않은 동작이에요.'); return shieldRun(p, function () { (0, eval)(c); }); },
     /* 낮으로 되돌리기 — 둘째 밤부터, 이 밤에 아무것도 안 했을 때만(웹 wzUndoNight «← 낮으로»). 막히면 웹 안내를 그대로 */

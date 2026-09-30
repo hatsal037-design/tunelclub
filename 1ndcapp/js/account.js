@@ -84,4 +84,4 @@ export const account = {
 };
 // 판이 끝나면(기록이 쌓이면) 조용히 올린다
 store.afterCommit = type => { if ((type === 'game.finish' || type === 'backup.import' || type === 'game.autoClose') && account.user) account.sync(); if (type === 'roles.assign') account.director();
-  if (type === 'phase.enterDay' || type === 'phase.enterNight' || type === 'day.execute') account.snapshot(); };
+  if (type === 'phase.enterDay' || type === 'phase.enterNight' || type === 'day.execute' || type === 'day.executeAndFinish') account.snapshot(); };

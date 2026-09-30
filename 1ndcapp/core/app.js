@@ -9385,8 +9385,16 @@ function pendingResult(){
     if(leaders.length!==1||lead<need) return null;
     const k=D.noms.indexOf(leaders[0]), seat=leaders[0].t, raw=localStorage.getItem('botc_state'), keepLog=JSON.stringify(state.log), keepWz=JSON.stringify(wz);
     let w2=null; try{ uiDayExec(k); w2=endWinner(); }catch(e){}
-    finally{ try{ if(raw){ stSet('botc_state', raw); const st=load(); if(st) state=st; } state.log=JSON.parse(keepLog); const w0=JSON.parse(keepWz); Object.keys(wz).forEach(x=>{ delete wz[x]; }); Object.assign(wz, w0); }catch(e){} }
+    finally{ try{ if(raw){ stSet('botc_state', raw); const st=load(); if(st) restoreInPlace(st); } state.log=JSON.parse(keepLog); const w0=JSON.parse(keepWz); Object.keys(wz).forEach(x=>{ delete wz[x]; }); Object.assign(wz, w0); }catch(e){} }
     return w2?{winner:w2, how:'처형 가정', seat:seat+1}:null; }catch(e){ return null; } }
+/* 저장본으로 되돌리되 좌석 객체는 그대로 둔다 — 아이폰 창구(native_core)가 좌석 객체로 자리를 기억해서(seatKeys) 객체가 바뀌면 화면이 자리를 잃는다 */
+function restoreInPlace(st){
+  const seats=state.seats||[];
+  Object.keys(state).forEach(k=>{ if(k!=='seats') delete state[k]; });
+  Object.keys(st).forEach(k=>{ if(k!=='seats') state[k]=st[k]; });
+  const ns=st.seats||[]; seats.length=ns.length;
+  ns.forEach((x,i)=>{ if(!seats[i]||typeof seats[i]!=='object') seats[i]={}; Object.keys(seats[i]).forEach(k=>{ delete seats[i][k]; }); Object.assign(seats[i], x); });
+  state.seats=seats; }
 function autoFinishIfEnded(){
   if(state.practice) return null;   // 연습판 — 기록 없음 (N07)
   if(!state.log || state.log.winner) return null;
