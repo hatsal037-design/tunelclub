@@ -192,7 +192,7 @@ function NightCardView({ card, draft, setDraft, pick, skip, shown, reveal, setSh
     <${Section}><${Disclosure} label="능력과 진행 안내">${card.detail}<//><//>
     <${ActionSheet} open=${grimAsk} title="판 전체(모든 좌석의 정체)를 보여줄까요?" onClose=${() => setGrimAsk(false)} actions=${[{ label: '보여 주기', onClick: () => setGrimShow(true) }]} />
     <${Cover} open=${grimShow}>${grimShow && html`<${AnswerReveal} name=${card.name} answer="판 전체" rows=${card.grimoire} done=${() => { setGrimShow(false); setShown(true); }} />`}<//>
-    <${Sheet} open=${composing} onClose=${() => setComposing(false)}>${composing && html`<${AnswerComposer} close=${() => setComposing(false)} show=${t => setManual(t)} />`}<//>
+    <${Sheet} open=${composing} onClose=${() => setComposing(false)}>${composing && html`<${AnswerComposer} close=${() => setComposing(false)} show=${(t, d) => { setManual(t); store.dispatch('night.noteAnswer', { text: t, ...(d || {}) }); }} />`}<//>
     <${Cover} open=${manual !== null}>${manual !== null && html`<${AnswerReveal} name=${card.name} answer=${manual} done=${() => { setManual(null); setShown(true); }} />`}<//>
     ${R.alert}
   </div>`;
@@ -259,7 +259,7 @@ function TargetPicker({ card, confirmed, close, done, commit, markShown }) {
         <${Row} tint onClick=${() => setComposing(true)}><${Icon} name="compose" size=${20} />답 직접 고르기<//>
       <//>
       <${Cover} open=${revealing}>${revealing && html`<${AnswerReveal} name=${c.name} answer=${c.answer || ''} board=${c.ansBoard} done=${() => { setRevealing(false); markShown(); close(); }} />`}<//>
-      <${Sheet} open=${composing} onClose=${() => setComposing(false)}>${composing && html`<${AnswerComposer} close=${() => setComposing(false)} show=${t => setManual(t)} />`}<//>
+      <${Sheet} open=${composing} onClose=${() => setComposing(false)}>${composing && html`<${AnswerComposer} close=${() => setComposing(false)} show=${(t, d) => { setManual(t); store.dispatch('night.noteAnswer', { text: t, ...(d || {}) }); }} />`}<//>
       <${Cover} open=${manual !== null}>${manual !== null && html`<${AnswerReveal} name=${c.name} answer=${manual} done=${() => { setManual(null); markShown(); close(); }} />`}<//>
     <//>`;
   }

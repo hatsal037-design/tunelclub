@@ -19,7 +19,7 @@ function Compose({ close, show }) {
   const text = { ox: yes ? 'O · 그렇다' : 'X · 아니다', num: String(num), team: good ? '선' : '악', dir: cw ? '↻ 시계 방향' : '↺ 반시계 방향', role,
     seats: seats.length ? seats.map(id => b.seats.find(s => s.id === id)).filter(Boolean).map(s => `${s.number}번 ${s.name}`).join(' · ') : null }[kind];
   return html`<${Page} title="답 직접 고르기" left=${html`<${NavButton} label="취소" onClick=${close} />`}
-    right=${html`<${NavButton} label="보여 주기" bold disabled=${!text} onClick=${() => { close(); show(text); }} />`}
+    right=${html`<${NavButton} label="보여 주기" bold disabled=${!text} onClick=${() => { close(); show(text, { seats: kind === 'seats' ? seats.map(id => (b.seats.find(s => s.id === id) || {}).number).filter(Boolean) : [], role: kind === 'role' ? role : null }); }} />`}
     top=${html`<div class=${text ? 'headline' : 'headline sec'}>${text || '답을 골라 주세요'}</div>`}>
     <${Section}><${Menu} cls="row tap" label=${html`<div class="rc"><${Labeled} label="답 종류" value=${KINDS.find(k => k[0] === kind)[1]} /></div>`}
       items=${KINDS.map(([k, l]) => ({ label: l, onClick: () => setKind(k) }))} /><//>
