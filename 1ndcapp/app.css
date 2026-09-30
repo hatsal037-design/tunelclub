@@ -307,3 +307,26 @@ h1, h2, p { margin: 0; }
 .nobr { white-space: nowrap; }
 .rowx { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--gray4); color: var(--card); display: grid; place-items: center; }
 .rowx:active { background: var(--gray); }
+
+/* 인원 줄의 경험 게이지 — 칸을 직접 선택하고 같은 줄에 설명을 띄운다. */
+.experience-list .card { overflow: visible; }
+.experience-row { gap: 4px; padding: 8px; }
+.experience-row:first-child { border-radius: 10px 10px 0 0; }
+.experience-row:last-child { border-radius: 0 0 10px 10px; }
+.experience-row .textin { width: 0; }
+.experience-row .rowx { margin-right: 4px; }
+.experience-gauge { display: flex; flex: none; }
+.experience-cell { width: 44px; height: 44px; padding: 8px 2px; background: transparent; color: var(--sec); }
+.experience-cell span { display: grid; place-items: center; height: 28px; border-radius: 4px; background: var(--fill); font-size: 13px; font-weight: 600; }
+.experience-cell.filled span { background: var(--blue); color: white; }
+.experience-cell[aria-pressed="true"] span { box-shadow: inset 0 0 0 2px currentColor; }
+.experience-cell:disabled { opacity: .35; }
+.experience-cell:focus-visible { outline: 2px solid var(--blue); border-radius: 8px; }
+.experience-state { min-height: 44px; padding: 0 8px; background: transparent; color: var(--sec); font-size: 13px; }
+.experience-bubble { position: absolute; z-index: 50; right: 8px; top: calc(100% + 8px); width: min(300px, calc(100% - 16px)); background: var(--card); color: var(--label); border: 1px solid var(--sep); border-radius: 16px; padding: 16px; box-shadow: 0 8px 32px #0003; }
+.experience-bubble::before { content: ''; position: absolute; right: 100px; top: -7px; width: 12px; height: 12px; background: var(--card); border-top: 1px solid var(--sep); border-left: 1px solid var(--sep); transform: rotate(45deg); }
+.experience-bubble.above { top: auto; bottom: calc(100% + 8px); }
+.experience-bubble.above::before { top: auto; bottom: -7px; transform: rotate(225deg); }
+.experience-bubble p { font-size: 14px; line-height: 1.5; margin: 8px 0; }
+.experience-actions { display: flex; justify-content: space-between; }
+.experience-actions button { background: transparent; color: var(--blue); min-height: 44px; padding: 0 8px; }

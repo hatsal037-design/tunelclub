@@ -6,6 +6,17 @@
 var NativeCore = (function () {
   var revision = 0, replies = {}, lastImport = null, lastNote = '';
   var lastMerged = 0;   // 서버에서 내려받아 합친 판 수(sync.merge 결과)
+  // 배분 참고값은 이번 판의 진행자 입력이다. 승률·자동 실력값으로 환산하지 않는다.
+  var EXPERIENCE_MIN = 20, experienceRecords = {};   // 앱 TILT.SKILL_MIN 과 같은 값 — 둘을 함께 바꾼다 (2026-09-30 «20판으로 통일»)
+  function experienceOf(member, manual) {
+    var n = member ? experienceRecords[member] : null;
+    if (member && n === undefined) {
+      try { var saved = JSON.parse(localStorage.getItem('preparation_experience_locks') || '{}'); n = saved[member]; } catch (e) {}
+    }
+    var locked = Number.isInteger(n) && n >= EXPERIENCE_MIN;
+    return { source: locked ? 'records' : member && !Number.isInteger(n) ? 'unknown' : 'manual',
+      manual: !locked && Number.isInteger(manual) && manual >= 1 && manual <= 5 ? manual : null, threshold: EXPERIENCE_MIN };
+  }
   var J = function (o) { return JSON.stringify(o); };
   var cm = function () { return CMAP(); };
   var rejected = function (code, recovery) { return { status: 'rejected', code: code, revision: revision, recovery: recovery || '' }; };
@@ -39,6 +50,7 @@ var NativeCore = (function () {
       var causeKo = { exec: '처형', demon: '흉수 습격', night: '밤', day: '낮', curse: '저주', succession: '계승' };
       var tokens = rem.map(function (t) { return TK(t); });
       return { id: seatKey(s, i), index: i, number: i + 1, name: s.name || '', member: (function () { var w = s.pid ? personById(s.pid) : null; return (w && w.tunelId) || null; })(), dead: dead, tonight: diedTonight(s), ghost: dead && (s.rem || []).indexOf('유령표') >= 0, tokens: tokens,
+        manualExperience: s.manualExperience || null,
         status: [dead ? '사망' + (s.cause && causeKo[s.cause] ? ' · ' + causeKo[s.cause] : '') : '생존'].concat(tokens).join(' · ') };
     });
     var cells = [];
@@ -157,8 +169,8 @@ var NativeCore = (function () {
       else if (a.kind === 'guesses') { var G = (state.guesses || {})[owner] || []; answer = G.filter(function (g) { return state.seats[g.seat] && state.seats[g.seat].char === g.char; }).length + '개 맞음'; }
       else if (a.kind === 'madness') { var mt = pickGet(owner)[0], ma = (state.madAs || {})[mt]; if (ma && CMAP()[ma.role]) { answer = CMAP()[ma.role].ko + ' 행세'; ansBoard = { seats: [mt], roles: [CMAP()[ma.role].ko], head: '행세', side: ((FIXED.TEAM || {})[CMAP()[ma.role].team] || {}).side || null }; } }
     } catch (e) {} }
-    if (!usable && R.act === 'auto' || (!R.pick && fxRule(c) && fxRule(c).act === 'auto')) {   // 자동 정보(스님·유모…) — 앱이 계산한 답
-      try { var au = autoAns(c, owner); if (!falsify(au, [])) { if (pickFalsified(owner).length) answer = '거짓 정보를 주세요 (' + pickFalsified(owner).join('·') + ')'; else if (au) { answer = uiAnsText(au) || au.label || null; ansBoard = boardOf(au, []); } } } catch (e) {}
+    if (!usable && R.act === 'auto' || !R.pick) {   // 자동 정보(스님·유모…) — 앱이 계산한 답. 대상을 안 고르는 정보 직업(요리사·공감능력자·장의사 = 아낙·삽살개 주인·이방)은 규칙 데이터 act 가 비어 있어도 autoAns 가 답을 낸다 — 2026-09-30 엔진 P1 지원표에서 카드에 숫자가 안 실리던 것 발견. 답이 없는 직업(스파이·부정한 여자…)은 autoAns 가 null 이라 그대로 빈 칸
+      try { var au = autoAns(c, owner); if (!falsify(au, [])) { if (pickFalsified(owner).length && (au || R.act === 'auto')) answer = '거짓 정보를 주세요 (' + pickFalsified(owner).join('·') + ')'; else if (au) { answer = uiAnsText(au) || au.label || null; ansBoard = boardOf(au, []); } } } catch (e) {}
     }
     return { phaseTitle: (state.nights || 1) === 1 ? '첫밤' : '밤 ' + state.nights, index: cur.k + 1, total: cur.list.length,
       seatNumber: owner + 1, name: s.name || ('좌석 ' + (owner + 1)), roleName: c.ko, teamName: TKO(c.team),
@@ -474,18 +486,41 @@ var NativeCore = (function () {
   function guardSetup() { return inGame() ? rejected('notAllowedInPhase', '첫밤이 시작된 뒤에는 자리를 바꿀 수 없어요.') : null; }
 
   var COMMANDS = {
+    'preparation.experienceUnavailable': function (p) { if (experienceRecords[p.member] < EXPERIENCE_MIN) delete experienceRecords[p.member]; return null; },
+    /* 친구가 아니라 전적은 못 보고 «20판 이상인가»만 받은 경우(서버 member_experienced, 2026-09-30 «예/아니오만 열기») — 예면 잠금, 아니오면 수동 */
+    'preparation.recordExperienced': function (p) {
+      if (!p.member || typeof p.experienced !== 'boolean') return rejected('invalidSelection');
+      return COMMANDS['preparation.recordExperience']({ member: p.member, games: p.experienced ? EXPERIENCE_MIN : 0 });
+    },
+    'preparation.recordExperience': function (p) {
+      if (!p.member || !Number.isInteger(p.games) || p.games < 0) return rejected('invalidSelection');
+      var saved = {}; try { saved = JSON.parse(localStorage.getItem('preparation_experience_locks') || '{}'); } catch (e) {}
+      experienceRecords[p.member] = Math.max(saved[p.member] || 0, p.games);
+      if (p.games >= EXPERIENCE_MIN) saved[p.member] = p.games;
+      localStorage.setItem('preparation_experience_locks', JSON.stringify(saved));
+      return null;
+    },
     'preparation.commitPeople': function (p) {
       var people = (p.people || []).filter(function (x) { return x && String(x.name || '').trim(); });
+      for (var x of people) {
+        if (x.manualExperience != null && (!Number.isInteger(x.manualExperience) || x.manualExperience < 1 || x.manualExperience > 5)) return rejected('invalidSelection', '경험 단계는 1~5 중에서 골라 주세요.');
+        if (experienceOf(x.member, null).source === 'unknown' && x.manualExperience != null) return rejected('experienceUnknown', '회원 기록을 확인한 뒤 경험 단계를 골라 주세요.');
+      }
       /* 투넬 회원에서 고른 사람 — 사람 명부에 회원 번호를 잇고 그 사람(pid)으로 앉힌다. 판을 올릴 때 회원 전적으로 붙는다 (2026-09-29) */
       people = people.map(function (x) {
-        var nm = String(x.name).trim(); if (!x.member) return { name: nm };
-        var who = personByTunelId(x.member) || personByName(nm) || personNew(nm);
-        personLinkTunel(who.id, x.member); return { name: who.name, pid: who.id };
+        var nm = String(x.name).trim(), manual = experienceOf(x.member, x.manualExperience).manual;
+        if (!x.member) return { name: nm, manualExperience: manual };
+        var who = personByTunelId(x.member) || personNew(nm);
+        if (experienceOf(x.member, null).source === 'unknown') {
+          var old = state.seats.find(function (s) { return s.pid === who.id; });
+          manual = old && old.manualExperience || null; // 재조회 실패가 저장된 초안을 지우지는 않는다. 사용 여부는 source로 구분
+        }
+        personLinkTunel(who.id, x.member); return { name: who.name, pid: who.id, manualExperience: manual };
       });
       if (people.length < 5 || people.length > 20) return rejected('invalidSelection', '5명에서 20명까지 넣을 수 있어요.');
       if (inGame()) return rejected('notAllowedInPhase', '진행 중인 판이 있어요 — 판을 끝내거나 버린 뒤 바꿀 수 있어요.');
       var same = people.length === state.seats.length && people.every(function (x, i) { return state.seats[i] && state.seats[i].name === String(x.name).trim() && (!x.pid || state.seats[i].pid === x.pid); });
-      if (same && !gameEnded()) return null;   // 같은 명단을 다시 누름 — 역할도 자리도 그대로
+      if (same && !gameEnded()) { people.forEach(function (x, i) { state.seats[i].manualExperience = x.manualExperience; }); return null; }   // 참고값만 수정해도 역할은 유지
       if (gameEnded()) {   // 끝난 판 다음 새 준비 — 판 흔적(역할·밤·기록 위치)을 걷고 사람(이름·pid)만 이어받는다 (2026-09-29 «자리 정하기 처리 못함»)
         switchEdition(state.edition, { quiet: true, force: true });
         state.seats.forEach(function (x) { x.dead = false; delete x.cause; delete x.causeN; });
@@ -495,6 +530,7 @@ var NativeCore = (function () {
       people.forEach(function (x) { if (!x.pid) return; state.seats.concat(state.bench || []).forEach(function (st) { if (st && !st.pid && st.name === x.name) st.pid = x.pid; }); });   // 이름으로 남아 있던 자리에 회원 사람(pid)을 잇는다
       /* 새로 더한 사람은 웹에선 대기자 — 아이폰 자리 화면엔 대기자 칸이 없으니 자리 끝에 앉힌다(자리가 비었을 때의 partyApply 와 같은 방식) */
       if ((state.bench || []).length) { state.bench.forEach(function (b) { state.seats.push(Object.assign(blankSeat(), personOf(b))); }); state.bench = []; state.count = state.seats.length; if (state.layout === 'rect') fitGrid(state.count, true); save(); }
+      people.forEach(function (x) { var s = state.seats.find(function (s) { return samePerson(x, s); }); if (s) s.manualExperience = x.manualExperience; });
       return null;
     },
     /* 새 판 준비로 들어간다 — practice 면 이번 준비의 판은 연습판(기록 안 남김). 진행 중인 판이 있으면 거부 */
@@ -717,7 +753,8 @@ var NativeCore = (function () {
       var card = nightCard(); if (!card) return rejected('notAllowedInPhase', '깨울 차례가 없어요.');
       var seats = (p.seats || []).map(function (n) { return +n - 1; }).filter(function (i) { return state.seats[i] && state.seats[i].char; });
       logEvent('정보 전달', { 누구: card.seatNumber, 직업: card.roleName, 답: String(p.text || ''), 자리: seats.map(function (i) { return i + 1; }), 직업들: p.role ? [String(p.role)] : [],
-        악: seats.filter(function (i) { return realEvil(state.seats[i]); }).length, 거짓: !!card.falseReason, 까닭: card.falseReason || null, 진짜: card.trueAnswer || null, 진행자: true, 앱답: card.answer || null });
+        악: seats.filter(function (i) { return realEvil(state.seats[i]); }).length, 거짓: !!card.falseReason, 까닭: card.falseReason || null, 진짜: card.trueAnswer || null, 진행자: true, 앱답: card.answer || null,
+        편: (function () { var t = String(p.text || ''); if (p.role) { var c = CHARS().find(function (x) { return x.ko === String(p.role); }); return c ? (((FIXED.TEAM || {})[c.team] || {}).side || null) : null; } return /흉수|악/.test(t) ? 'evil' : (/선/.test(t) ? 'good' : null); })() });
       wz.noted = wz.noted || {}; wz.noted[(state.nights || 1) + '|' + card.stepKey] = 1; save(); return null;
     },
     'night.advance': function (p) {   // 대상이 없는 카드만(또는 skip). 대상이 있는 카드는 night.commitTargets 가 이어져야 한다
@@ -726,13 +763,14 @@ var NativeCore = (function () {
       /* 참가자에게 보여 준 답 — «정보 전달» 한 줄(판세 분석: 짚인 사람이 이후 지명·표·처형·밤 사망에 오르나를 잇는다, 2026-09-30). 진행자가 직접 고른 답을 이미 적었으면 앱 답은 안 적는다 */
       if (!p.skip && (card.answer != null || card.falseReason) && !((wz.noted || {})[(state.nights || 1) + '|' + card.stepKey])) { try { var bs = (card.ansBoard && card.ansBoard.seats) || [];
         logEvent('정보 전달', { 누구: card.seatNumber, 직업: card.roleName, 답: card.answer, 자리: bs.map(function (i) { return i + 1; }), 직업들: (card.ansBoard && card.ansBoard.roles) || [],
-          악: bs.filter(function (i) { return state.seats[i] && realEvil(state.seats[i]); }).length, 거짓: !!card.falseReason, 까닭: card.falseReason || null, 진짜: card.trueAnswer || null }); } catch (e) {} }
+          악: bs.filter(function (i) { return state.seats[i] && realEvil(state.seats[i]); }).length, 거짓: !!card.falseReason, 까닭: card.falseReason || null, 진짜: card.trueAnswer || null,
+          편: (card.ansBoard && card.ansBoard.side) || null }); } catch (e) {} }   // 편 — 그 답이 짚은 사람을 어느 편으로 말하나(악: «이 사람이 악» / 선: «둘 중 하나가 마을 직업») — 분석의 «악으로 짚힘 / 선으로 짚힘»
       wz.pickRes = null; wzMarkNext(state.nights || 1, isNaN(+card.stepKey) ? card.stepKey : +card.stepKey); save(); return null;
     },
   };
 
   return {
-    query: function (name, arg) { var f = QUERIES[name]; return J(f ? { revision: revision, data: f(arg) } : { revision: revision, data: null, error: 'unknownQuery' }); },
+    query: function (name, arg) { if (name === 'preparation.experience') return J({ revision: revision, data: experienceOf(arg || null, null) }); var f = QUERIES[name]; return J(f ? { revision: revision, data: f(arg) } : { revision: revision, data: null, error: 'unknownQuery' }); },
     dispatch: function (json) {
       var cmd = JSON.parse(json);
       if (replies[cmd.commandId]) return replies[cmd.commandId];                       // 같은 명령 재요청 — 처음 응답 그대로
