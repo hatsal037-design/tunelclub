@@ -57,6 +57,6 @@ export const store = {
 };
 // 성공 진동을 주는 명령 — 저장 완료·단계 전환만
 const STEP = new Set(['roles.assign', 'game.beginFirstNight', 'handoff.seen', 'night.start', 'night.commitTargets', 'night.advance',
-  'phase.enterDay', 'phase.enterNight', 'day.execute', 'game.finish', 'game.again']);
+  'phase.enterDay', 'phase.enterNight', 'day.execute', 'day.executeAndFinish', 'game.finish', 'game.again']);
 
 export async function bootStore() { await core.boot(); store.refresh(); }

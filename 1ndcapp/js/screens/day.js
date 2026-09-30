@@ -20,6 +20,8 @@ export function DayView({ m, run, finish }) {
   useEffect(() => { if (m.ended) timer.reset(); }, [m.ended]);
   return html`<div>
     ${m.ended && html`<${Section} header="판이 끝날 조건이 됐어요">${m.verdict.filter(v => v.level === 'end').map(v => html`<div class="row headline"><${Icon} name="flag" size=${20} />${v.text}</div>`)}<//>`}
+    ${!m.ended && m.endIfExecuted && html`<${Section} header="이대로 처형하면 판이 끝나요"><div class="row headline"><${Icon} name="flag" size=${20} />${m.endIfExecuted.text}</div>
+      <div class="row"><button class="btn-p" onClick=${() => run('day.executeAndFinish', { k: m.endIfExecuted.k })}>처형하고 마감 — ${m.endIfExecuted.winnerKo}</button></div><//>`}
     <${Section} header="아침 발표">
       ${m.deaths.length ? m.deaths.map(p => html`<div class="row">${p.number}번 ${p.name}</div>`) : html`<div class="row sec">밤사이 죽은 사람이 없어요</div>`}
       <${CheckRow} title="아침 발표를 했어요" on=${m.announced} onClick=${() => run('day.announce', {})} />
@@ -36,7 +38,8 @@ export function DayView({ m, run, finish }) {
             <button class="blink" onClick=${() => run('day.executeUndo', { k: n.k })}>되돌리기</button></div>`
           : html`${n.preview && html`<div class="hstack sub orange"><${Icon} name="flag" size=${16} />${n.preview}</div>`}
             <div class="hstack" style="gap:12px"><button class="btn-s" onClick=${() => setVoting(n)}>투표</button>
-            ${n.canExecute ? html`<button class="btn-s danger" disabled=${m.ended} onClick=${() => run('day.execute', { k: n.k })}>처형</button>`
+            ${n.canExecute && m.endIfExecuted && m.endIfExecuted.k === n.k ? html`<button class="btn-s" disabled=${m.ended} onClick=${() => run('day.executeAndFinish', { k: n.k })}>처형하고 마감</button>`
+              : n.canExecute ? html`<button class="btn-s danger" disabled=${m.ended} onClick=${() => run('day.execute', { k: n.k })}>처형</button>`
               : !m.ended && html`<${Menu} aria="더 보기" label=${html`<${Icon} name="ellipsisCircle" size=${24} />`} items=${[{ label: '예외로 처형', role: 'destructive', onClick: () => run('day.execute', { k: n.k }) }]} />`}</div>`}
       </div></div>`)}
       <${Row} tint disabled=${!m.targets.length || m.ended} onClick=${() => setNom(true)}><${Icon} name="plus" size=${20} />새 지명<//>

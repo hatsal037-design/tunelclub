@@ -35,7 +35,7 @@ export function SettingsView() {
     const text = store.get('backup.export'); if (!text) return;
     const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-    a.download = `dangsan-backup-${stamp}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    a.download = `1ndcapp-backup-${stamp}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
   const importBackup = async e => {
     const f = e.currentTarget.files[0]; e.currentTarget.value = ''; if (!f) return;
