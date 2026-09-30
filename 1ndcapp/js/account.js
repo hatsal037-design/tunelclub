@@ -57,6 +57,7 @@ export const account = {
   /** 친구 — 서로 수락. 목록(friend·received·sent)·요청·수락·끊기, 전적은 서로 친구이거나 나일 때만 서버가 준다 */
   async friends() { if (!this.user) return null; try { return (await rpc('friends_list')) || []; } catch { return null; } },
   async friendDo(fn, id) { try { return await rpc(fn, { p_member: id }); } catch { return null; } },
+  async experienced(id) { try { const r = await rpc('member_experienced', { p_member: id }); return typeof r === 'boolean' ? r : null; } catch { return null; } },   // 친구 아니어도 «20판 이상인가»만
   async stats(id) { try { return id ? await rpc('member_stats', { p_member: id }) : await rpc('my_stats'); } catch { return null; } },
   /** 판세 보정 — 역할을 나눈 직후 회원 편별 실력 차이(숫자 하나)를 받아 코어에 넣는다. 5명 미만이면 서버가 주지 않는다 */
   async director() {

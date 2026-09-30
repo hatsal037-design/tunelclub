@@ -84,13 +84,30 @@ export function RoleArt({ r, size = 40 }) {
 }
 
 /** 아래서 올라오는 시트 — 위 막대(취소/제목/완료) + 본문. detent 'medium' 이면 반만 */
-export function Sheet({ open, onClose, children, detent = 'large', lock }) {
+export function Sheet({ open, onClose, children, detent = 'large', lock, label }) {
   const [shown, setShown] = useState(false);
+  const dialog = useRef(null);
+  useEffect(() => {
+    if (!open || !label) return;
+    const trigger = document.activeElement;
+    const frame = requestAnimationFrame(() => dialog.current?.querySelector('button, input, select, [tabindex="0"]')?.focus());
+    return () => { cancelAnimationFrame(frame); if (trigger?.isConnected) trigger.focus(); };
+  }, [open, label]);
+  const keyDown = e => {
+    if (!label) return;
+    if (e.key === 'Escape' && !lock) { e.preventDefault(); e.stopPropagation(); onClose?.(); }
+    if (e.key === 'Tab') {
+      const items = [...dialog.current.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]')];
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    }
+  };
   useEffect(() => { if (open) requestAnimationFrame(() => setShown(true)); else setShown(false); }, [open]);
   if (!open) return null;
   return html`<div class=${cx('sheet-wrap', shown && 'on')}>
     <div class="scrim" onClick=${() => !lock && onClose && onClose()}></div>
-    <div class=${cx('sheet', detent)} role="dialog" aria-modal="true">${children}</div></div>`;
+    <div ref=${dialog} onKeyDown=${keyDown} class=${cx('sheet', detent)} role="dialog" aria-modal="true" aria-label=${label}>${children}</div></div>`;
 }
 /** 불투명 전면 — 참가자에게 보여 주는 화면(진행자 화면을 완전히 가린다) */
 export function Cover({ open, children, clear }) {

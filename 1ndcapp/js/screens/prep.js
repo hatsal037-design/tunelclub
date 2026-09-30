@@ -42,26 +42,57 @@ export function PreparationFlow({ step, go, close }) {
     : html`<${HandoffView} c=${common} start=${() => go({ game: true })} />`} />`;
 }
 const PrepPage = ({ c, children, bottom }) => html`<${Page} title=${c.title} left=${c.left} right=${c.right} top=${c.header} bottom=${bottom}>${children}<//>`;
+const EXPERIENCE = [
+  ['첫 플레이', '시계탑을 처음 플레이하며, 기본 진행과 규칙 안내가 필요해요.'],
+  ['입문 · 10판 미만', '몇 판 경험해 기본 흐름은 알지만, 직업과 상황에 따라 설명이 필요해요.'],
+  ['게임 이해', '시계탑이나 마피아류 게임에 대한 이해가 있고, 정보·추리·위장을 활용할 수 있어요.'],
+  ['풍부한 경험', '게임 이해와 플레이 경험이 모두 충분하고, 다양한 직업과 상황에 익숙해요.'],
+  ['깊은 이해', '직업 전반과 능력 간 상호작용을 잘 이해하며, 비공식 모드와 새로운 조합도 즐겨 플레이해요.'],
+];
 
 /** P01 · 인원 — 인원 스테퍼 + 닉네임 입력 + 투넬 회원에서 고르기. «자리 정하기»가 명단을 코어에 확정한다 */
 function PeopleView({ c, next }) {
+  const [levels, setLevels] = useState(() => store.board.seats.map(s => s.manualExperience || null));
+  const [experiencePick, setExperiencePick] = useState(null), [sources, setSources] = useState({});
+  const [bubbleAbove, setBubbleAbove] = useState(false);
+  const experienceTrigger = useRef(null);
+  const closeExperience = () => { setExperiencePick(null); experienceTrigger.current?.focus(); };
+  useEffect(() => {
+    if (experiencePick === null) return;
+    const close = e => { if (!e.target.closest('.experience-row')) setExperiencePick(null); };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [experiencePick]);
   const [names, setNames] = useState(() => { const n = store.board.seats.map(s => s.name); while (n.length < 5) n.push(''); return n; });
   const [members, setMembers] = useState(() => { const m = store.board.seats.map(s => s.member || null); while (m.length < 5) m.push(null); return m; });   // 칸마다 투넬 회원 번호(없으면 이름만)
   const [picking, setPicking] = useState(false), [clearAsk, setClearAsk] = useState(false);
   const pad = (n, m) => { while (n.length < 5) { n.push(''); m.push(null); } setNames(n); setMembers(m); };
-  const removeAt = i => pad(names.filter((_, j) => j !== i), members.filter((_, j) => j !== i));   // 그 칸을 빼고 아래가 올라온다(5칸 아래로는 빈 칸)
-  const clearAll = () => pad([], []);
+  const removeAt = i => { setLevels(a => a.filter((_, j) => j !== i)); pad(names.filter((_, j) => j !== i), members.filter((_, j) => j !== i)); };
+  const clearAll = () => { setLevels([]); pad([], []); };
+  const source = m => !m ? 'manual' : sources[m] || store.get('preparation.experience', m)?.source || 'unknown';
+  const refreshExperience = async m => {
+    const stats = await account.stats(m);
+    if (stats?.member_id === m && Number.isInteger(stats.wins) && Number.isInteger(stats.losses)) {
+      await store.dispatch('preparation.recordExperience', { member: m, games: stats.wins + stats.losses });
+    } else {
+      const e = await account.experienced(m);   // 친구가 아니면 전적 대신 «20판 이상인가»만
+      if (typeof e === 'boolean') await store.dispatch('preparation.recordExperienced', { member: m, experienced: e });
+      else await store.dispatch('preparation.experienceUnavailable', { member: m });
+    }
+    setSources(a => ({ ...a, [m]: store.get('preparation.experience', m)?.source || 'unknown' }));
+  };
+  useEffect(() => { members.filter(Boolean).forEach(refreshExperience); }, [members.join('|')]);
   const addMembers = rows => {   // 빈 칸부터 채우고 모자라면 늘린다 — 이미 있는 회원은 건너뛴다
-    const n = names.slice(), m = members.slice();
-    rows.filter(r => !m.includes(r.member_id)).forEach(r => { let k = n.findIndex(x => !x.trim()); if (k < 0) { if (n.length >= 20) return; n.push(''); m.push(null); k = n.length - 1; } n[k] = r.nick; m[k] = r.member_id; });
-    setNames(n); setMembers(m);
+    const n = names.slice(), m = members.slice(), l = levels.slice();
+    rows.filter(r => !m.includes(r.member_id)).forEach(r => { let k = n.findIndex(x => !x.trim()); if (k < 0) { if (n.length >= 20) return; n.push(''); m.push(null); k = n.length - 1; } n[k] = r.nick; m[k] = r.member_id; l[k] = null; });
+    setNames(n); setMembers(m); setLevels(l);
   };
   const [ask, setAsk] = useState(null);
   const R = useRun();
   const valid = names.length >= 5 && names.every(n => n.trim());
-  const setCount = n => { setNames(a => n > a.length ? a.concat(Array(n - a.length).fill('')) : a.slice(0, n)); setMembers(a => n > a.length ? a.concat(Array(n - a.length).fill(null)) : a.slice(0, n)); };
+  const setCount = n => { setLevels(a => a.slice(0, n)); setNames(a => n > a.length ? a.concat(Array(n - a.length).fill('')) : a.slice(0, n)); setMembers(a => n > a.length ? a.concat(Array(n - a.length).fill(null)) : a.slice(0, n)); };
   const commit = async force => {
-    const p = { people: names.map((n, i) => members[i] ? { name: n.trim(), member: members[i] } : { name: n.trim() }) }; if (force) p.force = true;
+    const p = { people: names.map((n, i) => ({ name: n.trim(), member: members[i] || null, manualExperience: source(members[i]) === 'manual' ? levels[i] || null : null })) }; if (force) p.force = true;
     const r = await R.run('preparation.commitPeople', p);
     if (r.ok) next(); else if (r.confirm) setAsk(r.choices[0] || '역할을 다시 나눠요.');
   };
@@ -71,11 +102,20 @@ function PeopleView({ c, next }) {
     <${Section}><${Stepper} value=${names.length} min=${5} max=${20} onChange=${setCount}>참가 인원 ${names.length}명<//><//>
     <${Section}><${Row} tint onClick=${() => account.user ? setPicking(true) : account.login()}><${Icon} name="person2" size=${20} />${account.user ? '투넬 회원에서 고르기' : '투넬 회원에서 고르기 · 로그인'}<//>
       <${Row} danger disabled=${!names.some(n => n.trim())} onClick=${() => setClearAsk(true)}><${Icon} name="xmark" size=${20} />모두 비우기<//><//>
-    <${Section} header="닉네임">${names.map((n, i) => html`<div class="row" key=${i}><span class="sec num" style="width:28px">${i + 1}</span>
+    <${Section} cls="experience-list" header="닉네임 · 오른쪽 칸을 눌러 경험 선택">${names.map((n, i) => html`<div class="row experience-row" key=${i} onFocusCapture=${e => { if (e.target.matches('.experience-cell, .experience-state')) experienceTrigger.current = e.target; }} onKeyDown=${e => { if (e.key === 'Escape') { closeExperience(); e.stopPropagation(); } }}>
       <input class="textin" ref=${el => inputs.current[i] = el} value=${n} placeholder="닉네임" enterkeyhint=${i + 1 < names.length ? 'next' : 'done'}
-        onInput=${e => { const v = e.currentTarget.value; setNames(a => a.map((x, j) => j === i ? v : x)); if (members[i]) setMembers(a => a.map((x, j) => j === i ? null : x)); }}
-        onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); const nx = inputs.current[i + 1]; if (nx) nx.focus(); else e.currentTarget.blur(); } }} />${members[i] && html`<span class="tag">회원</span>`}
-      ${(n.trim() || names.length > 5) && html`<button class="rowx" aria-label=${`${i + 1}번 지우기`} onClick=${() => removeAt(i)}><${Icon} name="xmark" size=${12} stroke=${3} /></button>`}</div>`)}<//>
+        aria-label=${`${i + 1}번 닉네임`}
+        onInput=${e => { const v = e.currentTarget.value; setNames(a => a.map((x, j) => j === i ? v : x)); setLevels(a => { const l = a.slice(); l[i] = null; return l; }); if (members[i]) setMembers(a => a.map((x, j) => j === i ? null : x)); }}
+        onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); const nx = inputs.current[i + 1]; if (nx) nx.focus(); else e.currentTarget.blur(); } }} />
+      <button class="rowx" disabled=${!n.trim() && names.length <= 5} aria-label=${`${i + 1}번 지우기`} onClick=${() => { setExperiencePick(null); removeAt(i); }}><${Icon} name="xmark" size=${12} stroke=${3} /></button>
+      ${source(members[i]) === 'manual' ? html`<div class="experience-gauge" role="group" aria-label=${`${n || (i + 1) + '번'} 경험 단계`}>
+        ${EXPERIENCE.map(([title], k) => html`<button type="button" disabled=${!n.trim()} aria-label=${`${n} ${k + 1}단계 ${title}`} aria-pressed=${levels[i] === k + 1} aria-expanded=${experiencePick === i && levels[i] === k + 1} aria-controls=${experiencePick === i ? `experience-note-${i}` : undefined} class=${cx('experience-cell', levels[i] >= k + 1 && 'filled')} onClick=${e => { setLevels(a => { const l = a.slice(); l[i] = k + 1; return l; }); setBubbleAbove(e.currentTarget.getBoundingClientRect().bottom > window.innerHeight - 240); setExperiencePick(i); }}><span>${k + 1}</span></button>`)}
+      </div>` : html`<button class="experience-state" onClick=${e => { setBubbleAbove(e.currentTarget.getBoundingClientRect().bottom > window.innerHeight - 240); setExperiencePick(i); }}>${source(members[i]) === 'records' ? '기록 기반 · 🔒' : '기록 확인 필요'}</button>`}
+      ${experiencePick === i && html`<div id=${`experience-note-${i}`} class=${cx('experience-bubble', bubbleAbove && 'above')}>
+        <div role="status">${source(members[i]) === 'manual' && levels[i] ? html`<strong>${levels[i]} · ${EXPERIENCE[levels[i] - 1][0]}</strong><p>${EXPERIENCE[levels[i] - 1][1]}</p>` : html`<p>${source(members[i]) === 'records' ? '20판 이상 기록이 있어 수동 단계를 사용하지 않아요.' : '전적을 확인할 수 없어요. 로그인·친구 공개 범위와 연결을 확인해 주세요.'}</p>`}</div>
+        <div class="experience-actions">${source(members[i]) === 'manual' ? html`<button onClick=${() => { setLevels(a => { const l = a.slice(); l[i] = null; return l; }); closeExperience(); }}>선택 해제</button>` : html`<button onClick=${() => refreshExperience(members[i])}>다시 확인</button>`}<button onClick=${closeExperience}>닫기</button></div>
+      </div>`}
+    </div>`)}<//>
     <${ActionSheet} open=${clearAsk} title="닉네임을 모두 비울까요?" onClose=${() => setClearAsk(false)} actions=${[{ label: '모두 비우기', role: 'destructive', onClick: clearAll }]} />
     <${Sheet} open=${picking} onClose=${() => setPicking(false)}>${picking && html`<${MemberPicker} taken=${members.filter(Boolean)} close=${() => setPicking(false)} done=${addMembers} />`}<//>
     <${ActionSheet} open=${!!ask} title=${ask} onClose=${() => setAsk(null)} actions=${[{ label: '역할 비우고 변경', role: 'destructive', onClick: () => commit(true) }]} />

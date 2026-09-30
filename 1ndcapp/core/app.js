@@ -2821,7 +2821,7 @@ function rectPositions(){
    원형에서 일어나면 자리를 좁혀 닫고(화면-104), 사각에서는 그 칸이 빈자리가 된다. 좌석 번호가 바뀌는 길은 전부 remapSeatIndices.
    역할을 나눈 뒤 사람이 바뀌면 한 번 묻고 역할을 다시 나누게 비운다. 첫밤을 시작한 판은 바꾸지 않는다(«새 판») */
 function benchList(){ if(!Array.isArray(state.bench)) state.bench=[]; return state.bench; }
-function personOf(s){ return Object.assign({name:(s&&s.name)||''}, s&&s.pid?{pid:s.pid}:{}); }
+function personOf(s){ return Object.assign({name:(s&&s.name)||''}, s&&s.pid?{pid:s.pid}:{}, s&&s.manualExperience?{manualExperience:s.manualExperience}:{}); }
 function samePerson(a,b){ return !!a&&!!b&&((a.pid&&b.pid)?a.pid===b.pid:(a.name||'')===(b.name||'')); }
 function partyEditOk(){ if(firstNightBegun()) return false;
   if(!(state.seats||[]).some(x=>x&&x.char)) return true;
@@ -8584,7 +8584,7 @@ const TILT={K:1.6, L:1.5, FLOOR:0.15, CAP:0.45,
   /* 표본 문턱 — 이만큼 쌓이기 전엔 그 데이터를 안 쓰고 기본값(인원 구간 · 직업 세기 0 · 전적 없음)으로 (2026-09-30 햇살님) */
   RATE_MIN:30,     // 승률 — 모드를 합쳐 같은 인원 판 수
   ROLE_MIN:30,     // 직업 세기 — 그 직업이 나온 판 수
-  SKILL_MIN:10 };  // 사람 전적 — 그 사람이 한 판 수
+  SKILL_MIN:20 };  // 사람 전적 — 그 사람이 한 판 수. 2026-09-30 햇살님 «20판으로 통일» — 경험 게이지 잠금(EXPERIENCE_MIN)과 같은 문턱
 /* «어느 편에 도움» 점수표 — +면 선에 도움, −면 악에 도움. 판 기록(«판세 개입»)으로 효과를 보고 숫자만 고친다 (2026-09-29 햇살님 «고려해볼 수 있게») */
 const TILT_H={
   duoGoodDecoyEvil: 1,     // 두 사람 중 하나가 선한 직업 — 나머지가 악: 후보에 끼면 의심받는다(햇살님 «악에게 불리»)
@@ -9364,6 +9364,23 @@ function ngWinChange(){
   document.getElementById('ngWinText').style.display=v==='custom'?'':'none';
 }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+/* 첫 플레이·입문 참가자의 악마 무게 (2026-09-30 햇살님 «배제는 아쉬우니 가능성을 크게 낮추자» → 1점 1/5, 2점은 그 중간 3/5).
+   카드를 다 나눈 뒤 악마 카드만 사람마다 무게를 두고 한 번 더 뽑아 자리를 맞바꾼다 — 확률이 0이 되지 않는다.
+   기록 20판 이상(잠금이라 manualExperience 가 없음)·미입력은 1. 여행자 자리는 건드리지 않는다.
+   pool 을 제자리에서 고치고, 옮겼으면 {처음, 나중}(1부터 센 자리)을, 무게가 전부 1이면 null 을 돌려준다 */
+const DEMON_EXP_W={1:0.2, 2:0.6};
+function demonReseat(pool, exp, isDemon, isFixed, rnd=Math.random){
+  const w=pool.map((_,i)=>DEMON_EXP_W[exp[i]]||1);
+  if(w.every(x=>x===1)) return null;
+  const from=[], to=[];
+  pool.map((id,i)=>i).filter(i=>isDemon(pool[i])).forEach(i=>{
+    const cand=pool.map((_,j)=>j).filter(j=>j===i||(!isDemon(pool[j])&&!isFixed(pool[j])));
+    const sum=cand.reduce((s,j)=>s+w[j],0); let r=rnd()*sum, t=cand[cand.length-1];
+    for(const j of cand){ r-=w[j]; if(r<0){ t=j; break; } }
+    [pool[i],pool[t]]=[pool[t],pool[i]]; from.push(i+1); to.push(t+1);
+  });
+  return from.length?{처음:from, 나중:to}:null;
+}
 /* 판정이 «끝났다»고 본 승자 — 종료 판정마다 붙여 둔 win 코드를 읽는다(문구로 판정하지 않는다).
    여러 개면 첫 번째(가장 앞선 조건). 없으면 null. */
 function endWinner(){
@@ -9435,6 +9452,9 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
       const rest=pool.filter(id=>!(cm0[id]&&cm0[id].team==='traveler')), out=[]; let r=0, t=0;
       for(let i=0;i<pool.length;i++) out.push(seatsTv.indexOf(i)>=0?tvIds[t++]:rest[r++]);
       pool=out; } }
+  let demonNote=null;
+  { const cm2=CMAP(), exp=(state.seats||[]).map(x=>x&&x.manualExperience||null);
+    demonNote=demonReseat(pool, exp, id=>!!cm2[id]&&cm2[id].team==='demon', id=>!!cm2[id]&&cm2[id].team==='traveler'); }
   foldReset();   // 상태성 접기는 판마다 초기화 — 지난 판에서 열어둔 보조 입력이 따라오지 않게
   { const fits=state.layout==='rect'&&typeof rectCap==='function'&&(rectCap()-((state.gaps||[]).length))===total;
     if(!fits) state.layout='circle'; }   // 준비에서 잡은 사각 배치·빈자리·기준점을 지우지 않는다 — 딱 맞을 때만 (감사 2026-09-13)
@@ -9442,7 +9462,8 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
   /* 이름을 먼저 다 넣고 자동 분배를 누르면 이름이 날아갔다 — 좌석 순서대로 이어받는다 (2026-08-29 4회 진행에서) */
   const keepNames=(state.seats||[]).map(x=>(x&&x.name)||'');
   const keepPids=(state.seats||[]).map(x=>(x&&x.pid)||null);   // 이름과 함께 사람 고정값도 이어받는다 — 안 하면 두 번째 판부터 조용히 샌다
-  state.seats=pool.map((id,i)=>({name:keepNames[i]||'',char:id,dead:false,rem:[], ...(keepPids[i]?{pid:keepPids[i]}:{})}));
+  const keepExperience=(state.seats||[]).map(x=>x&&x.manualExperience||null);
+  state.seats=pool.map((id,i)=>({name:keepNames[i]||'',char:id,dead:false,rem:[], manualExperience:keepExperience[i], ...(keepPids[i]?{pid:keepPids[i]}:{})}));
   state.nightBegun=false;
   gameStateClear();
   state.bodiless=blId;
@@ -9453,6 +9474,7 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
   closeNewGame(); render();
   logStart();     // 이 판의 로그 시작
   if(dealNote){ try{ logEvent('판세 개입', dealNote); }catch(e){} }
+  if(demonNote){ try{ logEvent('판세 개입', {곳:'악마 무게', 근거:'참고값 1점 1/5 · 2점 3/5', 악마_처음:demonNote.처음, 악마:demonNote.나중}); }catch(e){} }
   if(typeof prep!=='undefined'&&prep.on){ prepGo(4); return; }   // 준비 화면: 배정 → 규칙·전달(역할 돌리기는 거기서)
   openReveal();   // 캐릭터 칩 대체 — 역할 확인 돌리기부터
 }
@@ -9464,7 +9486,7 @@ function gameStateClear(){
    과정 시트 맨 아래 꾹 누르기(1.2초) 단추에서만 부른다 */
 function wzDiscardToRoles(){
   state.log=null;
-  state.seats=(state.seats||[]).map(x=>Object.assign({name:(x&&x.name)||'', dead:false, rem:[]}, x&&x.pid?{pid:x.pid}:{}));
+  state.seats=(state.seats||[]).map(x=>Object.assign({dead:false, rem:[]}, personOf(x)));
   gameStateClear(); state.nightBegun=false; save();
   try{ wzPopClose(); }catch(e){} wzClose(); prepOpen(3); }
 /* 꾹 누르기 단추 — 실수로 눌리면 안 되는 일에만. 누르는 동안 채워지고, 손을 떼면 취소 */
@@ -9507,8 +9529,7 @@ function switchEdition(id, opt){
        사람 고정값(pid)도 같이 이어받는다 — 이름만 남기면 전적·@태그가 조용히 끊긴다.
        startNewGame 이 같은 까닭으로 pid 를 지킨다 (전수감사 2026-09-13 #20, 2026-09-15 고침) */
     state.seats=state.seats.map(s=>Object.assign(
-      {name:s.name,char:null,dead:s.dead,cause:s.cause,causeN:s.causeN,rem:[]},
-      s.pid?{pid:s.pid}:{}));
+      {char:null,dead:s.dead,cause:s.cause,causeN:s.causeN,rem:[]}, personOf(s)));
     state.picks={}; state.roleMiss={}; state.placed={}; state.fixed={}; state.lastT={}; state.fakes={}; state.done={}; state.tokAt={};   // 모드가 바뀌면 지정값(지목·토큰 배치·무작위 고정·연속 불가·가짜 카드)도 전부 초기화
     state.done={}; state.edition=id; state.bluffIds=[]; state.bluffs=''; state.fixed={}; state.nightBegun=false;
     state.nights=1; state.phase='firstnight'; state.days={}; state.log=null; state.tokPh={}; state.guesses={}; state.ansLog={}; state.deathActed={}; state.director={}; state.madAs={}; state.setupTok={}; state.wz=null; state.rvPos=-1; state.lastLogId=null;
