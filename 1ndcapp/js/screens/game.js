@@ -1,10 +1,10 @@
 // 진행 전면 — 밤 시작 · 밤 카드(G01)와 반 접힘(G02) · 새벽 · 낮 · 결과. 뒤로(‹)는 판을 끝내지 않고 오늘로
-import { html, useState, useEffect, useRef } from '../../lib/preact-htm.js';
+import { html, useState, useEffect, useRef, useLayoutEffect } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { Icon } from '../icons.js';
 import { Page, Section, Row, RowLabel, Labeled, Primary, Secondary, Sheet, Cover, ActionSheet, Alert, Menu, NavButton, RoleArt, HoldButton, DoubleTap, Disclosure, Empty, Warn, Segmented, useRun, cx } from '../ui.js';
 import { NavStack, useNav, Back } from '../nav.js';
-import { SeatBoard, RevealBoard, BluffBoard } from '../seatboard.js';
+import { SeatBoard, RevealBoard, BluffBoard, HostBoard } from '../seatboard.js';
 import { NightIntroView, DawnView, SuccessionSection, ProcessSheet, ReferenceSheet } from './stages.js';
 import { DayView, FinishSheet, ResultView, timer } from './day.js';
 import { SeatDetailView } from './seatdetail.js';
@@ -16,6 +16,10 @@ export function GameFlow({ close, toRoles, toPrep }) {
   const R = useRun();
   const [bluff, setBluff] = useState(false), [confirm, setConfirm] = useState(null), [finishing, setFinishing] = useState(false);
   const [discard, setDiscard] = useState(false), [folded, setFolded] = useState(false), [aux, setAux] = useState(null);
+  /* 판 보기 → 펼치기 복귀: 같은 카드면 읽던 스크롤 위치로(2026-10-01 위치 보존 기준). 다른 카드로 넘어가면 복원하지 않는다 */
+  const foldScroll = useRef(null);
+  const fold = v => { const sc = document.querySelector('.page > .body'); if (v) foldScroll.current = { key: cardKey, top: sc ? sc.scrollTop : 0 }; setFolded(v); };
+  useLayoutEffect(() => { if (folded) return; const f = foldScroll.current; if (!f || f.key !== cardKey) return; const sc = document.querySelector('.page > .body'); if (sc) sc.scrollTop = f.top; foldScroll.current = null; }, [folded]);
   const [draft, setDraft] = useState(emptyDraft), [picking, setPicking] = useState(false), [revealing, setRevealing] = useState(false);
   const [answerSeen, setAnswerSeen] = useState(null), [againAsk, setAgainAsk] = useState(false);
   const st = store.stage, card = store.night, kind = st ? st.stage : 'card';
@@ -74,7 +78,7 @@ export function GameFlow({ close, toRoles, toPrep }) {
   else if (st && kind === 'day' && store.day) body = html`<${DayView} m=${store.day} run=${run} finish=${() => setFinishing(true)} />`;
   else if (st && kind === 'done' && store.result) body = html`<${ResultView} m=${store.result} call=${c => run('day.call', { call: c })} />`;
   else if (!card) body = html`<${Empty} icon="moonZzz" title="지금 깨울 차례가 없어요" />`;
-  else if (folded) body = html`<${FoldedCard} card=${card} unfold=${() => setFolded(false)} />`;
+  else if (folded) body = html`<${FoldedCard} card=${card} unfold=${() => fold(false)} />`;
   else body = html`<${NightCardView} card=${card} draft=${draft} setDraft=${setDraft} pick=${() => setPicking(true)} skip=${() => run('night.advance', { skip: true })}
     shown=${shown} reveal=${() => setRevealing(true)} setShown=${v => setAnswerSeen(v ? cardKey : null)} />`;
 
@@ -90,7 +94,7 @@ export function GameFlow({ close, toRoles, toPrep }) {
     title=${(st && st.title) || (card && card.phaseTitle) || ''}
     left=${html`<${NavButton} icon="chevronLeft" label="오늘로 돌아가기" onClick=${close} />`}
     right=${html`${kind !== 'done' && html`<${Menu} aria="판 메뉴" disabled=${R.busy} label=${html`<${Icon} name="ellipsisCircle" size=${24} />`} items=${menuItems} />`}
-      ${!folded && kind === 'card' && html`<${NavButton} label="판 보기" onClick=${() => setFolded(true)} />`}`}
+      ${!folded && kind === 'card' && html`<${NavButton} label="판 보기" onClick=${() => fold(true)} />`}`}
     bottom=${html`
       ${kind !== 'done' && html`<div class="toolbar"><button onClick=${() => setAux('seats')}><${Icon} name="person2" size=${20} />좌석</button>
         <button onClick=${() => setAux('process')}><${Icon} name="listBullet" size=${20} />과정</button><button onClick=${() => setAux('reference')}><${Icon} name="book" size=${20} />참고</button></div>`}
@@ -110,7 +114,7 @@ export function GameFlow({ close, toRoles, toPrep }) {
   <${Sheet} open=${!!aux} onClose=${() => setAux(null)}>${aux === 'seats' ? html`<${SeatSheet} close=${() => setAux(null)} />`
     : aux === 'process' ? html`<${ProcessSheet} close=${() => setAux(null)} discarded=${toRoles} />` : aux === 'reference' ? html`<${ReferenceSheet} close=${() => setAux(null)} />` : null}<//>
   <${Cover} open=${bluff}>${bluff && html`<${AnswerReveal} name="흉수" answer=${((st && st.bluffs) || []).join(', ')} bluff=${(st && st.bluffs) || []} done=${() => setBluff(false)} />`}<//>
-  <${Cover} open=${revealing}>${revealing && card && html`<${AnswerReveal} name=${card.name} answer=${card.answer || ''} board=${card.ansBoard} done=${async () => { const r = await R.run('night.markShown', {}); if (r.rejected && r.code !== 'notAllowedInPhase') return; setAnswerSeen(cardKey); setRevealing(false); }} />`}<//>
+  <${Cover} open=${revealing}>${revealing && card && html`<${AnswerReveal} name=${card.name} answer=${card.answer || ''} board=${card.ansBoard} me=${card.seatNumber - 1} done=${async () => { const r = await R.run('night.markShown', {}); if (r.rejected && r.code !== 'notAllowedInPhase') return; setAnswerSeen(cardKey); setRevealing(false); }} />`}<//>
   <${Sheet} open=${finishing} detent="medium" onClose=${() => setFinishing(false)}>${finishing && html`<${FinishSheet} close=${() => setFinishing(false)} done=${w => run('game.finish', { winner: w })} />`}<//>
   <${ActionSheet} open=${!!confirm} title=${confirm && confirm.text} onClose=${() => setConfirm(null)} actions=${!confirm ? [] : confirm.token === 'shield'
     ? [{ label: '그래도 사망 처리', role: 'destructive', onClick: () => run(confirm.type, { ...confirm.payload, ok_shield: true }) }, { label: '살아남음으로 기록', onClick: () => run(confirm.type, { ...confirm.payload, decline_shield: true }) }]
@@ -125,17 +129,15 @@ export function GameFlow({ close, toRoles, toPrep }) {
 }
 
 /** 답 공개 — 불투명 전면, 누르는 동안만. 한 번 보여 주고 가린 뒤에 돌아간다 */
-export function AnswerReveal({ name, answer, rows = [], bluff, board, done }) {
+export function AnswerReveal({ name, answer, rows = [], bluff, bluffs, board, me, done }) {
   const [on, setOn] = useState(false), [seen, setSeen] = useState(false);
   const cur = useRef(false);
   const hold = v => { if (v) { cur.current = true; setOn(true); } else if (cur.current) { cur.current = false; setOn(false); setSeen(true); } };
   let content;
   if (!on) content = html`<span class="hid" aria-label="가려져 있어요"><${Icon} name="eyeSlash" size=${44} stroke=${1.5} /></span>`;
-  else if (rows.length) content = html`<div class="grim">${rows.map(r => html`<div><b class="num" style="width:28px">${r.number}</b><span class="sec" style="width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name}</span>
-      <${RoleArt} r=${r.role} size=${24} /><b class=${r.evil ? 'red' : ''}>${r.role}</b>${r.dead && html`<span class="sec"><${Icon} name="xmark" size=${16} /></span>`}<span class="grow"></span>
-      ${r.tokens.length > 0 && html`<span class="purple" style="font-size:12px">${r.tokens.join('·')}</span>`}</div>`)}</div>`;
+  else if (rows.length) content = html`<${HostBoard} board=${store.board} rows=${rows} bluffs=${bluffs} me=${me} meTint=${true} />`;   // 세작·스파이 — 진행자 판과 같은 구성(직업·표식·블러프), 보는 사람 자리는 틴트(2026-10-01 햇살님)
   else if (bluff) content = html`<${BluffBoard} bluffs=${bluff} />`;
-  else if (board) content = html`<${RevealBoard} roles=${board.roles} shown=${board.seats} title=${board.head || null} side=${board.side} />`;
+  else if (board) content = html`<${RevealBoard} roles=${board.roles} shown=${board.seats} me=${me} meTint=${true} title=${board.head || null} side=${board.side} />`;   // 보는 사람 자리도 틴트로(2026-10-01 햇살님)
   else content = html`<div class="big-ans">${answer}</div>`;
   return html`<div class="reveal-page">
     <div class="who title2">${name}님에게 보여 주세요</div>
@@ -170,13 +172,13 @@ function NightCardView({ card, draft, setDraft, pick, skip, shown, reveal, setSh
         ${card.falseReason ? html`
           <div class="row orange" style="font-size:15px"><${Icon} name="theater" size=${20} />거짓 답을 줘요 · ${card.falseReason}</div>
           ${card.discretion && html`<${DiscretionBand} card=${card} />`}
-          ${card.answer ? html`<div class="row"><${Labeled} label="보여줄 답" value=${card.answer} strong /></div>${card.discretion && !card.discretion.잠김 && html`<${Row} tint disabled=${!card.discretion.다른답} onClick=${() => R.run('night.setDiscretion', { 다른답: true })}>다른 답<//>`}<${Row} tint onClick=${reveal}>답 보여주기<//>`
+          ${card.answer ? html`<div class=${card.discretion ? 'row ans2' : 'row'}><${Labeled} label="보여줄 답" value=${card.answer} strong /></div>${card.discretion && !card.discretion.잠김 && html`<${Row} tint disabled=${!card.discretion.다른답} onClick=${() => R.run('night.setDiscretion', { 다른답: true })}>다른 답<//>`}<${Row} tint onClick=${reveal}>답 보여주기<//>`
             : html`<div class="row sub">그럴듯한 거짓을 직접 정해 주세요.</div>`}
           ${card.trueAnswer && html`<${Disclosure} label="진짜 답">${card.trueAnswer}<//>`}
           <${Row} tint onClick=${() => setComposing(true)}>답 직접 고르기<//>`
         : html`
           ${card.discretion && html`<${DiscretionBand} card=${card} />`}
-          ${card.answer && html`<div class="row"><${Labeled} label="답" value=${card.answer} strong /></div>`}
+          ${card.answer && html`<div class=${card.discretion ? 'row ans2' : 'row'}><${Labeled} label="답" value=${card.answer} strong /></div>`}
           ${card.discretion && !card.discretion.잠김 && html`<${Row} tint disabled=${!card.discretion.다른답} onClick=${() => R.run('night.setDiscretion', { 다른답: true })}>다른 답<//>`}
           ${card.result && html`<div class="row sub" style="white-space:pre-line">${card.result}</div>`}
           ${(card.answer || card.ansBoard) && html`<${Row} tint onClick=${reveal}>답 보여주기<//>`}
@@ -194,7 +196,7 @@ function NightCardView({ card, draft, setDraft, pick, skip, shown, reveal, setSh
     : null}
     <${Section}><${Disclosure} label="능력과 진행 안내">${card.detail}<//><//>
     <${ActionSheet} open=${grimAsk} title="판 전체(모든 좌석의 정체)를 보여줄까요?" onClose=${() => setGrimAsk(false)} actions=${[{ label: '보여 주기', onClick: () => setGrimShow(true) }]} />
-    <${Cover} open=${grimShow}>${grimShow && html`<${AnswerReveal} name=${card.name} answer="판 전체" rows=${card.grimoire} done=${() => { setGrimShow(false); setShown(true); }} />`}<//>
+    <${Cover} open=${grimShow}>${grimShow && html`<${AnswerReveal} name=${card.name} answer="판 전체" rows=${card.grimoire} bluffs=${card.bluffs} me=${card.seatNumber - 1} done=${() => { setGrimShow(false); setShown(true); }} />`}<//>
     <${Sheet} open=${composing} onClose=${() => setComposing(false)}>${composing && html`<${AnswerComposer} close=${() => setComposing(false)} show=${(t, d) => { setManual(t); store.dispatch('night.noteAnswer', { text: t, ...(d || {}) }); }} />`}<//>
     <${Cover} open=${manual !== null}>${manual !== null && html`<${AnswerReveal} name=${card.name} answer=${manual} done=${() => { setManual(null); setShown(true); }} />`}<//>
     ${R.alert}
@@ -284,7 +286,7 @@ function TargetPicker({ card, confirmed, close, done, commit, markShown }) {
         ${(c.answer || c.ansBoard) && html`<${Row} tint onClick=${() => setRevealing(true)}><${Icon} name="eye" size=${20} />답 보여주기<//>`}
         <${Row} tint onClick=${() => setComposing(true)}><${Icon} name="compose" size=${20} />답 직접 고르기<//>
       <//>
-      <${Cover} open=${revealing}>${revealing && html`<${AnswerReveal} name=${c.name} answer=${c.answer || ''} board=${c.ansBoard} done=${async () => { const r = await store.dispatch('night.markShown', {}); if (r.rejected && r.code !== 'notAllowedInPhase') return; setRevealing(false); markShown(); close(); }} />`}<//>
+      <${Cover} open=${revealing}>${revealing && html`<${AnswerReveal} name=${c.name} answer=${c.answer || ''} board=${c.ansBoard} me=${c.seatNumber - 1} done=${async () => { const r = await store.dispatch('night.markShown', {}); if (r.rejected && r.code !== 'notAllowedInPhase') return; setRevealing(false); markShown(); close(); }} />`}<//>
       <${Sheet} open=${composing} onClose=${() => setComposing(false)}>${composing && html`<${AnswerComposer} close=${() => setComposing(false)} show=${(t, d) => { setManual(t); store.dispatch('night.noteAnswer', { text: t, ...(d || {}) }); }} />`}<//>
       <${Cover} open=${manual !== null}>${manual !== null && html`<${AnswerReveal} name=${c.name} answer=${manual} done=${() => { setManual(null); markShown(); close(); }} />`}<//>
     <//>`;
@@ -309,6 +311,6 @@ function SeatRoot({ close }) {
   return html`<${Page} title="좌석" left=${html`<${NavButton} label="닫기" onClick=${close} />`}>
     <div style="padding:12px 16px"><${Segmented} value=${list} onChange=${setList} options=${[[false, '판'], [true, '명단']]} /></div>
     ${list ? html`<${Section}>${b.seats.map(s => html`<${Row} chevron onClick=${() => open(s)}><div class="grow"><div>${s.number}번 ${s.name}</div><div class="sub">${s.status || '생존'}</div></div><//>`)}<//>`
-      : html`<div class="boardwrap"><${SeatBoard} board=${b} onTap=${id => { const s = b.seats.find(x => x.id === id); if (s) open(s); }} /></div>`}
+      : html`<div class="boardwrap"><${HostBoard} board=${b} onTap=${id => { const s = b.seats.find(x => x.id === id); if (s) open(s); }} /></div>`}
   <//>`;
 }

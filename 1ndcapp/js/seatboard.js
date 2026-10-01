@@ -162,13 +162,13 @@ export function SeatBoard(p) {
     return html`<${Tag} key=${s.id} class=${cx('seat', lifted && 'lifted', landed === s.id && 'landed', lifted && drag.outside && 'outside', off && !mine && 'off', canDrag && 'grab')}
       style=${`transform:translate(${pos.x - 32}px,${pos.y - 32}px)`} aria-label=${label} aria-pressed=${on} disabled=${Tag === 'button' && off && !mine && !canDrag}
       ...${interactive}>
-      <span class=${faceCls}>${bare ? '' : number}
+      <span class=${faceCls}>${p.roles && s.role && !bare ? html`<span class="face-art"><${RoleArt} r=${store.artOf ? store.artOf(s.role) : s.role} size=${44} /></span><span class="no-b">${number}</span>` : bare ? '' : number}
         ${dead && html`<span class="dead-b"><${Icon} name=${s.ghost ? 'hand' : 'xmark'} size=${9} stroke=${3.2} /></span>`}
         ${mine && html`<span class="me-b"><${Icon} name="person" size=${10} fill=${true} stroke=${0} /></span>`}
         ${order ? html`<span class="ord-b">${order}</span>` : on && !tint && html`<span class="chk-b"><${Icon} name="checkCircle" size=${17} /></span>`}
       </span>
-      ${!bare && html`<span class=${cx('nm', mine && 'mine', dead && 'dead')}>${s.name}</span>`}
-      ${!bare && !p.publicView && tk.length > 0 && html`<span class="tk">${tk.length > 1 ? `${tk[0]} +${tk.length - 1}` : tk[0]}</span>`}
+      ${!bare && html`<span class=${cx('nm', mine && 'mine', dead && 'dead', p.roles && s.evil && 'evil')}>${p.roles && s.role ? html`${s.role}<small>${s.name}</small>${tk.length > 0 && html`<small class="tk2">${tk.length > 1 ? `${tk[0]} +${tk.length - 1}` : tk[0]}</small>`}` : s.name}</span>`}
+      ${!bare && !p.roles && !p.publicView && tk.length > 0 && html`<span class="tk">${tk.length > 1 ? `${tk[0]} +${tk.length - 1}` : tk[0]}</span>`}
     </${Tag}>`;
   };
 
@@ -221,7 +221,20 @@ function NomArrow({ from, to, hub, w, h }) {
 }
 
 /** 자리+직업 알려 주기 — 블러프·«이 사람은 이 직업» 답. 보여 줄 자리만 번호·이름, 나머지는 옅은 회색 동그라미 */
-export function RevealBoard({ roles, shown = [], me, allies = [], title, side }) {
+/** 직업 그림 묶음(블러프·답 직업) — 판 가운데에 */
+export function RolesCluster({ roles, big }) {
+  const rows = []; for (let i = 0; i < roles.length; i += 2) rows.push(roles.slice(i, i + 2));
+  return html`<div class="rv-cluster">${rows.map(r => html`<div class="rv-row">${r.map(n => html`<div class=${cx('rv-item', big && 'big')}><${RoleArt} r=${n} size=${big ? 46 : 36} /><span>${n}</span></div>`)}</div>`)}</div>`;
+}
+/** 진행자 전체 판(2026-10-01 햇살님) — 자리마다 직업·표식, 가운데 블러프. 스파이 공개도 같은 판(참가자 몫만 담은 rows 로) */
+export function HostBoard({ board, rows, bluffs, me, meTint, onTap }) {
+  const b = rows ? { ...board, seats: board.seats.map(s => { const r = rows.find(x => x.number === s.number); return r ? { ...s, role: r.role, evil: r.evil, dead: r.dead, tokens: r.tokens } : { ...s, role: null, tokens: [] }; }) } : board;
+  const bl = bluffs || b.bluffs || [];
+  const id = i => { const x = b.seats.find(s => s.index === i); return x ? x.id : null; };
+  return html`<div class=${cx('reveal', meTint && 'me-tint')}><div class=${onTap ? '' : 'nohit'}><${SeatBoard} board=${b} roles=${true} me=${id(me)} onTap=${onTap}
+    center=${bl.length ? html`<div class="bluff-c"><div class="sub">블러프</div><${RolesCluster} roles=${bl} big=${false} /></div>` : undefined} /></div></div>`;
+}
+export function RevealBoard({ roles, shown = [], me, allies = [], title, side, meTint }) {
   const b = store.board;
   const id = i => { const s = b.seats.find(s => s.index === i); return s ? s.id : null; };
   const round = b.shape === 'round' || !b.cells.length;
@@ -229,9 +242,9 @@ export function RevealBoard({ roles, shown = [], me, allies = [], title, side })
   const big = round && inCenter;
   const rows = []; for (let i = 0; i < roles.length; i += 2) rows.push(roles.slice(i, i + 2));
   const cluster = html`<div class="rv-cluster">${rows.map(r => html`<div class="rv-row">${r.map(n => html`<div class=${cx('rv-item', big && 'big')}><${RoleArt} r=${n} size=${big ? 46 : 36} /><span>${n}</span></div>`)}</div>`)}</div>`;
-  const shownIds = new Set(shown.map(id).filter(Boolean));
+  const shownIds = new Set(shown.map(id).filter(Boolean)); if (meTint && id(me)) shownIds.add(id(me));   // 보는 사람 자리는 번호·이름도 같이
   const rings = {}; if (side) shownIds.forEach(x => { rings[x] = side === 'evil' ? 'red' : 'blue'; });
-  return html`<div class="reveal">
+  return html`<div class=${cx('reveal', meTint && 'me-tint')}>
     ${title && html`<div class="rv-title">${title}</div>`}
     ${!inCenter && roles.length > 0 && cluster}
     <div class="nohit"><${SeatBoard} board=${b} me=${id(me)} publicView=${true} allies=${new Set(allies.map(id).filter(Boolean))} rings=${rings}

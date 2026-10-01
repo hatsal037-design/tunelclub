@@ -24,8 +24,10 @@ export function LibraryView() {
 }
 
 export function RoleList({ roles, q }) {
-  return roles.filter(r => !q || r.ko.includes(q) || r.ab.includes(q)).map(r => html`<div class="row"><div class="role-row">
-    <${RoleArt} r=${r} size=${40} /><div class="grow"><div class="hstack"><span class="headline">${r.ko}</span><span class="sub">${r.teamKo}</span></div><div class="ab3">${r.ab}</div></div></div></div>`);
+  return roles.filter(r => !q || r.ko.includes(q) || r.ab.includes(q)).map(r => html`<div class=${'row' + (r.dead ? ' dim' : '')}><div class="role-row">
+    <${RoleArt} r=${r} size=${40} /><div class="grow"><div class="hstack"><span class="headline">${r.ko}</span><span class="sub">${r.teamKo}</span></div>
+      ${r.holders && r.holders.length > 0 && html`<div class="holders">${r.holders.map(h => html`<span class=${h.dead ? 'dead' : ''}>${h.number}번 ${h.name}</span>`)}</div>`}
+      <div class="ab3">${r.ab}</div></div></div></div>`);   // holders — 지금 판에서 누가 그 직업인지, 죽은 사람은 회색·취소선(2026-10-01 햇살님)
 }
 
 function LibraryMode({ id }) {

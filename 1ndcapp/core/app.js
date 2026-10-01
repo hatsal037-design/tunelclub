@@ -8618,6 +8618,7 @@ const isEvilTeam=c=>!!c&&['minion','demon','mafia'].includes(c.team);
 const isInfoRole=c=>{ if(!c||c.team!=='town') return false; const R=fxRule(c)||{}; return /info|auto/.test(R.act||''); };   // 정보 직업 — 확인되면 선에 큰 도움, 의심받으면 악에 도움
 Object.assign(TILT_H, {
   duoTargetInfo: 0.3,      // 두 사람 중 하나 — 진짜 대상이 정보 직업이면 그 사람이 확인된다
+  duoMinionFresh: 0.4,     // 조사관 — 아직 어떤 정보에도 안 짚힌 하수인을 드러내면 선에 도움(짚힌 하수인을 다시 보이면 0)
   trioGoodInfo: -0.3,      // 세 사람 중 악 — 섞인 선이 정보 직업이면 애먼 의심(한 명마다)
   childInfo: 0.3,          // 첫밤 아이가 정보 직업 — 확인된 선
   drunkFakeInfo: -0.5,     // 주정뱅이가 정보 직업이라 믿음 — 틀린 정보를 퍼뜨린다
@@ -8716,7 +8717,7 @@ function dirPickT(list, hOf, rOf, where, T, why){
   if(!list||!list.length) return undefined;
   if(_dirCap){ const lv=_dirCap.cursor++, k=_dirCap.plan[lv]===undefined?0:_dirCap.plan[lv]; if(_dirCap.plan[lv]===undefined) _dirCap.plan[lv]=0;
     _dirCap.lists[lv]={n:list.length, where:where||null}; const x=list[Math.min(k, list.length-1)];
-    _dirCap.score+=(hOf?hOf(x):0)-(rOf?(TILT.L/TILT.K)*rOf(x):0); return x; }   // 재량표 열거 중 — 뽑지 않고 계획대로 하나를 돌려주며 점수를 쌓는다
+    _dirCap.score+=(hOf?hOf(x):0); _dirCap.risk+=(rOf?rOf(x):0); return x; }   // 재량표 열거 중 — 뽑지 않고 계획대로 하나를 돌려주며 점수를 쌓는다. 위험(r)은 칸을 가르지 않고 칸 안 순서로만(2026-10-01)
   if(list.length===1){ if(where) pickLog(list, [1], 0, where, T, why); return list[0]; }
   const tv={why:why||''};
   const p=dirProbs(list, hOf, rOf, T);
@@ -8742,12 +8743,12 @@ function dirEnumerate(run, owner, onlyFake){
   try{
     const plan=[]; let guard=0;
     while(guard++<LIMIT){
-      reset(); scrub(); _dirCap={plan:plan.slice(), cursor:0, lists:[], score:0};
+      reset(); scrub(); _dirCap={plan:plan.slice(), cursor:0, lists:[], score:0, risk:0};
       let res=null; try{ res=run(); }catch(e){ res=null; 예외++; }
       const cap=_dirCap; _dirCap=null;
       if(strip(state)!==base) 부작용=true;   // 답이 없거나 겹쳐도 센다 — 하나라도 있으면 띠를 만들지 않는다(코덱스 13:03)
       const memo={}; Object.keys(state.fixed||{}).forEach(k=>{ if(+k.split('#').pop()===owner&&(!onlyFake||k.startsWith('fake:'))) memo[k]=state.fixed[k]; });
-      if(res){ const key=JSON.stringify(res); if(!seen.has(key)){ seen.add(key); out.push({답:res, 점수:Math.round(cap.score*1000)/1000, 메모:memo}); } }
+      if(res){ const key=JSON.stringify(res); if(!seen.has(key)){ seen.add(key); out.push({답:res, 점수:Math.round(cap.score*1000)/1000, 위험:Math.round(cap.risk*1000)/1000, 메모:memo}); } }
       const lv=cap.lists.length; if(!lv){ 완료=true; break; }
       plan.length=lv; for(let i=0;i<lv;i++) if(plan[i]===undefined) plan[i]=0;
       let i=lv-1; while(i>=0){ plan[i]++; if(plan[i]<cap.lists[i].n) break; plan[i]=0; i--; }
@@ -8770,8 +8771,10 @@ function discStops(cands){
 }
 function discHash(str){ let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } return h; }
 /* 칸 안에서 어느 후보 — 결정적: 보통 칸은 «다른 답» 번호 순, «중간» 칸은 판 열쇠 해시에서 시작(조회가 난수를 안 쓴다) */
-function discPickIn(D, k, alt, seedKey){ const st=D.칸[k]; if(!st||!st.후보.length) return null; const n=st.후보.length;
-  const start=st.뜻==='중간'?discHash(seedKey)%n:0; return D.후보[st.후보[(start+(alt||0))%n]]; }
+function discPickIn(D, k, alt, seedKey){ const st=D.칸[k]; if(!st||!st.후보.length) return null;
+  const idx=st.후보.slice().sort((a,b)=>(D.후보[a].위험||0)-(D.후보[b].위험||0)||a-b), n=idx.length;   // 같은 칸 안에선 위험(이미 짚인 자리) 적은 답부터 — 추천 칸은 첫 후보(자동 답)가 앞에 오도록 아래서 따로
+  if(st.첫!==undefined){ const f=idx.indexOf(st.첫); if(f>0){ idx.splice(f,1); idx.unshift(st.첫); } }
+  const start=st.뜻==='중간'?discHash(seedKey)%n:0; return D.후보[idx[(start+(alt||0))%n]]; }
 /* ── 판세 분석 기록 (2026-09-30 햇살님 «이 정보를 줄 때 보통 이렇게 행동하고 그 결과 누굴 죽이고… 그런 정보가 필요해») ──
    앱이 확률로 고른 것마다 «앱 선택» 한 줄: 곳·누구에게·고른 것(자리·직업·악 수)·그 확률·악이 낀 후보가 뽑힐 확률(역확률 가중용)·판세 값.
    판 기록이 아직 없으면(역할 나누기 전 — 가짜 직업 등) 모아 뒀다가 logStart 가 붙인다 */
@@ -8829,7 +8832,7 @@ let _roleMemo=null;
 /* 다른 정보가 이미 가리킨 자리 — 교차 검증 위험 */
 function fixedSeatsOthers(owner){ const used=new Set();
   Object.keys(state.fixed||{}).forEach(k=>{ if(+k.split('#').pop()===owner) return; const v=(state.fixed[k]||{}).value; if(!v) return;
-    if(Array.isArray(v.seats)) v.seats.forEach(i=>used.add(i)); else if(typeof v==='number') used.add(v); });
+    if(Array.isArray(v.seats)) v.seats.forEach(i=>used.add(i)); else if(typeof v==='number'&&state.fixed[k].type==='seat') used.add(v); });   // 숫자 답(요리사 수·예/아니오)은 자리가 아니다
   return used; }
 function directorState(){
   const seats=dirSeats(); if(!seats.length) return null;
@@ -8989,10 +8992,11 @@ function autoAnsRaw(c0, idx){
     if(memo&&memo.type==='duo'){ const mc=cm[memo.value.char];
       if(mc) return {type:'duo', value:memo.value,
         label:`${mc.e} ${mc.ko} (좌석 ${memo.value.seats.map(x=>x+1).join('·')} 중 하나)`, ambig:[]}; }
-    const t=dirPick(targets, o=>isInfoRole(o.c)?TILT_H.duoTargetInfo:0, null, '두 사람 중 하나 — 대상');
+    const ref=fixedSeatsOthers(idx);
+    /* 하수인 둘 이상(조사관) — 이미 다른 정보에 짚힌 하수인을 다시 보이면 새 의심이 없어 악에 유리, 안 짚힌 하수인을 드러내면 선에 유리(2026-10-01 햇살님 «이미 의심받는 쪽을 보여 주는 게 악에 유리») */
+    const t=dirPick(targets, o=>team==='minion'?(ref.has(o.i)?0:TILT_H.duoMinionFresh):(isInfoRole(o.c)?TILT_H.duoTargetInfo:0), null, '두 사람 중 하나 — 대상');
     const decoys=occAll().filter(o=>o.i!==t.i);
     if(!decoys.length) return null;
-    const ref=fixedSeatsOthers(idx);
     const d=dirPick(dirDecoyPool(decoys, c0.id+':'+idx), o=>team==='minion'?(realEvil(o.st2)?TILT_H.duoMinionDecoyEvil:TILT_H.duoMinionDecoyGood):(realEvil(o.st2)?TILT_H.duoGoodDecoyEvil:TILT_H.duoGoodDecoyGood), o=>ref.has(o.i)?0.5:0, '두 사람 중 하나');   // 좋은 직업을 알려 줄 때 나머지가 악이면 선이 악을 믿는다 · 하수인을 알려 줄 때 나머지도 악이면 선에 큰 도움
     const pair=[t.i,d.i].sort((a,b)=>a-b);
     const conv=isConv(t.st2)&&team==='minion';
