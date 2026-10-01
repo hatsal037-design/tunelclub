@@ -106,20 +106,35 @@ var NativeCore = (function () {
   /* ── 재량 슬라이드(2026-10-01 햇살님) — 코어가 후보 전체를 칸으로 묶어 두고(명령 안에서), 화면은 칸만 보고 고른다. 열거·묶기는 index.html 의 dirEnumerate·discStops ── */
   function discKey(card) { return (state.nights || 1) + '|' + card.stepKey; }
   function discOf(card) { return card ? (state.disc || {})[discKey(card)] || null : null; }
-  function discAnsOf(card) { return { answer: card.answer, ansBoard: card.ansBoard, trueAnswer: card.trueAnswer, falseReason: card.falseReason }; }
+  function discAnsOf(card) { return { answer: card.answer, ansBoard: card.ansBoard, trueAnswer: card.trueAnswer, falseReason: card.falseReason, grimoire: card.boardPieces ? card.grimoire : undefined }; }   // 거짓 판은 판 자체가 답
   /* 현재 카드의 재량표를 한 번 만든다 — 답이 있는 카드만. 이미 있으면 그대로(접었다 펴도·다시 열어도 같다) */
   function discPrepare() {
     var card = nightCard(); if (!card || card.dormant || !(card.answer != null || card.falseReason)) return;
     var key = discKey(card); state.disc = state.disc || {}; if (state.disc[key]) return;
-    var cur = current(), owner = cur.o.i, onlyFake = !!card.falseReason, auto = JSON.stringify(discAnsOf(card));
+    var cur = current(), owner = cur.o.i, onlyFake = !!card.falseReason;
     var E = dirEnumerate(function () { var c = nightCardRaw(); return c && (c.answer != null || c.falseReason) ? discAnsOf(c) : null; }, owner, onlyFake), cands = E.후보;
     var bad = !E.완료 ? '한도' : E.예외 ? '예외' : E.부작용 ? '부작용' : (cands.length < 2 ? '갈래 하나' : null);   // 하나라도 실패한 길이 있으면 띠 없음(코덱스 13:03)
     var stops = bad ? null : discStops(cands);
     if (!stops) { state.disc[key] = { 없음: true, 까닭: bad || '갈래 하나' }; return; }
-    /* 추천 = 자동 보정이 뽑아 둔 답이 든 칸 — 보정이 꺼져 있으면 추천 없음·가운데(칸은 늘 홀수) */
-    var rec = -1; if (tiltOn()) stops.forEach(function (st, k) { if (rec < 0 && st.뜻 !== '중간' && st.후보.some(function (i) { return JSON.stringify(cands[i].답) === auto; })) rec = k; });
-    if (rec >= 0) { var st0 = stops[rec], ai = st0.후보.filter(function (i) { return JSON.stringify(cands[i].답) === auto; })[0]; st0.첫 = ai; st0.후보 = [ai].concat(st0.후보.filter(function (i) { return i !== ai; })); }   // 추천 칸의 첫 후보 = 자동 답 — 추천으로 돌아오면 그 답(discPickIn 이 «첫»을 맨 앞에 둔다)
-    state.disc[key] = { 후보: cands.map(function (x) { return { 답: x.답, 점수: x.점수, 위험: x.위험, 메모: x.메모 }; }), 칸: stops, 추천: rec < 0 ? null : rec, 현재: rec < 0 ? (stops.length - 1) / 2 | 0 : rec, alt: 0, 잠김: false, 삭제: onlyFake ? 'fake' : 'all', 자동답: card.answer, 정책: 'disc-v1' };
+    /* 추천 — 칸을 먼저 고른다(2026-10-01 햇살님 A «가운데가 비등», 재량_칸쏠림_고찰.md).
+       후보 하나하나를 뽑으면 후보 많은 칸이 이긴다(실측: 비등한 판에서 추천 평균 −0.43, 절반 넘게 악 끝).
+       칸은 띠 위에 고르게 −1(악 끝)…+1(선 끝). 판세 기울기 T 가 목표 위치 — 두 칸 사이면 가까운 만큼의 확률로 둘 중 하나(판 열쇠 해시라 다시 물어도 같다).
+       그래서 추천 위치의 평균이 곧 T 다(±0.3 이 3칸 띠에서 늘 가운데로 붙던 것 — 첫 구현 실측에서 고침).
+       들통날 답(위험 1 이상 — 둘째 밤 취한 스파이의 직업 바꾸기)만 있는 칸은 자동에서 뺀다. 칸 안에선 위험 적은 답 중 판 열쇠 해시로 하나 */
+    var half = (stops.length - 1) / 2, pos = stops.map(function (st, k) { return (k - half) / half; });
+    var T = tiltOn() ? Math.max(-1, Math.min(1, tiltValue().T || 0)) : 0, minR = function (st) { return Math.min.apply(null, st.후보.map(function (i) { return cands[i].위험 || 0; })); };
+    var elig = stops.map(function (st, k) { return k; }).filter(function (k) { return minR(stops[k]) < 1; }); if (!elig.length) elig = stops.map(function (st, k) { return k; });
+    var lowK = elig.filter(function (k) { return pos[k] <= T + 1e-9; }).pop(), upK = elig.filter(function (k) { return pos[k] >= T - 1e-9; })[0], best;
+    if (lowK === undefined) best = upK; else if (upK === undefined || upK === lowK) best = lowK;
+    else best = (discHash(((state.log && state.log.uuid) || '') + '|' + key + '|칸') % 10000) / 10000 < (T - pos[lowK]) / (pos[upK] - pos[lowK]) ? upK : lowK;
+    var seedKey = ((state.log && state.log.uuid) || '') + '|' + key, sb = stops[best];
+    if (sb.뜻 !== '중간') { var m = minR(sb), low = sb.후보.filter(function (i) { return (cands[i].위험 || 0) === m; }); sb.첫 = low[discHash(seedKey) % low.length]; }
+    var D = state.disc[key] = { 후보: cands.map(function (x) { return { 답: x.답, 점수: x.점수, 위험: x.위험, 메모: x.메모 }; }), 칸: stops, 추천: tiltOn() ? best : null, 현재: best, alt: 0, 잠김: false, 삭제: onlyFake ? 'fake' : 'all', 자동답: null, 위치: pos.map(function (v) { return Math.round(v * 100) / 100; }), 목표: Math.round(T * 100) / 100, 정책: 'disc-v2' };
+    if (discApply(card, D)) { var c2 = nightCardRaw(); D.자동답 = c2 ? c2.answer : null;   // 추천 칸의 답을 바로 심는다 — 화면 첫 답 = 추천(보정이 꺼져도 가운데 칸 답)
+      /* 판세 분석 기록 — 후보마다 뽑던 «앱 선택»은 이 카드에선 버려졌다고 표시하고, 실제로 심은 추천을 한 줄로(분석은 버림 줄을 건너뛴다) */
+      if (state.log) { var N = state.nights || 1; state.log.events.forEach(function (e) { if (e.type === '앱 선택' && e.n === N && e.누구 === owner + 1 && !e.버림) e.버림 = '재량 추천'; });
+        var bs = (c2 && c2.ansBoard && c2.ansBoard.seats) || [];
+        logEvent('앱 선택', { 곳: '재량 추천', 누구: owner + 1, 고름: { 자리: bs.map(function (i) { return i + 1; }), 악: bs.filter(function (i) { return state.seats[i] && realEvil(state.seats[i]); }).length, 칸: best, 칸수: stops.length }, 후보: sb.후보.length, 확률: 1, 기울기: Math.round(T * 100) / 100, 위치: D.위치[best], 근거: 'disc-v2' }); } }
   }
   function discView(card) {
     var D = discOf(card); if (!D || D.없음) return null;
@@ -227,14 +242,18 @@ var NativeCore = (function () {
     if (!usable && R.act === 'auto' || !R.pick) {   // 자동 정보(스님·유모…) — 앱이 계산한 답. 대상을 안 고르는 정보 직업(요리사·공감능력자·장의사 = 아낙·삽살개 주인·이방)은 규칙 데이터 act 가 비어 있어도 autoAns 가 답을 낸다 — 2026-09-30 엔진 P1 지원표에서 카드에 숫자가 안 실리던 것 발견. 답이 없는 직업(스파이·부정한 여자…)은 autoAns 가 null 이라 그대로 빈 칸
       try { var au = autoAns(c, owner); if (!falsify(au, [])) { if (pickFalsified(owner).length && (au || R.act === 'auto')) answer = '거짓 정보를 주세요 (' + pickFalsified(owner).join('·') + ')'; else if (au) { answer = uiAnsText(au) || au.label || null; ansBoard = boardOf(au, []); } } } catch (e) {}
     }
+    /* 판을 보는 직업(세작·스파이·호방·과부)이 취했거나 중독됐으면 거짓 판(spyFakeBoard, 2026-10-01 스파이_취함_고찰 v2) — 진행자 좌석판은 늘 진짜 */
+    var seesBoard = isRoleAny(o.real || c, ['sejak', 'spy', 'hobang', 'widow']), spyFake = null;
+    if (seesBoard && !short) { var sw = pickFalsified(owner); if (sw.length) { try { spyFake = spyFakeBoard(owner); } catch (e) { spyFake = null; } if (spyFake && !falseReason) falseReason = sw.join('·'); } }
     return { phaseTitle: (state.nights || 1) === 1 ? '첫밤' : '밤 ' + state.nights, index: cur.k + 1, total: cur.list.length,
       seatNumber: owner + 1, name: s.name || ('좌석 ' + (owner + 1)), roleName: c.ko, teamName: TKO(c.team),
       instruction: short ? '고를 수 있는 사람이 모자라요 — 이번엔 넘어가요.' : doNow(a, cap, usable, resolved), pickCount: cap, minPick: minPick, targets: targets,
       primaryTitle: short ? '다음 차례' : usable && !resolved ? '대상 확정' : (usable ? '전달하고 재우기' : '다음 차례'),
       trueAnswer: trueAnswer, falseReason: falseReason,
       /* 세작·스파이·호방·과부 — 판 전체(모든 좌석의 정체·상태)를 건네 보여 주는 화면(웹 ansGrimoire). 그 직업 카드에만 싣는다 */
-      grimoire: isRoleAny(o.real || c, ['sejak', 'spy', 'hobang', 'widow']) ? seatsPublic('board').filter(function (p) { return p && p.charId; }).map(function (p) {
-        return { number: p.no, name: p.name || '', role: p.ko || '', evil: ['minion', 'demon', 'mafia'].indexOf(p.team) >= 0, dead: !!p.dead, tokens: (p.rem || []).map(String) }; }) : null,
+      grimoire: seesBoard ? seatsPublic('board').filter(function (p) { return p && p.charId; }).map(function (p) { var f = spyFake && spyFake.판[p.i], fc = f && CMAP()[f.id];
+        return { number: p.no, name: p.name || '', role: fc ? fc.ko : (p.ko || ''), evil: ['minion', 'demon', 'mafia'].indexOf(p.team) >= 0, dead: !!p.dead, tokens: (f ? f.tokens : (p.rem || [])).map(String) }; }) : null,
+      boardPieces: spyFake ? spyFake.조각 : null,   // 거짓 판에 얹은 조각(종류·무게·자리·바꾼 것) — 기록·복기용
       bluffs: isRoleAny(o.real || c, ['sejak', 'spy', 'hobang', 'widow']) ? (function () { try { return usesBluff() ? (state.bluffIds || []).map(function (id) { var x = CMAP()[id]; return x ? x.ko : id; }) : []; } catch (e) { return []; } })() : null,   // 판 공개 화면 가운데 블러프(2026-10-01)
       warns: (function () { var w = []; try { w = htmlLines(wzCardWarns(o)); } catch (e) {} if (s.dead) w.unshift('이 사람은 사망 상태 — 사후 능력이 아닐 땐 깨우지 말고 넘어가세요.'); return w; })(),
       actions: (function () { try { var fr = wz.pickRes && wz.pickRes.owner === owner ? wz.pickRes.html : '';   // «그래도 처리» — 무효·착호꾼으로 막힌 처리를 진행자 판단으로 밀고 나가기(웹 결과 줄의 단추)
@@ -571,7 +590,7 @@ var NativeCore = (function () {
     try { var bs = (card.ansBoard && card.ansBoard.seats) || [];
       logEvent('정보 전달', { 누구: card.seatNumber, 직업: card.roleName, 답: card.answer != null ? card.answer : (card.grimoire ? '진행자 판' : null), 판: card.grimoire || undefined, 자리: bs.map(function (i) { return i + 1; }), 직업들: (card.ansBoard && card.ansBoard.roles) || [],
         악: bs.filter(function (i) { return state.seats[i] && realEvil(state.seats[i]); }).length, 거짓: !!card.falseReason, 까닭: card.falseReason || null, 진짜: card.trueAnswer || null,
-        재량: discRecord(card), 편: (card.ansBoard && card.ansBoard.side) || null }); wz.noted[nk] = 1; return true; } catch (e) { return false; }
+        재량: discRecord(card), 편: (card.ansBoard && card.ansBoard.side) || null, 조각: card.boardPieces || undefined }); wz.noted[nk] = 1; return true; } catch (e) { return false; }   // 조각 — 다음 밤에도 취했으면 고정 조각을 여기서 이어받는다
   }
   var COMMANDS = {
     'preparation.experienceUnavailable': function (p) { if (experienceRecords[p.member] < EXPERIENCE_MIN) delete experienceRecords[p.member]; return null; },

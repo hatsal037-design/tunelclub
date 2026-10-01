@@ -8388,6 +8388,63 @@ function spyGuise(i){ const st=state.seats[i]; if(!isSpySeat(st)) return null; c
   const inPlay=new Set(state.seats.map(x=>x.char).filter(Boolean)), fk=new Set(Object.values(state.fakes||{}));
   const pool=CHARS().filter(x=>x.team==='town'&&!inPlay.has(x.id)&&!fk.has(x.id)); if(!pool.length) return null;
   const g=pool[Math.floor(Math.random()*pool.length)].id; fixedSet('spyGuise', i, g); return g; }
+/* 취하거나 중독된 스파이(판을 보는 직업)에게 보여 줄 거짓 판 (2026-10-01 햇살님 «원리적으로 스파이라는 직업의 특성을» → docs/게임이해_엔진/스파이_취함_고찰.md v2)
+   진짜 판에 거짓 «조각»을 얹는다. 조각마다 무게, 무게 합이 칸: 악 0 · 1~2 · 3~4 · 5~6 · 선 7+ — 재량 슬라이드가 그대로 펼친다.
+   조각 묶음만 dirPick 으로 고르고 자리는 판 열쇠 해시로 정한다(열거가 한도 600 안에 든다 — 묶음은 많아야 176).
+   안 건드리는 것: 악 자리·죽은 자리·블러프 직업, 한 자리를 두 조각이. 본인 몸의 중독·취함 표식은 늘 숨긴다(취한 걸 모른다).
+   무게 3(직업을 바꾸는) 조각은 첫밤 자동이거나 진행자가 칸을 직접 옮길 때만 — 둘째 밤부턴 외운 판과 달라 들통난다.
+   고정 조각(청어·취객·직업)은 이어 취한 밤에 어제 것을 그대로(«정보 전달» 기록의 조각에서 읽는다) */
+const SPY_PIECES={ 보호옮김:{w:1}, 보호심기:{w:1}, 중독숨김:{w:1}, 중독심기:{w:1}, 표식옮김:{w:1}, 청어옮김:{w:2,고정:1}, 취객바꿈:{w:2,고정:1}, 마을맞바꿈:{w:3,고정:1}, 외지인바꿈:{w:3,고정:1}, 직업바꿈:{w:3,고정:1} };
+function spyBucket(w){ return w<=0?0:w<=2?1:w<=4?2:w<=6?3:4; }
+function spyFakeBoard(owner){
+  const N=state.nights||1, memo=fixedGet('fake:spy', owner);   // 열쇠 fake:spy#자리 — 재량 열거·적용이 «fake:» 열쇠만 다룬다
+  if(memo&&memo.밤===N) return memo;
+  const cm=CMAP(), S=state.seats, bl=new Set(state.bluffIds||[]), inPlay=new Set(S.map(s=>s.char).filter(Boolean));
+  const isDrunk=id=>isRoleAny(cm[id], ['chwigaek', 'drunk', 'drunkard']);
+  const ok=i=>{ const st=S[i]; return i!==owner&&!!st&&!!st.char&&!st.dead&&!realEvil(st)&&fxSide(cm[st.char].team)==='good'; };   // 건드려도 되는 자리
+  const team=i=>cm[S[i].char].team;
+  const fresh=()=>S.map((st,i)=>({id:st.char||null, tokens:(st.rem||[]).filter(t=>i!==owner||!falsifyTokens({rem:[t]}).length)}));
+  const apply=(B, ops)=>ops.forEach(o=>{ const b=B[o.i]; if(!b) return; if(o.id) b.id=o.id; if(o.add&&!b.tokens.includes(o.add)) b.tokens.push(o.add); if(o.del) b.tokens=b.tokens.filter(t=>t!==o.del); });
+  const anyTok=cls=>{ for(const st of S) for(const t of (st.rem||[])) if(tokCls(t)===cls&&tokScope(t)==='seat') return t; return null; };
+  const seed=((state.log&&state.log.uuid)||'')+'|'+N+'|'+owner;
+  const pickOf=(arr, salt)=>arr.length?arr[discHash(seed+'|'+salt)%arr.length]:null;
+  /* 조각 하나를 판 B 위에 — 쓴 자리(claimed)는 피한다. 돌려주는 건 바꾼 내용(ops)과 건드린 자리 */
+  const make=(kind, B, claimed, salt)=>{
+    const free=i=>ok(i)&&!claimed.has(i), seats=S.map((_,i)=>i).filter(free);
+    const tokOn=(i,cls)=>B[i].tokens.find(t=>tokCls(t)===cls);
+    const move=cls=>{ const src=seats.filter(i=>tokOn(i,cls)), a=pickOf(src, salt+'a'); if(a===null) return null; const t=tokOn(a,cls);
+      const b=pickOf(seats.filter(i=>i!==a&&!tokOn(i,cls)), salt+'b'); return b===null?null:{ops:[{i:a,del:t},{i:b,add:t}], 자리:[a,b]}; };
+    if(kind==='보호옮김') return move('protect');
+    if(kind==='청어옮김') return move('appear');
+    if(kind==='보호심기'){ const t=anyTok('protect'), b=t&&pickOf(seats.filter(i=>!tokOn(i,'protect')), salt); return (b===null||b===undefined||!t)?null:{ops:[{i:b,add:t}], 자리:[b]}; }
+    if(kind==='중독숨김'){ const a=pickOf(seats.filter(i=>tokOn(i,'poison')), salt); return a===null?null:{ops:[{i:a,del:tokOn(a,'poison')}], 자리:[a]}; }
+    if(kind==='중독심기'){ const t=anyTok('poison'), b=t&&pickOf(seats.filter(i=>!tokOn(i,'poison')), salt); return (b===null||b===undefined||!t)?null:{ops:[{i:b,add:t}], 자리:[b]}; }
+    if(kind==='표식옮김'){ const keep=new Set(['취객 본체','믿는 직업']); const src=seats.filter(i=>B[i].tokens.some(t=>tokCls(t)==='identity'&&!keep.has(t))), a=pickOf(src, salt+'a'); if(a===null) return null;
+      const t=B[a].tokens.find(x=>tokCls(x)==='identity'&&!keep.has(x)), b=pickOf(seats.filter(i=>i!==a&&!B[i].tokens.includes(t)), salt+'b'); return b===null?null:{ops:[{i:a,del:t},{i:b,add:t}], 자리:[a,b]}; }
+    if(kind==='취객바꿈'){ const d=pickOf(seats.filter(i=>isDrunk(B[i].id)&&cm[(state.fakes||{})[i]]), salt+'a'); if(d===null) return null; const think=state.fakes[d];
+      const j=pickOf(seats.filter(i=>i!==d&&team(i)==='town'&&!isDrunk(B[i].id)&&B[i].id!==think), salt+'b'); return j===null?null:{ops:[{i:d,id:think},{i:j,id:B[d].id}], 자리:[d,j]}; }
+    if(kind==='마을맞바꿈'||kind==='외지인바꿈'){ const ta=kind==='마을맞바꿈'?'town':'outsider', pool=t=>seats.filter(i=>team(i)===t&&!isDrunk(B[i].id));
+      const a=pickOf(pool(ta), salt+'a'); if(a===null) return null; const b=pickOf(pool('town').filter(i=>i!==a), salt+'b'); return b===null?null:{ops:[{i:a,id:B[b].id},{i:b,id:B[a].id}], 자리:[a,b]}; }
+    if(kind==='직업바꿈'){ const a=pickOf(seats.filter(i=>!isDrunk(B[i].id)), salt+'a'); if(a===null) return null;
+      const r=pickOf(CHARS().filter(x=>x.team===team(a)&&!inPlay.has(x.id)&&!bl.has(x.id)&&!isDrunk(x.id)).map(x=>x.id), salt+'b'); return r?{ops:[{i:a,id:r}], 자리:[a]}:null; }
+    return null; };
+  /* 어제도 취했으면 고정 조각을 이어받는다 — 그 자리가 아직 건드려도 되는 자리일 때만 */
+  const prev=((state.log&&state.log.events)||[]).filter(e=>e.type==='정보 전달'&&e.누구===owner+1&&e.n===N-1&&Array.isArray(e.조각)).pop();
+  const base=fresh(), claimed=new Set(), kept=[];
+  (prev?prev.조각:[]).filter(p=>p.고정&&p.자리.every(ok)).forEach(p=>{ apply(base, p.ops); p.자리.forEach(i=>claimed.add(i)); kept.push(p); });
+  const keptW=kept.reduce((a,p)=>a+p.무게,0), kinds=Object.keys(SPY_PIECES).filter(k=>!kept.some(p=>p.종류===k));
+  const sets=[[]]; kinds.forEach((k,i)=>{ sets.push([k]); kinds.slice(i+1).forEach((k2,j)=>{ sets.push([k,k2]); kinds.slice(i+j+2).forEach(k3=>sets.push([k,k2,k3])); }); });
+  let cands=[];
+  sets.forEach(set=>{ const B=JSON.parse(JSON.stringify(base)), cl=new Set(claimed), ps=[];
+    for(const k of set){ const r=make(k, B, cl, set.join('+')+'|'+k); if(!r) return; apply(B, r.ops); r.자리.forEach(i=>cl.add(i)); ps.push({종류:k, 무게:SPY_PIECES[k].w, 고정:!!SPY_PIECES[k].고정, ops:r.ops, 자리:r.자리}); }
+    const w=keptW+ps.reduce((a,p)=>a+p.무게,0), heavy=ps.filter(p=>p.무게>=3).length;
+    cands.push({조각:kept.concat(ps), 무게:w, 판:B, heavy}); });
+  if(!_dirCap&&N>1) cands=cands.filter(c=>!c.heavy);   // 둘째 밤부터 자동은 직업을 안 바꾼다 — 진행자가 칸을 옮기면(열거엔 다 있다) 고를 수 있다
+  /* 칸(무게 구간)을 먼저, 그 안에서 묶음을 — 한 번에 뽑으면 조합이 많은 무거운 칸이 머릿수로 이긴다(시험에서 첫밤 추천이 늘 «선») */
+  const bks=[...new Set(cands.map(x=>spyBucket(x.무게)))].sort((a,b)=>a-b);
+  const bk=dirPick(bks, x=>x, null, '취한 스파이 판');
+  const pick=dirPick(cands.filter(x=>spyBucket(x.무게)===bk), null, x=>(N>1?x.heavy:0)+x.조각.length*0.01, null);
+  const v={밤:N, 조각:pick.조각, 판:pick.판, 무게:pick.무게}; fixedSet('fake:spy', owner, v); return v; }
 function ansFixedTown(c){ return !!c && (isRole(c,'eoduksini')||isRole(c,'eodukssini')||isRole(c,'spy')||isRole(c,'sejak')); }
 /* 진행자가 손으로 붙인 표식은 자동 판정을 이긴다 — 지금까지 st.rem 을 아무도 안 읽었다 (2026-08-25) */
 function ansRemView(st){ const r=st.rem||[];   // 좌석에 붙은 «…로 보임» 표식이 조사 답을 정한다 — 악으로 보임이 먼저 (S3: 속성으로)
@@ -8618,6 +8675,8 @@ const isEvilTeam=c=>!!c&&['minion','demon','mafia'].includes(c.team);
 const isInfoRole=c=>{ if(!c||c.team!=='town') return false; const R=fxRule(c)||{}; return /info|auto/.test(R.act||''); };   // 정보 직업 — 확인되면 선에 큰 도움, 의심받으면 악에 도움
 Object.assign(TILT_H, {
   duoTargetInfo: 0.3,      // 두 사람 중 하나 — 진짜 대상이 정보 직업이면 그 사람이 확인된다
+  duoTargetDrunk: 0.3,     // 사서 — 진짜 대상이 주정뱅이(취객)면 마을이 «누군가의 정보가 틀렸다»를 안다(2026-10-01 칸 늘리기)
+  duoDecoyInfo: -0.2,      // 사서·조사관 — 선한 들러리가 정보 직업이면 그 정보까지 의심받는다(trioGoodInfo 와 같은 원리)
   duoMinionFresh: 0.4,     // 조사관 — 아직 어떤 정보에도 안 짚힌 하수인을 드러내면 선에 도움(짚힌 하수인을 다시 보이면 0)
   trioGoodInfo: -0.3,      // 세 사람 중 악 — 섞인 선이 정보 직업이면 애먼 의심(한 명마다)
   childInfo: 0.3,          // 첫밤 아이가 정보 직업 — 확인된 선
@@ -8994,10 +9053,10 @@ function autoAnsRaw(c0, idx){
         label:`${mc.e} ${mc.ko} (좌석 ${memo.value.seats.map(x=>x+1).join('·')} 중 하나)`, ambig:[]}; }
     const ref=fixedSeatsOthers(idx);
     /* 하수인 둘 이상(조사관) — 이미 다른 정보에 짚힌 하수인을 다시 보이면 새 의심이 없어 악에 유리, 안 짚힌 하수인을 드러내면 선에 유리(2026-10-01 햇살님 «이미 의심받는 쪽을 보여 주는 게 악에 유리») */
-    const t=dirPick(targets, o=>team==='minion'?(ref.has(o.i)?0:TILT_H.duoMinionFresh):(isInfoRole(o.c)?TILT_H.duoTargetInfo:0), null, '두 사람 중 하나 — 대상');
+    const t=dirPick(targets, o=>team==='minion'?(ref.has(o.i)?0:TILT_H.duoMinionFresh):team==='outsider'?(isRoleAny(o.c, ['chwigaek', 'drunk', 'drunkard'])?TILT_H.duoTargetDrunk:0):(isInfoRole(o.c)?TILT_H.duoTargetInfo:0), null, '두 사람 중 하나 — 대상');
     const decoys=occAll().filter(o=>o.i!==t.i);
     if(!decoys.length) return null;
-    const d=dirPick(dirDecoyPool(decoys, c0.id+':'+idx), o=>team==='minion'?(realEvil(o.st2)?TILT_H.duoMinionDecoyEvil:TILT_H.duoMinionDecoyGood):(realEvil(o.st2)?TILT_H.duoGoodDecoyEvil:TILT_H.duoGoodDecoyGood), o=>ref.has(o.i)?0.5:0, '두 사람 중 하나');   // 좋은 직업을 알려 줄 때 나머지가 악이면 선이 악을 믿는다 · 하수인을 알려 줄 때 나머지도 악이면 선에 큰 도움
+    const d=dirPick(dirDecoyPool(decoys, c0.id+':'+idx), o=>(team==='minion'?(realEvil(o.st2)?TILT_H.duoMinionDecoyEvil:TILT_H.duoMinionDecoyGood):(realEvil(o.st2)?TILT_H.duoGoodDecoyEvil:TILT_H.duoGoodDecoyGood))+(team!=='town'&&!realEvil(o.st2)&&isInfoRole(o.c)?TILT_H.duoDecoyInfo:0), o=>ref.has(o.i)?0.5:0, '두 사람 중 하나');   // 좋은 직업을 알려 줄 때 나머지가 악이면 선이 악을 믿는다 · 하수인을 알려 줄 때 나머지도 악이면 선에 큰 도움
     const pair=[t.i,d.i].sort((a,b)=>a-b);
     const conv=isConv(t.st2)&&team==='minion';
     const val=conv?{seats:pair, head:`이 두 사람 중 하나가 ${TKO('minion')}(창귀·전향자)예요`}:{seats:pair, char:t.c.id, head:'이 두 사람 중 하나가 이 직업이에요'};
