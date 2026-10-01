@@ -101,6 +101,42 @@ var NativeCore = (function () {
 
   /* 깨우지 않는 밤 — 옛 웹(index.html 6710·6983행)의 거름을 폰 카드에도(2026-10-01 엔진 P1 에서 발견):
      죽은 뒤에만 쓰는 능력(봉사·까마귀지기)은 그 밤에 죽었을 때만, 몸주(주홍여인)는 흉수를 이어받을 때만(그땐 흉수 카드로 뜬다) */
+  /* ── 재량 슬라이드(2026-10-01 햇살님) — 코어가 후보 전체를 칸으로 묶어 두고(명령 안에서), 화면은 칸만 보고 고른다. 열거·묶기는 index.html 의 dirEnumerate·discStops ── */
+  function discKey(card) { return (state.nights || 1) + '|' + card.stepKey; }
+  function discOf(card) { return card ? (state.disc || {})[discKey(card)] || null : null; }
+  function discAnsOf(card) { return { answer: card.answer, ansBoard: card.ansBoard, trueAnswer: card.trueAnswer, falseReason: card.falseReason }; }
+  /* 현재 카드의 재량표를 한 번 만든다 — 답이 있는 카드만. 이미 있으면 그대로(접었다 펴도·다시 열어도 같다) */
+  function discPrepare() {
+    var card = nightCard(); if (!card || card.dormant || !(card.answer != null || card.falseReason)) return;
+    var key = discKey(card); state.disc = state.disc || {}; if (state.disc[key]) return;
+    var cur = current(), owner = cur.o.i, onlyFake = !!card.falseReason, auto = JSON.stringify(discAnsOf(card));
+    var E = dirEnumerate(function () { var c = nightCardRaw(); return c && (c.answer != null || c.falseReason) ? discAnsOf(c) : null; }, owner, onlyFake), cands = E.후보;
+    var bad = !E.완료 ? '한도' : E.예외 ? '예외' : E.부작용 ? '부작용' : (cands.length < 2 ? '갈래 하나' : null);   // 하나라도 실패한 길이 있으면 띠 없음(코덱스 13:03)
+    var stops = bad ? null : discStops(cands);
+    if (!stops) { state.disc[key] = { 없음: true, 까닭: bad || '갈래 하나' }; return; }
+    /* 추천 = 자동 보정이 뽑아 둔 답이 든 칸 — 보정이 꺼져 있으면 추천 없음·가운데(칸은 늘 홀수) */
+    var rec = -1; if (tiltOn()) stops.forEach(function (st, k) { if (rec < 0 && st.뜻 !== '중간' && st.후보.some(function (i) { return JSON.stringify(cands[i].답) === auto; })) rec = k; });
+    if (rec >= 0) { var st0 = stops[rec], ai = st0.후보.filter(function (i) { return JSON.stringify(cands[i].답) === auto; })[0]; st0.후보 = [ai].concat(st0.후보.filter(function (i) { return i !== ai; })); }   // 추천 칸의 첫 후보 = 자동 답 — 추천으로 돌아오면 그 답
+    state.disc[key] = { 후보: cands.map(function (x) { return { 답: x.답, 점수: x.점수, 메모: x.메모 }; }), 칸: stops, 추천: rec < 0 ? null : rec, 현재: rec < 0 ? (stops.length - 1) / 2 | 0 : rec, alt: 0, 잠김: false, 삭제: onlyFake ? 'fake' : 'all', 자동답: card.answer, 정책: 'disc-v1' };
+  }
+  function discView(card) {
+    var D = discOf(card); if (!D || D.없음) return null;
+    return { 칸수: D.칸.length, 칸: D.칸.map(function (st) { return { 뜻: st.뜻, 후보수: st.후보.length }; }), 추천: D.추천, 현재: D.현재, 잠김: !!D.잠김, 다른답: !D.잠김 && D.칸[D.현재].후보.length > 1 };
+  }
+  /* 고른 칸의 후보를 그 카드의 답으로 — state.fixed 에 열거 때 적힌 메모를 그대로 심는다(그 뒤 nightCard 가 그 답을 보인다) */
+  function discApply(card, D) {
+    var cur = current(), owner = cur.o.i, pick = discPickIn(D, D.현재, D.alt, ((state.log && state.log.uuid) || '') + '|' + discKey(card)); if (!pick) return false;
+    state.fixed = state.fixed || {};
+    Object.keys(state.fixed).forEach(function (k) { if (+k.split('#').pop() !== owner) return; if (D.삭제 === 'fake' && k.indexOf('fake:') !== 0) return; delete state.fixed[k]; });
+    Object.keys(pick.메모).forEach(function (k) { state.fixed[k] = pick.메모[k]; });
+    return true;
+  }
+  /* 확정 기록 — «정보 전달»에 붙는다. 추천 그대로면 auto, 중간 칸이면 중간, 옮겼으면 manual, 직접 고른 답이면 직접 */
+  function discRecord(card, how) {
+    var D = discOf(card); if (!D || D.없음) return undefined; D.잠김 = true;
+    var st = D.칸[D.현재], why = how || ((D.현재 === D.추천 && !D.alt) ? 'auto' : (st.뜻 === '중간' ? '중간' : 'manual'));
+    return { 칸수: D.칸.length, 칸뜻: D.칸.map(function (x) { return x.뜻; }), 추천칸: D.추천, 고른칸: D.현재, 다른답: D.alt || 0, 근거: why, 자동답: D.자동답, 정책: D.정책 };
+  }
   function nightCard() {
     var card = nightCardRaw(); if (!card) return card;
     try {
@@ -113,6 +149,7 @@ var NativeCore = (function () {
         card.trueAnswer = null; card.falseReason = null; card.mustShow = false; card.primaryTitle = '다음 차례'; card.dormant = true;
       }
     } catch (e) {}
+    try { card.discretion = card.dormant ? null : discView(card); } catch (e) { card.discretion = null; }
     return card;
   }
   function nightCardRaw() {
@@ -501,6 +538,15 @@ var NativeCore = (function () {
   function clearAsk() { return { status: 'needsConfirmation', token: 'clearRoles', revision: revision, reasonCode: 'rolesAssigned', choices: ['역할을 이미 나눴어요. 바꾸면 역할을 다시 나눠요 — 사람·자리는 그대로예요.'] }; }
   function guardSetup() { return inGame() ? rejected('notAllowedInPhase', '첫밤이 시작된 뒤에는 자리를 바꿀 수 없어요.') : null; }
 
+  /* 참가자에게 보여 준 답을 «정보 전달»로 — 한 카드(밤|차례)에 한 번만. 덮개를 닫을 때(night.markShown)·전달하고 재울 때(advance) 둘 다 여기로 와서 겹치지 않는다(코덱스 13:03: 이전 차례 → 다시 전달이 두 번 적히던 것) */
+  function logDelivery(card) {
+    var nk = (state.nights || 1) + '|' + card.stepKey; wz.noted = wz.noted || {}; if (wz.noted[nk]) return false;
+    if (!(card.answer != null || card.falseReason || card.grimoire)) return false;
+    try { var bs = (card.ansBoard && card.ansBoard.seats) || [];
+      logEvent('정보 전달', { 누구: card.seatNumber, 직업: card.roleName, 답: card.answer != null ? card.answer : (card.grimoire ? '진행자 판' : null), 판: card.grimoire || undefined, 자리: bs.map(function (i) { return i + 1; }), 직업들: (card.ansBoard && card.ansBoard.roles) || [],
+        악: bs.filter(function (i) { return state.seats[i] && realEvil(state.seats[i]); }).length, 거짓: !!card.falseReason, 까닭: card.falseReason || null, 진짜: card.trueAnswer || null,
+        재량: discRecord(card), 편: (card.ansBoard && card.ansBoard.side) || null }); wz.noted[nk] = 1; return true; } catch (e) { return false; }
+  }
   var COMMANDS = {
     'preparation.experienceUnavailable': function (p) { if (experienceRecords[p.member] < EXPERIENCE_MIN) delete experienceRecords[p.member]; return null; },
     /* 친구가 아니라 전적은 못 보고 «20판 이상인가»만 받은 경우(서버 member_experienced, 2026-09-30 «예/아니오만 열기») — 예면 잠금, 아니오면 수동 */
@@ -772,18 +818,32 @@ var NativeCore = (function () {
       var card = nightCard(); if (!card) return rejected('notAllowedInPhase', '깨울 차례가 없어요.');
       var seats = (p.seats || []).map(function (n) { return +n - 1; }).filter(function (i) { return state.seats[i] && state.seats[i].char; });
       logEvent('정보 전달', { 누구: card.seatNumber, 직업: card.roleName, 답: String(p.text || ''), 자리: seats.map(function (i) { return i + 1; }), 직업들: p.role ? [String(p.role)] : [],
-        악: seats.filter(function (i) { return realEvil(state.seats[i]); }).length, 거짓: !!card.falseReason, 까닭: card.falseReason || null, 진짜: card.trueAnswer || null, 진행자: true, 앱답: card.answer || null,
+        악: seats.filter(function (i) { return realEvil(state.seats[i]); }).length, 거짓: !!card.falseReason, 까닭: card.falseReason || null, 진짜: card.trueAnswer || null, 재량: discRecord(card, '직접'), 진행자: true, 앱답: card.answer || null,
         편: (function () { var t = String(p.text || ''); if (p.role) { var c = CHARS().find(function (x) { return x.ko === String(p.role); }); return c ? (((FIXED.TEAM || {})[c.team] || {}).side || null) : null; } return /흉수|악/.test(t) ? 'evil' : (/선/.test(t) ? 'good' : null); })() });
       wz.noted = wz.noted || {}; wz.noted[(state.nights || 1) + '|' + card.stepKey] = 1; save(); return null;
+    },
+    /* 재량 슬라이드 — 칸을 옮기거나(칸) 같은 칸에서 다른 답(다른답). 미리보기만 바뀌고 기록은 없다. 확정은 전달(«정보 전달») 때 */
+    'night.setDiscretion': function (p) {
+      var card = nightCard(); if (!card) return rejected('notAllowedInPhase', '깨울 차례가 없어요.');
+      var D = discOf(card); if (!D || D.없음) return rejected('invalidSelection', '이 카드엔 고를 재량이 없어요.');
+      if (D.잠김) return rejected('notAllowedInPhase', '이미 보여 준 답이에요.');
+      if (p.잠금) return COMMANDS['night.markShown']({});   // 옛 이름 — 공개 완료와 같다
+      if (p.칸 !== undefined && p.칸 !== null) { var k = +p.칸; if (!(k >= 0 && k < D.칸.length)) return rejected('invalidSelection', '없는 칸이에요.'); if (k !== D.현재) { D.현재 = k; D.alt = 0; } }
+      if (p.다른답) D.alt = (D.alt || 0) + 1;
+      if (!discApply(card, D)) return rejected('coreFailure', '후보를 못 찾았어요.');
+      save(); return null;
+    },
+    /* 공개 완료 — 참가자에게 답을 보여 준 순간: 전달 기록(답 스냅샷·재량)과 재량 잠금을 함께 저장한다. 앱이 꺼져도 기록이 남고, advance 는 같은 기록을 다시 적지 않는다 */
+    'night.markShown': function () {
+      var card = nightCard(); if (!card) return rejected('notAllowedInPhase', '깨울 차례가 없어요.');
+      var D = discOf(card); if (D && !D.없음) D.잠김 = true;
+      logDelivery(card); save(); return null;
     },
     'night.advance': function (p) {   // 대상이 없는 카드만(또는 skip). 대상이 있는 카드는 night.commitTargets 가 이어져야 한다
       var card = nightCard(); if (!card) return rejected('notAllowedInPhase', '깨울 차례가 없어요.');
       if (card.needsTargetsFirst && !p.skip) return rejected('invalidSelection', '먼저 대상을 확정해 주세요.');   // skip — 고르지 않고 재움(웹 «재웠음 · 다음»: 안 쓰겠다는 사람·쓸 수 없는 밤)
       /* 참가자에게 보여 준 답 — «정보 전달» 한 줄(판세 분석: 짚인 사람이 이후 지명·표·처형·밤 사망에 오르나를 잇는다, 2026-09-30). 진행자가 직접 고른 답을 이미 적었으면 앱 답은 안 적는다 */
-      if (!p.skip && (card.answer != null || card.falseReason || card.grimoire) && !((wz.noted || {})[(state.nights || 1) + '|' + card.stepKey])) { try { var bs = (card.ansBoard && card.ansBoard.seats) || [];
-        logEvent('정보 전달', { 누구: card.seatNumber, 직업: card.roleName, 답: card.answer != null ? card.answer : (card.grimoire ? '진행자 판' : null), 판: card.grimoire || undefined, 자리: bs.map(function (i) { return i + 1; }), 직업들: (card.ansBoard && card.ansBoard.roles) || [],
-          악: bs.filter(function (i) { return state.seats[i] && realEvil(state.seats[i]); }).length, 거짓: !!card.falseReason, 까닭: card.falseReason || null, 진짜: card.trueAnswer || null,
-          편: (card.ansBoard && card.ansBoard.side) || null }); } catch (e) {} }   // 편 — 그 답이 짚은 사람을 어느 편으로 말하나(악: «이 사람이 악» / 선: «둘 중 하나가 마을 직업») — 분석의 «악으로 짚힘 / 선으로 짚힘»
+      if (!p.skip) logDelivery(card);   // 전달 기록(한 번만) — 덮개를 닫을 때 이미 적었으면 건너뛴다
       wz.pickRes = null; wzMarkNext(state.nights || 1, isNaN(+card.stepKey) ? card.stepKey : +card.stepKey); save(); return null;
     },
   };
@@ -808,7 +868,7 @@ var NativeCore = (function () {
       if (!r && dk0 !== null) { try { follow(dk0); } catch (e) {} }
       /* 현재 밤 카드를 명령 안에서 한 번 계산 — 중독·취함 거짓 답 같은 앱 재량이 state.fixed 에 적혀 저장된다.
          안 그러면 첫 «조회»가 판을 바꾸고 난수를 쓴다(2026-10-01 엔진 대량 검사 «조회 불변» 20건) */
-      if (!r) { try { if (state.phase !== 'day' && current()) nightCard(); } catch (e) {} }
+      if (!r) { try { if (state.phase !== 'day' && current()) { nightCard(); discPrepare(); } } catch (e) {} }   // 재량표도 명령 안에서 — 조회는 읽기만
       if (!r) { try { if (cmd.type !== 'game.autoClose' && cmd.type !== 'sync.markUploaded' && cmd.type !== 'sync.merge') state.touchedAt = new Date().toISOString(); wzPersist(); save(); } catch (e) {} revision += 1; r = { status: 'ok', commandId: cmd.commandId, revision: revision, effects: effects.map(function (e, i) { return Object.assign({ effectId: cmd.commandId + ':' + i }, e); }) }; }   // 진행 위치(wz)도 판과 함께 저장 — 다시 켜면 보던 카드로(03 수용 08)
       var out = J(r); if (r.status === 'ok') replies[cmd.commandId] = out; return out;
     },

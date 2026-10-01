@@ -110,7 +110,7 @@ export function GameFlow({ close, toRoles, toPrep }) {
   <${Sheet} open=${!!aux} onClose=${() => setAux(null)}>${aux === 'seats' ? html`<${SeatSheet} close=${() => setAux(null)} />`
     : aux === 'process' ? html`<${ProcessSheet} close=${() => setAux(null)} discarded=${toRoles} />` : aux === 'reference' ? html`<${ReferenceSheet} close=${() => setAux(null)} />` : null}<//>
   <${Cover} open=${bluff}>${bluff && html`<${AnswerReveal} name="흉수" answer=${((st && st.bluffs) || []).join(', ')} bluff=${(st && st.bluffs) || []} done=${() => setBluff(false)} />`}<//>
-  <${Cover} open=${revealing}>${revealing && card && html`<${AnswerReveal} name=${card.name} answer=${card.answer || ''} board=${card.ansBoard} done=${() => { setAnswerSeen(cardKey); setRevealing(false); }} />`}<//>
+  <${Cover} open=${revealing}>${revealing && card && html`<${AnswerReveal} name=${card.name} answer=${card.answer || ''} board=${card.ansBoard} done=${async () => { const r = await R.run('night.markShown', {}); if (r.rejected && r.code !== 'notAllowedInPhase') return; setAnswerSeen(cardKey); setRevealing(false); }} />`}<//>
   <${Sheet} open=${finishing} detent="medium" onClose=${() => setFinishing(false)}>${finishing && html`<${FinishSheet} close=${() => setFinishing(false)} done=${w => run('game.finish', { winner: w })} />`}<//>
   <${ActionSheet} open=${!!confirm} title=${confirm && confirm.text} onClose=${() => setConfirm(null)} actions=${!confirm ? [] : confirm.token === 'shield'
     ? [{ label: '그래도 사망 처리', role: 'destructive', onClick: () => run(confirm.type, { ...confirm.payload, ok_shield: true }) }, { label: '살아남음으로 기록', onClick: () => run(confirm.type, { ...confirm.payload, decline_shield: true }) }]
@@ -169,12 +169,15 @@ function NightCardView({ card, draft, setDraft, pick, skip, shown, reveal, setSh
         ${card.chosen.length > 0 && html`<div class="row"><${Labeled} label="대상" value=${chosen.join(', ')} /></div>`}
         ${card.falseReason ? html`
           <div class="row orange" style="font-size:15px"><${Icon} name="theater" size=${20} />거짓 답을 줘요 · ${card.falseReason}</div>
-          ${card.answer ? html`<div class="row"><${Labeled} label="보여줄 답" value=${card.answer} strong /></div><${Row} tint onClick=${reveal}>답 보여주기<//>`
+          ${card.discretion && html`<${DiscretionBand} card=${card} />`}
+          ${card.answer ? html`<div class="row"><${Labeled} label="보여줄 답" value=${card.answer} strong /></div>${card.discretion && !card.discretion.잠김 && html`<${Row} tint disabled=${!card.discretion.다른답} onClick=${() => R.run('night.setDiscretion', { 다른답: true })}>다른 답<//>`}<${Row} tint onClick=${reveal}>답 보여주기<//>`
             : html`<div class="row sub">그럴듯한 거짓을 직접 정해 주세요.</div>`}
           ${card.trueAnswer && html`<${Disclosure} label="진짜 답">${card.trueAnswer}<//>`}
           <${Row} tint onClick=${() => setComposing(true)}>답 직접 고르기<//>`
         : html`
+          ${card.discretion && html`<${DiscretionBand} card=${card} />`}
           ${card.answer && html`<div class="row"><${Labeled} label="답" value=${card.answer} strong /></div>`}
+          ${card.discretion && !card.discretion.잠김 && html`<${Row} tint disabled=${!card.discretion.다른답} onClick=${() => R.run('night.setDiscretion', { 다른답: true })}>다른 답<//>`}
           ${card.result && html`<div class="row sub" style="white-space:pre-line">${card.result}</div>`}
           ${(card.answer || card.ansBoard) && html`<${Row} tint onClick=${reveal}>답 보여주기<//>`}
           <${Row} tint onClick=${() => setComposing(true)}>답 직접 고르기<//>`}
@@ -194,6 +197,29 @@ function NightCardView({ card, draft, setDraft, pick, skip, shown, reveal, setSh
     <${Cover} open=${grimShow}>${grimShow && html`<${AnswerReveal} name=${card.name} answer="판 전체" rows=${card.grimoire} done=${() => { setGrimShow(false); setShown(true); }} />`}<//>
     <${Sheet} open=${composing} onClose=${() => setComposing(false)}>${composing && html`<${AnswerComposer} close=${() => setComposing(false)} show=${(t, d) => { setManual(t); store.dispatch('night.noteAnswer', { text: t, ...(d || {}) }); }} />`}<//>
     <${Cover} open=${manual !== null}>${manual !== null && html`<${AnswerReveal} name=${card.name} answer=${manual} done=${() => { setManual(null); setShown(true); }} />`}<//>
+    ${R.alert}
+  </div>`;
+}
+/** 재량 슬라이드(2026-10-01 햇살님 확정 시안 26차) — 코어가 묶어 둔 칸(card.discretion)만 보고 고른다. 미리보기만 바뀌고 기록은 전달 때 */
+function DiscretionBand({ card }) {
+  const R = useRun(), D = card.discretion, n = D.칸수, track = useRef(null);
+  const set = k => { if (!D.잠김 && k !== D.현재) R.run('night.setDiscretion', { 칸: k }); };
+  const stopAt = x => { const r = track.current.getBoundingClientRect(), p = (x - r.left - 19.5) / Math.max(r.width - 39, 1); return Math.max(0, Math.min(n - 1, Math.round(p * (n - 1)))); };
+  const left = k => `calc(19.5px + (100% - 39px) * ${n > 1 ? k / (n - 1) : .5})`;
+  const cur = D.칸[D.현재], hint = D.잠김 ? '보여 준 답으로 확정됨' : [D.현재 === D.추천 ? '추천 칸' : '', cur.뜻 === '중간' ? '중간 — 양옆 두 안 중 하나' : ''].filter(Boolean).join(' · ');
+  return html`<div class=${'disc' + (D.잠김 ? ' locked' : '')} role="group" aria-label="답의 방향">
+    <div class="ends"><span class="e">악</span><span class="g">선</span></div>
+    <div class="track" ref=${track} role="slider" tabindex="0" aria-valuemin="1" aria-valuemax=${n} aria-valuenow=${D.현재 + 1} aria-disabled=${D.잠김}
+      aria-valuetext=${`악에서 선까지 ${n}칸 중 ${D.현재 + 1}번째${D.현재 === D.추천 ? ' · 추천' : ''}${cur.뜻 === '중간' ? ' · 중간' : ''}${D.잠김 ? ' · 확정됨' : ''}`}
+      onPointerDown=${e => { if (D.잠김) return; e.currentTarget.setPointerCapture(e.pointerId); e.currentTarget.dataset.drag = '1'; set(stopAt(e.clientX)); }}
+      onPointerMove=${e => { if (!e.currentTarget.dataset.drag) return; const k = stopAt(e.clientX); if (k !== D.현재) set(k); }}
+      onPointerUp=${e => { delete e.currentTarget.dataset.drag; }}
+      onKeyDown=${e => { if (e.key === 'ArrowLeft') set(Math.max(0, D.현재 - 1)); if (e.key === 'ArrowRight') set(Math.min(n - 1, D.현재 + 1)); }}>
+      <div class="line"></div>
+      <div class="stops">${D.칸.map((st, k) => html`<button class=${'stop' + (k === D.추천 ? ' rec' : '') + (st.뜻 === '중간' ? ' mid' : '')} disabled=${D.잠김} aria-label=${`${k + 1}번째 칸${st.뜻 === '중간' ? ' · 중간' : ''}`} onClick=${() => set(k)}><i></i></button>`)}</div>
+      <div class="thumb" style=${`left:${left(D.현재)}`}></div>
+    </div>
+    <div class="hint">${hint}</div>
     ${R.alert}
   </div>`;
 }
@@ -258,7 +284,7 @@ function TargetPicker({ card, confirmed, close, done, commit, markShown }) {
         ${(c.answer || c.ansBoard) && html`<${Row} tint onClick=${() => setRevealing(true)}><${Icon} name="eye" size=${20} />답 보여주기<//>`}
         <${Row} tint onClick=${() => setComposing(true)}><${Icon} name="compose" size=${20} />답 직접 고르기<//>
       <//>
-      <${Cover} open=${revealing}>${revealing && html`<${AnswerReveal} name=${c.name} answer=${c.answer || ''} board=${c.ansBoard} done=${() => { setRevealing(false); markShown(); close(); }} />`}<//>
+      <${Cover} open=${revealing}>${revealing && html`<${AnswerReveal} name=${c.name} answer=${c.answer || ''} board=${c.ansBoard} done=${async () => { const r = await store.dispatch('night.markShown', {}); if (r.rejected && r.code !== 'notAllowedInPhase') return; setRevealing(false); markShown(); close(); }} />`}<//>
       <${Sheet} open=${composing} onClose=${() => setComposing(false)}>${composing && html`<${AnswerComposer} close=${() => setComposing(false)} show=${(t, d) => { setManual(t); store.dispatch('night.noteAnswer', { text: t, ...(d || {}) }); }} />`}<//>
       <${Cover} open=${manual !== null}>${manual !== null && html`<${AnswerReveal} name=${c.name} answer=${manual} done=${() => { setManual(null); markShown(); close(); }} />`}<//>
     <//>`;

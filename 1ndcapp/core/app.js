@@ -8714,6 +8714,9 @@ function dirProbs(list, hOf, rOf, T){
   z=sum(p); return p.map(x=>x/z); }
 function dirPickT(list, hOf, rOf, where, T, why){
   if(!list||!list.length) return undefined;
+  if(_dirCap){ const lv=_dirCap.cursor++, k=_dirCap.plan[lv]===undefined?0:_dirCap.plan[lv]; if(_dirCap.plan[lv]===undefined) _dirCap.plan[lv]=0;
+    _dirCap.lists[lv]={n:list.length, where:where||null}; const x=list[Math.min(k, list.length-1)];
+    _dirCap.score+=(hOf?hOf(x):0)-(rOf?(TILT.L/TILT.K)*rOf(x):0); return x; }   // 재량표 열거 중 — 뽑지 않고 계획대로 하나를 돌려주며 점수를 쌓는다
   if(list.length===1){ if(where) pickLog(list, [1], 0, where, T, why); return list[0]; }
   const tv={why:why||''};
   const p=dirProbs(list, hOf, rOf, T);
@@ -8723,6 +8726,52 @@ function dirPickT(list, hOf, rOf, where, T, why){
     if(!state.director.logged[lk]){ state.director.logged[lk]=1; logEvent('판세 개입', {곳:where, 기울기:Math.round(T*100)/100, 근거:tv.why}); } }catch(e){} }
   return list[k];
 }
+/* ── 재량표 (2026-10-01 햇살님 «재량 슬라이드») ────────────────────────────
+   재량 지점의 뽑기 코드는 그대로 두고, «잡기» 모드로 같은 코드를 여러 번 돌려 후보 전체를 펼친다.
+   한 번 돌릴 때 dirPickT 가 불릴 때마다 계획(plan)의 번호를 돌려주고, 계획을 하나씩 늘려 가며 모든 조합을 본다.
+   판은 샌드박스(실행 전 상태로 되돌림), 난수는 고정 — 열거가 판·난수를 바꾸지 않는다. 구조 docs/게임이해_엔진/재량슬라이드_구조_v1.md */
+let _dirCap=null;
+function dirEnumerate(run, owner, onlyFake){
+  const S=JSON.stringify(state), R0=Math.random, out=[], seen=new Set(), LIMIT=(typeof globalThis.DISC_LIMIT==='number')?globalThis.DISC_LIMIT:600;   // 시험에서 한도를 줄여 «미완료면 띠 없음»을 확인한다
+  let 완료=false, 예외=0, 부작용=false;
+  const reset=()=>{ Object.keys(state).forEach(k=>delete state[k]); Object.assign(state, JSON.parse(S)); };
+  const scrub=()=>{ Object.keys(state.fixed||{}).forEach(k=>{ if(+k.split('#').pop()!==owner) return; if(onlyFake&&!k.startsWith('fake:')) return; delete state.fixed[k]; }); };
+  const strip=o=>{ const x=JSON.parse(JSON.stringify(o)); delete x.fixed; delete x.log; delete x.pickBuf; delete x.director; delete x.touchedAt; return JSON.stringify(x); };
+  const base=strip(JSON.parse(S));
+  let seed=20261001; Math.random=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; };
+  try{
+    const plan=[]; let guard=0;
+    while(guard++<LIMIT){
+      reset(); scrub(); _dirCap={plan:plan.slice(), cursor:0, lists:[], score:0};
+      let res=null; try{ res=run(); }catch(e){ res=null; 예외++; }
+      const cap=_dirCap; _dirCap=null;
+      if(strip(state)!==base) 부작용=true;   // 답이 없거나 겹쳐도 센다 — 하나라도 있으면 띠를 만들지 않는다(코덱스 13:03)
+      const memo={}; Object.keys(state.fixed||{}).forEach(k=>{ if(+k.split('#').pop()===owner&&(!onlyFake||k.startsWith('fake:'))) memo[k]=state.fixed[k]; });
+      if(res){ const key=JSON.stringify(res); if(!seen.has(key)){ seen.add(key); out.push({답:res, 점수:Math.round(cap.score*1000)/1000, 메모:memo}); } }
+      const lv=cap.lists.length; if(!lv){ 완료=true; break; }
+      plan.length=lv; for(let i=0;i<lv;i++) if(plan[i]===undefined) plan[i]=0;
+      let i=lv-1; while(i>=0){ plan[i]++; if(plan[i]<cap.lists[i].n) break; plan[i]=0; i--; }
+      if(i<0){ 완료=true; break; } plan.length=i+1;   // 앞 단계를 올렸으면 뒤 단계는 처음부터(목록이 달라질 수 있다)
+    }
+  } finally{ Math.random=R0; _dirCap=null; reset(); }
+  return {후보:out, 완료, 예외, 부작용};   // 완료 아님(한도)·예외·부작용이면 쓰는 쪽이 띠를 만들지 않는다
+}
+/* 후보 → 칸. 점수가 같은 후보가 한 갈래, 악(−)→선(+) 순. 갈래 9 넘으면 가장 가까운 둘을 합쳐 9로.
+   홀수 갈래는 그대로, 짝수 갈래는 가운데에 «중간» 칸(양옆 두 갈래 중 하나) — 햇살님 10/1. 갈래 하나면 칸 없음(null) */
+function discStops(cands){
+  const by={}; cands.forEach((c,i)=>{ (by[c.점수]=by[c.점수]||[]).push(i); });
+  let B=Object.keys(by).map(Number).sort((a,b)=>a-b).map(sc=>({점수:sc, 후보:by[sc]}));
+  while(B.length>9){ let bi=0, bg=Infinity; for(let i=0;i+1<B.length;i++){ const g=B[i+1].점수-B[i].점수; if(g<bg){ bg=g; bi=i; } } B.splice(bi,2,{점수:(B[bi].점수+B[bi+1].점수)/2, 후보:B[bi].후보.concat(B[bi+1].후보)}); }
+  if(B.length<2) return null;
+  const stops=B.map(b=>({뜻:'', 후보:b.후보}));
+  if(stops.length%2===0){ const m=stops.length/2; stops.splice(m,0,{뜻:'중간', 후보:stops[m-1].후보.concat(stops[m].후보)}); }
+  stops[0].뜻='악'; stops[stops.length-1].뜻='선';
+  return stops;
+}
+function discHash(str){ let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } return h; }
+/* 칸 안에서 어느 후보 — 결정적: 보통 칸은 «다른 답» 번호 순, «중간» 칸은 판 열쇠 해시에서 시작(조회가 난수를 안 쓴다) */
+function discPickIn(D, k, alt, seedKey){ const st=D.칸[k]; if(!st||!st.후보.length) return null; const n=st.후보.length;
+  const start=st.뜻==='중간'?discHash(seedKey)%n:0; return D.후보[st.후보[(start+(alt||0))%n]]; }
 /* ── 판세 분석 기록 (2026-09-30 햇살님 «이 정보를 줄 때 보통 이렇게 행동하고 그 결과 누굴 죽이고… 그런 정보가 필요해») ──
    앱이 확률로 고른 것마다 «앱 선택» 한 줄: 곳·누구에게·고른 것(자리·직업·악 수)·그 확률·악이 낀 후보가 뽑힐 확률(역확률 가중용)·판세 값.
    판 기록이 아직 없으면(역할 나누기 전 — 가짜 직업 등) 모아 뒀다가 logStart 가 붙인다 */
@@ -8736,7 +8785,7 @@ function candDesc(x, where){ try{
   if(x.x&&typeof x.k==='number') return {자리:[x.k+1], 악:realEvil(x.x)?1:0, 정보:isInfoRole(CMAP()[x.x.char])?1:0};
   if(x.id&&x.team) return {직업:x.id, 악:isEvilTeam(x)?1:0, 정보:isInfoRole(x)?1:0, 판에:state.seats.some(s=>s&&s.char===x.id)?1:0};
   }catch(e){} return null; }
-function pickLog(list, p, k, where, T, why){ try{
+function pickLog(list, p, k, where, T, why){ if(_dirCap) return; try{
   const D=list.map(x=>candDesc(x, where)), r=v=>Math.round(v*1000)/1000;
   let pe=0, ue=0; D.forEach((d,i)=>{ if(d&&d.악>0){ pe+=p[i]; ue+=1/list.length; } });
   const rec={곳:where, 누구:_pickFor===null?null:_pickFor+1, 고름:D[k], 후보:list.length, 확률:r(p[k]), 악확률:r(pe), 무작위악:r(ue), 기울기:Math.round((T||0)*100)/100, 근거:why||''};
@@ -8837,6 +8886,7 @@ function dirRollSeat(st){ const i=state.seats.indexOf(st); return i<0?false:dirR
    지금까지 이 재량은 완전히 놀고 있었다(균등 무작위) — 선이 밀릴 때 쓸 유일한 레버다. */
 function dirDecoyPool(pool, key){
   if(!pool||pool.length<2) return pool;
+  if(_dirCap) return pool;   // 열거 중엔 좁히지 않는다 — 후보 전체가 칸이 된다
   const favor=ansWeakSide(); if(!favor) return pool;
   if(!dirRoll('decoy:'+key)) return pool;
   const want = favor==='good' ? pool.filter(o=>o.st2? o.st2.dead : false)
@@ -9494,7 +9544,7 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
 }
 /* 판 하나의 진행 흔적을 모두 비운다 — 사람·자리·1번·모드는 그대로 (startNewGame 과 «역할 전으로»가 같이 쓴다) */
 function gameStateClear(){
-  state.done={}; state.nights=1; state.phase='firstnight'; state.bluffIds=[]; state.bluffs=''; state.days={}; state.fixed={}; state.rvPos=-1; state.lastT={}; state.fakes={}; state.picks={}; state.roleMiss={}; state.placed={}; state.tokAt={}; state.tokPh={}; state.guesses={}; state.ansLog={}; state.deathActed={}; state.director={}; state.madAs={}; state.setupTok={}; state.dayEnd=null; state.special={}; state.spBangPick=null; state.seats.forEach(x=>{ delete x.side; delete x.lean; delete x.cause; delete x.causeN; }); nomBy=null; wz.voteOpen=null; wz.nightSnap=null; wz.pickRole=null; wz.idx=0; wz.mode='prep'; wz.prev=null; wz.pickRes=null; wz.lastWho=null; wzResetRound(); state.wz=null; state.lastLogId=null;
+  state.done={}; state.nights=1; state.phase='firstnight'; state.bluffIds=[]; state.bluffs=''; state.days={}; state.fixed={}; state.disc={}; state.rvPos=-1; state.lastT={}; state.fakes={}; state.picks={}; state.roleMiss={}; state.placed={}; state.tokAt={}; state.tokPh={}; state.guesses={}; state.ansLog={}; state.deathActed={}; state.director={}; state.madAs={}; state.setupTok={}; state.dayEnd=null; state.special={}; state.spBangPick=null; state.seats.forEach(x=>{ delete x.side; delete x.lean; delete x.cause; delete x.causeN; }); nomBy=null; wz.voteOpen=null; wz.nightSnap=null; wz.pickRole=null; wz.idx=0; wz.mode='prep'; wz.prev=null; wz.pickRes=null; wz.lastWho=null; wzResetRound(); state.wz=null; state.lastLogId=null;
 }
 /* 판 중 «이 판 버리고 역할 다시» — 기록 없이, 사람·자리·1번은 그대로 두고 역할 걸음으로 (2026-09-28 햇살님 «언제든 저장하지 않고 직업 배정하기 전 단계로 · 너무 쉽게 누르지 않게»).
    과정 시트 맨 아래 꾹 누르기(1.2초) 단추에서만 부른다 */
@@ -9513,7 +9563,7 @@ function startEmpty(){
   if(gameInProgress()&&!confirm('게임이 진행 중이에요.\n빈 판으로 시작하면 지금 판이 사라집니다. 계속할까요?')) return;
   autoFinishIfEnded();
   state.seats=[]; state.done={}; state.phase='firstnight'; state.nights=1; ensureSeats();
-  state.days={}; state.fixed={}; state.rvPos=-1; state.lastT={}; state.fakes={}; state.picks={}; state.roleMiss={}; state.placed={}; state.tokAt={}; state.tokPh={}; state.guesses={}; state.ansLog={}; state.deathActed={}; state.director={}; state.madAs={}; state.setupTok={}; state.bluffIds=[]; state.bluffs=''; state.log=null; nomBy=null; wz.voteOpen=null; wz.nightSnap=null; wz.pickRole=null; wz.idx=0; wz.mode='prep'; wz.prev=null; wz.pickRes=null; wz.lastWho=null; wzResetRound(); state.wz=null; state.lastLogId=null;   // 이전 판 기록이 새 판에 남지 않게(자율점검 #2)
+  state.days={}; state.fixed={}; state.disc={}; state.rvPos=-1; state.lastT={}; state.fakes={}; state.picks={}; state.roleMiss={}; state.placed={}; state.tokAt={}; state.tokPh={}; state.guesses={}; state.ansLog={}; state.deathActed={}; state.director={}; state.madAs={}; state.setupTok={}; state.bluffIds=[]; state.bluffs=''; state.log=null; nomBy=null; wz.voteOpen=null; wz.nightSnap=null; wz.pickRole=null; wz.idx=0; wz.mode='prep'; wz.prev=null; wz.pickRes=null; wz.lastWho=null; wzResetRound(); state.wz=null; state.lastLogId=null;   // 이전 판 기록이 새 판에 남지 않게(자율점검 #2)
   const wmode=/** @type {HTMLSelectElement} */(document.getElementById('ngWin')).value;
   const wtext=wmode==='custom'?/** @type {HTMLInputElement} */(document.getElementById('ngWinText')).value.trim():winLabel(WINPRESETS.find(w=>w.id===wmode));
   state.win={mode:wmode,text:wtext};
@@ -9544,8 +9594,8 @@ function switchEdition(id, opt){
        startNewGame 이 같은 까닭으로 pid 를 지킨다 (전수감사 2026-09-13 #20, 2026-09-15 고침) */
     state.seats=state.seats.map(s=>Object.assign(
       {char:null,dead:s.dead,cause:s.cause,causeN:s.causeN,rem:[]}, personOf(s)));
-    state.picks={}; state.roleMiss={}; state.placed={}; state.fixed={}; state.lastT={}; state.fakes={}; state.done={}; state.tokAt={};   // 모드가 바뀌면 지정값(지목·토큰 배치·무작위 고정·연속 불가·가짜 카드)도 전부 초기화
-    state.done={}; state.edition=id; state.bluffIds=[]; state.bluffs=''; state.fixed={}; state.nightBegun=false;
+    state.picks={}; state.roleMiss={}; state.placed={}; state.fixed={}; state.disc={}; state.lastT={}; state.fakes={}; state.done={}; state.tokAt={};   // 모드가 바뀌면 지정값(지목·토큰 배치·무작위 고정·연속 불가·가짜 카드)도 전부 초기화
+    state.done={}; state.edition=id; state.bluffIds=[]; state.bluffs=''; state.fixed={}; state.disc={}; state.nightBegun=false;
     state.nights=1; state.phase='firstnight'; state.days={}; state.log=null; state.tokPh={}; state.guesses={}; state.ansLog={}; state.deathActed={}; state.director={}; state.madAs={}; state.setupTok={}; state.wz=null; state.rvPos=-1; state.lastLogId=null;
     /* 사인은 죽은 좌석에만 남긴다 — dead 는 유지하면서 cause 를 지우면
        «죽음엔 사인이 붙는다» 기준선이 깨진다(몽키 오라클이 잡아냄, 2026-08-25).
