@@ -1,5 +1,5 @@
 // 준비 전면 — 인원 → 자리 → 역할 → 넘기기(01 P01~P04). 닫기는 초안을 버리지 않는다
-import { html, useState, useEffect, useRef } from '../../lib/preact-htm.js';
+import { html, useState, useEffect, useRef, useLayoutEffect } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { Icon } from '../icons.js';
 import { Page, Section, Row, RowLabel, CheckRow, Labeled, Primary, Stepper, Segmented, Sheet, Cover, ActionSheet, Menu, NavButton, RoleArt, HoldButton, Disclosure, useRun, LargeTitle, Empty, cx } from '../ui.js';
@@ -12,13 +12,13 @@ import { Search } from '../ui.js';
 function MemberPicker({ taken, close, done }) {
   const [rows, setRows] = useState(undefined), [sel, setSel] = useState(() => new Set()), [q, setQ] = useState('');
   const [friends, setFriends] = useState([]);
-  useEffect(() => { account.members().then(setRows); account.friends().then(l => setFriends((l || []).filter(x => x.state === 'friend').map(x => x.member_id))); }, []);
+  useEffect(() => { Promise.all([account.members(), account.friends().catch(() => null)]).then(([m, l]) => { setFriends((l || []).filter(x => x.state === 'friend').map(x => x.member_id)); setRows(m); }); }, []);   // 친구 분류가 준비된 뒤 목록을 보인다 — 늦게 온 친구 응답이 고르던 행을 옮기지 않게(2026-10-01)
   const list = (rows || []).filter(r => !q || String(r.nick || '').toLowerCase().includes(q.toLowerCase()));
   const row = r => { const on = sel.has(r.member_id) || taken.includes(r.member_id);
     return html`<${Row} disabled=${taken.includes(r.member_id)} sel=${on} onClick=${() => setSel(s => { const n = new Set(s); n.has(r.member_id) ? n.delete(r.member_id) : n.add(r.member_id); return n; })}>
-      <span class="grow">${r.nick}</span>${on && html`<span class="blue"><${Icon} name="check" size=${20} stroke=${2.4} /></span>`}<//>`; };
+      <span class="avatar" aria-hidden="true"><${Icon} name="personCircle" size=${28} stroke=${1.5} /></span><span class="grow">${r.nick}</span>${on && html`<span class="blue"><${Icon} name="check" size=${20} stroke=${2.4} /></span>`}<//>`; };   // 썸네일 — 공개 사진 필드가 아직 없어 기본 아바타(크기 고정)
   const grp = (t, l) => l.length ? html`<${Section} header=${t}>${l.map(row)}<//>` : null;
-  return html`<${Page} title="투넬 회원" left=${html`<${NavButton} label="취소" onClick=${close} />`}
+  return html`<${Page} title="회원에서 찾기" left=${html`<${NavButton} label="취소" onClick=${close} />`}
     right=${html`<${NavButton} label=${sel.size ? sel.size + '명 넣기' : '넣기'} bold disabled=${!sel.size} onClick=${() => { done((rows || []).filter(r => sel.has(r.member_id))); close(); }} />`}>
     <${Search} value=${q} onInput=${setQ} placeholder="닉네임 검색" />
     ${rows === undefined ? html`<${Empty} title="명단 받는 중…" />` : rows === null ? html`<${Empty} icon="warn" title="명단을 못 받았어요" text="로그인·연결을 확인해 주세요." />`
@@ -52,23 +52,23 @@ const EXPERIENCE = [
 
 /** P01 · 인원 — 인원 스테퍼 + 닉네임 입력 + 투넬 회원에서 고르기. «자리 정하기»가 명단을 코어에 확정한다 */
 function PeopleView({ c, next }) {
-  const [levels, setLevels] = useState(() => store.board.seats.map(s => s.manualExperience || null));
+  const [levels, setLevels] = useState(() => { const l = store.board.seats.map(s => s.manualExperience || 2); while (l.length < 5) l.push(2); return l; });   // 기본 2단계 — «적당히 몇 번 해본 사람»(2026-10-01 햇살님)
   const [experiencePick, setExperiencePick] = useState(null), [sources, setSources] = useState({});
-  const [bubbleAbove, setBubbleAbove] = useState(false);
-  const experienceTrigger = useRef(null);
-  const closeExperience = () => { setExperiencePick(null); experienceTrigger.current?.focus(); };
-  useEffect(() => {
-    if (experiencePick === null) return;
-    const close = e => { if (!e.target.closest('.experience-row')) setExperiencePick(null); };
-    document.addEventListener('pointerdown', close);
-    return () => document.removeEventListener('pointerdown', close);
-  }, [experiencePick]);
+  /* 조작 위치 고정(2026-10-01 햇살님 «다음 슬라이드 위치는 유지») — 손 댄 띠의 화면 Y를 기준점으로 잡고, 위 행이 접히고 이 행이 펼쳐진 뒤 그만큼 스크롤을 보정한다 */
+  const anchorRef = useRef(null);
+  const anchor = el => { anchorRef.current = { el, top: el.getBoundingClientRect().top }; };
+  useLayoutEffect(() => {
+    const a = anchorRef.current; if (!a || !a.el.isConnected) return;
+    const d = a.el.getBoundingClientRect().top - a.top; if (!d) return;
+    let sc = a.el.parentElement; while (sc && !(sc.scrollHeight > sc.clientHeight && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+    if (sc) sc.scrollTop += d;
+  }, [experiencePick, levels.join('|')]);
   const [names, setNames] = useState(() => { const n = store.board.seats.map(s => s.name); while (n.length < 5) n.push(''); return n; });
   const [members, setMembers] = useState(() => { const m = store.board.seats.map(s => s.member || null); while (m.length < 5) m.push(null); return m; });   // 칸마다 투넬 회원 번호(없으면 이름만)
   const [picking, setPicking] = useState(false), [clearAsk, setClearAsk] = useState(false);
   const pad = (n, m) => { while (n.length < 5) { n.push(''); m.push(null); } setNames(n); setMembers(m); };
-  const removeAt = i => { setLevels(a => a.filter((_, j) => j !== i)); pad(names.filter((_, j) => j !== i), members.filter((_, j) => j !== i)); };
-  const clearAll = () => { setLevels([]); pad([], []); };
+  const removeAt = i => { setLevels(a => { const l = a.filter((_, j) => j !== i); while (l.length < 5) l.push(2); return l; }); pad(names.filter((_, j) => j !== i), members.filter((_, j) => j !== i)); };
+  const clearAll = () => { setLevels([2, 2, 2, 2, 2]); pad([], []); };
   const source = m => !m ? 'manual' : sources[m] || store.get('preparation.experience', m)?.source || 'unknown';
   const refreshExperience = async m => {
     const stats = await account.stats(m);
@@ -84,13 +84,13 @@ function PeopleView({ c, next }) {
   useEffect(() => { members.filter(Boolean).forEach(refreshExperience); }, [members.join('|')]);
   const addMembers = rows => {   // 빈 칸부터 채우고 모자라면 늘린다 — 이미 있는 회원은 건너뛴다
     const n = names.slice(), m = members.slice(), l = levels.slice();
-    rows.filter(r => !m.includes(r.member_id)).forEach(r => { let k = n.findIndex(x => !x.trim()); if (k < 0) { if (n.length >= 20) return; n.push(''); m.push(null); k = n.length - 1; } n[k] = r.nick; m[k] = r.member_id; l[k] = null; });
+    rows.filter(r => !m.includes(r.member_id)).forEach(r => { let k = n.findIndex(x => !x.trim()); if (k < 0) { if (n.length >= 20) return; n.push(''); m.push(null); k = n.length - 1; } n[k] = r.nick; m[k] = r.member_id; l[k] = 2; });
     setNames(n); setMembers(m); setLevels(l);
   };
   const [ask, setAsk] = useState(null);
   const R = useRun();
   const valid = names.length >= 5 && names.every(n => n.trim());
-  const setCount = n => { setLevels(a => a.slice(0, n)); setNames(a => n > a.length ? a.concat(Array(n - a.length).fill('')) : a.slice(0, n)); setMembers(a => n > a.length ? a.concat(Array(n - a.length).fill(null)) : a.slice(0, n)); };
+  const setCount = n => { setLevels(a => n > a.length ? a.concat(Array(n - a.length).fill(2)) : a.slice(0, n)); setNames(a => n > a.length ? a.concat(Array(n - a.length).fill('')) : a.slice(0, n)); setMembers(a => n > a.length ? a.concat(Array(n - a.length).fill(null)) : a.slice(0, n)); };
   const commit = async force => {
     const p = { people: names.map((n, i) => ({ name: n.trim(), member: members[i] || null, manualExperience: source(members[i]) === 'manual' ? levels[i] || null : null })) }; if (force) p.force = true;
     const r = await R.run('preparation.commitPeople', p);
@@ -100,21 +100,21 @@ function PeopleView({ c, next }) {
   return html`<${PrepPage} c=${c} bottom=${html`<${Primary} title="자리 정하기" enabled=${valid} loading=${R.busy} onClick=${() => commit(false)} />`}>
     <${LargeTitle}>인원<//>
     <${Section}><${Stepper} value=${names.length} min=${5} max=${20} onChange=${setCount}>참가 인원 ${names.length}명<//><//>
-    <${Section}><${Row} tint onClick=${() => account.user ? setPicking(true) : account.login()}><${Icon} name="person2" size=${20} />${account.user ? '투넬 회원에서 고르기' : '투넬 회원에서 고르기 · 로그인'}<//>
+    <${Section}><${Row} tint onClick=${() => account.user ? setPicking(true) : account.login()}><${Icon} name="person2" size=${20} />${account.user ? '회원에서 찾기' : '회원에서 찾기 · 로그인'}<//>
       <${Row} danger disabled=${!names.some(n => n.trim())} onClick=${() => setClearAsk(true)}><${Icon} name="xmark" size=${20} />모두 비우기<//><//>
-    <${Section} cls="experience-list" header="닉네임 · 오른쪽 칸을 눌러 경험 선택">${names.map((n, i) => html`<div class="row experience-row" key=${i} onFocusCapture=${e => { if (e.target.matches('.experience-cell, .experience-state')) experienceTrigger.current = e.target; }} onKeyDown=${e => { if (e.key === 'Escape') { closeExperience(); e.stopPropagation(); } }}>
-      <input class="textin" ref=${el => inputs.current[i] = el} value=${n} placeholder="닉네임" enterkeyhint=${i + 1 < names.length ? 'next' : 'done'}
-        aria-label=${`${i + 1}번 닉네임`}
-        onInput=${e => { const v = e.currentTarget.value; setNames(a => a.map((x, j) => j === i ? v : x)); setLevels(a => { const l = a.slice(); l[i] = null; return l; }); if (members[i]) setMembers(a => a.map((x, j) => j === i ? null : x)); }}
-        onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); const nx = inputs.current[i + 1]; if (nx) nx.focus(); else e.currentTarget.blur(); } }} />
-      <button class="rowx" disabled=${!n.trim() && names.length <= 5} aria-label=${`${i + 1}번 지우기`} onClick=${() => { setExperiencePick(null); removeAt(i); }}><${Icon} name="xmark" size=${12} stroke=${3} /></button>
-      ${source(members[i]) === 'manual' ? html`<div class="experience-gauge" role="group" aria-label=${`${n || (i + 1) + '번'} 경험 단계`}>
-        ${EXPERIENCE.map(([title], k) => html`<button type="button" disabled=${!n.trim()} aria-label=${`${n} ${k + 1}단계 ${title}`} aria-pressed=${levels[i] === k + 1} aria-expanded=${experiencePick === i && levels[i] === k + 1} aria-controls=${experiencePick === i ? `experience-note-${i}` : undefined} class=${cx('experience-cell', levels[i] >= k + 1 && 'filled')} onClick=${e => { setLevels(a => { const l = a.slice(); l[i] = k + 1; return l; }); setBubbleAbove(e.currentTarget.getBoundingClientRect().bottom > window.innerHeight - 240); setExperiencePick(i); }}><span>${k + 1}</span></button>`)}
-      </div>` : html`<button class="experience-state" onClick=${e => { setBubbleAbove(e.currentTarget.getBoundingClientRect().bottom > window.innerHeight - 240); setExperiencePick(i); }}>${source(members[i]) === 'records' ? '기록 기반 · 🔒' : '기록 확인 필요'}</button>`}
-      ${experiencePick === i && html`<div id=${`experience-note-${i}`} class=${cx('experience-bubble', bubbleAbove && 'above')}>
-        <div role="status">${source(members[i]) === 'manual' && levels[i] ? html`<strong>${levels[i]} · ${EXPERIENCE[levels[i] - 1][0]}</strong><p>${EXPERIENCE[levels[i] - 1][1]}</p>` : html`<p>${source(members[i]) === 'records' ? '20판 이상 기록이 있어 수동 단계를 사용하지 않아요.' : '전적을 확인할 수 없어요. 로그인·친구 공개 범위와 연결을 확인해 주세요.'}</p>`}</div>
-        <div class="experience-actions">${source(members[i]) === 'manual' ? html`<button onClick=${() => { setLevels(a => { const l = a.slice(); l[i] = null; return l; }); closeExperience(); }}>선택 해제</button>` : html`<button onClick=${() => refreshExperience(members[i])}>다시 확인</button>`}<button onClick=${closeExperience}>닫기</button></div>
-      </div>`}
+    <${Section} cls="experience-list" header="닉네임 · 오른쪽 띠를 끌어 경험 단계">${names.map((n, i) => html`<div class=${cx('row experience-row', experiencePick === i && 'open')} key=${i}>
+      <div class="experience-main">
+        <button class="rowx" disabled=${!n.trim() && names.length <= 5} aria-label=${`${i + 1}번 지우기`} onClick=${() => { setExperiencePick(null); removeAt(i); }}><${Icon} name="xmark" size=${12} stroke=${3} /></button>
+        <input class="textin" ref=${el => inputs.current[i] = el} value=${n} placeholder="닉네임" enterkeyhint=${i + 1 < names.length ? 'next' : 'done'}
+          aria-label=${`${i + 1}번 닉네임`}
+          onInput=${e => { const v = e.currentTarget.value; setNames(a => a.map((x, j) => j === i ? v : x)); setLevels(a => { const l = a.slice(); l[i] = 2; return l; }); if (members[i]) setMembers(a => a.map((x, j) => j === i ? null : x)); }}
+          onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); const nx = inputs.current[i + 1]; if (nx) nx.focus(); else e.currentTarget.blur(); } }} />
+        ${source(members[i]) === 'manual' ? html`<${LevelSlider} value=${levels[i] || null} disabled=${!n.trim()} label=${`${n || (i + 1) + '번'} 경험 단계`}
+            onBegin=${el => anchor(el)} onChange=${v => { setLevels(a => { const l = a.slice(); l[i] = v; return l; }); setExperiencePick(i); }} />`
+          : html`<button class="experience-state" onClick=${e => { anchor(e.currentTarget); setExperiencePick(experiencePick === i ? null : i); }}>${source(members[i]) === 'records' ? '기록 기반 · 🔒' : '기록 확인 필요'}</button>`}
+      </div>
+      ${experiencePick === i && html`<div class="experience-note" role="status">${source(members[i]) === 'manual' && levels[i] ? html`<strong>${levels[i]} · ${EXPERIENCE[levels[i] - 1][0]}</strong><p>${EXPERIENCE[levels[i] - 1][1]}</p><button class="lnk" onClick=${() => { setLevels(a => { const l = a.slice(); l[i] = 2; return l; }); setExperiencePick(null); }}>기본(2)으로</button>`
+        : html`<p>${source(members[i]) === 'records' ? '20판 이상 기록이 있어 수동 단계를 사용하지 않아요.' : '전적을 확인할 수 없어요. 로그인·친구 공개 범위와 연결을 확인해 주세요.'}</p>${source(members[i]) !== 'manual' && html`<button class="lnk" onClick=${() => refreshExperience(members[i])}>다시 확인</button>`}`}</div>`}
     </div>`)}<//>
     <${ActionSheet} open=${clearAsk} title="닉네임을 모두 비울까요?" onClose=${() => setClearAsk(false)} actions=${[{ label: '모두 비우기', role: 'destructive', onClick: clearAll }]} />
     <${Sheet} open=${picking} onClose=${() => setPicking(false)}>${picking && html`<${MemberPicker} taken=${members.filter(Boolean)} close=${() => setPicking(false)} done=${addMembers} />`}<//>
@@ -250,6 +250,7 @@ function HandoffView({ c, start }) {
       ? html`<${Primary} title=${`${nextP.number} · ${nextP.name}에게 넘기기`} onClick=${() => setTurn(m.position + 1)} />`
       : html`<${Primary} title="첫밤 시작" loading=${R.busy} onClick=${() => R.run('game.beginFirstNight', {}, start)} />`}>
     <${LargeTitle}>넘기기<//>
+    ${m && m.composition && m.position < 0 && html`<${Section} header="구성 발표"><${Composition} c=${m.composition} /><//>`}
     ${m && m.notice && m.notice.length > 0 && m.position < 0 && html`<${Section} header="이번 판 공지">${m.notice.map((t, k) => html`<div class="row" style="align-items:baseline"><span class="sec num">${k + 1}</span><span class="grow" style="white-space:pre-line">${t}</span></div>`)}<//>`}
     ${m && html`<${Section} header=${`${m.position + 1} / ${m.order.length}`}>${m.order.map((p, k) => html`<${Row} onClick=${() => setTurn(k)}>
       <span class=${k <= m.position ? 'blue' : 'sec'}><${Icon} name=${k <= m.position ? 'checkCircle' : 'circle'} size=${22} /></span>
@@ -274,5 +275,36 @@ function PlayerTurn({ m, k, done }) {
       <${Primary} title=${last ? '확인했어요 · 반납' : '확인했어요 · 다음 사람'} enabled=${seen && !shown} loading=${R.busy}
         onClick=${() => { setShown(null); R.run('handoff.seen', { position: k }, () => done(last)); }} /></div>
     ${R.alert}
+  </div>`;
+}
+
+/** 숙련도 1~5 슬라이더(2026-10-01 햇살님 «우리 슬라이더 만든걸 거기 적용») — 재량 띠(26차 확정)와 같은 슬롯·알약·점 모양, 파란 틴트 하나. 추천·중간·선악 없음. 값 없음(미지정)이면 손잡이가 없다 */
+export function LevelSlider({ value, onChange, onBegin, disabled, label }) {
+  const n = 5, track = useRef(null);
+  const stopAt = x => { const r = track.current.getBoundingClientRect(), p = (x - r.left - 19.5) / Math.max(r.width - 39, 1); return Math.max(1, Math.min(n, Math.round(p * (n - 1)) + 1)); };
+  const left = k => `calc(19.5px + (100% - 39px) * ${(k - 1) / (n - 1)})`;
+  const set = v => { if (!disabled && v !== value) onChange(v); };
+  return html`<div class=${cx('disc lvl', disabled && 'off')} data-lv=${value || 0} role="group" aria-label=${label}>
+    <div class="track" ref=${track} role="slider" tabindex=${disabled ? -1 : 0} aria-valuemin="1" aria-valuemax=${n} aria-valuenow=${value || 0} aria-valuetext=${value ? `${value}단계` : '미지정'} aria-disabled=${!!disabled}
+      onPointerDown=${e => { if (disabled) return; onBegin && onBegin(e.currentTarget); e.currentTarget.setPointerCapture(e.pointerId); e.currentTarget.dataset.drag = '1'; set(stopAt(e.clientX)); }}
+      onPointerMove=${e => { if (!e.currentTarget.dataset.drag) return; const v = stopAt(e.clientX); if (v !== value) set(v); }}
+      onPointerUp=${e => { delete e.currentTarget.dataset.drag; }} onPointerCancel=${e => { delete e.currentTarget.dataset.drag; }}
+      onKeyDown=${e => { if (e.key === 'ArrowLeft') set(Math.max(1, (value || 1) - 1)); if (e.key === 'ArrowRight') set(Math.min(n, (value || 0) + 1)); }}>
+      <div class="line"></div>
+      <div class="stops">${[1, 2, 3, 4, 5].map(k => html`<button type="button" class="stop" disabled=${disabled} tabindex="-1" aria-label=${`${k}단계`} onClick=${() => set(k)}><i></i></button>`)}</div>
+      ${value && html`<div class="thumb" style=${`left:${left(value)}`}></div>`}
+    </div>
+    <span class="lvl-n">${value || '–'}</span>
+  </div>`;
+}
+
+/** 구성 발표 — 넘기기 전에 모두에게 읽어 주는 숫자(2026-10-01 햇살님). 선·악 합계만 — 마을·외지인 나눔은 남작 같은 구성 변화를 드러내서 뺀다(햇살님 «선·악 합계만») */
+function Composition({ c }) {
+  const L = c.labels || {}, strip = t => String(t || '').replace(/\(.*\)/, '');
+  return html`<div class="comp">
+    <div class="comp-total"><b>${c.total}</b>명</div>
+    <div class="comp-row good"><span class="k">선</span><b>${c.good}</b></div>
+    <div class="comp-row evil"><span class="k">악</span><b>${c.evil}</b></div>
+    ${c.other > 0 && html`<div class="comp-row"><span class="k">그 밖</span><b>${c.other}</b></div>`}
   </div>`;
 }

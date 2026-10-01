@@ -82,6 +82,8 @@ export function ReferenceSheet({ close }) {
     <${Search} value=${q} onInput=${setQ} placeholder="직업·능력 검색" />
     ${r && r.current && !q && html`<${Section} header=${`지금 차례 · ${r.current.roleName}`}><div class="row" style="white-space:pre-line">${r.current.detail}</div><//>`}
     ${r && !q && r.guide && html`<${Section}><${Disclosure} label=${`${r.modeName} 안내`}>${r.guide}<//><//>`}
-    ${r && html`<${Section} header="직업"><${RoleList} roles=${r.roles} q=${q} /><//>`}
+    ${r && (r.groups || []).map(g => html`<${Section} header=${`지금 판 · ${g.ko}`}><${RoleList} roles=${g.roles} q=${q} /><//>`)}
+    ${r && (r.bluffs || []).length > 0 && html`<${Section} header="블러프"><${RoleList} roles=${r.bluffs} q=${q} /><//>`}
+    ${r && html`<${Section} header=${(r.groups || []).length ? '그 밖의 직업' : '직업'}><${RoleList} roles=${r.roles} q=${q} /><//>`}
   <//>`;
 }

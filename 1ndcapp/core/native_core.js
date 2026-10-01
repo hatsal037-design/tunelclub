@@ -49,7 +49,8 @@ var NativeCore = (function () {
       var rem = (s.rem || []).filter(function (t) { return t !== '유령표'; }), dead = !!s.dead;
       var causeKo = { exec: '처형', demon: '흉수 습격', night: '밤', day: '낮', curse: '저주', succession: '계승' };
       var tokens = rem.map(function (t) { return TK(t); });
-      return { id: seatKey(s, i), index: i, number: i + 1, name: s.name || '', member: (function () { var w = s.pid ? personById(s.pid) : null; return (w && w.tunelId) || null; })(), dead: dead, tonight: diedTonight(s), ghost: dead && (s.rem || []).indexOf('유령표') >= 0, tokens: tokens,
+      var rc = s.char ? CMAP()[s.char] : null;
+      return { id: seatKey(s, i), index: i, number: i + 1, name: s.name || '', role: rc ? rc.ko : null, evil: rc ? ['minion', 'demon', 'mafia'].indexOf(rc.team) >= 0 : false, member: (function () { var w = s.pid ? personById(s.pid) : null; return (w && w.tunelId) || null; })(), dead: dead, tonight: diedTonight(s), ghost: dead && (s.rem || []).indexOf('유령표') >= 0, tokens: tokens,
         manualExperience: s.manualExperience || null,
         status: [dead ? '사망' + (s.cause && causeKo[s.cause] ? ' · ' + causeKo[s.cause] : '') : '생존'].concat(tokens).join(' · ') };
     });
@@ -62,7 +63,8 @@ var NativeCore = (function () {
         cells.push({ id: cell, row: row, col: col, seatID: si >= 0 && seats[si] ? seats[si].id : null });
       });
     }
-    return { shape: rect ? 'rect' : 'round', seats: seats, cells: cells, rows: state.rows || 0, cols: state.cols || 0, canRearrange: !inGame() };
+    var bluffs = []; try { if (usesBluff()) bluffs = (state.bluffIds || []).map(function (id) { var c = CMAP()[id]; return c ? c.ko : id; }); } catch (e) {}   // 진행자 판 가운데 블러프
+    return { shape: rect ? 'rect' : 'round', seats: seats, cells: cells, rows: state.rows || 0, cols: state.cols || 0, canRearrange: !inGame(), bluffs: bluffs };
   }
 
   /* 밤 카드의 능력 종류 — pickPanel 과 같은 방식으로 act 를 읽는다. 연결한 종류만 SUPPORTED */
@@ -116,8 +118,8 @@ var NativeCore = (function () {
     if (!stops) { state.disc[key] = { 없음: true, 까닭: bad || '갈래 하나' }; return; }
     /* 추천 = 자동 보정이 뽑아 둔 답이 든 칸 — 보정이 꺼져 있으면 추천 없음·가운데(칸은 늘 홀수) */
     var rec = -1; if (tiltOn()) stops.forEach(function (st, k) { if (rec < 0 && st.뜻 !== '중간' && st.후보.some(function (i) { return JSON.stringify(cands[i].답) === auto; })) rec = k; });
-    if (rec >= 0) { var st0 = stops[rec], ai = st0.후보.filter(function (i) { return JSON.stringify(cands[i].답) === auto; })[0]; st0.후보 = [ai].concat(st0.후보.filter(function (i) { return i !== ai; })); }   // 추천 칸의 첫 후보 = 자동 답 — 추천으로 돌아오면 그 답
-    state.disc[key] = { 후보: cands.map(function (x) { return { 답: x.답, 점수: x.점수, 메모: x.메모 }; }), 칸: stops, 추천: rec < 0 ? null : rec, 현재: rec < 0 ? (stops.length - 1) / 2 | 0 : rec, alt: 0, 잠김: false, 삭제: onlyFake ? 'fake' : 'all', 자동답: card.answer, 정책: 'disc-v1' };
+    if (rec >= 0) { var st0 = stops[rec], ai = st0.후보.filter(function (i) { return JSON.stringify(cands[i].답) === auto; })[0]; st0.첫 = ai; st0.후보 = [ai].concat(st0.후보.filter(function (i) { return i !== ai; })); }   // 추천 칸의 첫 후보 = 자동 답 — 추천으로 돌아오면 그 답(discPickIn 이 «첫»을 맨 앞에 둔다)
+    state.disc[key] = { 후보: cands.map(function (x) { return { 답: x.답, 점수: x.점수, 위험: x.위험, 메모: x.메모 }; }), 칸: stops, 추천: rec < 0 ? null : rec, 현재: rec < 0 ? (stops.length - 1) / 2 | 0 : rec, alt: 0, 잠김: false, 삭제: onlyFake ? 'fake' : 'all', 자동답: card.answer, 정책: 'disc-v1' };
   }
   function discView(card) {
     var D = discOf(card); if (!D || D.없음) return null;
@@ -233,6 +235,7 @@ var NativeCore = (function () {
       /* 세작·스파이·호방·과부 — 판 전체(모든 좌석의 정체·상태)를 건네 보여 주는 화면(웹 ansGrimoire). 그 직업 카드에만 싣는다 */
       grimoire: isRoleAny(o.real || c, ['sejak', 'spy', 'hobang', 'widow']) ? seatsPublic('board').filter(function (p) { return p && p.charId; }).map(function (p) {
         return { number: p.no, name: p.name || '', role: p.ko || '', evil: ['minion', 'demon', 'mafia'].indexOf(p.team) >= 0, dead: !!p.dead, tokens: (p.rem || []).map(String) }; }) : null,
+      bluffs: isRoleAny(o.real || c, ['sejak', 'spy', 'hobang', 'widow']) ? (function () { try { return usesBluff() ? (state.bluffIds || []).map(function (id) { var x = CMAP()[id]; return x ? x.ko : id; }) : []; } catch (e) { return []; } })() : null,   // 판 공개 화면 가운데 블러프(2026-10-01)
       warns: (function () { var w = []; try { w = htmlLines(wzCardWarns(o)); } catch (e) {} if (s.dead) w.unshift('이 사람은 사망 상태 — 사후 능력이 아닐 땐 깨우지 말고 넘어가세요.'); return w; })(),
       actions: (function () { try { var fr = wz.pickRes && wz.pickRes.owner === owner ? wz.pickRes.html : '';   // «그래도 처리» — 무효·착호꾼으로 막힌 처리를 진행자 판단으로 밀고 나가기(웹 결과 줄의 단추)
         return htmlItems(fr + wzOnceBtns(o) + ((c.tk || []).some(function (t) { return DELAY_KILL[t]; }) ? delayedHtml() : '') + (o.dk === 'lm' ? blHolderHtml(o) : '')).filter(function (x) { return x.call; }); } catch (e) { return []; } })(),   // 몸 없는 흉수(꼬마 괴물·업귀) — 하수인이 정한 «품은 사람» 옮기기
@@ -281,7 +284,13 @@ var NativeCore = (function () {
     return { position: pos, order: order.map(function (i) { return { index: i, number: i + 1, name: state.seats[i].name || ('좌석 ' + (i + 1)) }; }),
       fakes: Object.keys(state.fakes || {}).filter(function (k) { return cm[state.fakes[k]] && state.seats[+k]; }).map(function (k) {
         return { number: +k + 1, real: cm[state.seats[+k].char].ko, shown: cm[state.fakes[k]].ko }; }),
-      notice: (function () { try { return prepNoticeItems(); } catch (e) { return []; } })() };   // 이번 판 공지 — 돌리기 전에 읽어 줄 방 규칙·승리 조건(웹 준비 4단계)
+      notice: (function () { try { return prepNoticeItems(); } catch (e) { return []; } })(),   // 이번 판 공지 — 돌리기 전에 읽어 줄 방 규칙·승리 조건(웹 준비 4단계)
+      composition: (function () { try {   // 구성 발표(2026-10-01 햇살님 «총 몇 명, 시민+외지인=선 몇, 악 몇 발표하고 가닥을 잡게») — 앉은 사람의 진짜 직업 팀으로 센다(취객·스파이도 제 팀)
+        var n = {}; (state.seats || []).forEach(function (st) { var c = st && st.char ? cm[st.char] : null; if (c) n[c.team] = (n[c.team] || 0) + 1; });
+        var town = n.town || 0, out = n.outsider || 0, min = (n.minion || 0) + (n.mafia || 0), dem = n.demon || 0, total = (state.seats || []).filter(function (st) { return st && st.char; }).length;
+        return { total: total, good: town + out, town: town, outsider: out, evil: min + dem, minion: min, demon: dem, other: total - town - out - min - dem,
+          labels: { town: TKO('town'), outsider: TKO('outsider'), minion: TKO(n.mafia ? 'mafia' : 'minion'), demon: TKO('demon') } };
+      } catch (e) { return null; } })() };
   }
   function handoffPublic(arg) {
     var i = +arg, s = state.seats[i], cm = CMAP(); if (!s || !s.char) return null;
@@ -353,8 +362,25 @@ var NativeCore = (function () {
   }
   function reference() {
     var ed = ED(), card = null; try { card = nightCard(); } catch (e) {}
+    var row = function (c) { var r = roleArt(c, state.edition || 'basic'); return { id: c.id, ko: c.ko, team: c.team, teamKo: TKO(c.team), ab: c.ab, icon: r.icon, e: r.e }; };
+    var all = CHARS().filter(function (c) { return c.team !== 'host'; });
+    /* 판이 돌 때 — 판에 있는 직업을 위에: 누가 그 직업인지, 선·중립·악 묶음, 묶음 안에서 죽은 사람은 아래(2026-10-01 햇살님) */
+    var groups = [];
+    if (inGame()) {
+      var hold = {}; (state.seats || []).forEach(function (st, i) { if (!st || !st.char) return; (hold[st.char] = hold[st.char] || []).push({ number: i + 1, name: st.name || '', dead: !!st.dead }); });
+      var sideOf = function (c) { var sd = fxSide(c.team); return sd === 'evil' ? 'evil' : sd === 'good' ? 'good' : 'neutral'; };
+      [['good', '선'], ['neutral', '중립'], ['evil', '악']].forEach(function (g) {
+        var rs = all.filter(function (c) { return hold[c.id] && sideOf(c) === g[0]; }).map(function (c) { var o = row(c); o.holders = hold[c.id]; o.dead = hold[c.id].every(function (h) { return h.dead; }); return o; });
+        rs.sort(function (a, b) { return (a.dead ? 1 : 0) - (b.dead ? 1 : 0); });   // 안정 정렬 — 산 직업 먼저, 죽은 직업 아래
+        if (rs.length) groups.push({ side: g[0], ko: g[1], roles: rs });
+      });
+    }
+    var inPlay = {}; groups.forEach(function (g) { g.roles.forEach(function (r) { inPlay[r.id] = 1; }); });
+    /* 블러프로 제시된 직업 — «그 밖의 직업» 위에 따로(2026-10-01 햇살님) */
+    var bluffIds = {}; try { if (inGame() && usesBluff()) (state.bluffIds || []).forEach(function (id) { bluffIds[id] = 1; }); } catch (e) {}
+    var bluffRoles = all.filter(function (c) { return bluffIds[c.id] && !inPlay[c.id]; }).map(row);
     return { modeName: ed.name, guide: textOf(ed.guide || ''), current: card ? { roleName: card.roleName, detail: card.detail } : null,
-      roles: CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, state.edition || 'basic'); return { id: c.id, ko: c.ko, team: c.team, teamKo: TKO(c.team), ab: c.ab, icon: r.icon, e: r.e }; }) };
+      groups: groups, bluffs: bluffRoles, roles: all.filter(function (c) { return !inPlay[c.id] && !bluffIds[c.id]; }).map(row) };
   }
 
   /* 웹 버튼 → 항목 목록. 허용한 호출(ALLOW)만 누를 수 있게 넘긴다 — 특수 승리·정치인·낮 알림의 즉시 처리 */
