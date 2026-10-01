@@ -2,20 +2,24 @@
 import { html, useState, useEffect, useRef } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { Icon } from '../icons.js';
-import { Page, Section, Row, Primary, NavButton, LargeTitle, RoleArt, cx } from '../ui.js';
+import { Page, Section, Row, Primary, NavButton, LargeTitle, RoleArt, ActionSheet, cx } from '../ui.js';
 import { settings } from '../settings.js';
 import { useNav } from '../nav.js';
 import { SettingsView } from './settingsView.js';
 import { RecordsView } from './records.js';
 
-/* 테마 — 모드와 별개. 사진 묶음과 색만 바꾼다(2026-10-01 햇살님: 오리지널 / 클래식 / 당산나무). 사진은 web/theme/<테마>/ 에 두고 아래 목록에 적는다(없으면 어두운 밤 바탕 + 직업 그림) */
+/* 테마 = 계열(2026-10-01 햇살님 «버튼으로 계열 고르기», 29차 시안) — 고르면 사진·색과 새 판 준비의 «게임 계열»(roles.setFamily)이 같이 바뀐다.
+   hub 는 모드 데이터의 계열 이름. soon 은 아직 게임이 없는 빈깡통 계열(«준비 중», 고를 수 없음). 사진은 web/theme/<테마>/ 에 두고 photos 에 적는다 */
 export const THEMES = [
-  { id: '오리지널', color: '#3a3a3c', art: '마피아', photos: [] },
-  { id: '클래식', color: '#5a1f1f', art: '임프', photos: [] },
-  { id: '당산나무', color: '#6b4a24', art: '객귀', photos: [] },
+  { id: '오리지널', hub: '오리지널 마피아', color: '#3a3a3c', art: '마피아', photos: [] },
+  { id: '클래식', hub: '클래식', color: '#5a1f1f', art: '임프', photos: [] },
+  { id: '당산나무', hub: '당산나무', color: '#6b4a24', art: '객귀', photos: [] },
+  { id: '판타지', soon: true, color: '#3d2f6b' },
+  { id: '우주', soon: true, color: '#1f3a5a' },
+  { id: '스팀펑크', soon: true, color: '#6b5326' },
+  { id: '사이버펑크', soon: true, color: '#5a1f4f' },
 ];
-const hubTheme = fam => /클래식|시계탑/.test(fam || '') ? '클래식' : /오리지널|마피아/.test(fam || '') ? '오리지널' : '당산나무';
-export function currentTheme() { const t = settings.get('theme'); return THEMES.find(x => x.id === t) || THEMES.find(x => x.id === hubTheme(store.home && store.home.ruleFamily)) || THEMES[1]; }
+export function currentTheme() { const f = store.home && store.home.ruleFamily; return THEMES.find(x => x.hub && x.hub === f) || THEMES[2]; }
 
 export function TodayView({ openSpace }) {
   const nav = useNav(), h = store.home;
@@ -56,14 +60,18 @@ export function TodayView({ openSpace }) {
     <//>
   <//>`;
 }
-/* 가운데 테마 버튼 — 누르면 버튼 밑 작은 창(아래서 올라오는 시트 아님) */
+/* 가운데 테마 버튼 — 누르면 버튼 밑 작은 창(아래서 올라오는 시트 아님). 판이 진행 중이면 계열을 못 바꾼다(흐리게) */
 function ThemePill({ theme }) {
-  const [open, setOpen] = useState(false), box = useRef(null);
+  const [open, setOpen] = useState(false), [ask, setAsk] = useState(null), box = useRef(null);
+  const locked = store.home && store.home.destination === 'resumeGame';
   useEffect(() => { if (!open) return; const h = e => { if (!box.current || !box.current.contains(e.target)) setOpen(false); }; document.addEventListener('pointerdown', h); return () => document.removeEventListener('pointerdown', h); }, [open]);
+  const pick = async (t, force) => { setOpen(false); const r = await store.dispatch('roles.setFamily', force ? { family: t.hub, force: true } : { family: t.hub }); if (r.confirm) setAsk(t); else store.refresh(); };
   return html`<div class="tpill-wrap" ref=${box}>
     <button class="tpill" aria-haspopup="menu" aria-expanded=${open} onClick=${() => setOpen(o => !o)}><i style=${`background:${theme.color}`}></i>${theme.id}<${Icon} name="chevronDown" size=${12} stroke=${2.4} /></button>
-    ${open && html`<div class="tpop" role="menu">${THEMES.map(t => html`<button class=${cx('tpi', t.id === theme.id && 'on')} role="menuitemradio" aria-checked=${t.id === theme.id} onClick=${() => { settings.set('theme', t.id); setOpen(false); store.refresh(); }}>
-      <i style=${`background:${t.color}`}></i><span>${t.id}</span>${t.id === theme.id && html`<span class="blue"><${Icon} name="check" size=${18} stroke=${2.4} /></span>`}</button>`)}</div>`}
+    ${open && html`<div class="tpop" role="menu">${THEMES.map((t, k) => html`${k > 0 && t.soon && !THEMES[k - 1].soon && html`<div class="tsep"></div>`}<button class=${cx('tpi', t.id === theme.id && 'on', (t.soon || locked) && 'off')} role="menuitemradio" aria-checked=${t.id === theme.id} aria-disabled=${!!(t.soon || locked)}
+      onClick=${() => { if (!t.soon && !locked && t.id !== theme.id) pick(t, false); else setOpen(false); }}>
+      <i style=${`background:${t.color}`}></i><span>${t.id}</span>${t.soon ? html`<span class="soon">준비 중</span>` : t.id === theme.id && html`<span class="blue"><${Icon} name="check" size=${18} stroke=${2.4} /></span>`}</button>`)}</div>`}
+    <${ActionSheet} open=${!!ask} title=${ask ? `준비하던 판의 역할을 비우고 ${ask.id}로 바꿀까요?` : ''} onClose=${() => setAsk(null)} actions=${[{ label: '역할 비우고 변경', role: 'destructive', onClick: () => { const t = ask; setAsk(null); pick(t, true); } }]} />
   </div>`;
 }
 const Shortcut = ({ icon, title, text }) => html`<div class="hstack shortcut" style="gap:12px;padding:4px 0">

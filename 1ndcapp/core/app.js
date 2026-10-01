@@ -9508,6 +9508,63 @@ function demonReseat(pool, exp, isDemon, isFixed, rnd=Math.random){
   });
   return from.length?{처음:from, 나중:to}:null;
 }
+/* ── 자리 보정·자리 섞기 (2026-10-01 햇살님, docs/게임이해_엔진/자리섞기_설계_v2.md) ──────────
+   이웃한 두 자리마다 벌점 [1순위, 2순위, 3순위]:
+     1순위 — 초보 악마 옆 이웃 정보 직업(공감능력자 계열) · 초보 이웃 정보 직업 옆 악마
+     (악끼리 붙음은 안 본다 — 효과가 작고 요리사 숫자만 흔든다, 균형은 판세 보정 몫. 햇살님 «악끼리 인접은 너무 신경 쓰지 말자»)
+     2순위 — 직전 판 이웃이 다시 이웃 · 3순위 — 초보끼리 나란히
+   «확률 조절이지 절대 따르는 건 아니야» — 기준은 아무렇게나 앉았을 때. 자연 분포에서 벌점만큼 덜 뽑히게(λ 1.5·0.75·0.3), 무작위보다 나빠지지 않는다.
+   초보 = 숙련 1~2(모르면 기본 2). 자리 섞기 끔: 사람은 그대로, 직업끼리 맞바꿔 1순위만. 켬: 직업 먼저 나눈 뒤 사람을 앉히고 직업도 맞바꾸며 1·2·3순위 */
+const SEAT_LAMBDA=[1.5, 0.75, 0.3];
+function seatKey(s){ return (s&&(s.pid||s.name))||''; }
+function seatPrevGame(){ try{
+  const L=[state.log].concat(logsAll().slice().reverse()).find(x=>x&&x.winner&&Array.isArray(x.players)&&x.players.length>2); if(!L) return null;
+  const ps=L.players.slice().sort((a,b)=>a.seat-b.seat), k=p=>p.pid||p.name, nb=new Set();
+  ps.forEach((p,i)=>nb.add([k(p),k(ps[(i+1)%ps.length])].sort().join('|')));
+  return {nb, evil:new Set(ps.filter(p=>['minion','demon'].includes(p.team)).map(k))};
+  }catch(e){ return null; } }
+function seatTiers(S, prev){
+  const cm=CMAP(), n=S.length, c=i=>cm[S[i].char]||{}, nov=i=>(S[i].manualExperience||2)<=2;
+  const dm=i=>c(i).team==='demon', nb=i=>isRole(c(i),'empath');
+  let p1=0, p2=0, p3=0;
+  for(let i=0;i<n;i++){ const j=(i+1)%n; if(j===i) break;
+    if((nov(i)&&dm(i)&&nb(j))||(nov(j)&&dm(j)&&nb(i))||(nov(i)&&nb(i)&&dm(j))||(nov(j)&&nb(j)&&dm(i))) p1+=1;
+    if(prev&&prev.nb.has([seatKey(S[i]),seatKey(S[j])].sort().join('|'))) p2++;
+    if(nov(i)&&nov(j)) p3++; }
+  return [p1, p2, p3]; }
+/* 고르기 — 기준은 «아무렇게나 앉았을 때»(자연 분포)다(2026-10-01 실측: 층 먼저 뽑기는 드문 나쁜 배치에도 층 몫을 줘서 자리 섞기의 악 2쌍이 5% → 13% 로 늘었다).
+   후보가 자연 분포의 표본이면 후보마다 exp(−Σλ·벌점) 무게 — 나쁜 배치만 덜 뽑힌다, 무작위보다 나빠지지 않는다 */
+function seatWeightPick(cands, tiers){
+  const w=cands.map(x=>{ const t=tiers(x); return Math.exp(-(SEAT_LAMBDA[0]*t[0]+SEAT_LAMBDA[1]*t[1]+SEAT_LAMBDA[2]*t[2])); });
+  let r=Math.random()*w.reduce((a,b)=>a+b,0), k=0; while(k<w.length-1&&(r-=w[k])>0) k++; return cands[k]; }
+function seatArrange(shuffle){
+  const cm=CMAP(), S0=state.seats, n=S0.length, prev=seatPrevGame();
+  /* 직업 맞바꾸기 — 같은 편끼리, 편이 다르면 숙련이 같은 두 사람끼리만(역할 나누기의 편 숙련 고르기를 안 흔든다) */
+  const canSwap=(S,i,j)=>{ const a=cm[S[i].char], b=cm[S[j].char]; if(!a||!b||a.team==='demon'||b.team==='demon'||a.team==='traveler'||b.team==='traveler'||S[i].char===S[j].char) return false;
+    return isEvilTeam(a)===isEvilTeam(b)||(S[i].manualExperience||2)===(S[j].manualExperience||2); };
+  const swapChars=(S,i,j)=>{ const t=S[i].char; S[i]=Object.assign({},S[i],{char:S[j].char}); S[j]=Object.assign({},S[j],{char:t}); };
+  const before=seatTiers(S0, prev);
+  if(!shuffle){   // 사람은 그대로 — 벌점이 없으면 그대로, 있으면 exp(−λ·줄일 수 있는 만큼) 확률로만 남기고 아니면 덜한 배치로(1순위만)
+    if(!before[0]) return {곳:'자리 보정', 방식:'직업만', 벌점_처음:0, 벌점:0};
+    const better=[];
+    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++) if(canSwap(S0,i,j)){ const S=S0.slice(); swapChars(S,i,j); const t=seatTiers(S, prev); if(t[0]<before[0]) better.push({S, t}); }
+    if(!better.length) return {곳:'자리 보정', 방식:'직업만', 벌점_처음:before[0], 벌점:before[0]};
+    const best=Math.min(...better.map(x=>x.t[0]));
+    if(Math.random()<Math.exp(-SEAT_LAMBDA[0]*(before[0]-best))) return {곳:'자리 보정', 방식:'직업만', 벌점_처음:before[0], 벌점:before[0], 남김:true};
+    const pick=seatWeightPick(better, x=>[x.t[0],0,0]);
+    state.seats=pick.S; return {곳:'자리 보정', 방식:'직업만', 벌점_처음:before[0], 벌점:pick.t[0]}; }
+  /* 자리 섞기 — 직전 판 악이었던 사람의 악 카드를 0.4 확률로 안 악이었던 사람에게(악마는 초보에게 안 넘김) */
+  const S1=S0.map(s=>Object.assign({},s)), evil=i=>isEvilTeam(cm[S1[i].char]);
+  if(prev) S1.forEach((s,i)=>{ if(!evil(i)||!prev.evil.has(seatKey(s))||Math.random()>=0.4) return;
+    const dm=cm[s.char].team==='demon', to=S1.map((x,j)=>j).filter(j=>!evil(j)&&!prev.evil.has(seatKey(S1[j]))&&cm[S1[j].char]&&cm[S1[j].char].team!=='traveler'&&(!dm||(S1[j].manualExperience||2)>2));
+    if(to.length) swapChars(S1, i, to[Math.floor(Math.random()*to.length)]); });
+  const shuffled=()=>{ const S=S1.slice(); for(let i=S.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [S[i],S[j]]=[S[j],S[i]]; } return S; };
+  /* 후보 = 아무렇게나 앉힌 배치(자연 분포 표본) — 반은 직업도 한 번 맞바꿔(햇살님 «사람 앉히고 직업 맞바꾸고») */
+  const cands=[];
+  for(let k=0;k<300;k++){ const S=shuffled(); if(k%2){ const i=Math.floor(Math.random()*n), j=Math.floor(Math.random()*n); if(i!==j&&canSwap(S,i,j)) swapChars(S,i,j); } cands.push(S); }
+  const TT=new Map(cands.map(S=>[S, seatTiers(S, prev)])), pick=seatWeightPick(cands, S=>TT.get(S));
+  state.seatUndo=S0.map(s=>Object.assign({},s)); state.seats=pick; state.newSeats=true;
+  return {곳:'자리 섞기', 벌점_처음:before, 벌점:TT.get(pick)}; }
 /* 판정이 «끝났다»고 본 승자 — 종료 판정마다 붙여 둔 win 코드를 읽는다(문구로 판정하지 않는다).
    여러 개면 첫 번째(가장 앞선 조건). 없으면 null. */
 function endWinner(){
@@ -9591,6 +9648,8 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
   const keepPids=(state.seats||[]).map(x=>(x&&x.pid)||null);   // 이름과 함께 사람 고정값도 이어받는다 — 안 하면 두 번째 판부터 조용히 샌다
   const keepExperience=(state.seats||[]).map(x=>x&&x.manualExperience||null);
   state.seats=pool.map((id,i)=>({name:keepNames[i]||'',char:id,dead:false,rem:[], manualExperience:keepExperience[i], ...(keepPids[i]?{pid:keepPids[i]}:{})}));
+  let seatNote=null; delete state.seatUndo; state.newSeats=false;
+  try{ seatNote=seatArrange(!!state.seatShuffle); }catch(e){ seatNote=null; }   // 자리 보정(늘) · 자리 섞기(켰을 때) — 2026-10-01
   state.nightBegun=false;
   gameStateClear();
   state.bodiless=blId;
@@ -9601,6 +9660,7 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
   closeNewGame(); render();
   logStart();     // 이 판의 로그 시작
   if(dealNote){ try{ logEvent('판세 개입', dealNote); }catch(e){} }
+  if(seatNote){ try{ logEvent('판세 개입', seatNote); }catch(e){} }
   if(demonNote){ try{ logEvent('판세 개입', {곳:'악마 무게', 근거:'참고값 1점 1/5 · 2점 3/5', 악마_처음:demonNote.처음, 악마:demonNote.나중}); }catch(e){} }
   if(typeof prep!=='undefined'&&prep.on){ prepGo(4); return; }   // 준비 화면: 배정 → 규칙·전달(역할 돌리기는 거기서)
   openReveal();   // 캐릭터 칩 대체 — 역할 확인 돌리기부터
@@ -12477,14 +12537,18 @@ function logsSave(a){ if(a.length>300&&!_logTrimWarned){ _logTrimWarned=true; tr
   stSet('botc_logs',JSON.stringify(at)); }  // 최근 300판 — 저장은 kid(v7)
 function nowStamp(){ const d=new Date(), p=n=>String(n).padStart(2,'0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+function logPlayersOf(){ const cm=CMAP();
+  return state.seats.map((s,i)=>(s.char&&cm[s.char]&&!['host','fabled'].includes(cm[s.char].team))?{seat:i+1, name:s.name||'', pid:s.pid||null, role:cm[s.char]?.ko||s.char,
+      roleId:s.char, uid:uidOf(s.char)||null, team:cm[s.char]?.team||'', teamKo:TKO(cm[s.char]?.team), sideCode:seatSide(s)}:null).filter(Boolean); }
+/* 배정 뒤 자리를 다시 정했을 때(자리 섞기 다시·되돌리기) — 판 기록의 참가자 줄을 지금 자리로. aid 는 판 uuid#순번 그대로 */
+function logPlayersRefresh(){ if(!state.log) return; state.log.players=logPlayersOf(); state.log.players.forEach((p,i)=>{ p.aid=state.log.uuid+'#'+i; }); }
 function logStart(){
   state.practice=!!(ngPractice||(potNow()&&potNow().practice)); ngPractice=false;   // 연습 마당 안의 판은 전부 연습판 (N07 · 감사 2026-09-13: «한 판 더»로 이어진 판도)
   const cm=CMAP();
   let gid='g'+Date.now(); while(logsAll().some(L=>L.id===gid)) gid='g'+(+gid.slice(1)+1);   // 같은 ms 충돌 방어
   state.log={ v:3, id:gid, uuid:uuidV7(), potId:potNowId(), at:nowStamp(), mode:state.edition, modeName:ED().name, mid:ED().mid||null, oid:ED().oid||null,
     count:state.seats.filter(x=>x.char).length,
-    players:state.seats.map((s,i)=>(s.char&&cm[s.char]&&!['host','fabled'].includes(cm[s.char].team))?{seat:i+1, name:s.name||'', pid:s.pid||null, role:cm[s.char]?.ko||s.char,
-      roleId:s.char, uid:uidOf(s.char)||null, team:cm[s.char]?.team||'', teamKo:TKO(cm[s.char]?.team), sideCode:seatSide(s)}:null).filter(Boolean),
+    players:logPlayersOf(),
     events:[], nights:1, winner:null };
   /* 참가 기록 ID — 좌석은 회전·퇴장으로 바뀌지만(빠지면 0) 이건 안 바뀐다.
      서버에서 이 값이 참가 기록의 정체성이 된다. 옛 판은 저장을 다시 쓰지 않고 aidOf 가 자리로 만든다 (2026-09-14) */

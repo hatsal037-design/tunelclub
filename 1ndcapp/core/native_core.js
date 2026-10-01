@@ -292,7 +292,7 @@ var NativeCore = (function () {
       roles: list, guide: textOf(document.getElementById('ngGuide').innerHTML).replace(/인원\s*−?\s*\d+\s*＋?\s*/, ''),
       summary: textOf(document.getElementById('ngSummary').innerHTML), notice: textOf(document.getElementById('ngNotice').innerHTML) || null,
       travelerNeed: need, travelerSeats: tv, seats: (state.seats || []).map(function (x, i) { return { index: i, number: i + 1, name: x.name || ('좌석 ' + (i + 1)) }; }),
-      canAssign: !reason, disabledReason: reason };
+      canAssign: !reason, disabledReason: reason, seatShuffle: !!state.seatShuffle, newSeats: !!state.newSeats };   // 자리 섞기(켜면 직업 먼저 나누고 사람을 앉힘) · 새 자리 시트 열림(2026-10-01)
   }
 
   /* P04 넘기기 — 진행자 목록(누구까지 넘겼나)과 참가자 한 사람 몫의 공개 모델을 나눈다(03 §5).
@@ -674,6 +674,13 @@ var NativeCore = (function () {
       var keep = ngCounts; openNewGame(); ngTarget = n; ngCounts = keep; ngFor = ngKey(); ngPractice = localStorage.getItem(PRACTICE_KEY) === '1'; var wp = winPick(); document.getElementById('ngWin').value = wp.mode; document.getElementById('ngWinText').value = wp.text; startNewGame(); try { rvClose(); } catch (e) {}
       state.rvPos = -1; save(); return null;
     },
+    /* 자리 섞기 — 끄면 사람은 그대로 직업끼리만 맞바꿔 보정, 켜면 배정 때 사람 자리까지(seatArrange, 2026-10-01) */
+    'roles.setSeatShuffle': function (p) { state.seatShuffle = !!p.on; save(); return null; },
+    'seats.rearrange': function () { if (!state.newSeats || !state.seatUndo || firstNightBegun()) return rejected('notAllowedInPhase', '새로 정한 자리가 없어요.');
+      state.seats = state.seatUndo.map(function (x) { return Object.assign({}, x); }); var note = seatArrange(true); logPlayersRefresh(); try { if (note) logEvent('판세 개입', note); } catch (e) {} save(); return null; },
+    'seats.undoArrange': function () { if (!state.newSeats || !state.seatUndo || firstNightBegun()) return rejected('notAllowedInPhase', '되돌릴 자리가 없어요.');
+      state.seats = state.seatUndo.map(function (x) { return Object.assign({}, x); }); logPlayersRefresh(); try { logEvent('판세 개입', { 곳: '자리 섞기', 되돌림: true }); } catch (e) {} save(); return null; },
+    'seats.arrangeDone': function () { state.newSeats = false; save(); return null; },
     'board.changeGrid': function (p) { var g = guardSetup(); if (g) return g; if (state.layout !== 'rect') return rejected('notAllowedInPhase', '사각 배치에서만 바꿀 수 있어요.');
       var c0 = state.cols, r0 = state.rows; changeGrid(p.axis === 'rows' ? 'rows' : 'cols', +p.delta > 0 ? 1 : -1);
       if (state.cols === c0 && state.rows === r0) return rejected('invalidSelection', '인원이 들어가지 않는 크기예요.'); normGaps(); save(); return null; },
@@ -785,6 +792,7 @@ var NativeCore = (function () {
       if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0) return rejected('invalidSelection', '승자를 골라 주세요.');
       wzFinishDo(p.winner, true); return wz.mode === 'done' ? null : rejected('coreFailure', '마감하지 못했어요.'); },
     'game.again': function (p) { if (!gameEnded()) return rejected('notAllowedInPhase', '끝난 판이 아니에요.'); if (state.practice) localStorage.setItem(PRACTICE_KEY, '1');   /* 연습판에서 «한 판 더»는 계속 연습(웹 연습 마당과 같게) */ wz.again = {}; wzAgainGo(); try { prepClose(); } catch (e) {}
+      if (p && p.shuffle) state.seatShuffle = true;   // «자리 섞어서 다시»
       if (p && p.fresh) { switchEdition(state.edition, { quiet: true, force: true }); state.seats.forEach(function (x) { x.dead = false; delete x.cause; delete x.causeN; }); }   // «바꿔서 한 판 더» — 인원·자리부터 다시 볼 땐 지난 판 흔적(사망·역할)을 걷는다(명단 확정의 끝난 판 갈래와 같게)
       return null; },
     'seat.toggleToken': function (p) { var i = +p.seat; if (!state.seats[i]) return rejected('invalidSelection', '자리를 찾지 못했어요.');
