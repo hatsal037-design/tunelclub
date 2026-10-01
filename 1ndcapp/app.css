@@ -414,6 +414,8 @@ h1, h2, p { margin: 0; }
 .tpi { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 10px; border-radius: 9px; font-size: 16px; text-align: left; }
 .tpi.on { background: var(--fill); } .tpi .blue { margin-left: auto; display: flex; }
 .tpi i { width: 22px; height: 22px; }
+.tpi.off { color: var(--ter); } .tpi.off i { opacity: .35; } .tpi .soon { margin-left: auto; font-size: 12px; color: var(--ter); }
+.tsep { height: .5px; background: var(--sep); margin: 4px 10px; }
 .nb-t:has(.tpill-wrap) { overflow: visible; }
 
 /* 구성 발표(넘기기 전) — 크게, 읽어 주기 좋게(2026-10-01) */

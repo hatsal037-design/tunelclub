@@ -2,7 +2,7 @@
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { Icon } from '../icons.js';
-import { Page, Section, Row, RowLabel, CheckRow, Labeled, Primary, Stepper, Segmented, Sheet, Cover, ActionSheet, Menu, NavButton, RoleArt, HoldButton, Disclosure, useRun, LargeTitle, Empty, cx } from '../ui.js';
+import { Page, Section, Row, RowLabel, CheckRow, Labeled, Primary, Stepper, Segmented, Toggle, Sheet, Cover, ActionSheet, Menu, NavButton, RoleArt, HoldButton, Disclosure, useRun, LargeTitle, Empty, cx } from '../ui.js';
 import { NavStack, useNav, Back } from '../nav.js';
 import { SeatBoard, boardLayout } from '../seatboard.js';
 import { account } from '../account.js';
@@ -147,6 +147,19 @@ function SeatsView({ c, next, editNames }) {
   <//>`;
 }
 
+/** 새 자리 — 자리 섞기로 앱이 정한 자리(이름·번호만). 단톡에 올려 그대로 앉고 «다 앉았어요» (2026-10-01) */
+function NewSeats({ done }) {
+  const R = useRun(), b = store.board;
+  return html`<${Page} title="새 자리" left=${html`<${NavButton} label="되돌리기" onClick=${() => R.run('seats.undoArrange', {})} />`} bottom=${html`<${Primary} title="다 앉았어요" onClick=${done} />`}>
+    <div class="boardwrap nohit"><${SeatBoard} board=${b} /></div>
+    <${Section}>
+      <${Row} tint onClick=${() => shareSeatMap(b)}>자리표 이미지 공유<//>
+      <${Row} tint onClick=${() => R.run('seats.rearrange', {})}>다시 정하기<//>
+    <//>
+    ${R.alert}
+  <//>`;
+}
+
 function GridSheet({ run, close }) {
   const b = store.board, gaps = b.cells.filter(x => !x.seatID).length;
   return html`<${Page} title="배치 설정" right=${html`<${NavButton} label="완료" bold onClick=${close} />`}>
@@ -196,9 +209,10 @@ function RolesView({ c, next }) {
   if (!m) return html`<${PrepPage} c=${c}><${Empty} icon="warn" title="역할을 불러오지 못했어요" /><//>`;
   const teams = []; m.roles.forEach(r => { if (!teams.includes(r.team)) teams.push(r.team); });
   const modeName = (m.modes.find(x => x.id === m.modeID) || {}).name || '';
+  const [newSeats, setNewSeats] = useState(false);   // 자리 섞기 켜고 배정 → 새 자리 시트(2026-10-01)
   const assign = async force => {
     const r = await R.run('roles.assign', force ? { force: true } : {});
-    if (r.ok) next(); else if (r.confirm) setAsk(r.choices[0] || '역할을 다시 나눌까요?');
+    if (r.ok) { if (store.roles && store.roles.newSeats) setNewSeats(true); else next(); } else if (r.confirm) setAsk(r.choices[0] || '역할을 다시 나눌까요?');
   };
   const w = m.win;
   const saveWin = t => { clearTimeout(timer.current); timer.current = setTimeout(() => { if (t !== w.text) run('roles.setWin', { mode: 'custom', text: t }); }, 800); };
@@ -227,6 +241,8 @@ function RolesView({ c, next }) {
       <div class="row" style="font-size:15px">${m.summary}</div>
       ${m.total !== m.count && html`<${Row} tint onClick=${() => run('roles.fit')}>자리 수에 맞추기<//>`}
     <//>
+    <${Section}><${Toggle} checked=${!!m.seatShuffle} onChange=${v => run('roles.setSeatShuffle', { on: v })}>자리 섞기<//><//>
+    <${Sheet} open=${newSeats} onClose=${() => {}}>${newSeats && html`<${NewSeats} done=${async () => { await store.dispatch('seats.arrangeDone', {}); setNewSeats(false); next(); }} />`}<//>
     <${ActionSheet} open=${!!ask} title=${ask} onClose=${() => setAsk(null)} actions=${[{ label: '역할 다시 나누기', role: 'destructive', onClick: () => assign(true) }]} />
     <${ActionSheet} open=${!!confirm} title=${confirm && confirm.text} onClose=${() => setConfirm(null)} actions=${[{ label: '역할 비우고 변경', role: 'destructive', onClick: () => run(confirm.type, { ...confirm.payload, force: true }) }]} />
     ${R.alert}

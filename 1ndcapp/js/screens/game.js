@@ -122,7 +122,7 @@ export function GameFlow({ close, toRoles, toPrep }) {
   <${ActionSheet} open=${discard} title="이 판을 버릴까요?" message="기록 없이 버려요. 사람·자리는 그대로예요." onClose=${() => setDiscard(false)}
     actions=${[{ label: '버리고 역할 다시', role: 'destructive', onClick: () => R.run('game.discardToRoles', {}, toRoles) }]} />
   <${ActionSheet} open=${againAsk} title="바꿔서 한 판 더" onClose=${() => setAgainAsk(false)}
-    actions=${[{ label: '인원부터 다시', onClick: () => R.run('game.again', { fresh: true }, () => toPrep('people')) }, { label: '자리부터 다시', onClick: () => R.run('game.again', { fresh: true }, () => toPrep('seats')) }]} />
+    actions=${[{ label: '인원부터 다시', onClick: () => R.run('game.again', { fresh: true }, () => toPrep('people')) }, { label: '자리부터 다시', onClick: () => R.run('game.again', { fresh: true }, () => toPrep('seats')) }, { label: '자리 섞어서 다시', onClick: () => R.run('game.again', { fresh: true, shuffle: true }, () => toPrep('roles')) }]} />
   <${Alert} open=${!!store.notice} title="알림" message=${store.notice} onClose=${() => { store.notice = null; store.emit(); }} />
   ${R.alert}
   </div>`;
