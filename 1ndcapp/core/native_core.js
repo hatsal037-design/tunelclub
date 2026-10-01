@@ -99,7 +99,23 @@ var NativeCore = (function () {
     return { list: list, k: idx - 1, o: list[idx - 1] };
   }
 
+  /* 깨우지 않는 밤 — 옛 웹(index.html 6710·6983행)의 거름을 폰 카드에도(2026-10-01 엔진 P1 에서 발견):
+     죽은 뒤에만 쓰는 능력(봉사·까마귀지기)은 그 밤에 죽었을 때만, 몸주(주홍여인)는 흉수를 이어받을 때만(그땐 흉수 카드로 뜬다) */
   function nightCard() {
+    var card = nightCardRaw(); if (!card) return card;
+    try {
+      var cur = current(), o = cur.o, c = o.real || o.c, s = o.s || {}, RR = fxRule(c) || {}, W = RR.when || [];
+      var deathOnly = W.indexOf('death') >= 0 && !W.some(function (x) { return ['first', 'every', 'later', 'night', 'day'].indexOf(x) >= 0; });
+      var dormant = (deathOnly && !(s.dead && diedTonight(s))) || isRoleAny(c, ['scarletwoman', 'momju']);
+      if (dormant) {
+        card.instruction = deathOnly ? '깨우지 않아요 — 이 밤에 죽었을 때만 깨워요.' : '깨우지 않아요 — 흉수가 죽어 이어받을 때만(그땐 흉수 카드로 떠요).';
+        card.targets = []; card.pickCount = 0; card.minPick = 0; card.needsTargetsFirst = false; card.answer = null; card.ansBoard = null;
+        card.trueAnswer = null; card.falseReason = null; card.mustShow = false; card.primaryTitle = '다음 차례'; card.dormant = true;
+      }
+    } catch (e) {}
+    return card;
+  }
+  function nightCardRaw() {
     var cur = current(); if (!cur) return null;
     var o = cur.o, c = o.c, s = o.s || {}, owner = o.i, a = actOf(c), R = a.R;
     var usable = R.pick > 0 && pickUsableNow(R) && R.act !== 'auto' && !(isRoleAny(c, ['sanjeok', 'godfather']) && (state.nights || 1) === 1);
@@ -621,7 +637,10 @@ var NativeCore = (function () {
     'night.previous': function () { if (state.phase === 'day' || (wz.idx || 0) === 0) return rejected('notAllowedInPhase', '처음이에요.'); wzPrev(); save(); return null; },
     'phase.enterDay': function () { var st = stage(); if (st.stage !== 'dawn' && st.stage !== 'intro') return rejected('notAllowedInPhase', '밤 차례가 남아 있어요.');
       if (st.stage === 'intro' && st.order.length) return rejected('notAllowedInPhase', '밤 차례가 남아 있어요.'); wzToDay(); return null; },
-    'succession.apply': function (p) { var r = successionReady().find(function (x) { return x.id === p.id; }); if (!r) return rejected('notAllowedInPhase', '지금은 계승할 일이 없어요.');
+    'succession.apply': function (p) { var r = successionReady().find(function (x) { return x.id === p.id; });
+      /* 스타패스(객귀·임프 자발적 계승)는 감지가 없는 수동 계승(trigger false) — 웹 계승 시트처럼 밤에 흉수가 스스로를 골랐을 때 진행자가 직접 연다(2026-10-01 엔진 P2) */
+      if (!r && p.id === 'imp_self' && state.phase !== 'day') r = SUCCESSION.find(function (x) { return x.id === 'imp_self'; });
+      if (!r) return rejected('notAllowedInPhase', '지금은 계승할 일이 없어요.');
       var ok = (r.후보() || []).some(function (o) { return o.i === +p.seat; }); if (!ok) return rejected('invalidSelection', '그 자리는 계승 후보가 아니에요.');
       var c0 = current(), dk = c0 ? c0.o.dk : undefined; sucSelect(r.id); sucPickSeat(+p.seat); doSuccession(); follow(dk); return null; },
     'game.discardToRoles': function () { if (!firstNightBegun() || gameEnded()) return rejected('notAllowedInPhase', '버릴 판이 없어요.'); var pr = !!state.practice; wzDiscardToRoles(); if (pr) localStorage.setItem(PRACTICE_KEY, '1'); return null; },   // 연습판을 버리고 다시 나눠도 연습
@@ -761,8 +780,8 @@ var NativeCore = (function () {
       var card = nightCard(); if (!card) return rejected('notAllowedInPhase', '깨울 차례가 없어요.');
       if (card.needsTargetsFirst && !p.skip) return rejected('invalidSelection', '먼저 대상을 확정해 주세요.');   // skip — 고르지 않고 재움(웹 «재웠음 · 다음»: 안 쓰겠다는 사람·쓸 수 없는 밤)
       /* 참가자에게 보여 준 답 — «정보 전달» 한 줄(판세 분석: 짚인 사람이 이후 지명·표·처형·밤 사망에 오르나를 잇는다, 2026-09-30). 진행자가 직접 고른 답을 이미 적었으면 앱 답은 안 적는다 */
-      if (!p.skip && (card.answer != null || card.falseReason) && !((wz.noted || {})[(state.nights || 1) + '|' + card.stepKey])) { try { var bs = (card.ansBoard && card.ansBoard.seats) || [];
-        logEvent('정보 전달', { 누구: card.seatNumber, 직업: card.roleName, 답: card.answer, 자리: bs.map(function (i) { return i + 1; }), 직업들: (card.ansBoard && card.ansBoard.roles) || [],
+      if (!p.skip && (card.answer != null || card.falseReason || card.grimoire) && !((wz.noted || {})[(state.nights || 1) + '|' + card.stepKey])) { try { var bs = (card.ansBoard && card.ansBoard.seats) || [];
+        logEvent('정보 전달', { 누구: card.seatNumber, 직업: card.roleName, 답: card.answer != null ? card.answer : (card.grimoire ? '진행자 판' : null), 판: card.grimoire || undefined, 자리: bs.map(function (i) { return i + 1; }), 직업들: (card.ansBoard && card.ansBoard.roles) || [],
           악: bs.filter(function (i) { return state.seats[i] && realEvil(state.seats[i]); }).length, 거짓: !!card.falseReason, 까닭: card.falseReason || null, 진짜: card.trueAnswer || null,
           편: (card.ansBoard && card.ansBoard.side) || null }); } catch (e) {} }   // 편 — 그 답이 짚은 사람을 어느 편으로 말하나(악: «이 사람이 악» / 선: «둘 중 하나가 마을 직업») — 분석의 «악으로 짚힘 / 선으로 짚힘»
       wz.pickRes = null; wzMarkNext(state.nights || 1, isNaN(+card.stepKey) ? card.stepKey : +card.stepKey); save(); return null;
@@ -787,6 +806,9 @@ var NativeCore = (function () {
         try { if (snap) restoreState(snap); var w0 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w0); } catch (e2) {}
       }
       if (!r && dk0 !== null) { try { follow(dk0); } catch (e) {} }
+      /* 현재 밤 카드를 명령 안에서 한 번 계산 — 중독·취함 거짓 답 같은 앱 재량이 state.fixed 에 적혀 저장된다.
+         안 그러면 첫 «조회»가 판을 바꾸고 난수를 쓴다(2026-10-01 엔진 대량 검사 «조회 불변» 20건) */
+      if (!r) { try { if (state.phase !== 'day' && current()) nightCard(); } catch (e) {} }
       if (!r) { try { if (cmd.type !== 'game.autoClose' && cmd.type !== 'sync.markUploaded' && cmd.type !== 'sync.merge') state.touchedAt = new Date().toISOString(); wzPersist(); save(); } catch (e) {} revision += 1; r = { status: 'ok', commandId: cmd.commandId, revision: revision, effects: effects.map(function (e, i) { return Object.assign({ effectId: cmd.commandId + ':' + i }, e); }) }; }   // 진행 위치(wz)도 판과 함께 저장 — 다시 켜면 보던 카드로(03 수용 08)
       var out = J(r); if (r.status === 'ok') replies[cmd.commandId] = out; return out;
     },

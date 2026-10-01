@@ -7975,16 +7975,30 @@ function renderSuccession(){
   /** @type {HTMLButtonElement} */(document.getElementById('sucGo')).disabled=(sucPick===null);
   document.getElementById('sucGo').style.opacity=(sucPick===null)?'0.4':'1';
 }
+/* 독을 거는 사람이 흉수가 되면 그 독은 그 순간 풀린다(원작 규칙 — 2026-10-01 햇살님 «원작대로 고친다»).
+   범위: 이 모드에서 «중독»을 거는 직업이 그 하나뿐이고 그 직업의 산 사람이 더 없을 때만. 표식에 누가 걸었는지 없어서,
+   넓게 지우면 다른 원인의 중독까지 지운다(코덱스 10:24 검토). 둘 이상이면 자동으로 떼지 않는다 — 진행자 몫 */
+function sucPoisonRelease(prevChar, at){
+  const c=prevChar?CMAP()[prevChar]:null; if(!c||!JSON.stringify(c.rule||{}).includes('중독')) return 0;
+  const srcs=CHARS().filter(x=>JSON.stringify(x).includes('중독'));
+  if(srcs.length!==1||srcs[0].id!==prevChar) return 0;
+  if(state.seats.some((x,i)=>i!==at&&!x.dead&&x.char===prevChar)) return 0;
+  let n=0; state.seats.forEach(x=>{ const k=(x.rem||[]).indexOf('중독'); if(k>=0){ x.rem.splice(k,1); n++; } });
+  return n;
+}
 function doSuccession(){
   if(sucPick===null) return;
   const cm=CMAP(), def=SUCCESSION.find(x=>x.id===sucId);
   const seat=state.seats[sucPick]; if(!seat) return;
   const before=seat.char?cm[seat.char].ko:'';
+  let sucFreed=0;
   if(def.토큰){ seat.rem=seat.rem||[]; if(!seat.rem.includes(def.토큰)) seat.rem.push(def.토큰); }
   else {
     const nr=def.새역할?def.새역할():null;
     if(!nr){ alert('바꿀 역할을 찾지 못했어요.'); return; }
+    const prevChar=seat.char;
     seat.char=nr;
+    sucFreed=sucPoisonRelease(prevChar, sucPick);   // 풀린 수는 아래 «계승» 기록에
     if(def.id==='fanggu'){ seat.dead=false; reviveCleanup(sucPick); }   // 이매는 죽은 외지인이 살아나 흉수가 됨 — 정규 부활 정리를 탄다 (검토 [5])
     if(def.원본제거){ const src=state.seats.find((s,i)=>i!==sucPick&&s.char===nr&&!s.dead);
       if(src){ src.dead=true; src.cause='succession'; src.causeN=state.nights||1; src.rem=(src.rem||[]).concat(villageType()&&!(src.rem||[]).includes('유령표')?['유령표']:[]); const si=state.seats.indexOf(src); if(si>=0) logEvent('사망', Object.assign(logSeat(si),{by:'succession'})); } }   // 계승으로 스러진 원본도 사인·기록을 남긴다
@@ -7995,7 +8009,7 @@ function doSuccession(){
      무엇이 바뀐 건지는 토큰에 있으니 그걸 이후로 쓴다 (자율점검 low 4차-13, 2026-09-15) */
   logEvent('계승',{종류:def.이름, 대상:seat.name||('좌석 '+(sucPick+1)), 이전:before,
     이후:def.토큰?(before?`${before}(${def.토큰})`:def.토큰):(seat.char?CMAP()[seat.char].ko:''),
-    토큰:def.토큰||undefined});
+    토큰:def.토큰||undefined, 독해제:sucFreed||undefined});
   save();
   if(def.반복){ sucPick=null; renderSuccession(); return; }   // 창귀처럼 여러 명 지정하는 건 창을 닫지 않는다
   closeSuccession();
