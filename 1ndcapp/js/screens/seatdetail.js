@@ -18,8 +18,8 @@ export function SeatDetailView({ index, title }) {
   const sheets = {
     day: { title: '낮에 어떻게 죽었나요?', message: '지명·투표를 거치지 않는 진행자 기록이에요. 투표로 처형했다면 낮 화면에서 해 주세요.',
       actions: [{ label: '처형으로 기록', role: 'destructive', onClick: () => run('seat.kill', { seat: index, cause: 'exec' }) }, { label: '그 밖의 낮 사망', role: 'destructive', onClick: () => run('seat.kill', { seat: index, cause: 'day' }) }] },
-    cause: { title: '어떻게 죽었나요?', message: '흉수 습격이면 사후 능력·계승이 열려요.',
-      actions: [{ label: '흉수의 습격', role: 'destructive', onClick: () => run('seat.kill', { seat: index, cause: 'demon' }) }, { label: '그 밖의 밤 사망', role: 'destructive', onClick: () => run('seat.kill', { seat: index, cause: 'night' }) }] },
+    cause: { title: '어떻게 죽었나요?', message: (store.home.demonKo || '흉수') + ' 습격이면 사후 능력·계승이 열려요.',
+      actions: [{ label: (store.home.demonKo || '흉수') + '의 습격', role: 'destructive', onClick: () => run('seat.kill', { seat: index, cause: 'demon' }) }, { label: '그 밖의 밤 사망', role: 'destructive', onClick: () => run('seat.kill', { seat: index, cause: 'night' }) }] },
     remove: { title: '이 자리를 판에서 뺄까요?', message: '퇴장한 손님용이에요. 사망 처리와 달라요.',
       actions: [{ label: '판에서 빼기', role: 'destructive', onClick: () => R.run('seat.remove', { seat: index }, () => nav.pop()) }] },
   };

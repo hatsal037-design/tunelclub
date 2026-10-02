@@ -27,7 +27,7 @@ export function NightIntroView({ m, revealBluffs }) {
       ${(m.order || []).map((p, k) => html`<div class="row"><span class="sec num" style="width:24px">${k + 1}</span><${RoleArt} r=${p.role} size=${24} /><span class="grow">${p.role || ''}</span><span class="sub">${p.number}번 ${p.name}</span></div>`)}
       ${(m.skipped || []).map(p => html`<div class="row sec"><span style="width:24px"><${Icon} name="minus" size=${18} /></span><${RoleArt} r=${p.role} size=${24} /><span>${p.role || ''}</span><span class="sub grow">${p.why || ''}</span><span class="sub">${p.number}번 ${p.name}</span></div>`)}
     <//>
-    <${ActionSheet} open=${reroll} title="블러프를 다시 뽑을까요?" message="이미 보여줬다면 흉수가 본 것과 달라져요." onClose=${() => setReroll(false)}
+    <${ActionSheet} open=${reroll} title="블러프를 다시 뽑을까요?" message="이미 보여줬다면 받은 사람이 본 것과 달라져요." onClose=${() => setReroll(false)}
       actions=${[{ label: '다시 뽑기', role: 'destructive', onClick: () => R.run('bluff.reroll') }]} />
     ${R.alert}
   </div>`;

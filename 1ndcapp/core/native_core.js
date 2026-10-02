@@ -18,6 +18,28 @@ var NativeCore = (function () {
       manual: !locked && Number.isInteger(manual) && manual >= 1 && manual <= 5 ? manual : null, threshold: EXPERIENCE_MIN };
   }
   var J = function (o) { return JSON.stringify(o); };
+  /* 계열 말 — 화면으로 나가는 글의 «흉수»를 그 계열의 말로(클래식 악마 · 오리지널 마피아 범죄 조직, 등록부 team.demon 표기). 2026-10-02 햇살님 «클래식 테마에선 악마».
+     앱 글 수백 줄이 당산나무 말로 적혀 있어, 글마다 고치지 않고 출구(query·dispatch 답) 한 곳에서 바꾼다. 열쇠는 안 건드리고 글자 값만.
+     ponytail: 닉네임에 «흉수»가 들어 있으면 그것도 바뀐다 — 문제 되면 name 열쇠를 건너뛴다. 조사 도구 tools/테마말/전수조사.cjs */
+  var outHub = null;   // 조회가 «다른 계열 것을 보는 중»이면 그 계열(자료실 모드 등) — 없으면 지금 고른 계열
+  var JOSA = { '가': '이', '를': '을', '는': '은', '와': '과', '로': '으로', '라': '이라', '면': '이면', '다': '이다', '예': '이에', '였': '이었' };
+  function themeWords(o) {
+    var hub = outHub; outHub = null; if (!hub) { try { hub = hubRep(); } catch (e) { hub = 'dangsan'; } }
+    if (hub === 'dangsan') {   // 당산나무 — 글에 섞인 클래식 말을 걷는다(2026-10-02 햇살님 «응 흉수로 바꾸고»)
+      var DS = [['흉수(악마)', '흉수'], ['객귀(악마)', '객귀'], ['악마가 죽으면 주민 승', '흉수가 죽으면 마을 승']];
+      var fixD = function (s) { if (s.indexOf('악마') < 0) return s; DS.forEach(function (p) { s = s.split(p[0]).join(p[1]); }); return s; };
+      var walkD = function (v) { if (typeof v === 'string') return fixD(v); if (Array.isArray(v)) return v.map(walkD);
+        if (v && typeof v === 'object') { var r = {}; Object.keys(v).forEach(function (k) { r[k] = walkD(v[k]); }); return r; } return v; };
+      return walkD(o); }
+    var demon = KO('team', 'demon', hub), tail = /[가-힣]$/.test(demon) && (demon.charCodeAt(demon.length - 1) - 0xAC00) % 28 !== 0;   // 받침으로 끝나면 조사를 맞춘다(범죄 조직이·을)
+    var fix = function (s) { if (s.indexOf('흉수') < 0 && s.indexOf('역당') < 0) return s;
+      s = s.replace(/흉수\(악마\)/g, '흉수').replace(/하수인\(역당\)/g, KO('team', 'minion', hub));
+      return s.replace(/흉수(가|를|는|와|로|라|면|다|예|였)?/g, function (_, j) { return demon + (j ? (tail && JOSA[j] ? JOSA[j] : j) : ''); }); };
+    var walk = function (v) { if (typeof v === 'string') return fix(v); if (Array.isArray(v)) return v.map(walk);
+      if (v && typeof v === 'object') { var r = {}; Object.keys(v).forEach(function (k) { r[k] = walk(v[k]); }); return r; } return v; };
+    return walk(o);
+  }
+  var JT = function (o) { return JSON.stringify(themeWords(o)); };
   var cm = function () { return CMAP(); };
   var rejected = function (code, recovery) { return { status: 'rejected', code: code, revision: revision, recovery: recovery || '' }; };
 
@@ -29,7 +51,8 @@ var NativeCore = (function () {
     var n = (state.seats || []).filter(function (s) { return s && (s.name || s.char); }).length;
     var summary = h === 'play' ? ((state.nights || 1) === 1 ? '첫밤' : (state.phase === 'day' ? '낮 ' : '밤 ') + (state.nights || 1)) + ' · ' + n + '명'
       : h === 'draft' ? n + '명 준비 중' : null;
-    return { destination: dest, ruleFamily: ed.hub || '당산나무', modeName: ed.name || null, summary: summary, hasRecords: logsAll().length > 0,
+    return { destination: dest, ruleFamily: ed.hub || '당산나무', modeName: ed.name || null, demonKo: KO('team', 'demon', hubRep()),   // 화면 글이 쓰는 계열 말(흉수·악마·범죄 조직)
+      summary: summary, hasRecords: logsAll().length > 0,
       practice: h === 'play' ? !!state.practice : localStorage.getItem(PRACTICE_KEY) === '1',
       prepStep: h !== 'draft' ? null : hasRoles() ? 'handoff' : n >= 5 ? 'seats' : 'people' };   // 준비 이어 하기 — 역할을 나눴으면 넘기기부터(앱을 껐다 켜도 하던 자리로)
   }
@@ -534,7 +557,7 @@ var NativeCore = (function () {
     return t + (nm ? ' ' + nm : '');
   }
   function record(id) {
-    var L = logsAll().find(function (x) { return x.id === id; }); if (!L) return null;
+    var L = logsAll().find(function (x) { return x.id === id; }); if (!L) return null; logHub(L);
     var r = recordRow(L); r.note = L.note || '';
     r.players = (L.players || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: p.side || '', won: p.won === true, dead: !!p.dead }; });
     r.events = (L.events || []).map(eventLine).filter(Boolean); return r;
@@ -552,8 +575,8 @@ var NativeCore = (function () {
     return { hubs: Object.keys(hubs).map(function (h) { return { name: h, modes: hubs[h] }; }) };
   }
   function libraryMode(id) {
-    var m = allMods()[id]; if (!m) return null;
-    return { id: id, name: m.name, guide: textOf(m.guide || ''), roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, id); return { id: c.id, ko: c.ko, team: c.team, teamKo: TKO(c.team), ab: c.ab || '', icon: r.icon, e: r.e }; }) };
+    var m = allMods()[id]; if (!m) return null; outHub = hubRepOf(m);   // 보고 있는 모드의 계열 말로(지금 고른 계열이 아니라)
+    return { id: id, name: m.name, guide: textOf(m.guide || ''), roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, id); return { id: c.id, ko: c.ko, team: c.team, teamKo: TKOof(m, c.team), ab: c.ab || '', icon: r.icon, e: r.e }; }) };
   }
 
   /* A01 사람 상세 — 웹 좌석 시트(openSheet)와 같은 표식 목록: 판에 든 직업의 전용 표식 → 모드 공통 → 지금 붙은 것 */
@@ -610,8 +633,10 @@ var NativeCore = (function () {
   function winPick() { try { var w = JSON.parse(localStorage.getItem('dangsan_win') || 'null'); if (w && w.mode) return w; } catch (e) {} return { mode: (state.win && state.win.mode) || 'std', text: (state.win && state.win.text) || '' }; }
   var STAY = { 'seat.toggleToken': 1, 'seat.kill': 1, 'seat.revive': 1, 'day.call': 1 };   // 보던 밤 카드를 지켜야 하는 명령
   /* 복기(2026-10-01, docs/게임이해_엔진/복기_계획_v1.md) — 인자: 판 id(없으면 방금 끝난 판) · 'public:' 앞붙임이면 참가자 공유판 */
-  function replayLog(a) { var id = String(a || '').replace(/^public:/, ''); if (id) return logsAll().find(function (x) { return x.id === id; }) || null;
+  function replayLogRaw(a) { var id = String(a || '').replace(/^public:/, ''); if (id) return logsAll().find(function (x) { return x.id === id; }) || null;
     return (state.log && state.log.winner) ? state.log : (state.lastLogId ? (logsAll().find(function (x) { return x.id === state.lastLogId; }) || null) : null); }
+  function logHub(L) { try { var m = L && allMods()[L.mode]; if (m) outHub = hubRepOf(m); } catch (e) {} return L; }   // 지난 판은 그 판의 계열 말로
+  function replayLog(a) { return logHub(replayLogRaw(a)); }
   var narrowMemo = {};
   var QUERIES = { home: home, 'preparation.board': board, 'game.current': nightCard, 'preparation.roles': roles, 'preparation.handoff': handoff, 'handoff.public': handoffPublic, 'game.stage': stage, 'game.process': process, reference: reference, 'roles.art': function () { var mid = state.edition || 'basic'; return CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, mid); return { ko: c.ko, icon: r.icon, e: r.e }; }); }, 'game.day': day, 'display.public': displayPublic, 'game.verdict': function () { return { items: verdict(), winner: endWinner() }; }, 'game.result': result, 'game.replay': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; return GameReplay.build(L, { public: /^public:/.test(String(a || '')) }); },
     'game.replayNarrow': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; var k = L.uuid || L.id; if (!(k in narrowMemo)) narrowMemo[k] = GameReplay.narrow(L); return narrowMemo[k]; }, 'day.voters': function (k) { return voters(+k); }, records: records, record: record, library: library, 'library.mode': libraryMode,
@@ -974,7 +999,8 @@ var NativeCore = (function () {
   };
 
   return {
-    query: function (name, arg) { if (name === 'preparation.experience') return J({ revision: revision, data: experienceOf(arg || null, null) }); var f = QUERIES[name]; return J(f ? { revision: revision, data: f(arg) } : { revision: revision, data: null, error: 'unknownQuery' }); },
+    query: function (name, arg) { if (name === 'preparation.experience') return J({ revision: revision, data: experienceOf(arg || null, null) }); var f = QUERIES[name]; outHub = null; if (name === 'display.public' || name.indexOf('sync.') === 0 || name === 'backup.export') return J({ revision: revision, data: f(arg) });   // 서버·백업·큰 화면으로 가는 자료는 글을 바꾸지 않는다
+      return JT(f ? { revision: revision, data: f(arg) } : { revision: revision, data: null, error: 'unknownQuery' }); },
     dispatch: function (json) {
       var cmd = JSON.parse(json);
       if (replies[cmd.commandId]) return replies[cmd.commandId];                       // 같은 명령 재요청 — 처음 응답 그대로
@@ -995,7 +1021,7 @@ var NativeCore = (function () {
          안 그러면 첫 «조회»가 판을 바꾸고 난수를 쓴다(2026-10-01 엔진 대량 검사 «조회 불변» 20건) */
       if (!r) { try { if (state.phase !== 'day' && current()) { nightCard(); discPrepare(); } } catch (e) {} }   // 재량표도 명령 안에서 — 조회는 읽기만
       if (!r) { try { if (cmd.type !== 'game.autoClose' && cmd.type !== 'sync.markUploaded' && cmd.type !== 'sync.merge') state.touchedAt = new Date().toISOString(); wzPersist(); save(); } catch (e) {} try { displayPublic(); } catch (e) {} revision += 1; r = { status: 'ok', commandId: cmd.commandId, revision: revision, effects: effects.map(function (e, i) { return Object.assign({ effectId: cmd.commandId + ':' + i }, e); }) }; }   // 진행 위치(wz)도 판과 함께 저장 — 다시 켜면 보던 카드로(03 수용 08)
-      var out = J(r); if (r.status === 'ok') replies[cmd.commandId] = out; return out;
+      outHub = null; var out = JT(r); if (r.status === 'ok') replies[cmd.commandId] = out; return out;
     },
     exportStorage: function () { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); o[k] = localStorage.getItem(k); } return J(o); },
     setRevision: function (n) { revision = n | 0; }
