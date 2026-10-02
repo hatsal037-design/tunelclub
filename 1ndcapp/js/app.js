@@ -1,4 +1,4 @@
-// 세 층: 앱 탭(오늘·기록·자료실) · 준비/진행 전면 · 시트. 전면 공간이 탭을 덮는다(폰 앱 AppRoot 와 같다)
+// 세 층: 앱 탭(오늘·기록·자료실·화면 연결) · 준비/진행 전면 · 시트. 전면 공간이 탭을 덮는다(폰 앱 AppRoot 와 같다)
 import { html, render, useState, useEffect } from '../lib/preact-htm.js';
 import { store, bootStore } from './store.js';
 import { applyAppearance } from './settings.js';
@@ -13,15 +13,20 @@ import { GameFlow } from './screens/game.js';
 import { account } from './account.js';
 import { DisplayConnectionView } from './screens/display.js';
 
-// 미완성 기능을 공개 사이트에 노출하지 않는다. 로컬에서 ?displayDev=1로 확인.
-const displayDev = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
-  && new URLSearchParams(location.search).get('displayDev') === '1';
+import { screens } from './screenlink.js';
+
+/* 큰 화면의 QR(…/1ndcapp/?screen=코드)로 들어왔으면 코드를 챙기고 주소에서 지운다. 카카오 로그인으로 나갔다 와도 남게 sessionStorage 에 */
+const SCREEN_KEY = 'screen_pending';
+{ const u = new URL(location.href), c = u.searchParams.get('screen');
+  if (c) { try { sessionStorage.setItem(SCREEN_KEY, c); } catch {} u.searchParams.delete('screen'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
+  try { screens.pendingCode = sessionStorage.getItem(SCREEN_KEY) || ''; } catch {} }   // 연결에 성공하거나 코드를 고치면 지운다(screenlink.forget)
+const cameFromQr = !!screens.pendingCode;
 
 function useStore() { const [, f] = useState(0); useEffect(() => store.subscribe(() => f(x => x + 1)), []); }
 
 function App() {
   useStore();
-  const [tab, setTab] = useState('today');
+  const [tab, setTab] = useState(cameFromQr ? 'display' : 'today');
   const [space, setSpace] = useState(null);   // {prep:'people'|'seats'|'roles'|'handoff'} | {game:true}
   const close = () => { setSpace(null); stopSpeaking(); store.refresh(); };
   if (space) {
@@ -30,8 +35,7 @@ function App() {
       ? html`<${NavStack} key="game" root=${html`<${GameFlow} close=${close} toRoles=${() => go({ prep: 'roles' })} toPrep=${step => go({ prep: step })} />`} />`
       : html`<${PreparationFlow} key=${'prep-' + space.prep} step=${space.prep} go=${go} close=${close} />`}</div>`;
   }
-  const tabs = [['today', '오늘', 'house'], ['records', '기록', 'clock'], ['library', '자료실', 'books']];
-  if (displayDev) tabs.push(['display', '화면 연결', 'display']);
+  const tabs = [['today', '오늘', 'house'], ['records', '기록', 'clock'], ['library', '자료실', 'books'], ['display', '화면 연결', 'display']];   // 네 탭(2026-10-02 햇살님 확정)
   return html`<div class="shell">
     ${tabs.map(([id]) => html`<div class="tabpage" key=${id} style=${tab === id ? '' : 'display:none'}>
       ${id === 'today' ? html`<${NavStack} root=${html`<${TodayView} openSpace=${setSpace} />`} />`
