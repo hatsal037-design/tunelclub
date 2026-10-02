@@ -154,7 +154,8 @@ export function SeatBoard(p) {
     const dead = s.dead && !(p.publicView && s.tonight), tk = s.tokens || [];
     const bare = p.shownOnly ? !p.shownOnly.has(s.id) : false;
     const edge = lifted && !drag.outside ? 'blue' : ally ? 'red' : on ? (tint || 'blue') : mine ? 'orange' : (p.rings && p.rings[s.id]) || null;
-    const faceCls = cx('face', on && 'on', on && tint && 'tint-' + tint, (dead || bare) && !on && 'dim', edge && 'edge-' + edge);
+    const edgeHex = edge && /^(#|rgb)/.test(edge) ? edge : null;   // 색 이름(blue·red·orange)이 아니면 그 색 그대로 — 답 자리표의 «직업 색 테두리»
+    const faceCls = cx('face', on && 'on', on && tint && 'tint-' + tint, (dead || bare) && !on && 'dim', edge && !edgeHex && 'edge-' + edge);
     const label = [`${number}번 ${s.name}`, mine && '내 자리', ally && '같은 편', p.publicView ? (dead ? '사망' : null) : (s.status && s.status !== '생존' ? s.status : null)].filter(Boolean).join(', ');
     const interactive = canDrag ? { onPointerDown: e => dragStart(k, e) }
       : p.sweep ? {} : { onClick: () => { if (off) return; p.onTap && p.onTap(s.id); } };
@@ -162,7 +163,7 @@ export function SeatBoard(p) {
     return html`<${Tag} key=${s.id} class=${cx('seat', lifted && 'lifted', landed === s.id && 'landed', lifted && drag.outside && 'outside', off && !mine && 'off', canDrag && 'grab')}
       style=${`transform:translate(${pos.x - 32}px,${pos.y - 32}px)`} aria-label=${label} aria-pressed=${on} disabled=${Tag === 'button' && off && !mine && !canDrag}
       ...${interactive}>
-      <span class=${faceCls}>${p.roles && s.role && !bare ? html`<span class="face-art"><${RoleArt} r=${store.artOf ? store.artOf(s.role) : s.role} size=${44} /></span><span class="no-b">${number}</span>` : bare ? '' : number}
+      <span class=${faceCls} style=${edgeHex ? `box-shadow:inset 0 0 0 3px ${edgeHex}` : ''}>${p.roles && s.role && !bare ? html`<span class="face-art"><${RoleArt} r=${store.artOf ? store.artOf(s.role) : s.role} size=${44} /></span><span class="no-b">${number}</span>` : bare ? '' : number}
         ${dead && html`<span class="dead-b"><${Icon} name=${s.ghost ? 'hand' : 'xmark'} size=${9} stroke=${3.2} /></span>`}
         ${mine && html`<span class="me-b"><${Icon} name="person" size=${10} fill=${true} stroke=${0} /></span>`}
         ${order ? html`<span class="ord-b">${order}</span>` : on && !tint && html`<span class="chk-b"><${Icon} name="checkCircle" size=${17} /></span>`}
@@ -234,6 +235,18 @@ export function HostBoard({ board, rows, bluffs, me, meTint, onTap }) {
   return html`<div class=${cx('reveal', meTint && 'me-tint')}><div class=${onTap ? '' : 'nohit'}><${SeatBoard} board=${b} roles=${true} me=${id(me)} onTap=${onTap}
     center=${bl.length ? html`<div class="bluff-c"><div class="sub">블러프</div><${RolesCluster} roles=${bl} big=${false} /></div>` : undefined} /></div></div>`;
 }
+/* 직업 그림의 대표 색 — 색이 있는 점들의 평균. 목판(job_, 단색 마스크)·이모지는 색이 없다(null) */
+const artColors = {};
+function artColor(a) {
+  if (!a || !a.icon || a.icon.startsWith('job_')) return Promise.resolve(null);
+  if (a.icon in artColors) return Promise.resolve(artColors[a.icon]);
+  return new Promise(ok => { const img = new Image(); img.onerror = () => ok(null);
+    img.onload = () => { try { const n = 24, cv = document.createElement('canvas'); cv.width = cv.height = n; const c = cv.getContext('2d'); c.drawImage(img, 0, 0, n, n);
+      const d = c.getImageData(0, 0, n, n).data; let r = 0, g = 0, b = 0, k = 0;
+      for (let i = 0; i < d.length; i += 4) { const mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]); if (d[i + 3] < 128 || mx < 40 || mx - mn < 40) continue; r += d[i]; g += d[i + 1]; b += d[i + 2]; k++; }
+      ok(artColors[a.icon] = k > 8 ? `rgb(${Math.round(r / k)},${Math.round(g / k)},${Math.round(b / k)})` : null); } catch (e) { ok(null); } };
+    img.src = `art/${a.icon}.webp`; });
+}
 export function RevealBoard({ roles, shown = [], me, allies = [], title, side, meTint }) {
   const b = store.board;
   const id = i => { const s = b.seats.find(s => s.index === i); return s ? s.id : null; };
@@ -242,8 +255,12 @@ export function RevealBoard({ roles, shown = [], me, allies = [], title, side, m
   const big = round && inCenter;
   const rows = []; for (let i = 0; i < roles.length; i += 2) rows.push(roles.slice(i, i + 2));
   const cluster = html`<div class="rv-cluster">${rows.map(r => html`<div class="rv-row">${r.map(n => html`<div class=${cx('rv-item', big && 'big')}><${RoleArt} r=${n} size=${big ? 46 : 36} /><span>${n}</span></div>`)}</div>`)}</div>`;
-  const shownIds = new Set(shown.map(id).filter(Boolean)); if (meTint && id(me)) shownIds.add(id(me));   // 보는 사람 자리는 번호·이름도 같이
-  const rings = {}; if (side) shownIds.forEach(x => { rings[x] = side === 'evil' ? 'red' : 'blue'; });
+  /* 대상 자리는 알려 준 직업의 색으로 테두리, 보는 사람 자리는 원을 파랑으로 채운다(2026-10-02 햇살님 «자기랑 대상이 달라야»). 직업 색 = 그 직업 그림의 색(그림이 단색 목판이면 편 색: 선 파랑·악 빨강) */
+  const [roleColor, setRoleColor] = useState(null);
+  useEffect(() => { let live = true; setRoleColor(null); if (roles.length === 1) artColor(store.artOf(roles[0])).then(c => { if (live) setRoleColor(c); }); return () => { live = false; }; }, [roles.join('|')]);
+  const targets = shown.map(id).filter(Boolean);
+  const shownIds = new Set(targets); if (meTint && id(me)) shownIds.add(id(me));   // 보는 사람 자리는 번호·이름도 같이
+  const rings = {}; if (side || roleColor) targets.forEach(x => { if (x !== id(me)) rings[x] = roleColor || (side === 'evil' ? 'red' : 'blue'); });
   return html`<div class=${cx('reveal', meTint && 'me-tint')}>
     ${title && html`<div class="rv-title">${title}</div>`}
     ${!inCenter && roles.length > 0 && cluster}

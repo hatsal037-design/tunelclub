@@ -21,7 +21,7 @@ function Summary({ r, host, narrow }) {
       <div class="row rp-stat"><span>선의 지명 적중</span><b>${st.지명.악}/${st.지명.수}<small>${pct(st.지명.악, st.지명.수)}</small></b></div>
       ${st.정보.수 > 0 && html`<div class="row rp-stat"><span>받은 정보 중 참</span><b>${st.정보.참}/${st.정보.수}</b></div>`}
       ${st.정보.악을짚음 > 0 && html`<div class="row rp-stat"><span>악을 짚은 정보 → 지명·처형</span><b>${st.정보.이어짐}/${st.정보.악을짚음}</b></div>`}
-      ${nw.map(x => html`<div class="row rp-stat"><span>낮 ${x.낮} 정보만으로 좁힌 흉수 후보</span><b>${x.후보수}명<small> ${x.누구}</small></b></div>`)}
+      ${nw.map(x => html`<div class="row rp-stat"><span>낮 ${x.낮} 정보만으로 좁힌 ${store.home.demonKo || '흉수'} 후보</span><b>${x.후보수}명<small> ${x.누구}</small></b></div>`)}
     <//>
     ${st.좋은장면.length > 0 && html`<${Section} header="좋은 장면">${st.좋은장면.map(g => html`<div class="row"><div><div class="rp-kind rp-good">${g.종류}</div><div>${g.이름}${g.대상 ? ' → ' + g.대상 : ''}</div></div></div>`)}<//>`}
     ${host && st.사람별 && html`<${Section} header="사람별 (진행자만)">${st.사람별.filter(p => !EVIL[p.편]).sort((a, b) => b.악지명 - a.악지명 || b.악에찬성 - a.악에찬성).map(p => html`<div class="row rp-stat"><span>${p.이름}</span><small class="sec">악 지명 ${p.악지명} · 악에 찬성 ${p.악에찬성}/${p.찬성}</small></div>`)}<//>`}`;
@@ -57,7 +57,7 @@ function Steps({ r }) {
     s.d.정보.forEach(x => rows.push(['정보', `${x.이름}(${x.직업}) ${x.답}${x.거짓 ? ' · 거짓' : ''}`, 'rp-info']));
   } else {
     s.d.지명.forEach(x => { const v = s.d.투표.find(y => y.대상 === x.대상); rows.push(['지명', `${nameOf(x.지명자)} → ${nameOf(x.대상)}${x.악 ? ' · 악' : ''}${v ? ` · ${v.표}표` : ''}`, x.악 ? 'rp-good' : '']); });
-    s.d.처형.forEach(x => rows.push(['처형', `${x.이름}(${x.직업})${x.흉수 ? ' — 흉수' : ''}`, x.악 ? 'rp-good' : 'rp-evil']));
+    s.d.처형.forEach(x => rows.push(['처형', `${x.이름}(${x.직업})${x.흉수 ? ' — ' + (store.home.demonKo || '흉수') : ''}`, x.악 ? 'rp-good' : 'rp-evil']));
     if (!s.d.처형.length) rows.push(['처형', '없음', 'sec']);
   }
   return html`<${Page} title="밤낮 넘겨보기" left=${html`<${Back} />`}>
