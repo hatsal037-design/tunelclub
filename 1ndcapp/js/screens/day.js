@@ -5,6 +5,8 @@ import { settings } from '../settings.js';
 import { Icon } from '../icons.js';
 import { Page, Section, Row, CheckRow, ActionSheet, Menu, NavButton, RoleArt, Sheet, Cover, cx } from '../ui.js';
 import { SeatBoard } from '../seatboard.js';
+import { useNav } from '../nav.js';
+import { ReplayView } from './replay.js';
 
 /** 코어 항목 묶음 — 글은 글로, 버튼은 명령(day.call). 죽이거나 보호를 뚫는 단추는 한 번 더 묻는다 */
 export function CoreItems({ items, call }) {
@@ -111,8 +113,10 @@ export function FinishSheet({ close, done }) {
 
 /** G05 · 결과 — 제목·종료 근거·판 끝 질문·참가자 */
 export function ResultView({ m, call }) {
+  const nav = useNav();
   return html`<div>
     <div class="ltitle"><h1>${m.title}</h1><p class="sec" style="white-space:pre-line">${m.why}</p></div>
+    ${!m.practice && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${ReplayView} />`)}>복기<//><//>`}
     ${m.politician.length > 0 && html`<${Section} header="판 끝 질문"><${CoreItems} items=${m.politician} call=${call} /><//>`}
     ${m.players.length > 0 && html`<${Section} header="참가자">${m.players.map(p => html`<div class="row"><span>${p.number}번 ${p.name}</span><${RoleArt} r=${p.role} size=${24} />
       <span class="sub grow">${p.role}</span>${p.won && html`<span class="blue" aria-label="이김"><${Icon} name="checkCircle" size=${20} /></span>`}${p.dead && html`<span class="sec" aria-label="사망"><${Icon} name="xmark" size=${18} /></span>`}</div>`)}<//>`}

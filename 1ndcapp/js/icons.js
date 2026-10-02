@@ -1,6 +1,7 @@
 // SF Symbols 대신 쓰는 선 그림 — 폰 앱에 쓰인 이름 그대로(필요한 것만). 24 격자, 선 1.8
 import { html } from '../lib/preact-htm.js';
 const P = {
+  display: 'M3 4h18v14H3zM12 18v4M8 22h8',
   house: 'M3 11.5 12 4l9 7.5M5.5 9.5V20h5v-5.5h3V20h5V9.5',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7v5l3.5 2',
   books: 'M4 4h4v16H4zM10 4h4v16h-4zM16.2 4.6l3.7-.9 3.3 15.6-3.7.9z',

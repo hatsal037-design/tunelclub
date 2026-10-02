@@ -186,7 +186,7 @@ var GameEngine = (function () {
     return dispatch('day.vote', { k: k, voters: Object.keys(v).filter(function (x) { return v[x]; }).map(Number) });
   }
   return {
-    view: view, legal: legal, act: act, closeVote: closeVote,
+    view: view, legal: legal, act: act, closeVote: closeVote, answerKind: answerKind,   // answerKind — 복기(replay.js)가 끝난 판 기록으로 보기를 다시 세울 때 같은 해석을 쓴다
     host: { dispatch: dispatch, query: q },
     record: function () { return log.slice(); },
     reset: function () { log = []; n = 0; votes = {}; }

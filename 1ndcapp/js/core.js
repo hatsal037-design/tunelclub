@@ -16,7 +16,7 @@ export async function boot() {
   const files = ['core/dom_stub.js', 'core/app.js', 'core/native_core.js'];
   SRC = (await Promise.all(files.map(f => fetch(f).then(r => { if (!r.ok) throw new Error(f); return r.text(); })))).join('\n;\n');
   // 공통 엔진(2026-10-01) — 코어 위 모듈, 화면 연결 전. 없거나 깨져도 코어는 선다(try 안에서 var GameEngine 은 이 함수 범위로)
-  for (const m of ['engine', 'reasoner']) { try { const en = await fetch('core/' + m + '.js'); if (en.ok) SRC += '\n;try{\n' + (await en.text()) + '\n}catch(e){ print && print("' + m + ': " + e); }\n'; } catch {} }   // reasoner — 풀이기(P4 v2)
+  for (const m of ['engine', 'reasoner', 'replay']) { try { const en = await fetch('core/' + m + '.js'); if (en.ok) SRC += '\n;try{\n' + (await en.text()) + '\n}catch(e){ print && print("' + m + ': " + e); }\n'; } catch {} }   // reasoner — 풀이기(P4 v2)
   let saved = null;
   try { saved = localStorage.getItem(KEY); } catch {}
   if (saved && !readable(saved)) {   // 깨졌으면 직전 정상본으로 — 깨진 것은 지우지 않고 옆에 둔다
