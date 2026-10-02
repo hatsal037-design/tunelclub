@@ -4,22 +4,30 @@ import { store } from '../store.js';
 import { Page, Section, Row, Search, Empty, Disclosure, RoleArt, LargeTitle } from '../ui.js';
 import { useNav, Back } from '../nav.js';
 
+import { ThemeMenu, currentTheme } from './today.js';
+
 const matches = (m, q) => !q || m.name.includes(q) || (m.roleNames || []).some(n => n.includes(q));
 
+/* 위 가운데 테마 버튼(오늘 화면과 같은 것)으로 계열을 골라 그 계열 모드만 본다 — 구경만이라 새 판의 계열은 안 바뀐다(2026-10-02 햇살님).
+   같은 제목의 확장판(코어가 parent 를 붙인다)은 원래 모드 밑에 접어 두고 «변형 N» 으로 편다. 검색 중엔 다 편다 */
 export function LibraryView() {
   const nav = useNav();
   const [m] = useState(() => store.get('library'));
-  const [q, setQ] = useState('');
-  const hubs = (m ? m.hubs : []).map(h => ({ ...h, modes: h.modes.filter(x => matches(x, q)) })).filter(h => h.modes.length);
-  return html`<${Page} title="">
+  const [q, setQ] = useState(''), [theme, setTheme] = useState(currentTheme), [open, setOpen] = useState({});
+  const hub = (m ? m.hubs : []).find(h => h.name === theme.hub), all = hub ? hub.modes : [];
+  const kids = id => all.filter(x => x.parent === id);
+  const shown = q ? all.filter(x => matches(x, q)) : all.filter(x => !x.parent).flatMap(x => [x, ...(open[x.id] ? kids(x.id) : [])]);
+  const row = mode => { const n = !q && !mode.parent ? kids(mode.id).length : 0, sub = !q && mode.parent;
+    const hit = q && !mode.name.includes(q) ? (mode.roleNames || []).find(x => x.includes(q)) : null;
+    return html`<${Row} chevron cls=${sub ? 'kid' : ''} onClick=${() => nav.push(html`<${LibraryMode} id=${mode.id} />`)}><div class="grow"><div>${sub ? mode.short : mode.name}</div>
+      <div class="sub">${[mode.players, '직업 ' + mode.roles].filter(Boolean).join(' · ')}</div>${hit && html`<div class="sub blue">${hit} 나옴</div>`}</div>
+      ${n > 0 && html`<span class="more blue" role="button" tabindex="0" aria-expanded=${!!open[mode.id]} onClick=${e => { e.stopPropagation(); setOpen(o => ({ ...o, [mode.id]: !o[mode.id] })); }}
+        onKeyDown=${e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setOpen(o => ({ ...o, [mode.id]: !o[mode.id] })); } }}>${open[mode.id] ? '접기' : '변형 ' + n}</span>`}<//>`; };
+  return html`<${Page} title=${html`<${ThemeMenu} theme=${theme} onPick=${t => { setTheme(t); setQ(''); }} />`}>
     <${LargeTitle}>자료실<//>
-    <${Search} value=${q} onInput=${setQ} placeholder="모드·직업 검색" />
-    ${hubs.map(h => html`<${Section} header=${h.name}>${h.modes.map(mode => {
-      const hit = q && !mode.name.includes(q) ? (mode.roleNames || []).find(n => n.includes(q)) : null;
-      return html`<${Row} chevron onClick=${() => nav.push(html`<${LibraryMode} id=${mode.id} />`)}><div class="grow"><div>${mode.name}</div>
-        <div class="sub">${[mode.players, '직업 ' + mode.roles].filter(Boolean).join(' · ')}</div>${hit && html`<div class="sub blue">${hit} 나옴</div>`}</div><//>`;
-    })}<//>`)}
-    ${m && !hubs.length && html`<${Empty} icon="search" title=${`«${q}» 결과 없음`} text="철자를 확인하거나 다른 말로 찾아보세요." />`}
+    <${Search} value=${q} onInput=${setQ} placeholder=${theme.id + ' 모드·직업 검색'} />
+    ${shown.length > 0 && html`<${Section} header=${theme.hub}>${shown.map(row)}<//>`}
+    ${m && !shown.length && html`<${Empty} icon="search" title=${`«${q}» 결과 없음`} text="철자를 확인하거나 다른 테마에서 찾아보세요." />`}
   <//>`;
 }
 

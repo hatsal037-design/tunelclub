@@ -60,19 +60,24 @@ export function TodayView({ openSpace }) {
     <//>
   <//>`;
 }
-/* 가운데 테마 버튼 — 누르면 버튼 밑 작은 창(아래서 올라오는 시트 아님). 판이 진행 중이면 계열을 못 바꾼다(흐리게) */
-function ThemePill({ theme }) {
-  const [open, setOpen] = useState(false), [ask, setAsk] = useState(null), box = useRef(null);
-  const locked = store.home && store.home.destination === 'resumeGame';
+/* 가운데 테마 버튼 — 누르면 버튼 밑 작은 창(아래서 올라오는 시트 아님). 오늘 화면과 자료실이 같이 쓴다: 고르면 onPick(테마), locked 면 흐리게(못 바꿈) */
+export function ThemeMenu({ theme, onPick, locked }) {
+  const [open, setOpen] = useState(false), box = useRef(null);
   useEffect(() => { if (!open) return; const h = e => { if (!box.current || !box.current.contains(e.target)) setOpen(false); }; document.addEventListener('pointerdown', h); return () => document.removeEventListener('pointerdown', h); }, [open]);
-  const pick = async (t, force) => { setOpen(false); const r = await store.dispatch('roles.setFamily', force ? { family: t.hub, force: true } : { family: t.hub }); if (r.confirm) setAsk(t); else store.refresh(); };
   return html`<div class="tpill-wrap" ref=${box}>
     <button class="tpill" aria-haspopup="menu" aria-expanded=${open} onClick=${() => setOpen(o => !o)}><i style=${`background:${theme.color}`}></i>${theme.id}<${Icon} name="chevronDown" size=${12} stroke=${2.4} /></button>
     ${open && html`<div class="tpop" role="menu">${THEMES.map((t, k) => html`${k > 0 && t.soon && !THEMES[k - 1].soon && html`<div class="tsep"></div>`}<button class=${cx('tpi', t.id === theme.id && 'on', (t.soon || locked) && 'off')} role="menuitemradio" aria-checked=${t.id === theme.id} aria-disabled=${!!(t.soon || locked)}
-      onClick=${() => { if (!t.soon && !locked && t.id !== theme.id) pick(t, false); else setOpen(false); }}>
+      onClick=${() => { setOpen(false); if (!t.soon && !locked && t.id !== theme.id) onPick(t); }}>
       <i style=${`background:${t.color}`}></i><span>${t.id}</span>${t.soon ? html`<span class="soon">준비 중</span>` : t.id === theme.id && html`<span class="blue"><${Icon} name="check" size=${18} stroke=${2.4} /></span>`}</button>`)}</div>`}
-    <${ActionSheet} open=${!!ask} title=${ask ? `준비하던 판의 역할을 비우고 ${ask.id}로 바꿀까요?` : ''} onClose=${() => setAsk(null)} actions=${[{ label: '역할 비우고 변경', role: 'destructive', onClick: () => { const t = ask; setAsk(null); pick(t, true); } }]} />
   </div>`;
+}
+/* 오늘 화면 — 고르면 새 판 준비의 계열이 바뀐다. 판이 진행 중이면 못 바꾼다 */
+function ThemePill({ theme }) {
+  const [ask, setAsk] = useState(null);
+  const locked = store.home && store.home.destination === 'resumeGame';
+  const pick = async (t, force) => { const r = await store.dispatch('roles.setFamily', force ? { family: t.hub, force: true } : { family: t.hub }); if (r.confirm) setAsk(t); else store.refresh(); };
+  return html`<${ThemeMenu} theme=${theme} locked=${locked} onPick=${t => pick(t, false)} />
+    <${ActionSheet} open=${!!ask} title=${ask ? `준비하던 판의 역할을 비우고 ${ask.id}로 바꿀까요?` : ''} onClose=${() => setAsk(null)} actions=${[{ label: '역할 비우고 변경', role: 'destructive', onClick: () => { const t = ask; setAsk(null); pick(t, true); } }]} />`;
 }
 const Shortcut = ({ icon, title, text }) => html`<div class="hstack shortcut" style="gap:12px;padding:4px 0">
   <span class="sym"><${Icon} name=${icon} size=${18} /></span><div><div class="shortcut-t">${title}</div><div class="sub">${text}</div></div></div>`;

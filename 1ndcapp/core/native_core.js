@@ -541,6 +541,11 @@ var NativeCore = (function () {
     Object.keys(M).forEach(function (id) { if (id === 'compendium') return; var m = M[id], h = m.hub || '당산나무', P = edPlayable(m);
       (hubs[h] = hubs[h] || []).push({ id: id, name: m.name, players: P.set && P.set.length ? P.set[0] + '~' + P.set[P.set.length - 1] + '명' : '', roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).length,
         roleNames: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { return c.ko; }) }); });   // 직업 이름으로도 찾게(«무당» → 무당이 나오는 모드)
+    /* 같은 제목의 확장판은 원래 모드 아래로 묶는다(2026-10-02 햇살님 «확장개념은 묶기 같은장르 같은제목 끼리») — «우물가 — 두레박» → parent=우물가, short=두레박.
+       당산나무 계열만: 클래식은 «클래식 — …»이 제목이 아니라 계열 이름이라 묶지 않는다. 화면은 parent 가 있는 모드를 그 모드 밑에 접어 둔다 */
+    (hubs['당산나무'] || []).forEach(function (m, _, L) { var cut = m.name.indexOf(' — '); if (cut < 0) return; var key = m.name.slice(0, cut);
+      var base = L.find(function (b) { return b.name.indexOf(' — ') < 0 && (b.name.indexOf(key) === 0 || b.name.replace(/^당산나무 /, '').indexOf(key) === 0); });
+      if (base) { m.parent = base.id; m.short = m.name.slice(cut + 3); } });
     return { hubs: Object.keys(hubs).map(function (h) { return { name: h, modes: hubs[h] }; }) };
   }
   function libraryMode(id) {

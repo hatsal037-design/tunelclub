@@ -449,3 +449,13 @@ h1, h2, p { margin: 0; }
 .rp-legend { display: flex; gap: 12px; justify-content: center; font-size: 11px; color: var(--sec); margin: 2px 0 6px; }
 .rp-legend span::before { content: ""; display: inline-block; width: 14px; height: 2px; margin-right: 4px; vertical-align: middle; }
 .rp-legend .evil::before { background: var(--red, #d1352b); } .rp-legend .good::before { background: var(--green, #248a3d); } .rp-legend .info::before { border-top: 2px dashed var(--blue); height: 0; }
+
+/* 자료실 — 확장판 묶음(2026-10-02) */
+.row .more { flex: none; font-size: 15px; white-space: nowrap; padding: 6px 10px; margin-right: 2px; border-radius: 8px; background: var(--fill); min-height: 32px; display: inline-flex; align-items: center; }
+.row.kid .rc { padding-left: 16px; }
+
+/* 화면 연결 — 앱 안 QR 카메라(2026-10-02) */
+.qrscan { position: fixed; inset: 0; z-index: 60; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.qrscan video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.qrscan-t { position: relative; color: #fff; font-size: 17px; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,.7); padding: 0 24px 16px; text-align: center; }
+.qrscan-x { position: relative; margin-bottom: calc(28px + var(--safe-b)); min-width: 160px; min-height: 50px; border-radius: 12px; background: rgba(255,255,255,.22); color: #fff; font-size: 17px; font-weight: 600; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
