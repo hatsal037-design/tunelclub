@@ -51,6 +51,7 @@ export const store = {
       if (notes.length) { store.notice = notes.join('\n'); store.emit(); }
     }
     if (reply.ok && store.afterCommit) { try { store.afterCommit(type); } catch {} }
+    if (reply.ok && store.afterPublic) { try { store.afterPublic(type); } catch {} }   // 큰 화면 — 공개 정보가 바뀌었으면 올린다
     if (reply.ok && STEP.has(type) && settings.get('haptics') && navigator.vibrate) { try { navigator.vibrate(12); } catch {} }
     return reply;
   },

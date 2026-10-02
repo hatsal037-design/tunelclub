@@ -131,16 +131,20 @@ export const timer = {
   get running() { return this.total > 0; }, get paused() { return this.pausedLeft !== null; },
   left(now = Date.now()) { return this.pausedLeft ?? Math.max(0, ((this.endAt ?? now) - now) / 1000); },
   emit() { subs.forEach(f => f()); },
+  /* 큰 화면에 타이머 상태를 알린다 — 바뀔 때만(매초 아님). 저절로 끝나면 00:00 으로 남기고, 지우면 없앤다 */
+  tell(done) { const ms = x => Math.round(x * 1000);
+    store.dispatch('display.setTimer', done ? { state: 'elapsed', endsAt: Date.now(), durationMs: ms(done) }
+      : !this.running ? { state: null } : this.paused ? { state: 'paused', leftMs: ms(this.pausedLeft), durationMs: ms(this.total) } : { state: 'running', endsAt: this.endAt, durationMs: ms(this.total) }); },
   start(min) { this.total = min * 60; this.endAt = Date.now() + this.total * 1000; this.pausedLeft = null; this.shouted = new Set(); this.shout = null;
-    clearInterval(this.tick); this.tick = setInterval(() => this.poll(), 1000); this.emit(); },
-  pause() { if (this.running && !this.paused) { this.pausedLeft = this.left(); this.emit(); } },
-  resume() { if (this.paused) { this.endAt = Date.now() + this.pausedLeft * 1000; this.pausedLeft = null; this.emit(); } },
-  add(min) { if (!this.running) return; this.shouted.delete('m1'); this.shouted.delete('m2'); this.total += min * 60; if (this.paused) this.pausedLeft += min * 60; else this.endAt += min * 60000; this.emit(); },
-  reset() { clearInterval(this.tick); this.tick = null; this.total = 0; this.endAt = null; this.pausedLeft = null; this.shouted = new Set(); this.shout = null; this.emit(); },
+    clearInterval(this.tick); this.tick = setInterval(() => this.poll(), 1000); this.emit(); this.tell(); },
+  pause() { if (this.running && !this.paused) { this.pausedLeft = this.left(); this.emit(); this.tell(); } },
+  resume() { if (this.paused) { this.endAt = Date.now() + this.pausedLeft * 1000; this.pausedLeft = null; this.emit(); this.tell(); } },
+  add(min) { if (!this.running) return; this.shouted.delete('m1'); this.shouted.delete('m2'); this.total += min * 60; if (this.paused) this.pausedLeft += min * 60; else this.endAt += min * 60000; this.emit(); this.tell(); },
+  reset() { const was = this.running; clearInterval(this.tick); this.tick = null; this.total = 0; this.endAt = null; this.pausedLeft = null; this.shouted = new Set(); this.shout = null; this.emit(); if (was) this.tell(); },
   poll() {
     if (!this.running || this.paused) { this.emit(); return; }
     const l = this.left();
-    if (l <= 0) { this.alert('끝', '이야기 시간이 끝났어요 — 지목을 받으세요', true); clearInterval(this.tick); this.tick = null; this.total = 0; this.endAt = null; this.emit(); return; }
+    if (l <= 0) { this.alert('끝', '이야기 시간이 끝났어요 — 지목을 받으세요', true); clearInterval(this.tick); this.tick = null; const dur = this.total; this.total = 0; this.endAt = null; this.emit(); this.tell(dur); return; }
     const passed = this.total - l, marks = [];
     for (let m = 5; m * 60 < this.total; m += 5) marks.push(['p' + m, m * 60, `${m}분 지났어요`]);
     marks.push(['m2', this.total - 120, '2분 남았어요'], ['m1', this.total - 60, '1분 남았어요']);

@@ -1,0 +1,279 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>첫밤 사망자 클럽 · 큰 화면</title><meta name="robots" content="noindex">
+<link rel="icon" href="../icons/favicon-32.png">
+<style>
+/* 큰 화면(TV·프로젝터) — 진행자 폰이 올린 «공개 정보»만 받아 그린다. 배치·모양은 시안 큰화면_v8 그대로(시안/큰화면_자리타이머_20261001) */
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -apple-system,"SF Pro Text","Apple SD Gothic Neo","Noto Sans KR",sans-serif;overflow:hidden}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+.tv{position:relative;width:100%;max-width:1120px;aspect-ratio:16/9;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.25);--bg:#f5f5f7;--fg:#1c1c1e;--mute:#8e8e93;--seat:#fff;--line:rgba(60,60,67,.24);background:var(--bg);color:var(--fg)}
+.tv.night{--bg:#0b0f1c;--fg:#f2f2f7;--mute:#8e8e9a;--seat:#1c2233;--line:rgba(235,235,245,.18)}
+.tv svg.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.tv svg.ov path.ld{fill:none;stroke:var(--line);stroke-width:1.3}
+.st{position:absolute;transform:translate(-50%,-50%)}
+.st i{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:var(--seat);border:1.5px solid var(--line);font-style:normal;font-weight:600;font-variant-numeric:tabular-nums}
+.st.dead i{opacity:.35}
+.st .ghost{position:absolute;width:34%;height:34%;border-radius:50%;background:var(--fg);right:-8%;bottom:-8%;border:2.5px solid var(--bg)}   /* 남은 유령표 — 죽은 사람마다 */
+.st.nom i{border:3px solid #ff9f0a}
+.st .vt{position:absolute;left:50%;top:-8%;transform:translate(-50%,-100%);background:#ff9f0a;color:#fff;font-weight:700;border-radius:6px;padding:0 .4em;white-space:nowrap}
+.nm{position:absolute;white-space:nowrap;font-weight:500;line-height:1}
+.nm.dead{opacity:.4;text-decoration:line-through}
+.tablerect{position:absolute;border-radius:22px;border:1.5px solid var(--line);background:rgba(120,120,128,.05)}
+.ring{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center}
+.ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.ring .track{stroke:rgba(120,120,128,.2)} .ring .bar{stroke:#ff9f0a;stroke-linecap:round}
+.ring.warn .bar{stroke:#ff3b30}
+.num{font-family:-apple-system,"SF Pro Display",system-ui,sans-serif;font-weight:200;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+.warn .num{color:#ff3b30}
+.mute{color:var(--mute);font-variant-numeric:tabular-nums}
+.box{position:absolute;transform:translate(-50%,-50%);text-align:center}
+.hud{position:absolute;color:var(--mute);font-weight:500;font-variant-numeric:tabular-nums}
+.hud b{color:var(--fg);font-weight:600}
+.chip{position:absolute;display:flex;flex-direction:column;gap:.15em;color:var(--fg)}
+.chip .lab{color:var(--mute);font-weight:500;letter-spacing:.02em}
+.chip .row{display:flex;align-items:baseline;gap:.5em}
+.chip .big{font-family:-apple-system,'SF Pro Display',system-ui;font-weight:300;font-variant-numeric:tabular-nums;line-height:1}
+.box .dot,.chip .dot{display:inline-block;width:.42em;height:.42em;border-radius:50%;margin-right:.25em;vertical-align:.12em}
+
+.tv{max-width:none;border-radius:20px;container-type:inline-size}
+.arena{position:absolute;top:19%;left:0;right:0;bottom:6%}
+.topline{position:absolute;top:3%;left:3%;right:3%;display:flex;align-items:center;justify-content:space-between;font-size:1.5cqw}
+.topline strong{font-weight:600}.topline small{color:#737379}
+.ribbon{position:absolute;top:8%;left:3%;right:3%;height:10%;display:flex;align-items:center;gap:1%;overflow-x:auto;scrollbar-width:thin}
+.result{flex-shrink:0;padding:.35em .8em;border-radius:10px;background:white;border:1px solid #dedee3;font-size:1.5cqw;display:flex;gap:.7em;align-items:center}
+.result strong{font-size:1.4em;font-weight:500;font-variant-numeric:tabular-nums}
+.result small{font-size:.72em;color:#737379}
+.result.lead{border-color:#b87627;background:#fff9ee;margin:0;color:inherit}
+.stamp{display:inline-block;transform:rotate(-9deg);border:3px double #a56721;border-radius:4px;padding:.1em .25em;color:#945715;font-weight:700;font-size:.85em;white-space:nowrap}
+.ribbon:empty:after{content:' ';display:block}
+.footer{position:absolute;bottom:2%;left:3%;right:3%;font-size:1.2cqw;color:#77777d;display:flex;justify-content:space-between}
+.centerlabel{color:#77777d;font-weight:500;font-size:1.45cqw;margin-bottom:.5em}
+.centername{font-size:2.1cqw;font-weight:600;letter-spacing:-.04em}
+.centerbig{font-size:5.3cqw;font-weight:250;line-height:1.1;font-variant-numeric:tabular-nums}
+.centersub{font-size:1.3cqw;color:#77777d;margin-top:.6em}
+
+.tv{width:min(100vw,177.78vh);max-width:none;border-radius:0;box-shadow:none}
+.topline small{color:var(--mute)} .result{background:var(--seat);border-color:var(--line)} .result small,.centerlabel,.centersub,.footer{color:var(--mute)}
+.pair{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.2cqw;text-align:center}
+.pair .qr{background:#fff;padding:1.6cqw;border-radius:1.6cqw;line-height:0} .pair .qr svg{width:22cqw;height:22cqw;display:block}
+.pair .code{font:600 6cqw/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.12em}
+.pair .how{font-size:1.9cqw;color:var(--mute)} .pair .t{font-size:2.6cqw;font-weight:600}
+.net{position:absolute;right:3%;top:3%;font-size:1.3cqw;background:#ff9f0a;color:#fff;border-radius:99px;padding:.2em .9em;font-weight:600}
+.leave{font:inherit;border:0;background:none;color:inherit;text-decoration:underline;cursor:pointer;padding:0;margin-left:1.2em}
+.leave:focus-visible{outline:3px solid #007aff;outline-offset:3px}
+[hidden]{display:none!important}
+</style></head><body>
+<div id="stage"><div class="tv" id="tv">
+  <div class="topline"><strong id="phase"></strong><small>첫밤 사망자 클럽</small></div>
+  <div class="ribbon" id="ribbon" aria-label="확정된 투표 결과"></div>
+  <div class="arena" id="arena"></div>
+  <div class="pair" id="pair" hidden></div>
+  <div class="net" id="net" hidden>연결 확인 중</div>
+  <div class="footer"><span id="composition"></span><span><span id="legend">● 남은 유령표</span><button class="leave" id="leave" hidden>연결 끊기</button></span></div>
+</div></div>
+<script src="../lib/qrcode.js"></script>
+<script>
+'use strict';
+/* ── 서버(Supabase RPC) — 공개 키와 이 화면이 만든 열쇠만 쓴다. 열쇠는 주소·로그에 싣지 않는다 ── */
+const API = 'https://yguvfogtzazoawtclqvf.supabase.co/rest/v1/rpc/', KEY = 'sb_publishable_KeezD9hmEnxSTEWA_w8x-A_Tgk3roUf';
+const PAIR_URL = 'https://tunel.kr/1ndcapp/?screen=';   // 진행자 폰이 여는 주소 — 코드가 채워진 «이 화면에 연결» 시트
+async function rpc(fn, body) {
+  const r = await fetch(API + fn, { method: 'POST', headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error((await r.text()).slice(0, 200));
+  const t = await r.text(); return t ? JSON.parse(t) : null;
+}
+const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} } };
+function secret() { let s = store.get('screen_secret'); if (!s) { s = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''); store.set('screen_secret', s); } return s; }
+
+/* ── 배치 — 시안 v8 그대로. NAMES 는 지금 판의 이름(글자 폭 재기용) ── */
+let NAMES = [];
+const VERT = t => Object.fromEntries(Object.entries(t).map(([k, [c, r, g]]) => [k, [r, c, g]]));
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const ctx = document.createElement('canvas').getContext('2d');
+const textW = (t, fs) => { ctx.font = `500 ${fs}px -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif`; return ctx.measureText(t).width; };
+const SIZE = (H, n) => n <= 8 ? { d: H * 0.11, fs: H * 0.05 } : n <= 14 ? { d: H * 0.09, fs: H * 0.044 } : { d: H * 0.072, fs: H * 0.038 };
+const RECT = { 6: [3, 2, []], 8: [3, 3, []], 10: [4, 3, []], 12: [5, 3, [7]], 14: [5, 4, [4]], 16: [6, 4, [9, 2]], 20: [7, 5, [3, 13, 17]] };
+const RECTV = VERT(RECT);
+/* 3 사각 칸 — 빈자리를 빼도 인원이 다 앉게 */
+function grid(n, shape) {
+  const rr = n <= 8 ? 2 : n <= 14 ? 3 : 4;
+  let [c, r, gaps] = shape === 'rect' ? (RECT[n] || [Math.max(rr, Math.ceil((n + 4) / 2) - rr), rr, []]) : shape === 'rectV' ? (RECTV[n] || [rr, Math.max(rr, Math.ceil((n + 4) / 2) - rr), []]) : shape === 'long' ? [Math.ceil(n / 2), 2, []] : [2, Math.ceil(n / 2), []];
+  const perim = [];
+  for (let i = 0; i < c; i++) perim.push([i, 0]);
+  for (let j = 1; j < r; j++) perim.push([c - 1, j]);
+  if (r > 1) for (let i = c - 2; i >= 0; i--) perim.push([i, r - 1]);
+  for (let j = r - 2; j >= 1; j--) perim.push([0, j]);
+  gaps = gaps.slice(); while (perim.length - gaps.length < n && gaps.length) gaps.pop();   // 모자라면 빈자리부터 되살린다
+  return { c, r, cells: perim.filter((_, k) => !gaps.includes(k)).slice(0, n) };
+}
+/* 원형 */
+function circleLay(W, H, n, S) {
+  let { d, fs } = S; const nameMax = Math.max(...NAMES.slice(0, n).map(t => textW(t, fs)));
+  const lead = d * 0.7, tail = d * 0.45, padY = H * 0.04;
+  let D = H - 2 * padY - d - fs * 2.2;   // 위아래 이름 한 줄씩 여유
+  const maxW = W - 2 * (W * 0.03 + nameMax + tail + lead + d * 0.5);   // 옆 이름까지 화면 안
+  if (D > maxW) D = maxW;
+  const R = D / 2, cx = W / 2, cy = H / 2;
+  const seats = [], labels = [];
+  for (let i = 0; i < n; i++) { const a = (-90 + i * 360 / n) * Math.PI / 180, co = Math.cos(a), si = Math.sin(a);
+    seats.push({ x: cx + R * co, y: cy + R * si });
+    const side = co > 1e-6 || (Math.abs(co) <= 1e-6 && si < 0) ? 1 : -1, r1 = R + d * 0.5 + lead;
+    labels.push({ side, ex: cx + (R + d * 0.5) * co, ey: cy + (R + d * 0.5) * si, kx: cx + r1 * co, ky: cy + r1 * si }); }
+  const lineH = fs * 1.2, top = padY + fs * 0.6, bot = H - padY - fs * 0.6;
+  [1, -1].forEach(side => {   // 4 이름 묶음을 위아래 안전 영역 안에 고르게
+    const L = labels.filter(l => l.side === side).sort((a, b) => a.ky - b.ky);
+    for (let it = 0; it < 6; it++) {
+      for (let k = 1; k < L.length; k++) if (L[k].ky - L[k - 1].ky < lineH) { const m = (lineH - (L[k].ky - L[k - 1].ky)) / 2; L[k].ky += m; L[k - 1].ky -= m; }
+      if (L.length) { const lo = L[0].ky, hi = L[L.length - 1].ky; if (lo < top) L.forEach(l => l.ky += top - lo); else if (hi > bot) L.forEach(l => l.ky -= hi - bot); } }
+  });
+  labels.forEach(l => { l.tx = l.kx + l.side * tail; });
+  const free = D - d * 2 - lead * 0.2;   // 안쪽 빈 원(이름은 바깥이라 안 뺌)
+  return { kind: 'circle', seats, labels, d, fs, cx, cy, free, R };
+}
+/* 사각 — 가로·세로 간격 따로 */
+function rectLay(W, H, n, S, shape, band) {
+  const { c, r, cells } = grid(n, shape), vert = r > c; let { d, fs } = S;
+  const nameMax = Math.max(...NAMES.slice(0, n).map(t => textW(t, fs)));
+  const box = { x: 0, y: 0, w: W, h: H }; if (band && band.top) { box.y = band.top; box.h = H - band.top; } if (band && band.side) box.w = W - band.side;
+  const mx = W * 0.04 + d * 0.95, my = H * 0.04 + d * 0.95;   // 테이블 테두리(자리 바깥 d×0.95)까지 화면 안
+  let sx, sy;
+  if (vert) {   // 세로 — 이름은 옆으로 지시선, 위아래 간격은 자리+여유, 두 줄 사이 폭은 따로(이름 읽히게)
+    const tb = c > 2 ? fs * 1.4 : 0;
+    sy = (box.h - 2 * my - d - 2 * tb) / Math.max(r - 1, 1);
+    const nameSide = d * 0.5 + d * 0.7 + fs * 0.3 + nameMax;
+    sx = (box.w - 2 * mx - 2 * nameSide) / Math.max(c - 1, 1);
+    sx = clamp(sx, Math.max(d * 1.4, c > 2 ? nameMax + fs : 0), H * 0.55);
+  } else {
+    sy = (box.h - 2 * my - d - fs * 1.6) / Math.max(r - 1, 1);
+    sx = Math.min((box.w - 2 * mx - Math.max(d, nameMax)) / Math.max(c - 1, 1), sy * 2.4);
+  }
+  const need = Math.min(sy / 1.12, vert ? sy / 1.08 : sx / 1.12);   // 자리는 간격이 정말 모자랄 때만 줄인다
+  if (d > need) { const k = need / d; d *= k; fs *= k; }
+  if (!vert && nameMax + fs * 0.6 > sx) fs = Math.max(H * 0.026, fs * sx / (nameMax + fs * 0.6));   // 긴 이름은 글자만 줄인다(자리 크기는 그대로)
+  const w = sx * (c - 1), h = sy * (r - 1), x0 = box.x + (box.w - w) / 2, y0 = box.y + (box.h - h) / 2 - (vert ? 0 : fs * 0.5);
+  const seats = cells.map(([i, j]) => ({ x: x0 + i * sx, y: y0 + j * sy, nm: !vert ? (j === 0 && r > 1 ? 'below' : 'below') : i === 0 ? 'left' : i === c - 1 ? 'right' : j === 0 ? 'above' : 'below' }));
+  const ix = x0 + d * 0.6, iy = y0 + d * 0.6 + (vert ? 0 : fs * 1.4), iw = w - d * 1.2, ih = h - d * 1.2 - (vert ? 0 : fs * 1.4);   // 안쪽 빈 곳 — 자리·아래 이름까지 뺀 곳
+  return { kind: 'rect', vert, seats, d, fs, inner: { x: ix, y: iy, w: iw, h: ih }, cx: x0 + w / 2, cy: y0 + h / 2,
+    table: { x: x0 - d * 0.95, y: y0 - d * 0.95, w: w + d * 1.9, h: h + d * 1.9 + (vert ? 0 : fs * 1.3) } };
+}
+/* 5 타이머 묶음 크기 */
+const ringNeed = H => H * 0.3;   // 고리 최소 지름
+const barBox = (H, fs) => ({ w: fs * 4.3, h: fs * 1.75 });
+function layout(W, H, n, shape, timerOn) {
+  const S = SIZE(H, n);
+  if (!timerOn) {   // 타이머 없는 장면(투표·밤) — 자리표를 화면 가운데로(햇살님 10/2 «타이머 없을 땐 가운데로»)
+    const L = shape === 'circle' ? circleLay(W, H, n, S) : rectLay(W, H, n, S, shape);
+    const fit = shape === 'circle' ? L.free >= H * 0.2 : (L.inner.w >= H * 0.3 && L.inner.h >= H * 0.12);
+    L.timer = { at: 'in', x: L.cx, y: shape === 'circle' ? L.cy : L.inner.y + L.inner.h / 2, fs: H * 0.09, show: fit }; return L; }
+  if (shape === 'circle') { let L = circleLay(W, H, n, S);
+    if (L.free >= ringNeed(H)) { L.timer = { at: 'in', x: L.cx, y: L.cy, D: Math.min(L.free * 0.9, H * 0.42) }; return L; }
+    L = circleLay(W - H * 0.3, H, n, S); L.timer = { at: 'side', x: W - H * 0.15 - W * 0.02, y: H * 0.18, D: H * 0.22 }; return L; }
+  let L = rectLay(W, H, n, S, shape); const tfs = H * 0.12, B = barBox(H, tfs);
+  if (L.inner.w >= B.w * 1.05 && L.inner.h >= B.h * 1.1) { L.timer = { at: 'in', x: L.cx, y: L.inner.y + L.inner.h / 2, fs: tfs, w: B.w }; return L; }
+  const sB = barBox(H, H * 0.1);
+  if (L.inner.w >= sB.w * 1.05 && L.inner.h >= sB.h * 1.1) { L.timer = { at: 'in', x: L.cx, y: L.inner.y + L.inner.h / 2, fs: H * 0.1, w: sB.w }; return L; }
+  if (L.vert) { const side = W * 0.34; L = rectLay(W, H, n, S, shape, { side }); L.timer = { at: 'side', x: W - side / 2 - W * 0.01, y: H / 2, fs: Math.min(H * 0.13, side * 0.2), w: side * 0.82 }; }
+  else { const top = H * 0.21; L = rectLay(W, H, n, S, shape, { top }); L.timer = { at: 'top', x: W / 2, y: top * 0.56, fs: H * 0.1, w: Math.min(W * 0.46, H * 0.46) }; }
+  return L;
+}
+
+/* ── 그리기 — 받은 공개 정보(p)만으로. 화면은 판정하지 않는다 ── */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let P = null;   // 지금 그리는 공개 정보
+const SCENE = { discussion: '토론', nomination: '지명', voting: '투표 중', confirmed: '투표 결과', execution: '처형 결과' };
+function render() {
+  const p = P, tv = $('tv');
+  $('pair').hidden = !!p || !pairing; $('leave').hidden = !linked;
+  if (!p) { tv.classList.remove('night'); $('phase').textContent = linked ? '연결됐어요' : ''; $('ribbon').innerHTML = ''; $('composition').textContent = ''; $('legend').hidden = true;
+    $('arena').innerHTML = linked ? '<div class="box" style="left:50%;top:50%"><div class="centername">새 판 준비 중</div></div>' : ''; return; }
+  const night = p.scene === 'night'; tv.classList.toggle('night', night); $('legend').hidden = !p.seats.some(s => s.dead && s.ghost);
+  $('phase').textContent = p.scene === 'prep' ? '준비' : p.scene === 'ended' ? '게임 종료' : night ? (p.nightNumber === 1 ? '첫밤' : '밤 ' + p.nightNumber) : '낮 ' + p.dayNumber + (p.scene === 'dawn' ? ' · 아침 발표' : ' · ' + SCENE[p.scene]);
+  $('composition').textContent = p.initialComposition && !night ? '처음 구성  선 ' + p.initialComposition.good + ' · 악 ' + p.initialComposition.evil : '';
+  const name = id => { const s = p.seats.find(s => s.id === id); return s ? s.name || s.number + '번' : ''; };
+  $('ribbon').innerHTML = (p.results || []).map(r => '<div class="result ' + (r.status === 'leading' ? 'lead' : '') + '"><span>' + esc(name(r.targetId)) + '</span><strong>' + r.votes + '<small>표</small></strong>' + (r.status === 'leading' ? '<span class="stamp" aria-label="유력 — 기준을 채운 단독 최다">유력</span>' : '<small>' + ({ below: '기준 미달', qualified: '기준 충족', tied: '공동 최다' })[r.status] + '</small>') + '</div>').join('');
+  const a = $('arena'), W = a.clientWidth, H = a.clientHeight, n = p.seats.length; if (!n || !W) { a.innerHTML = ''; return; }
+  NAMES = p.seats.map(s => s.name || s.number + '번');
+  const L = layout(W, H, n, p.shape === 'rect' ? 'rect' : 'circle', true), t = L.timer;   // ponytail: 사각은 인원으로 칸을 잡는다 — 진행자 판의 실제 빈칸 배치(cells)는 공개 정보에 실릴 때 맞춘다
+  let h = L.table ? '<div class="tablerect" style="left:' + L.table.x + 'px;top:' + L.table.y + 'px;width:' + L.table.w + 'px;height:' + L.table.h + 'px"></div>' : '', svg = '';
+  if (L.labels) L.labels.forEach(l => svg += '<path class="ld" d="M' + l.ex + ',' + l.ey + ' L' + l.kx + ',' + l.ky + ' L' + l.tx + ',' + l.ky + '"/>');
+  const at = id => L.seats[p.seats.findIndex(s => s.id === id)];
+  if (p.nomination && p.nomination.byId && at(p.nomination.byId) && at(p.nomination.targetId)) {
+    const from = at(p.nomination.byId), to = at(p.nomination.targetId), dx = to.x - from.x, dy = to.y - from.y, len = Math.hypot(dx, dy) || 1, off = L.d * .6;
+    if (len > 1) svg += '<line x1="' + (from.x + dx / len * off) + '" y1="' + (from.y + dy / len * off) + '" x2="' + (to.x - dx / len * off) + '" y2="' + (to.y - dy / len * off) + '" stroke="#ff9f0a" stroke-opacity=".45" stroke-width="2" marker-end="url(#arrow)"/>'; }
+  L.seats.forEach((pt, i) => {
+    const s = p.seats[i], nom = p.nomination && p.nomination.targetId === s.id;
+    h += '<div class="st ' + (s.dead ? 'dead ' : '') + (nom ? 'nom' : '') + '" style="left:' + pt.x + 'px;top:' + pt.y + 'px;width:' + L.d + 'px;height:' + L.d + 'px"><i style="font-size:' + L.d * .44 + 'px">' + s.number + '</i>' + (s.dead && s.ghost ? '<span class="ghost"></span>' : '') + '</div>';
+    let pos;
+    if (L.labels) { const l = L.labels[i]; pos = 'top:' + (l.ky - L.fs * .5) + 'px;' + (l.side > 0 ? 'left:' + (l.tx + 6) : 'right:' + (W - l.tx + 6)) + 'px'; }
+    else { const e = L.d * .5, ln = L.d * .7, side = L.vert && (pt.nm === 'left' || pt.nm === 'right'), g = side ? e + ln + L.fs * .3 : e + L.fs * .35;
+      if (side) { const sg = pt.nm === 'left' ? -1 : 1; svg += '<path class="ld" d="M' + (pt.x + sg * e) + ',' + pt.y + ' L' + (pt.x + sg * (e + ln)) + ',' + pt.y + '"/>'; }
+      pos = pt.nm === 'left' ? 'right:' + (W - pt.x + g) + 'px;top:' + pt.y + 'px;transform:translateY(-50%)' : pt.nm === 'right' ? 'left:' + (pt.x + g) + 'px;top:' + pt.y + 'px;transform:translateY(-50%)' : pt.nm === 'above' ? 'left:' + pt.x + 'px;top:' + (pt.y - g) + 'px;transform:translate(-50%,-100%)' : 'left:' + pt.x + 'px;top:' + (pt.y + g) + 'px;transform:translateX(-50%)'; }
+    h += '<div class="nm ' + (s.dead ? 'dead' : '') + '" style="font-size:' + L.fs + 'px;' + pos + '">' + esc(s.name || '') + '</div>';
+  });
+  let mid = '';
+  if (p.scene === 'discussion') mid = p.timer ? '<div class="centerlabel">자유롭게 이야기하세요</div><div class="centerbig" id="time"></div><div class="centersub" id="timesub">토론 시간</div>' : '<div class="centername">토론</div>';
+  else if (p.scene === 'execution' && p.execution) mid = '<div class="centerlabel">처형 결과</div><div class="centername">' + esc(name(p.execution.targetId)) + '</div><div class="centersub">' + (p.execution.died ? '처형되었습니다 · 사망' : '처형되었습니다 · 생존') + '</div>';
+  else if (p.nomination) mid = '<div class="centerlabel">' + (p.nomination.byId ? esc(name(p.nomination.byId)) + ' → ' : '') + esc(name(p.nomination.targetId)) + '</div><div class="centername">' + (p.scene === 'voting' ? '투표하고 있어요' : p.scene === 'confirmed' ? '투표가 확정됐어요' : '지명되었습니다') + '</div><div class="centersub">필요한 표 <b>' + p.neededVotes + '표</b> · 생존 ' + p.seats.filter(s => !s.dead).length + '명</div>';
+  else if (p.scene === 'prep') mid = '<div class="centername">자리 확인</div>';
+  else if (p.scene === 'dawn') mid = '<div class="centername">아침 발표</div>';
+  else if (p.scene === 'ended') mid = '<div class="centername">게임 종료</div>';
+  h = '<svg class="ov"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8Z" fill="#ff9f0a"/></marker></defs>' + svg + '</svg>' + h;
+  if (mid) h += '<div class="box" style="left:' + t.x + 'px;top:' + t.y + 'px;white-space:nowrap;background:var(--bg);padding:.3em .5em;border-radius:14px">' + mid + '</div>';
+  a.innerHTML = h; tick();
+}
+/* 타이머 — 매초 받지 않는다. 끝나는 시각으로 화면이 센다. ponytail: 진행자 폰 시계 기준이라 폰·TV 시계가 다르면 그만큼 어긋난다 — 실측 뒤 서버 시각 보정 */
+function tick() {
+  const el = $('time'), tm = P && P.timer; if (!el || !tm) return;
+  const ms = tm.state === 'paused' ? tm.leftMs : tm.state === 'elapsed' ? 0 : Math.max(0, tm.endsAt - Date.now()), left = Math.ceil(ms / 1000);
+  el.textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); el.style.color = left <= 60 ? '#d63731' : '';
+  $('timesub').textContent = tm.state === 'paused' ? '일시정지' : left <= 0 ? '토론 시간 종료' : '토론 시간';
+}
+
+/* ── 연결 — 요청 열기(QR·코드) → 승인 기다리기 → 2초마다 새 판본 묻기. 끊김·만료면 이름을 지우고 새 코드 ── */
+let link = null, linked = false, pairing = false, gen = 0, known = { epoch: null, rev: null }, deadline = 0, deadTimer = 0, pollTimer = 0, fails = 0;
+function wipe() { P = null; linked = false; known = { epoch: null, rev: null }; clearTimeout(deadTimer); }
+async function openRequest() {
+  const g = ++gen; wipe(); pairing = true; link = null; store.set('screen_link', null); render();
+  try {
+    const o = await rpc('screen_open', { p_secret: secret() }); if (g !== gen) return;
+    link = { id: o.id, until: Date.parse(o.request_until) }; store.set('screen_link', o.id);
+    const q = qrcode(0, 'M'); q.addData(PAIR_URL + o.code); q.make();
+    $('pair').innerHTML = '<div class="t">진행자 폰으로 연결해 주세요</div><div class="qr">' + q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }) + '</div><div class="code" aria-label="연결 코드">' + o.code.slice(0, 4) + ' ' + o.code.slice(4) + '</div><div class="how">QR 을 찍거나, 앱의 «화면 연결»에 이 코드를 입력하세요</div>';
+    net(false); schedule(g, 2000);
+  } catch (e) { if (g !== gen) return; $('pair').innerHTML = '<div class="t">인터넷 연결을 확인하고 있어요</div>'; net(true); setTimeout(() => { if (g === gen) openRequest(); }, 5000); }
+}
+function net(bad) { $('net').hidden = !bad || !linked; }
+function schedule(g, ms) { clearTimeout(pollTimer); pollTimer = setTimeout(() => poll(g), ms * (0.9 + Math.random() * 0.2)); }
+async function poll(g) {
+  if (g !== gen || !link) return;
+  if (!linked && Date.now() > link.until) return openRequest();   // 10분 지난 코드는 새로
+  let r; try { r = await rpc('screen_poll', { p_id: link.id, p_secret: secret(), p_epoch: known.epoch, p_rev: known.rev }); }
+  catch (e) { if (g !== gen) return; fails++; net(true); return schedule(g, Math.min(30000, 2000 * 2 ** Math.min(fails, 4))); }
+  if (g !== gen) return;   // 새 요청·끊기 뒤에 온 옛 답은 버린다
+  fails = 0; net(false);
+  if (r.status === 'approved') {
+    if (!linked) { linked = true; pairing = false; }
+    deadline = Date.now() + (Date.parse(r.expires_at) - Date.parse(r.server_at));   // 서버 시각과의 차이를 빼고 TV 시계로 — 인터넷이 끊겨도 12시간이면 지운다
+    clearTimeout(deadTimer); deadTimer = setTimeout(() => { if (g === gen) openRequest(); }, Math.max(0, deadline - Date.now()));
+    if (r.state && r.state.schema === 1 && (r.epoch !== known.epoch || known.rev === null || r.revision > known.rev)) { known = { epoch: r.epoch, rev: r.revision }; P = r.state; }
+    render(); return schedule(g, document.hidden ? 10000 : 2000);
+  }
+  if (r.status === 'waiting') return schedule(g, document.hidden ? 10000 : 2000);
+  openRequest();   // revoked · expired · gone — 이름·자리를 지우고 새 코드
+}
+async function start() {
+  const id = store.get('screen_link');
+  if (!id) return openRequest();
+  const g = ++gen; link = { id, until: Infinity }; render();   // 새로고침 — 서버가 «연결됨»이라 답하기 전엔 아무 이름도 그리지 않는다
+  try { const r = await rpc('screen_poll', { p_id: id, p_secret: secret() }); if (g !== gen) return; if (r.status !== 'approved') return openRequest(); }
+  catch (e) { if (g === gen) setTimeout(start, 5000); return; }
+  poll(g);
+}
+$('leave').onclick = async () => { const l = link; openRequest(); if (l) try { await rpc('screen_leave', { p_id: l.id, p_secret: secret() }); } catch (e) {} };
+window.addEventListener('resize', render);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && link) poll(gen); });
+setInterval(() => { tick(); if (linked && deadline && Date.now() > deadline) openRequest(); }, 250);
+try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}   // TV 가 꺼지지 않게(되는 브라우저에서만)
+start();
+</script></body></html>

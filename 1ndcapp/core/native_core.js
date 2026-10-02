@@ -487,7 +487,9 @@ var NativeCore = (function () {
       var v = o.v || 0, lead = G.leaders.indexOf(o) >= 0;
       return { id: 'n' + (noms.indexOf(o) + 1), targetId: sid(o.t), votes: v, neededVotes: o.need,
         status: lead && G.leaders.length > 1 && v >= G.need ? 'tied' : lead && G.ok ? 'leading' : v >= G.need ? 'qualified' : 'below' }; }) : [];
-    var timer = null; if (scene === 'discussion' && typeof tm !== 'undefined') {
+    if (!isDay) P.timer = null;   // 화면 쪽 타이머(display.setTimer)는 그 낮에만
+    var timer = null; if (scene === 'discussion' && P.timer) timer = P.timer;
+    else if (scene === 'discussion' && typeof tm !== 'undefined') {
       if (tm.on) timer = { state: tm.paused ? 'paused' : 'running', endsAt: tm.paused ? null : tm.endAt, durationMs: tm.total, leftMs: tm.paused ? tm.left : null };
       else if (tm.doneAt && tm.doneN === n) timer = { state: 'elapsed', endsAt: tm.doneAt, durationMs: tm.total, leftMs: 0 }; }   // 자연 만료(00:00)는 남기고, 진행자가 지운 것(tmReset)만 null
     var body = { schema: 1, gameEpoch: P.epoch, dayNumber: isDay ? dayNo(n) : null, nightNumber: began && !ended && !isDay ? n : null,
@@ -797,6 +799,13 @@ var NativeCore = (function () {
       var P = pubState(pubEpoch()), c = { good: 0, evil: 0 };
       ((state.log && state.log.players) || []).forEach(function (p) { if (p.team === 'town' || p.team === 'outsider') c.good++; else if (['minion', 'demon', 'mafia'].indexOf(p.team) >= 0) c.evil++; });
       P.comp = c; pubSave(P); return null; },
+    /* 큰 화면 — 토론 타이머가 코어(tm)가 아니라 화면 쪽에 있는 앱(웹·아이폰)이 시작·멈춤·재개·추가·끝·지움을 알린다. 허용한 칸만 받는다 */
+    'display.setTimer': function (p) { var P = pubState(pubEpoch()), s = p && p.state;
+      if (!p || s === null || s === undefined) P.timer = null;
+      else { if (['running', 'paused', 'elapsed'].indexOf(s) < 0) return rejected('invalidSelection', '타이머 상태가 아니에요.');
+        var num = function (x) { return typeof x === 'number' && isFinite(x) && x >= 0 ? Math.round(x) : null; };
+        P.timer = { state: s, endsAt: s === 'paused' ? null : num(p.endsAt), durationMs: num(p.durationMs) || 0, leftMs: s === 'paused' ? num(p.leftMs) : s === 'elapsed' ? 0 : null }; }
+      pubSave(P); return null; },
     'day.announce': function () { if (state.phase !== 'day') return rejected('notAllowedInPhase', '낮이 아니에요.'); uiDayAnnounce(); return null; },
     'day.nominate': function (p) { if (state.phase !== 'day') return rejected('notAllowedInPhase', '낮이 아니에요.');
       var t = +p.target, D = dayRec(), m = day(), by = (p.by === null || p.by === undefined) ? null : +p.by;

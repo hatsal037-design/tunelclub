@@ -9,6 +9,7 @@ const rpc = async (fn, args) => { const { data, error } = await client().schema(
 
 export const account = {
   on: false, user: null, info: null, busy: false, pending: 0,
+  rpc,   // 큰 화면 연결(screenlink.js)이 같은 로그인으로 서버 함수를 부른다
   subscribe(f) { subs.add(f); return () => subs.delete(f); },
   emit() { this.pending = (store.get('sync.pending') || []).length; subs.forEach(f => f()); },
   nick() { const u = this.user, i = this.info; return (i && i.nick) || (u && u.user_metadata && (u.user_metadata.name || u.user_metadata.nickname)) || ''; },
