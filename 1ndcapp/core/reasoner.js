@@ -7,7 +7,11 @@ var GameReasoner = (function () {
   'use strict';
   var COMP = { 5: [3, 0, 1, 1], 6: [3, 1, 1, 1], 7: [5, 0, 1, 1], 8: [5, 1, 1, 1], 9: [5, 2, 1, 1], 10: [7, 0, 2, 1], 11: [7, 1, 2, 1], 12: [7, 2, 2, 1], 13: [9, 0, 3, 1], 14: [9, 1, 3, 1], 15: [9, 2, 3, 1] };
   var W = { 중독: 0.04, 주정뱅이: 0.1, 몸주: 0.3, 오등록: 0.1 };   // 오등록(스파이는 선으로·은둔자는 악으로 잡힐 수 있음)은 규칙상 흔하다 — 시험에서 거짓 아닌 정보의 어긋남 전부가 이것(2026-10-01)   // 틀릴 설명의 무게 — 밸런스 근거 아님, 순위만 세운다(ponytail: 고정 표, 기록이 쌓이면 측정)
-  function script() { var m = {}; CHARS().forEach(function (c) { m[c.ko] = { id: c.id, team: c.team }; }); return m; }
+  /* 직업표 — 보통은 지금 모드(CHARS). 지난 판을 복기할 땐 그 판의 모드 것을 끼운다(withChars) — 지금 고른 모드가 달라도 같은 판은 같은 답이 나오게(2026-10-02 Fable·코덱스 관측 6) */
+  var charsOver = null;
+  function charsNow() { return charsOver || CHARS(); }
+  function withChars(list, fn) { var keep = charsOver; charsOver = list && list.length ? list : null; try { return fn(); } finally { charsOver = keep; } }
+  function script() { var m = {}; charsNow().forEach(function (c) { m[c.ko] = { id: c.id, team: c.team }; }); return m; }
   function combos(arr, k) { var out = []; (function go(s, acc) { if (acc.length === k) { out.push(acc.slice()); return; } for (var i = s; i < arr.length; i++) { acc.push(arr[i]); go(i + 1, acc); acc.pop(); } })(0, []); return out; }
   function num(s) { var m = String(s || '').match(/\d+/); return m ? +m[0] : null; }
   /* 그 밤에 살아 있던 자리 — 공개 사망·처형만으로(아침 발표 기준) */
@@ -52,7 +56,7 @@ var GameReasoner = (function () {
     var S = script(), me = v.자리, role = v.나.직업, myTeam = (S[role] || {}).team;
     if (v.악안내) return { 지원: true, 악: true, 이유: '악은 동료를 안다 — 추론 대상 아님' };
     var minions = comp[2], others = []; for (var s = 1; s <= N; s++) if (s !== me) others.push(s);
-    var has = function (ids) { return CHARS().some(function (c) { return ids.indexOf(c.id) >= 0; }); };
+    var has = function (ids) { return charsNow().some(function (c) { return ids.indexOf(c.id) >= 0; }); };
     var outsiders = comp[1] > 0;   // ponytail: 남작(+2 외지인)은 아직 안 셈 — 외지인 0인 인원에서 남작 판이면 주정뱅이·은둔자를 놓친다
     var hasDrunk = outsiders && has(['drunk', 'chwigaek']) && myTeam === 'town';
     var can = { spy: has(['spy', 'sejak']), recluse: outsiders && has(['recluse', 'nageune']) }, misreg = can.spy || can.recluse;
@@ -95,7 +99,7 @@ var GameReasoner = (function () {
     if (!v || !v.좌석) return { 상태: '미지원', 이유: '보기 없음' };
     if (v.악안내) return { 상태: '미지원', 이유: '악은 동료를 안다 — 추론 대상 아님' };
     var N = v.좌석.length, comp = COMP[N]; if (!comp) return { 상태: '미지원', 이유: N + '명 구성표 없음' };
-    var byKo = {}, byId = {}; CHARS().forEach(function (c) { if (CAT[c.team]) { byKo[c.ko] = c; byId[c.id] = c; } });
+    var byKo = {}, byId = {}; charsNow().forEach(function (c) { if (CAT[c.team]) { byKo[c.ko] = c; byId[c.id] = c; } });
     if (!byId.imp) return { 상태: '미지원', 이유: '시계탑 기본판(TB) 대본만' };
     var me = v.자리, shown = byKo[v.나.직업]; if (!shown) return { 상태: '미지원', 이유: '내 직업을 대본에서 못 찾음' };
     if (shown.team === 'minion' || shown.team === 'demon') return { 상태: '미지원', 이유: '악 좌석(5·6명 판은 악 안내가 없다)' };
@@ -277,5 +281,5 @@ var GameReasoner = (function () {
   function perms(arr, k) { var out = []; (function go(acc, used) { if (acc.length === k) { out.push(acc.slice()); return; } for (var i = 0; i < arr.length; i++) if (!used[i]) { used[i] = 1; acc.push(arr[i]); go(acc, used); acc.pop(); used[i] = 0; } })([], {}); return out; }
   function sortObj(o) { var r = {}; Object.keys(o).sort().forEach(function (k) { r[k] = o[k]; }); return r; }
 
-  return { run: run, solve: solve, _check: function (role, info, world, v) { return check(role, info, world, v, script()); } };   // _check — 시험(규칙 해석 대조)용
+  return { run: run, solve: solve, withChars: withChars, _check: function (role, info, world, v) { return check(role, info, world, v, script()); } };   // _check — 시험(규칙 해석 대조)용
 })();

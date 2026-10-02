@@ -60,4 +60,4 @@ export const store = {
 const STEP = new Set(['roles.assign', 'game.beginFirstNight', 'handoff.seen', 'night.start', 'night.commitTargets', 'night.advance',
   'phase.enterDay', 'phase.enterNight', 'day.execute', 'day.executeAndFinish', 'game.finish', 'game.again']);
 
-export async function bootStore() { await core.boot(); store.refresh(); }
+export async function bootStore() { await core.boot(); store.refresh(); core.watchOtherTabs(() => store.refresh()); }   // 다른 창이 판을 바꾸면 이 창도 새 판을 읽는다

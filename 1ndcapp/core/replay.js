@@ -117,6 +117,8 @@ var GameReplay = (function () {
     var P = {}, nights = Math.max(1, (L && L.nights) || 1), team = {};
     ((L && L.players) || []).forEach(function (p) { P[p.seat] = { 이름: p.name || (p.seat + '번'), 편: p.team }; team[p.seat] = p.team; });
     ((L && L.events) || []).forEach(function (e) { if (e.n > nights) nights = e.n; if (e.type === '계승' && e.seat) team[e.seat] = 'demon'; });
+    var M = null; try { M = typeof allMods === 'function' ? allMods()[L.mode] : null; } catch (e) {}   // 그 판의 모드 직업표로 푼다
+    if (M && M.chars && typeof GameReasoner !== 'undefined' && GameReasoner.withChars) return GameReasoner.withChars(M.chars, function () { return narrow(L, P, team, nights); });
     return narrow(L, P, team, nights);
   }
   function narrow(L, P, team, nights) {
