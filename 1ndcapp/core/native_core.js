@@ -492,7 +492,10 @@ var NativeCore = (function () {
     else if (scene === 'discussion' && typeof tm !== 'undefined') {
       if (tm.on) timer = { state: tm.paused ? 'paused' : 'running', endsAt: tm.paused ? null : tm.endAt, durationMs: tm.total, leftMs: tm.paused ? tm.left : null };
       else if (tm.doneAt && tm.doneN === n) timer = { state: 'elapsed', endsAt: tm.doneAt, durationMs: tm.total, leftMs: 0 }; }   // 자연 만료(00:00)는 남기고, 진행자가 지운 것(tmReset)만 null
-    var body = { schema: 1, gameEpoch: P.epoch, dayNumber: isDay ? dayNo(n) : null, nightNumber: began && !ended && !isDay ? n : null,
+    /* 역할 넘기기 — 지금 폰을 받아 볼 차례인 자리(누가 폰을 들었는지는 다 보이는 사실, 2026-10-02 햇살님 «역할 배치할때 보고 있는사람 자리 표기»). 직업은 물론 안 나간다 */
+    var turn = null; if (!began && typeof state.rvPos === 'number' && (state.seats || []).some(function (x) { return x && x.char; })) {
+      var ord = handoffOrder(), k = state.rvPos + 1; turn = { seatId: k < ord.length ? sid(ord[k]) : null, seen: Math.min(k, ord.length), total: ord.length }; }
+    var body = { schema: 1, gameEpoch: P.epoch, handoff: turn, dayNumber: isDay ? dayNo(n) : null, nightNumber: began && !ended && !isDay ? n : null,
       scene: scene, shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, initialComposition: P.comp || null, timer: timer, nomination: nom,
       neededVotes: nom ? G.need : null, results: results, execution: exec };
     var key = J(body); if (key !== P.last) { P.last = key; P.rev = (P.rev || 0) + 1; }   // 공개 내용이 같으면 revision 그대로

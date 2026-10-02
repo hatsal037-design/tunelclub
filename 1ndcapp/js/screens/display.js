@@ -42,11 +42,12 @@ export function DisplayConnectionView() {
   const [, re] = useState(0);
   useEffect(() => { const a = screens.subscribe(() => re(x => x + 1)), b = account.subscribe(() => re(x => x + 1)); screens.load(); return () => { a(); b(); }; }, []);
   const [code, setCode] = useState(''), [ask, setAsk] = useState(null), [copied, setCopied] = useState(false), [scan, setScan] = useState(false);
-  useEffect(() => { if (screens.pendingCode) setCode(fmtCode(screens.pendingCode)); }, [screens.pendingCode]);   // QR 로 들어온 코드 — 채워만 두고 승인은 직접 누른다
+  const [confirm, setConfirm] = useState('');   // QR 로 받은 코드 — «이 화면에 연결할까요?» 를 바로 묻는다(2026-10-02 햇살님). 손으로 친 코드는 버튼으로
+  useEffect(() => { if (!screens.pendingCode) return; const c = fmtCode(screens.pendingCode); setCode(c); if (account.user && c.replace(/ /g, '').length === 8) setConfirm(c); }, [screens.pendingCode, !!account.user]);   // 로그인 전이면 로그인하고 돌아왔을 때 묻는다
   const waiting = screens.active().some(l => !l.seen_at);
   useEffect(() => { if (!waiting) return; const t = setInterval(() => screens.load(), 4000); return () => clearInterval(t); }, [waiting]);   // 화면이 받았는지 — 받을 때까지만 가끔 다시 묻는다
   const links = screens.active(), full = code.replace(/ /g, '').length === 8;
-  const connect = async () => { if (await screens.approve(code)) setCode(''); };
+  const connect = async c => { if (await screens.approve(c || code)) setCode(''); };
   const url = 'https://' + SCREEN_URL;
   const copy = async () => { try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {} };
   const share = async () => { if (!navigator.share) return copy();   // 공유 창(에어드롭·카카오톡·메시지…)이 없는 브라우저에선 복사로
@@ -69,9 +70,11 @@ export function DisplayConnectionView() {
       <${Section} header=${links.length ? '화면 더 연결' : '코드로 연결'} footer=${screens.error || 'TV에 뜬 QR을 폰 카메라로 찍어도 돼요.'}>
         <div class="row"><input class="textin" style="font:600 22px ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false"
           aria-label="화면에 뜬 연결 코드" placeholder="ABCD EFGH" value=${code} onInput=${e => { screens.error = ''; screens.forget(); setCode(fmtCode(e.currentTarget.value)); }} onKeyDown=${e => { if (e.key === 'Enter' && full) connect(); }} /></div><//>
-      <div style="padding:0 16px 20px"><${Primary} title="이 화면에 연결" enabled=${full} loading=${screens.busy} onClick=${connect} /></div>
+      <div style="padding:0 16px 20px"><${Primary} title="이 화면에 연결" enabled=${full} loading=${screens.busy} onClick=${() => connect()} /></div>
       ${navigator.mediaDevices && html`<${Section}><${Row} tint onClick=${() => setScan(true)}>카메라로 QR 찍기<//><//>`}`}
-    ${scan && html`<${QrScanner} onClose=${() => setScan(false)} onCode=${c => { setScan(false); screens.error = ''; setCode(fmtCode(c)); }} />`}
+    ${scan && html`<${QrScanner} onClose=${() => setScan(false)} onCode=${c => { setScan(false); screens.error = ''; setCode(fmtCode(c)); setConfirm(fmtCode(c)); }} />`}
+    <${ActionSheet} open=${!!confirm} title="이 화면에 연결할까요?" message=${confirm} onClose=${() => { setConfirm(''); screens.forget(); }}
+      actions=${[{ label: '연결', onClick: () => { const c = confirm; setConfirm(''); connect(c); } }]} />
     <${Section} header="큰 화면 주소" footer="TV나 컴퓨터 브라우저에서 열면 QR과 코드가 떠요.">
       <${Row} onClick=${copy}><div class="grow">${SCREEN_URL}</div><span class=${copied ? 'sub blue' : 'sub'}>${copied ? '복사했어요' : '눌러서 복사'}</span><//>
       <${Row} tint onClick=${showQr}>${qr ? '주소 QR 접기' : '주소 QR 보기'}<//>

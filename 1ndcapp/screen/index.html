@@ -15,6 +15,7 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .st.dead i{opacity:.35}
 .st .ghost{position:absolute;width:34%;height:34%;border-radius:50%;background:var(--fg);right:-8%;bottom:-8%;border:2.5px solid var(--bg)}   /* 남은 유령표 — 죽은 사람마다 */
 .st.nom i{border:3px solid #ff9f0a}
+.st.turn i{border:3px solid #007aff;box-shadow:0 0 0 .5cqw rgba(0,122,255,.18)}   /* 역할을 보고 있는 자리 */
 .st .vt{position:absolute;left:50%;top:-8%;transform:translate(-50%,-100%);background:#ff9f0a;color:#fff;font-weight:700;border-radius:6px;padding:0 .4em;white-space:nowrap}
 .nm{position:absolute;white-space:nowrap;font-weight:500;line-height:1}
 .nm.dead{opacity:.4;text-decoration:line-through}
@@ -59,6 +60,9 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .pair .code{font:600 6cqw/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.12em}
 .pair .how{font-size:1.9cqw;color:var(--mute)} .pair .t{font-size:2.6cqw;font-weight:600}
 .net{position:absolute;right:3%;top:3%;font-size:1.3cqw;background:#ff9f0a;color:#fff;border-radius:99px;padding:.2em .9em;font-weight:600}
+/* 원형 — 위 띠 자리를 비워 두지 않고 자리표를 위까지 쓴다. 투표 결과는 원이 안 닿는 왼쪽 위 구석에 세로로(2026-10-02 햇살님 «상단이 비었어 더 꽉차게») */
+.tv.round .arena{top:8%;bottom:5%}
+.tv.round .ribbon{top:9%;right:auto;height:auto;max-height:60%;flex-direction:column;align-items:flex-start;gap:.5cqw;overflow:hidden;z-index:2}
 .leave{font:inherit;border:0;background:none;color:inherit;text-decoration:underline;cursor:pointer;padding:0;margin-left:1.2em}
 .leave:focus-visible{outline:3px solid #007aff;outline-offset:3px}
 [hidden]{display:none!important}
@@ -91,7 +95,7 @@ const VERT = t => Object.fromEntries(Object.entries(t).map(([k, [c, r, g]]) => [
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const ctx = document.createElement('canvas').getContext('2d');
 const textW = (t, fs) => { ctx.font = `500 ${fs}px -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif`; return ctx.measureText(t).width; };
-const SIZE = (H, n) => n <= 8 ? { d: H * 0.11, fs: H * 0.05 } : n <= 14 ? { d: H * 0.09, fs: H * 0.044 } : { d: H * 0.072, fs: H * 0.038 };
+const SIZE = (H, n) => n <= 8 ? { d: H * 0.12, fs: H * 0.056 } : n <= 14 ? { d: H * 0.1, fs: H * 0.05 } : { d: H * 0.08, fs: H * 0.043 };   // 시안 v8 보다 한 단계 크게(2026-10-02 햇살님 «동그라미랑 글자 크기 한번 더 크게»)
 const RECT = { 6: [3, 2, []], 8: [3, 3, []], 10: [4, 3, []], 12: [5, 3, [7]], 14: [5, 4, [4]], 16: [6, 4, [9, 2]], 20: [7, 5, [3, 13, 17]] };
 const RECTV = VERT(RECT);
 /* 3 사각 칸 — 빈자리를 빼도 인원이 다 앉게 */
@@ -118,10 +122,11 @@ function circleLay(W, H, n, S) {
   for (let i = 0; i < n; i++) { const a = (-90 + i * 360 / n) * Math.PI / 180, co = Math.cos(a), si = Math.sin(a);
     seats.push({ x: cx + R * co, y: cy + R * si });
     const side = co > 1e-6 || (Math.abs(co) <= 1e-6 && si < 0) ? 1 : -1, r1 = R + d * 0.5 + lead;
-    labels.push({ side, ex: cx + (R + d * 0.5) * co, ey: cy + (R + d * 0.5) * si, kx: cx + r1 * co, ky: cy + r1 * si }); }
+    labels.push({ side, ex: cx + (R + d * 0.5) * co, ey: cy + (R + d * 0.5) * si, kx: cx + r1 * co, ky: cy + r1 * si,
+      mid: Math.abs(co) < 0.1 ? (si < 0 ? -1 : 1) : 0, sx: cx + R * co, sy: cy + R * si }); }   // mid — 맨 위·맨 아래 가운데 자리: 선 없이 이름을 바로 위·아래에(2026-10-02 햇살님)
   const lineH = fs * 1.2, top = padY + fs * 0.6, bot = H - padY - fs * 0.6;
   [1, -1].forEach(side => {   // 4 이름 묶음을 위아래 안전 영역 안에 고르게
-    const L = labels.filter(l => l.side === side).sort((a, b) => a.ky - b.ky);
+    const L = labels.filter(l => l.side === side && !l.mid).sort((a, b) => a.ky - b.ky);
     for (let it = 0; it < 6; it++) {
       for (let k = 1; k < L.length; k++) if (L[k].ky - L[k - 1].ky < lineH) { const m = (lineH - (L[k].ky - L[k - 1].ky)) / 2; L[k].ky += m; L[k - 1].ky -= m; }
       if (L.length) { const lo = L[0].ky, hi = L[L.length - 1].ky; if (lo < top) L.forEach(l => l.ky += top - lo); else if (hi > bot) L.forEach(l => l.ky -= hi - bot); } }
@@ -185,9 +190,9 @@ const SCENE = { discussion: '토론', nomination: '지명', voting: '투표 중'
 function render() {
   const p = P, tv = $('tv');
   $('pair').hidden = !!p || !pairing; $('leave').hidden = !linked;
-  if (!p) { tv.classList.remove('night'); $('phase').textContent = linked ? '연결됐어요' : ''; $('ribbon').innerHTML = ''; $('composition').textContent = ''; $('legend').hidden = true;
+  if (!p) { tv.classList.remove('night', 'round'); $('phase').textContent = linked ? '연결됐어요' : ''; $('ribbon').innerHTML = ''; $('composition').textContent = ''; $('legend').hidden = true;
     $('arena').innerHTML = linked ? '<div class="box" style="left:50%;top:50%"><div class="centername">새 판 준비 중</div></div>' : ''; return; }
-  const night = p.scene === 'night'; tv.classList.toggle('night', night); $('legend').hidden = !p.seats.some(s => s.dead && s.ghost);
+  const night = p.scene === 'night'; tv.classList.toggle('night', night); tv.classList.toggle('round', p.shape !== 'rect'); $('legend').hidden = !p.seats.some(s => s.dead && s.ghost);
   $('phase').textContent = p.scene === 'prep' ? '준비' : p.scene === 'ended' ? '게임 종료' : night ? (p.nightNumber === 1 ? '첫밤' : '밤 ' + p.nightNumber) : '낮 ' + p.dayNumber + (p.scene === 'dawn' ? ' · 아침 발표' : ' · ' + SCENE[p.scene]);
   $('composition').textContent = p.initialComposition && !night ? '처음 구성  선 ' + p.initialComposition.good + ' · 악 ' + p.initialComposition.evil : '';
   const name = id => { const s = p.seats.find(s => s.id === id); return s ? s.name || s.number + '번' : ''; };
@@ -196,16 +201,18 @@ function render() {
   NAMES = p.seats.map(s => s.name || s.number + '번');
   const L = layout(W, H, n, p.shape === 'rect' ? 'rect' : 'circle', true), t = L.timer;   // ponytail: 사각은 인원으로 칸을 잡는다 — 진행자 판의 실제 빈칸 배치(cells)는 공개 정보에 실릴 때 맞춘다
   let h = L.table ? '<div class="tablerect" style="left:' + L.table.x + 'px;top:' + L.table.y + 'px;width:' + L.table.w + 'px;height:' + L.table.h + 'px"></div>' : '', svg = '';
-  if (L.labels) L.labels.forEach(l => svg += '<path class="ld" d="M' + l.ex + ',' + l.ey + ' L' + l.kx + ',' + l.ky + ' L' + l.tx + ',' + l.ky + '"/>');
+  if (L.labels) L.labels.forEach(l => { if (!l.mid) svg += '<path class="ld" d="M' + l.ex + ',' + l.ey + ' L' + l.kx + ',' + l.ky + ' L' + l.tx + ',' + l.ky + '"/>'; });
   const at = id => L.seats[p.seats.findIndex(s => s.id === id)];
   if (p.nomination && p.nomination.byId && at(p.nomination.byId) && at(p.nomination.targetId)) {
     const from = at(p.nomination.byId), to = at(p.nomination.targetId), dx = to.x - from.x, dy = to.y - from.y, len = Math.hypot(dx, dy) || 1, off = L.d * .6;
     if (len > 1) svg += '<line x1="' + (from.x + dx / len * off) + '" y1="' + (from.y + dy / len * off) + '" x2="' + (to.x - dx / len * off) + '" y2="' + (to.y - dy / len * off) + '" stroke="#ff9f0a" stroke-opacity=".45" stroke-width="2" marker-end="url(#arrow)"/>'; }
   L.seats.forEach((pt, i) => {
-    const s = p.seats[i], nom = p.nomination && p.nomination.targetId === s.id;
-    h += '<div class="st ' + (s.dead ? 'dead ' : '') + (nom ? 'nom' : '') + '" style="left:' + pt.x + 'px;top:' + pt.y + 'px;width:' + L.d + 'px;height:' + L.d + 'px"><i style="font-size:' + L.d * .44 + 'px">' + s.number + '</i>' + (s.dead && s.ghost ? '<span class="ghost"></span>' : '') + '</div>';
+    const s = p.seats[i], nom = p.nomination && p.nomination.targetId === s.id, turn = p.handoff && p.handoff.seatId === s.id;
+    h += '<div class="st ' + (s.dead ? 'dead ' : '') + (nom ? 'nom' : turn ? 'turn' : '') + '" style="left:' + pt.x + 'px;top:' + pt.y + 'px;width:' + L.d + 'px;height:' + L.d + 'px"><i style="font-size:' + L.d * .44 + 'px">' + s.number + '</i>' + (s.dead && s.ghost ? '<span class="ghost"></span>' : '') + '</div>';
     let pos;
-    if (L.labels) { const l = L.labels[i]; pos = 'top:' + (l.ky - L.fs * .5) + 'px;' + (l.side > 0 ? 'left:' + (l.tx + 6) : 'right:' + (W - l.tx + 6)) + 'px'; }
+    if (L.labels) { const l = L.labels[i], g = L.d * .5 + L.fs * .3;
+      pos = l.mid ? 'left:' + l.sx + 'px;top:' + (l.sy + l.mid * g) + 'px;transform:translate(-50%,' + (l.mid < 0 ? '-100%' : '0') + ')'
+        : 'top:' + (l.ky - L.fs * .5) + 'px;' + (l.side > 0 ? 'left:' + (l.tx + 6) : 'right:' + (W - l.tx + 6)) + 'px'; }
     else { const e = L.d * .5, ln = L.d * .7, side = L.vert && (pt.nm === 'left' || pt.nm === 'right'), g = side ? e + ln + L.fs * .3 : e + L.fs * .35;
       if (side) { const sg = pt.nm === 'left' ? -1 : 1; svg += '<path class="ld" d="M' + (pt.x + sg * e) + ',' + pt.y + ' L' + (pt.x + sg * (e + ln)) + ',' + pt.y + '"/>'; }
       pos = pt.nm === 'left' ? 'right:' + (W - pt.x + g) + 'px;top:' + pt.y + 'px;transform:translateY(-50%)' : pt.nm === 'right' ? 'left:' + (pt.x + g) + 'px;top:' + pt.y + 'px;transform:translateY(-50%)' : pt.nm === 'above' ? 'left:' + pt.x + 'px;top:' + (pt.y - g) + 'px;transform:translate(-50%,-100%)' : 'left:' + pt.x + 'px;top:' + (pt.y + g) + 'px;transform:translateX(-50%)'; }
@@ -215,6 +222,8 @@ function render() {
   if (p.scene === 'discussion') mid = p.timer ? '<div class="centerlabel">자유롭게 이야기하세요</div><div class="centerbig" id="time"></div><div class="centersub" id="timesub">토론 시간</div>' : '<div class="centername">토론</div>';
   else if (p.scene === 'execution' && p.execution) mid = '<div class="centerlabel">처형 결과</div><div class="centername">' + esc(name(p.execution.targetId)) + '</div><div class="centersub">' + (p.execution.died ? '처형되었습니다 · 사망' : '처형되었습니다 · 생존') + '</div>';
   else if (p.nomination) mid = '<div class="centerlabel">' + (p.nomination.byId ? esc(name(p.nomination.byId)) + ' → ' : '') + esc(name(p.nomination.targetId)) + '</div><div class="centername">' + (p.scene === 'voting' ? '투표하고 있어요' : p.scene === 'confirmed' ? '투표가 확정됐어요' : '지명되었습니다') + '</div><div class="centersub">필요한 표 <b>' + p.neededVotes + '표</b> · 생존 ' + p.seats.filter(s => !s.dead).length + '명</div>';
+  else if (p.scene === 'prep' && p.handoff) mid = p.handoff.seatId ? '<div class="centerlabel">역할 확인 ' + p.handoff.seen + ' / ' + p.handoff.total + '</div><div class="centername">' + esc(name(p.handoff.seatId)) + '</div><div class="centersub">차례예요</div>'
+    : '<div class="centerlabel">역할 확인 ' + p.handoff.total + ' / ' + p.handoff.total + '</div><div class="centername">모두 확인했어요</div>';
   else if (p.scene === 'prep') mid = '<div class="centername">자리 확인</div>';
   else if (p.scene === 'dawn') mid = '<div class="centername">아침 발표</div>';
   else if (p.scene === 'ended') mid = '<div class="centername">게임 종료</div>';
