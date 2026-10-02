@@ -5,6 +5,7 @@ import { Icon } from '../icons.js';
 import { Page, Section, Row, Labeled, Empty, ActionSheet, Menu, useRun, LargeTitle } from '../ui.js';
 import { useNav, Back } from '../nav.js';
 import { FriendsView } from './friends.js';
+import { ReplayView } from './replay.js';
 
 const day = s => String(s || '').slice(0, 16).replace('T', ' ');
 
@@ -37,6 +38,7 @@ function RecordDetail({ id, reload }) {
       <div class="row"><${Menu} cls="blink" label=${html`<${Icon} name="pencil" size=${20} />승자 정정`}
         items=${[['good', '선 승리'], ['evil', '악 승리'], ['other', '중립 승리'], ['void', '무효']].map(([w, l]) => ({ label: l, onClick: () => R.run('record.setWinner', { id, winner: w }, after) }))} /></div>
     <//>
+    <${Section}><${Row} chevron onClick=${() => nav.push(html`<${ReplayView} id=${id} />`)}>복기<//><//>
     ${r.events.length > 0 && html`<${Section} header="과정">${r.events.map(e => html`<div class="row sub" style="color:var(--label)">${e}</div>`)}<//>`}
     <${Section} header="참가자">${r.players.map(p => html`<div class="row"><span>${p.number}번 ${p.name}</span><span class="sub grow">${p.role}</span>${p.won && html`<span class="blue" aria-label="이김"><${Icon} name="checkCircle" size=${20} /></span>`}</div>`)}<//>
     <${Section}><${Row} danger onClick=${() => setDel(true)}>이 기록 지우기<//><//>

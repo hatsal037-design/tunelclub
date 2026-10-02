@@ -11,6 +11,11 @@ import { LibraryView } from './screens/library.js';
 import { PreparationFlow } from './screens/prep.js';
 import { GameFlow } from './screens/game.js';
 import { account } from './account.js';
+import { DisplayConnectionView } from './screens/display.js';
+
+// 미완성 기능을 공개 사이트에 노출하지 않는다. 로컬에서 ?displayDev=1로 확인.
+const displayDev = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
+  && new URLSearchParams(location.search).get('displayDev') === '1';
 
 function useStore() { const [, f] = useState(0); useEffect(() => store.subscribe(() => f(x => x + 1)), []); }
 
@@ -26,10 +31,12 @@ function App() {
       : html`<${PreparationFlow} key=${'prep-' + space.prep} step=${space.prep} go=${go} close=${close} />`}</div>`;
   }
   const tabs = [['today', '오늘', 'house'], ['records', '기록', 'clock'], ['library', '자료실', 'books']];
+  if (displayDev) tabs.push(['display', '화면 연결', 'display']);
   return html`<div class="shell">
     ${tabs.map(([id]) => html`<div class="tabpage" key=${id} style=${tab === id ? '' : 'display:none'}>
       ${id === 'today' ? html`<${NavStack} root=${html`<${TodayView} openSpace=${setSpace} />`} />`
-        : id === 'records' ? html`<${NavStack} root=${html`<${RecordsView} />`} />` : html`<${NavStack} root=${html`<${LibraryView} />`} />`}</div>`)}
+        : id === 'records' ? html`<${NavStack} root=${html`<${RecordsView} />`} />`
+        : id === 'display' ? html`<${NavStack} root=${html`<${DisplayConnectionView} />`} />` : html`<${NavStack} root=${html`<${LibraryView} />`} />`}</div>`)}
     <nav class="tabs">${tabs.map(([id, t, ic]) => html`<button class=${tab === id ? 'on' : ''} aria-current=${tab === id ? 'page' : undefined} onClick=${() => setTab(id)}><${Icon} name=${ic} size=${24} />${t}</button>`)}</nav>
   </div>`;
 }
