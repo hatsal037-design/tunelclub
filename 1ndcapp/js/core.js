@@ -1,6 +1,6 @@
 // 게임 코어 다리 — 폰 앱 CoreBridge 와 같은 몫. 코어(dom_stub + app + native_core)를 한 함수 안에서 올려
 // 브라우저 전역(document·localStorage·location)을 가리고, 저장은 명령이 ok 일 때만 한 번(직전 정상본을 남긴다).
-const KEY = '1ndc_core', PREV = KEY + '.prev';
+const KEY = '1ndc_core', PREV = KEY + '.prev', REV = KEY + '.rev';   // REV — 마지막으로 저장한 판 번호만(작은 칸). 다른 탭이 판을 바꿨는지 명령 전에 싸게 본다
 let NC = null, revision = 0, SRC = '';
 
 function readable(t) { try { const o = JSON.parse(t); return o && typeof o === 'object' ? o : null; } catch { return null; } }
@@ -24,6 +24,7 @@ export async function boot() {
     if (saved && !readable(saved)) saved = null;
   }
   start(saved);
+  try { localStorage.setItem(REV, String(revision)); } catch {}
   migrateOld();
 }
 
@@ -47,6 +48,15 @@ function migrateOld() {
 
 export const currentRevision = () => revision;
 
+/* 두 창(탭) — 창마다 코어를 따로 올려 저장소 전체를 덮어쓰므로, 다른 창이 먼저 저장했으면 이 창의 명령은 그 변경을 지워 버렸다(2026-10-02 Fable·코덱스 관측 1).
+   명령 전에 저장된 판 번호를 대조하고, 다르면 저장본에서 다시 올린 뒤 거절한다(화면은 store 가 새로 읽는다). 다른 창의 저장은 storage 이벤트로도 바로 따라간다 */
+function movedElsewhere() { try { const r = localStorage.getItem(REV); return r !== null && +r !== revision; } catch { return false; } }
+function reload() { let saved = null; try { saved = localStorage.getItem(KEY); } catch {} start(saved && readable(saved) ? saved : null);
+  try { localStorage.setItem(REV, String(revision)); } catch {} }   // 번호 칸을 다시 읽은 판에 맞춘다 — 어긋난 채 남으면 명령이 계속 거절된다
+let onExternal = null;
+export function watchOtherTabs(f) { onExternal = f; }
+if (typeof window !== 'undefined') window.addEventListener('storage', e => { if (e.key === REV && NC && movedElsewhere()) { reload(); if (onExternal) onExternal(); } });
+
 /** 순수 읽기 — {revision, data} 의 data */
 export function query(name, arg) {
   if (!NC) return null;
@@ -57,6 +67,7 @@ export function query(name, arg) {
 /** 변경 명령 — ok 면 저장까지 끝난 뒤 돌려준다. 저장 실패는 마지막 정상본으로 되돌린다 */
 export function dispatch(type, payload, expected) {
   if (!NC) return { status: 'rejected', code: 'coreFailure', recovery: '게임을 불러오지 못했어요. 새로고침해 주세요.' };
+  if (movedElsewhere()) { reload(); return { status: 'rejected', code: 'staleRevision', recovery: '다른 창에서 판이 바뀌었어요. 최신 판을 다시 읽어 왔어요.' }; }
   const cmd = { apiVersion: 1, commandId: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), expectedRevision: expected ?? revision, type, payload: payload || {} };
   let reply;
   try { reply = readable(NC.dispatch(JSON.stringify(cmd))); } catch (e) { reply = null; }
@@ -73,7 +84,7 @@ function commit(rev) {
     const o = readable(NC.exportStorage()); if (!o) return false;
     o.__rev = rev;
     const cur = localStorage.getItem(KEY); if (cur) localStorage.setItem(PREV, cur);
-    localStorage.setItem(KEY, JSON.stringify(o));
+    localStorage.setItem(KEY, JSON.stringify(o)); localStorage.setItem(REV, String(rev));
     return true;
   } catch { return false; }
 }

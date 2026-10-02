@@ -615,7 +615,8 @@ var NativeCore = (function () {
   /* 낭독 — 웹 speak() 를 가로채 «모두 들어도 되는 말»(NR_SRC 허용 목록)만 명령 응답의 effects 로 넘긴다.
      실제 소리는 스위프트가 커밋 뒤 한 번만 낸다(03 §효과). 비밀 답은 NR_SRC 밖이라 여기로 오지 않는다. */
   var effects = [];
-  globalThis.speak = function (text, mood, src) {
+  /* 전역 속성이 아니라 이름에 직접 넣는다 — 웹은 코어를 함수 안에서 올려(web/js/core.js new Function) 전역 speak 을 바꿔도 코어 안 호출은 옛 speak 으로 갔다(2026-10-02 Fable 검토 A) */
+  speak = function (text, mood, src) {
     if (typeof NR_SRC === 'undefined' || !NR_SRC[src] || !text) return false;
     var t = String(text).replace(/<[^>]*>/g, ' ').replace(/[『』]/g, '').replace(/\s+/g, ' ').trim();
     if (!t) return false;
@@ -861,7 +862,7 @@ var NativeCore = (function () {
       wzFinish(); return wz.mode === 'done' ? null : null;
     },
     'day.executeUndo': function (p) { var n = dayRec().noms[+p.k]; if (!n || !n.done) return rejected('invalidSelection', '되돌릴 처형이 없어요.'); uiDayExecUndo(+p.k); return null; },
-    'day.call': function (p) { var c = String(p.call || ''); if (!ALLOW.test(c)) return rejected('invalidSelection', '허용하지 않은 동작이에요.'); return shieldRun(p, function () { (0, eval)(c); }); },
+    'day.call': function (p) { var c = String(p.call || ''); if (!ALLOW.test(c)) return rejected('invalidSelection', '허용하지 않은 동작이에요.'); return shieldRun(p, function () { eval(c); }); },   // 직접 eval — 이 자리의 범위에서 찾는다. 간접 eval 은 전역에서 찾아 웹(함수 안에 올린 코어)에선 «markUsed is not defined» 로 전부 거절됐다(2026-10-02 Fable 검토 A). 허용 정규식 ALLOW 를 지난 것만 온다
     /* 낮으로 되돌리기 — 둘째 밤부터, 이 밤에 아무것도 안 했을 때만(웹 wzUndoNight «← 낮으로»). 막히면 웹 안내를 그대로 */
     'phase.undoNight': function () { if (state.phase === 'day' || (state.nights || 1) <= 1) return rejected('notAllowedInPhase', '되돌릴 낮이 없어요.');
       var notes = [], oa = alert; alert = function (m) { notes.push(String(m)); };
@@ -893,6 +894,7 @@ var NativeCore = (function () {
       if (p && p.fresh) { switchEdition(state.edition, { quiet: true, force: true }); state.seats.forEach(function (x) { x.dead = false; delete x.cause; delete x.causeN; }); }   // «바꿔서 한 판 더» — 인원·자리부터 다시 볼 땐 지난 판 흔적(사망·역할)을 걷는다(명단 확정의 끝난 판 갈래와 같게)
       return null; },
     'seat.toggleToken': function (p) { var i = +p.seat; if (!state.seats[i]) return rejected('invalidSelection', '자리를 찾지 못했어요.');
+      try { if (!KREG.개념[KID('tok', String(p.token))]) return rejected('invalidSelection', '등록되지 않은 표식이에요.'); } catch (e) {}   // 입구에서 막는다 — 미등록 이름은 저장 가드가 거부한다
       var keep = editing; editing = i; try { toggleRem(String(p.token)); } finally { editing = keep; } return null; },
     'seat.kill': function (p) { var i = +p.seat, x = state.seats[i]; if (!x || x.dead) return rejected('invalidSelection', '이미 죽었거나 자리가 없어요.');
       var keep = editing; editing = i; var r;
@@ -1007,6 +1009,11 @@ var NativeCore = (function () {
       if (cmd.expectedRevision !== revision) return J(rejected('staleRevision', '판이 바뀌었어요. 다시 읽어 올게요.'));
       var f = COMMANDS[cmd.type]; if (!f) return J(rejected('unknownCommand', cmd.type));
       var snap = localStorage.getItem('botc_state'), wzSnap = JSON.stringify(wz);        // 실패·거절하면 직전 상태로
+      /* 받침 저장소 전체 — 판(botc_state)만 되돌리면 명령이 중간에 쓴 다른 칸(사람 명부·연결·공개 스냅샷…)이 거절된 뒤에도 남았다(2026-10-02 Fable·코덱스 관측 2). 값은 글자라 베끼는 값이 아니라 가리키기만 한다 */
+      var all0 = {}; for (var si = 0; si < localStorage.length; si++) { var sk = localStorage.key(si); all0[sk] = localStorage.getItem(sk); }
+      var undoStorage = function () { var ks = []; for (var j = 0; j < localStorage.length; j++) ks.push(localStorage.key(j));
+        ks.forEach(function (k) { if (!(k in all0)) localStorage.removeItem(k); }); Object.keys(all0).forEach(function (k) { if (localStorage.getItem(k) !== all0[k]) localStorage.setItem(k, all0[k]); }); };
+      var guard0 = typeof lastGuardFail === 'undefined' ? null : lastGuardFail;   // 저장 가드가 이 명령에서 거부했는지 보려고
       effects = [];
       /* 밤 도중 좌석 시트에서 죽이기·살리기·표식·지연 사망을 하면 깨울 목록이 바뀐다 — 보던 카드(dk)를 따라가게(웹 wzRender 의 lastWho 와 같은 몫). 안 그러면 다른 사람 카드로 밀려 옛 대상이 확정될 수 있었다 */
       var dk0 = null; if (STAY[cmd.type] && state.phase !== 'day') { try { var c0 = current(); if (c0) dk0 = c0.o.dk; } catch (e) {} }
@@ -1014,13 +1021,18 @@ var NativeCore = (function () {
       try { r = f(cmd.payload || {}); __flushTimers(); }
       catch (e) { r = rejected('coreFailure', String(e && e.message || e)); }
       if (r && r.status !== 'ok') {   // 거절·확인 요청 — 명령이 중간에 바꿔 둔 것(예: game.finish 의 wz.mode)을 되돌린다
-        try { if (snap) restoreState(snap); var w0 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w0); } catch (e2) {}
+        try { undoStorage(); if (snap) restoreState(snap); var w0 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w0); } catch (e2) {}
       }
       if (!r && dk0 !== null) { try { follow(dk0); } catch (e) {} }
       /* 현재 밤 카드를 명령 안에서 한 번 계산 — 중독·취함 거짓 답 같은 앱 재량이 state.fixed 에 적혀 저장된다.
          안 그러면 첫 «조회»가 판을 바꾸고 난수를 쓴다(2026-10-01 엔진 대량 검사 «조회 불변» 20건) */
       if (!r) { try { if (state.phase !== 'day' && current()) { nightCard(); discPrepare(); } } catch (e) {} }   // 재량표도 명령 안에서 — 조회는 읽기만
-      if (!r) { try { if (cmd.type !== 'game.autoClose' && cmd.type !== 'sync.markUploaded' && cmd.type !== 'sync.merge') state.touchedAt = new Date().toISOString(); wzPersist(); save(); } catch (e) {} try { displayPublic(); } catch (e) {} revision += 1; r = { status: 'ok', commandId: cmd.commandId, revision: revision, effects: effects.map(function (e, i) { return Object.assign({ effectId: cmd.commandId + ':' + i }, e); }) }; }   // 진행 위치(wz)도 판과 함께 저장 — 다시 켜면 보던 카드로(03 수용 08)
+      if (!r) { try { if (cmd.type !== 'game.autoClose' && cmd.type !== 'sync.markUploaded' && cmd.type !== 'sync.merge') state.touchedAt = new Date().toISOString(); wzPersist(); save(); } catch (e) {}
+        /* 저장 가드가 거부했으면(등록부에 없는 값) 성공이 아니다 — 저장 안 된 채 ok 를 내면 화면과 저장본이 갈라지고, 다음 거절 때 그사이 진행이 통째로 사라졌다(2026-10-02 Fable·코덱스 관측 3) */
+        if (typeof lastGuardFail !== 'undefined' && lastGuardFail !== guard0) {
+          try { undoStorage(); if (snap) restoreState(snap); var w1 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w1); } catch (e3) {}
+          r = rejected('persistenceFailed', '저장할 수 없는 값이 있어 이 조작을 취소했어요.'); } }
+      if (!r) { try { displayPublic(); } catch (e) {} revision += 1; r = { status: 'ok', commandId: cmd.commandId, revision: revision, effects: effects.map(function (e, i) { return Object.assign({ effectId: cmd.commandId + ':' + i }, e); }) }; }   // 진행 위치(wz)도 판과 함께 저장 — 다시 켜면 보던 카드로(03 수용 08)
       outHub = null; var out = JT(r); if (r.status === 'ok') replies[cmd.commandId] = out; return out;
     },
     exportStorage: function () { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); o[k] = localStorage.getItem(k); } return J(o); },
