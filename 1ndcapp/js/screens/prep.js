@@ -69,7 +69,8 @@ function PeopleView({ c, next }) {
   const pad = (n, m) => { while (n.length < 5) { n.push(''); m.push(null); } setNames(n); setMembers(m); };
   const removeAt = i => { setLevels(a => { const l = a.filter((_, j) => j !== i); while (l.length < 5) l.push(2); return l; }); pad(names.filter((_, j) => j !== i), members.filter((_, j) => j !== i)); };
   const clearAll = () => { setLevels([2, 2, 2, 2, 2]); pad([], []); };
-  const source = m => !m ? 'manual' : sources[m] || store.get('preparation.experience', m)?.source || 'unknown';
+  const skillOff = !!store.home.skillOff;   // 오리지널 마피아 — 경험 단계를 받지도 보여 주지도 않는다(2026-10-03 햇살님 «숙련도 적용하지 말자»)
+  const source = m => skillOff ? 'off' : !m ? 'manual' : sources[m] || store.get('preparation.experience', m)?.source || 'unknown';
   const refreshExperience = async m => {
     const stats = await account.stats(m);
     if (stats?.member_id === m && Number.isInteger(stats.wins) && Number.isInteger(stats.losses)) {
@@ -79,9 +80,11 @@ function PeopleView({ c, next }) {
       if (typeof e === 'boolean') await store.dispatch('preparation.recordExperienced', { member: m, experienced: e });
       else await store.dispatch('preparation.experienceUnavailable', { member: m });
     }
+    const gr = await account.grades([m]); const row = gr && gr.find(r => r.member_id === m);   // 20판 이상이면 서버 등급(손 입력 대신 배분이 읽는다)
+    if (row) await store.dispatch('preparation.recordGrade', { member: m, grade: row.enough && Number.isInteger(row.grade) ? row.grade : null });
     setSources(a => ({ ...a, [m]: store.get('preparation.experience', m)?.source || 'unknown' }));
   };
-  useEffect(() => { members.filter(Boolean).forEach(refreshExperience); }, [members.join('|')]);
+  useEffect(() => { if (!skillOff) members.filter(Boolean).forEach(refreshExperience); }, [members.join('|')]);
   const addMembers = rows => {   // 빈 칸부터 채우고 모자라면 늘린다 — 이미 있는 회원은 건너뛴다
     const n = names.slice(), m = members.slice(), l = levels.slice();
     rows.filter(r => !m.includes(r.member_id)).forEach(r => { let k = n.findIndex(x => !x.trim()); if (k < 0) { if (n.length >= 20) return; n.push(''); m.push(null); k = n.length - 1; } n[k] = r.nick; m[k] = r.member_id; l[k] = 2; });
@@ -109,11 +112,11 @@ function PeopleView({ c, next }) {
           aria-label=${`${i + 1}번 닉네임`}
           onInput=${e => { const v = e.currentTarget.value; setNames(a => a.map((x, j) => j === i ? v : x)); setLevels(a => { const l = a.slice(); l[i] = 2; return l; }); if (members[i]) setMembers(a => a.map((x, j) => j === i ? null : x)); }}
           onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); const nx = inputs.current[i + 1]; if (nx) nx.focus(); else e.currentTarget.blur(); } }} />
-        ${source(members[i]) === 'manual' ? html`<${LevelSlider} value=${levels[i] || null} disabled=${!n.trim()} label=${`${n || (i + 1) + '번'} 경험 단계`}
+        ${skillOff ? null : source(members[i]) === 'manual' ? html`<${LevelSlider} value=${levels[i] || null} disabled=${!n.trim()} label=${`${n || (i + 1) + '번'} 경험 단계`}
             onBegin=${el => anchor(el)} onChange=${v => { setLevels(a => { const l = a.slice(); l[i] = v; return l; }); setExperiencePick(i); }} />`
           : html`<button class="experience-state" onClick=${e => { anchor(e.currentTarget); setExperiencePick(experiencePick === i ? null : i); }}>${source(members[i]) === 'records' ? '기록 기반 · 🔒' : '기록 확인 필요'}</button>`}
       </div>
-      ${experiencePick === i && html`<div class="experience-note" role="status">${source(members[i]) === 'manual' && levels[i] ? html`<strong>${levels[i]} · ${EXPERIENCE[levels[i] - 1][0]}</strong><p>${EXPERIENCE[levels[i] - 1][1]}</p><button class="lnk" onClick=${() => { setLevels(a => { const l = a.slice(); l[i] = 2; return l; }); setExperiencePick(null); }}>기본(2)으로</button>`
+      ${!skillOff && experiencePick === i && html`<div class="experience-note" role="status">${source(members[i]) === 'manual' && levels[i] ? html`<strong>${levels[i]} · ${EXPERIENCE[levels[i] - 1][0]}</strong><p>${EXPERIENCE[levels[i] - 1][1]}</p><button class="lnk" onClick=${() => { setLevels(a => { const l = a.slice(); l[i] = 2; return l; }); setExperiencePick(null); }}>기본(2)으로</button>`
         : html`<p>${source(members[i]) === 'records' ? '20판 이상 기록이 있어 수동 단계를 사용하지 않아요.' : '전적을 확인할 수 없어요. 로그인·친구 공개 범위와 연결을 확인해 주세요.'}</p>${source(members[i]) !== 'manual' && html`<button class="lnk" onClick=${() => refreshExperience(members[i])}>다시 확인</button>`}`}</div>`}
     </div>`)}<//>
     <${ActionSheet} open=${clearAsk} title="닉네임을 모두 비울까요?" onClose=${() => setClearAsk(false)} actions=${[{ label: '모두 비우기', role: 'destructive', onClick: clearAll }]} />

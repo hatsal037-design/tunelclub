@@ -1,15 +1,18 @@
 // 게임 코어 다리 — 폰 앱 CoreBridge 와 같은 몫. 코어(dom_stub + app + native_core)를 한 함수 안에서 올려
 // 브라우저 전역(document·localStorage·location)을 가리고, 저장은 명령이 ok 일 때만 한 번(직전 정상본을 남긴다).
-const KEY = '1ndc_core', PREV = KEY + '.prev', REV = KEY + '.rev';   // REV — 마지막으로 저장한 판 번호만(작은 칸). 다른 탭이 판을 바꿨는지 명령 전에 싸게 본다
+const KEY = '1ndc_core', PREV = KEY + '.prev', REV = KEY + '.rev';   // REV는 알림용. 저장 확정과 판 번호의 원본은 KEY 안의 __rev
 let NC = null, revision = 0, SRC = '';
 
 function readable(t) { try { const o = JSON.parse(t); return o && typeof o === 'object' ? o : null; } catch { return null; } }
 
 function start(saved) {
-  NC = new Function('__boot_storage', 'print', SRC + '\n;__flushTimers(); return NativeCore;')(saved || '', () => {});
+  NC = null;   // 복구 실패 시 이전의 미저장 코어를 계속 쓰지 않는다
+  const next = new Function('__boot_storage', 'print', SRC + '\n;__flushTimers(); return NativeCore;')(saved || '', () => {});
   const o = saved ? readable(saved) : null;
-  revision = (o && o.__rev) || 0;
-  NC.setRevision(revision);
+  const rev = (o && o.__rev) || 0;
+  next.setRevision(rev);
+  next.initializeDisplay();   // 조회 전에 공개 확정본 준비. 준비까지 성공한 코어만 공개한다
+  revision = rev; NC = next;
 }
 
 export async function boot() {
@@ -48,14 +51,22 @@ function migrateOld() {
 
 export const currentRevision = () => revision;
 
-/* 두 창(탭) — 창마다 코어를 따로 올려 저장소 전체를 덮어쓰므로, 다른 창이 먼저 저장했으면 이 창의 명령은 그 변경을 지워 버렸다(2026-10-02 Fable·코덱스 관측 1).
-   명령 전에 저장된 판 번호를 대조하고, 다르면 저장본에서 다시 올린 뒤 거절한다(화면은 store 가 새로 읽는다). 다른 창의 저장은 storage 이벤트로도 바로 따라간다 */
-function movedElsewhere() { try { const r = localStorage.getItem(REV); return r !== null && +r !== revision; } catch { return false; } }
-function reload() { let saved = null; try { saved = localStorage.getItem(KEY); } catch {} start(saved && readable(saved) ? saved : null);
+/* 두 창(탭) — 명령 전에 본문에 저장된 판 번호를 대조하고 다르면 다시 읽은 뒤 거절한다.
+   알림 키 쓰기 실패/이벤트 누락에도 본문이 기준이다. 탭 간 동시 쓰기 잠금까지 보장하는 장치는 아니다. */
+function savedState() {
+  const saved = localStorage.getItem(KEY), o = saved ? readable(saved) : null;
+  if (saved && (!o || Array.isArray(o))) throw new Error('invalid saved state');
+  return { saved, revision: (o && o.__rev) || 0 };
+}
+function reload(saved) { start(saved);
   try { localStorage.setItem(REV, String(revision)); } catch {} }   // 번호 칸을 다시 읽은 판에 맞춘다 — 어긋난 채 남으면 명령이 계속 거절된다
 let onExternal = null;
 export function watchOtherTabs(f) { onExternal = f; }
-if (typeof window !== 'undefined') window.addEventListener('storage', e => { if (e.key === REV && NC && movedElsewhere()) { reload(); if (onExternal) onExternal(); } });
+if (typeof window !== 'undefined') window.addEventListener('storage', e => {
+  if ((e.key === KEY || e.key === REV || e.key === null) && NC) {
+    try { const s = savedState(); if (s.revision !== revision) { reload(s.saved); if (onExternal) onExternal(); } } catch { /* 다음 명령에서도 다시 읽고, 읽지 못하면 거절한다 */ }
+  }
+});
 
 /** 순수 읽기 — {revision, data} 의 data */
 export function query(name, arg) {
@@ -67,15 +78,18 @@ export function query(name, arg) {
 /** 변경 명령 — ok 면 저장까지 끝난 뒤 돌려준다. 저장 실패는 마지막 정상본으로 되돌린다 */
 export function dispatch(type, payload, expected) {
   if (!NC) return { status: 'rejected', code: 'coreFailure', recovery: '게임을 불러오지 못했어요. 새로고침해 주세요.' };
-  if (movedElsewhere()) { reload(); return { status: 'rejected', code: 'staleRevision', recovery: '다른 창에서 판이 바뀌었어요. 최신 판을 다시 읽어 왔어요.' }; }
+  let before;
+  try {
+    before = savedState();
+    if (before.revision !== revision) { reload(before.saved); return { status: 'rejected', code: 'staleRevision', recovery: '다른 창에서 판이 바뀌었어요. 최신 판을 다시 읽어 왔어요.' }; }
+  } catch { return { status: 'rejected', code: 'persistenceFailed', recovery: '저장된 판을 확인하지 못했어요. 다시 시도해 주세요.' }; }
   const cmd = { apiVersion: 1, commandId: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), expectedRevision: expected ?? revision, type, payload: payload || {} };
   let reply;
   try { reply = readable(NC.dispatch(JSON.stringify(cmd))); } catch (e) { reply = null; }
   if (!reply) return { status: 'rejected', code: 'coreFailure', recovery: '처리하지 못했어요. 새로고침해 주세요.' };
   if (reply.status !== 'ok' || reply.revision === undefined || reply.revision === revision) return reply;
   if (commit(reply.revision)) { revision = reply.revision; return reply; }
-  let saved = null; try { saved = localStorage.getItem(KEY); } catch {}
-  start(saved);
+  try { start(before.saved); } catch { NC = null; }
   return { status: 'rejected', code: 'persistenceFailed', recovery: '저장하지 못했어요. 입력은 그대로예요 — 다시 시도해 주세요.' };
 }
 
@@ -84,7 +98,9 @@ function commit(rev) {
     const o = readable(NC.exportStorage()); if (!o) return false;
     o.__rev = rev;
     const cur = localStorage.getItem(KEY); if (cur) localStorage.setItem(PREV, cur);
-    localStorage.setItem(KEY, JSON.stringify(o)); localStorage.setItem(REV, String(rev));
-    return true;
+    localStorage.setItem(KEY, JSON.stringify(o));
   } catch { return false; }
+  // KEY 한 번 쓰기가 확정점. 이후 알림 실패로 이미 저장된 명령을 실패라고 돌려주지 않는다.
+  try { localStorage.setItem(REV, String(rev)); } catch {}
+  return true;
 }

@@ -44,6 +44,7 @@ export const account = {
         try {
           if (g.people.length && !(await rpc('sync_people', { p_people: g.people }))) throw new Error('people');
           await rpc('upload_game', { p_game: g.game, p_players: g.players });
+          try { await rpc('game_skill_facts', { p_client_game_id: g.game.client_game_id, p_players: g.players }); } catch {}   // 숙련 등급 재료(0110) — 실패해도 판 올리기는 성공
           done.push(g.id); ok++;
         } catch { bad++; }
       }
@@ -58,6 +59,8 @@ export const account = {
   /** 친구 — 서로 수락. 목록(friend·received·sent)·요청·수락·끊기, 전적은 서로 친구이거나 나일 때만 서버가 준다 */
   async friends() { if (!this.user) return null; try { return (await rpc('friends_list')) || []; } catch { return null; } },
   async friendDo(fn, id) { try { return await rpc(fn, { p_member: id }); } catch { return null; } },
+  /** 숙련 등급(0110) — 회원마다 «20판 이상인가»·1~5 숫자만. 전적 숫자·지표는 안 온다 */
+  async grades(ids) { try { return (await rpc('member_grades', { p_members: ids })) || []; } catch { return null; } },
   async experienced(id) { try { const r = await rpc('member_experienced', { p_member: id }); return typeof r === 'boolean' ? r : null; } catch { return null; } },   // 친구 아니어도 «20판 이상인가»만
   async stats(id) { try { return id ? await rpc('member_stats', { p_member: id }) : await rpc('my_stats'); } catch { return null; } },
   /** 판세 보정 — 역할을 나눈 직후 회원 편별 실력 차이(숫자 하나)를 받아 코어에 넣는다. 5명 미만이면 서버가 주지 않는다 */
@@ -79,7 +82,8 @@ export const account = {
   /** 진행 중인 판을 서버에 두기 — 밤·낮 경계와 처형 뒤. 결과가 정해진 채 12시간 방치되면 서버가 닫는다 (2026-09-30) */
   async snapshot() {
     if (!this.user) return; const g = store.get('sync.snapshot'); if (!g) return;
-    try { await rpc('claim_me', { p_nick: '' }); if (g.people.length) { try { await rpc('sync_people', { p_people: g.people }); } catch {} } await rpc('upload_game', { p_game: g.game, p_players: g.players }); } catch {}
+    try { await rpc('claim_me', { p_nick: '' }); if (g.people.length) { try { await rpc('sync_people', { p_people: g.people }); } catch {} } await rpc('upload_game', { p_game: g.game, p_players: g.players });
+      try { await rpc('game_skill_facts', { p_client_game_id: g.game.client_game_id, p_players: g.players }); } catch {} } catch {}
   },
   /** 앱을 켤 때 — 결과가 정해진 판을 12시간 안 건드렸으면 그 결과로 닫는다(코어가 알림을 낸다) */
   async autoClose() { try { const r = await store.dispatch('game.autoClose', {}); return !!(r && r.ok); } catch { return false; } },

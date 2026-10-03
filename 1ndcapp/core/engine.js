@@ -29,6 +29,8 @@ var GameEngine = (function () {
     return r;
   }
   function seats() { return state.seats || []; }
+  /* 좌석은 신뢰한 호출자가 지정하는 0기준 정수. 입력 검사는 원격 신원 인증이 아니다. */
+  function validSeat(i) { return typeof i === 'number' && isFinite(i) && i >= 0 && i % 1 === 0 && i < seats().length; }
   function cm() { return CMAP(); }
   function ko(id) { var c = cm()[id]; return c ? c.ko : ''; }
   function side(id) { var c = cm()[id]; return c ? fxSide(c.team) : null; }
@@ -40,11 +42,10 @@ var GameEngine = (function () {
   /* 공개 사건 — 직업·고정값은 벗긴다. 밤 사망은 아침(낮 시작) 뒤에만 */
   var PUBLIC = { '지명': 1, '투표': 1, '처형': 1, '사망': 1, '낮 시작': 1, '밤 시작': 1 };
   function publicEvents() {
-    var ev = events(), out = [], dayStarted = {};
-    ev.forEach(function (e) { if (e.type === '낮 시작') dayStarted[e.n] = true; });
+    var ev = events(), out = [], published = q('observation.public');
     ev.forEach(function (e) {
       if (!PUBLIC[e.type]) return;
-      if (e.type === '사망' && e.phase !== 'day' && !dayStarted[e.n]) return;   // 아직 발표 전인 밤 사망(그 밤 뒤 낮이 시작돼야 공개)
+      if (e.type === '사망' && e.phase !== 'day' && (!published || e.n > published.through)) return;   // 낮 진입이 아니라 저장 확정된 발표 뒤에 공개
       var o = { 사건: '공개' + (out.length + 1), 밤: e.n, 때: e.phase, 종류: e.type };   // 사건 ID — 보이는 목록 안 순번. 판 기록 전체 순번은 숨은 사건 수를 새게 한다(짝 검사에서 잡힘)
       if (e.seat) o.자리 = e.seat;
       if (e.bySeat) o.지명자 = e.bySeat;
@@ -101,11 +102,12 @@ var GameEngine = (function () {
   }
   function view(who) {
     if (who === 'host') return { 진행자: true, 판: JSON.parse(JSON.stringify(state)), 기록: events() };
-    var i = who | 0, s = seats()[i]; if (!s) return null;
+    if (!validSeat(who)) return null;
+    var i = who, s = seats()[i]; if (!s) return null;
     var out = {
       자리: i + 1, 이름: s.name || '', 단계: state.phase || 'setup', 밤: state.nights || 1,
-      나: { 직업: ko(shownChar(i)), 편: side(shownChar(i)), 살아있음: !(s.dead && publicDeath(i)) },   // 밤에 죽어도 아침 발표 전엔 본인도 모른다(봉사는 그 카드로 앎)
-      좌석: seats().map(function (x, j) { return { 자리: j + 1, 이름: x.name || '', 살아있음: !x.dead || (x.dead && !publicDeath(j)) }; }),
+      나: { 직업: ko(shownChar(i)), 편: side(shownChar(i)), 살아있음: !publicDeath(i) },   // 개인 능력 정보는 받은정보에 별도로 유지
+      좌석: seats().map(function (x, j) { return { 자리: j + 1, 이름: x.name || '', 살아있음: !publicDeath(j) }; }),
       공개: publicEvents(), 받은정보: received(i)
     };
     var ev = evilInfo(i); if (ev) out.악안내 = ev;
@@ -119,10 +121,11 @@ var GameEngine = (function () {
       return { 사건: '행동' + (k + 1), 밤: e.n, 대상: (e.대상 || []).map(function (l) { var m = String(l).match(/좌석 (\d+)/); return m ? +m[1] : null; }).filter(function (x) { return x; }) };
     });
   }
-  function publicDeath(j) { return publicEvents().some(function (e) { return (e.종류 === '사망' || e.종류 === '처형') && e.자리 === j + 1; }); }
+  function publicDeath(j) { var p = q('observation.public'); return !!(p && p.dead[j]); }
   /* 합법 행동 — 막힌 대상은 이유 없이 뺀다 */
   function legal(who) {
-    var i = who | 0, out = [];
+    if (!validSeat(who)) return [];
+    var i = who, out = [];
     if (state.phase !== 'day') {
       var c = null; try { c = q('game.current'); } catch (e) {}
       if (c && c.seatNumber === i + 1 && c.needsTargetsFirst) {
@@ -150,8 +153,18 @@ var GameEngine = (function () {
   var votes = {};
   /* 참가자에게 돌려주는 응답 — 접수됐는지만, 한 모양으로. 내부 명령 번호·판 번호·효과·무효 여부는 진행자·재생(record) 쪽에만(2026-10-01 코덱스 2차 재검토) */
   function act(who, a) { var r = actRaw(who, a) || {}; return r.status === 'ok' ? { status: 'ok' } : { status: r.status || 'rejected', code: r.code || 'rejected' }; }
+  /* 운영용 순수 변환. 진행자 플랫폼 전용이며 원격 참가자 인증을 대신하지 않는다. */
+  function prepareAction(who, a) {
+    if (!a || a.종류 !== '지명') return { status: 'rejected', code: 'unsupportedAction' };
+    if (typeof who !== 'number' || !isFinite(who) || who < 0 || who % 1 || who >= seats().length || typeof a.대상 !== 'number' || !isFinite(a.대상) || a.대상 % 1)
+      return { status: 'rejected', code: 'invalidSelection' };
+    var h = legal(who).filter(function (x) { return x.종류 === '지명'; })[0];
+    if (!h || h.후보.indexOf(a.대상) < 0) return { status: 'rejected', code: 'invalidSelection' };
+    return { status: 'ready', type: 'day.nominate', payload: { by: who, target: a.대상 - 1 } };
+  }
   function actRaw(who, a) {
-    var i = who | 0, L = legal(i);
+    if (!validSeat(who)) return { status: 'rejected', code: 'invalidSelection' };
+    var i = who, L = legal(i);
     if (a.종류 === '대상') {
       var g = L.filter(function (x) { return x.종류 === '대상'; })[0];
       if (!g) return { status: 'rejected', code: 'notYourTurn' };
@@ -171,9 +184,8 @@ var GameEngine = (function () {
       return heir < 0 ? { status: 'rejected', code: 'noHeir' } : dispatch('succession.apply', { id: 'imp_self', seat: heir });
     }
     if (a.종류 === '지명') {
-      var h = L.filter(function (x) { return x.종류 === '지명'; })[0];
-      if (!h || h.후보.indexOf(a.대상 | 0) < 0) return { status: 'rejected', code: 'invalidSelection' };
-      return dispatch('day.nominate', { by: i, target: (a.대상 | 0) - 1 });
+      var p = prepareAction(i, { 종류: '지명', 대상: a.대상 | 0 });
+      return p.status === 'ready' ? dispatch(p.type, p.payload) : p;
     }
     if (a.종류 === '투표') {
       if (!L.some(function (x) { return x.종류 === '투표' && x.지명 === a.지명; })) return { status: 'rejected', code: 'invalidSelection' };
@@ -187,6 +199,7 @@ var GameEngine = (function () {
   }
   return {
     view: view, legal: legal, act: act, closeVote: closeVote, answerKind: answerKind,   // answerKind — 복기(replay.js)가 끝난 판 기록으로 보기를 다시 세울 때 같은 해석을 쓴다
+    prepareAction: prepareAction,
     host: { dispatch: dispatch, query: q },
     record: function () { return log.slice(); },
     reset: function () { log = []; n = 0; votes = {}; }
