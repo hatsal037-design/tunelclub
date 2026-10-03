@@ -3872,7 +3872,8 @@ function executeSeat(){ const s=state.seats[editing]; if(!s||s.dead)return false
   s.rem=s.rem||[]; if(!s.rem.includes(tok)) s.rem.push(tok); tokAtSet(editing,tok);
   /* 처형은 모두가 보는 자리 — 소리와 낭독이 나가도 된다 (2026-09-04) */
   bgmStingPlay('exec');
-  speak('마을은 '+(s.name||('좌석 '+(editing+1)))+'님을 나무 앞에 세우기로 했습니다.', 'exec', 'execCall');
+  { const x=narrPick('exec.call'), r=narrPick(s.dead?'exec.died':'exec.survived'), who=(s.name||('좌석 '+(editing+1)));
+    speak([x?x.show.replace('{who}',who):'', r?r.say:''].join(' '), 'exec', 'execCall', [x&&{clip:x.clip,say:x.say}, seatClip(editing), r&&{clip:r.clip,say:r.say}].filter(Boolean)); }
   save(); render(); closeSheet(); return true; }
 /* 오늘(직전 낮)의 처형자 — 처형 토큰 + 붙인 시점으로 판단. 기록이 없는 옛 토큰은 마지막 수단으로만 */
 function execSeatsToday(){ const list=state.seats.map((s,i)=>({s,i})).filter(o=>o.s.char&&(o.s.rem||[]).some(r=>r==='오늘 처형됨'||r==='처형'));
@@ -5189,12 +5190,12 @@ function wzToDay(){ if(ED().twoNights&&(state.nights||1)===1&&state.phase!=='day
   state.phase='day'; wz.mode='day'; wz.idx=0; wz.dayStep='talk'; wz.nomStep=null; wz.nomTgt=null; wz.dayResult=null; nomBy=null;
   logEvent('낮 시작',flowSnap());   /* 밤은 addNight 이 남기는데 낮만 한 번도 안 남았다 — 기록에서 밤·낮 경계가 안 갈렸다 (자율점검 low 2차-03, 2026-09-15) */
   save(); wzRender();
-  bgmSync(); speak(dayScript().join(' '), 'day', 'dayBrief'); }   // 낮 브리핑은 모두 듣는 말이라 읽어도 된다
+  bgmSync(); { const d=dayNarr(); speak(d.lines.join(' '), 'day', 'dayBrief', d.plan); } }   // 낮 브리핑은 모두 듣는 말이라 읽어도 된다
 function wzToNight(){ if(wz.mode==='day'){ const D=dayRec(); const pending=(wz.voteOpen!==null&&wz.voteOpen!==undefined)||(!(D.noms||[]).some(n=>n.done)&&(D.noms||[]).some(n=>!n.done&&n.v>0));
     if(pending&&!confirm('아직 낮 기록이 남아 있어요(투표 중이거나 처형 안 함). 밤으로 넘길까요? 한 밤짜리 토큰이 정리됩니다.')) return; }
   nomBy=null; wz.nomStep=null; wz.voteOpen=null; wz.nightSnap={n:state.nights||1, rems:JSON.stringify(state.seats.map(s=>s.rem||[])), tokAt:JSON.stringify(state.tokAt||{}), tokPh:JSON.stringify(state.tokPh||{})};   // 정리되기 전 모습을 밤 번호와 함께 보관(되돌리기용)
   addNight(); state.phase='night'; wz.mode='night'; wz.idx=0; save(); wzRender();
-  bgmSync(); speak('모두 눈을 감아 주세요. 밤이 깊었습니다.', 'night', 'nightOpen'); }
+  bgmSync(); { const x=narrPick((state.nights||1)<=1?'night.first':'night.open'); speak(x?x.say:'모두 눈을 감아 주세요. 밤이 깊었습니다.', 'night', 'nightOpen', x?[{clip:x.clip,say:x.say}]:null); } }
 function wzUndoNight(){ if((state.nights||1)<=1) return; if(Object.keys(pickRec(state.nights)).length||Object.keys(state.done[state.nights]||{}).length){ alert('이 밤에 이미 진행한 게 있어요 — 되돌리려면 좌석에서 직접 정리하세요.'); return; }
   removeNight(); const snap=wz.nightSnap;
   logEvent('되돌림', {종류:'낮으로 되돌림'});
@@ -6182,7 +6183,7 @@ function bgmWake(on){
    ⚠️ 안전 기준선 — 스피커로 나가는 말은 참가자가 다 듣는다. 그래서 «모두에게 들려주는 말»만 읽는다.
    밤에 개별 직업을 깨우는 지시(c.say·SAY)·악팀 알려주기·답·블러프는 하나라도 새면 판이 깨진다.
    그래서 문장을 만드는 곳(NR_SRC)을 열쇠로 받고, 그 열쇠가 허용 목록에 없으면 읽지 않는다. */
-const NR_SRC={ nightOpen:1, dayBrief:1, execCall:1, gameEnd:1 };   // 읽어도 되는 곳. 늘릴 땐 «모두가 들어도 되나»부터 묻는다
+const NR_SRC={ nightOpen:1, dayBrief:1, execCall:1, gameEnd:1, tieNone:1 };   // tieNone — 동수 처형 없음·마피아 살림(공개 결과, 2026-10-04)   // 읽어도 되는 곳. 늘릴 땐 «모두가 들어도 되나»부터 묻는다
 const NR_MOOD={ night:{rate:0.88,pitch:0.85}, day:{rate:1.0,pitch:1.0},
                 exec:{rate:0.92,pitch:0.8},  end:{rate:0.95,pitch:0.9} };
 let nr={on:false, voice:'', rate:1, speaking:false, blocked:0, last:''};   // blocked·last 는 «왜 안 읽었나»를 밖에서 볼 수 있게 — 소리가 안 나는 곳(테스트)에서도 거부와 수단 없음이 갈린다
@@ -6191,7 +6192,8 @@ function nrSave(){ try{ localStorage.setItem('dangsan_nr', JSON.stringify({on:nr
 function nrHas(){ return typeof speechSynthesis!=='undefined' && typeof SpeechSynthesisUtterance!=='undefined'; }
 function nrVoices(){ if(!nrHas()) return []; try{ return speechSynthesis.getVoices().filter(v=>/^ko/i.test(v.lang)); }catch(e){ return []; } }
 /* 문장 하나를 읽는다. src 는 NR_SRC 의 열쇠 — 목록에 없으면 조용히 거부(정보 유출 방지) */
-function speak(text, mood, src){
+function speak(text, mood, src, plan){   // plan = 미리 뽑은 음원 순서 — 앱(native_core)이 덮어써서 쓴다, 옛 웹은 무시
+  void plan;
   if(!NR_SRC[src]){ nr.blocked++; nr.last='blocked:'+src; return false; }   // 허용 목록 밖 — 절대 읽지 않는다
   if(!nr.on){ nr.last='off'; return false; }
   if(!text){ nr.last='empty'; return false; }
@@ -6267,28 +6269,26 @@ function timerHtml(){
   </div>`;
 }
 /* 낮 브리핑 대본 — 초보도 읽기만 하면 분위기가 사는 문장 (자체 템플릿) */
-const SCRIPT_OPEN=['날이 밝았습니다. 마을 사람들이 하나둘 눈을 뜹니다.',
-  '동이 텄습니다. 당산나무 아래로 사람들이 모여듭니다.',
-  '아침 안개가 걷힙니다. 마을은 어제와 같지 않습니다.'];
-const SCRIPT_DEAD=['간밤에 {who}님이 돌아오지 못했습니다.',
-  '{who}님의 자리가 비어 있습니다. 아무도 그 이유를 모릅니다.',
-  '{who}님은 어젯밤을 넘기지 못했습니다.'];
-const SCRIPT_SAFE=['간밤에는 아무 일도 없었습니다. 모두 무사합니다.',
-  '이상하리만치 조용한 밤이었습니다. 쓰러진 사람은 없습니다.'];
-const SCRIPT_CLOSE=['이제 이야기를 나눠 주세요. 누가 마을을 해치고 있을까요.',
-  '오늘 누구를 나무 앞에 세울지, 함께 정해 주세요.'];
-function scriptPick(arr,seed){ return arr[Math.abs(seed)%arr.length]; }
-function dayScript(){
-  const n=(state.nights||1), prev=n;   // 밤 N 의 사망은 causeN=N 으로 찍히고 낮 N 에 발표한다 (감사 2026-09-13 — nights-1 이라 하루 늦게 나왔다)
-  const dead=state.seats.map((s2,i)=>({s2,i})).filter(o=>o.s2.dead&&(o.s2.causeN||0)===prev
-    &&!(o.s2.cause==='exec'||o.s2.cause==='day'));
+/* 진행 대본(2026-10-04 햇살님 «스토리에 맞는 경우의 수로 많이많이») — 원본 tools/진행목소리/대본.js, 넣기 node tools/진행목소리/대본_넣기.cjs.
+   say 는 목소리로 미리 뽑은 문장(이름 없음), show 는 화면용({who} = 이름). 이름 대신 «N번 자리 참가자»(1~26) 소리를 뒤에 붙인다(햇살님 «닉네임별 음원은 못 만드니 몇 번 자리 참가자만»). */
+/*NARRATION:시작*/const NARRATION={"dangsan":{"night.first":[{"say":"해가 넘어갑니다. 첫날 밤이 마을을 덮습니다. 모두 눈을 감아 주세요."},{"say":"당산나무 가지 사이로 달이 걸렸습니다. 첫날 밤입니다. 모두 눈을 감아 주세요."},{"say":"마을에 처음으로 어둠이 내립니다. 아직 아무도 서로를 모릅니다. 눈을 감아 주세요."},{"say":"장승 앞 등불이 하나둘 꺼집니다. 첫날 밤이 시작됩니다. 모두 눈을 감아 주세요."},{"say":"오늘 처음 모인 이 마을에도 밤은 옵니다. 모두 고개를 숙이고 눈을 감아 주세요."}],"night.open":[{"say":"모두 눈을 감아 주세요. 밤이 깊었습니다."},{"say":"해가 졌습니다. 마을 사람들은 문을 걸어 잠급니다. 모두 눈을 감아 주세요."},{"say":"바람이 당산나무를 흔듭니다. 다시 밤입니다. 눈을 감아 주세요."},{"say":"오늘 낮의 일이 아직 마음에 남았습니다. 그래도 밤은 옵니다. 모두 눈을 감아 주세요."},{"say":"개 짖는 소리도 멎었습니다. 마을이 잠듭니다. 눈을 감아 주세요."},{"say":"서낭당 쪽에서 찬 바람이 붑니다. 흉수가 움직일 시간입니다. 모두 눈을 감아 주세요."}],"dawn.open":[{"say":"날이 밝았습니다. 마을 사람들이 하나둘 눈을 뜹니다."},{"say":"동이 텄습니다. 당산나무 아래로 사람들이 모여듭니다."},{"say":"아침 안개가 걷힙니다. 마을은 어제와 같지 않습니다."},{"say":"닭이 웁니다. 모두 눈을 떠 주세요."},{"say":"해가 장승 머리 위로 올라왔습니다. 모두 눈을 뜨세요."}],"dawn.none":[{"say":"간밤에는 아무 일도 없었습니다. 모두 무사합니다."},{"say":"이상하리만치 조용한 밤이었습니다. 쓰러진 사람은 없습니다."},{"say":"모두의 얼굴이 그대로입니다. 흉수가 손을 쓰지 못한 밤이었습니다."},{"say":"빈자리는 없습니다. 하지만 마음을 놓기엔 이릅니다."},{"say":"오늘 아침은 모두가 돌아왔습니다. 누군가 지켜 냈을지도 모릅니다."}],"dawn.one":[{"say":"간밤에 한 사람이 돌아오지 못했습니다.","show":"간밤에 {who}님이 돌아오지 못했습니다."},{"say":"자리 하나가 비어 있습니다. 아무도 그 이유를 모릅니다.","show":"{who}님의 자리가 비어 있습니다. 아무도 그 이유를 모릅니다."},{"say":"한 사람이 어젯밤을 넘기지 못했습니다.","show":"{who}님은 어젯밤을 넘기지 못했습니다."},{"say":"당산나무 아래에 한 사람이 쓰러져 있었습니다.","show":"당산나무 아래에 {who}님이 쓰러져 있었습니다."},{"say":"흉수가 다녀갔습니다. 한 사람이 눈을 뜨지 못합니다.","show":"흉수가 다녀갔습니다. {who}님이 눈을 뜨지 못합니다."}],"dawn.two":[{"say":"간밤에 두 사람이 돌아오지 못했습니다.","show":"간밤에 {who}님이 돌아오지 못했습니다."},{"say":"빈자리가 둘입니다. 어젯밤은 유난히 길었습니다.","show":"빈자리가 둘입니다. {who}님. 어젯밤은 유난히 길었습니다."},{"say":"두 사람이 어젯밤을 넘기지 못했습니다. 마을이 술렁입니다.","show":"{who}님이 어젯밤을 넘기지 못했습니다. 마을이 술렁입니다."},{"say":"아침이 왔지만 두 사람은 오지 않았습니다.","show":"아침이 왔지만 {who}님은 오지 않았습니다."}],"dawn.many":[{"say":"간밤에 여러 사람이 돌아오지 못했습니다.","show":"간밤에 {who}님이 돌아오지 못했습니다."},{"say":"빈자리가 여럿입니다. 마을에 큰 액운이 들었습니다.","show":"빈자리가 여럿입니다. {who}님. 마을에 큰 액운이 들었습니다."},{"say":"이렇게 많은 사람이 한꺼번에 쓰러진 밤은 처음입니다.","show":"{who}님이 쓰러졌습니다. 이렇게 많은 사람이 한꺼번에 쓰러진 밤은 처음입니다."},{"say":"마을이 크게 줄었습니다. 남은 사람들끼리 서로를 봅니다.","show":"{who}님이 떠났습니다. 남은 사람들끼리 서로를 봅니다."}],"dawn.close":[{"say":"이제 이야기를 나눠 주세요. 누가 마을을 해치고 있을까요."},{"say":"오늘 누구를 나무 앞에 세울지, 함께 정해 주세요."},{"say":"흉수는 아직 우리 가운데 있습니다. 이야기를 시작해 주세요."},{"say":"서로의 말을 잘 들어 보세요. 거짓말은 어딘가 틈이 있습니다."},{"say":"해가 지기 전에 마을의 뜻을 모아 주세요."}],"exec.call":[{"say":"마을이 뜻을 모았습니다. 한 사람을 당산나무 앞에 세웁니다.","show":"마을은 {who}님을 나무 앞에 세우기로 했습니다."},{"say":"표가 모였습니다. 오늘 마을이 고른 사람이 나무 앞에 섭니다.","show":"표가 모였습니다. {who}님이 나무 앞에 섭니다."},{"say":"마을의 뜻이 정해졌습니다. 이제 되돌릴 수 없습니다.","show":"마을의 뜻은 {who}님입니다. 이제 되돌릴 수 없습니다."},{"say":"당산나무 앞에 한 사람이 섭니다. 마지막으로 할 말이 있다면 지금입니다.","show":"{who}님이 당산나무 앞에 섭니다. 마지막으로 할 말이 있다면 지금입니다."}],"exec.died":[{"say":"그렇게 한 사람이 마을을 떠났습니다."},{"say":"나무 앞에 선 사람은 돌아오지 않습니다."},{"say":"마을은 선택했습니다. 그 선택이 옳았는지는 아직 모릅니다."},{"say":"한 사람이 쓰러졌습니다. 흉수였을까요, 아니었을까요."}],"exec.survived":[{"say":"그런데 이상합니다. 나무 앞에 선 사람이 쓰러지지 않습니다."},{"say":"마을의 뜻이 닿지 않았습니다. 그 사람은 아직 서 있습니다."},{"say":"무언가가 그 사람을 지켰습니다. 처형은 이루어졌지만, 그는 살아 있습니다."}],"tie.none":[{"say":"표가 똑같이 갈렸습니다. 오늘은 아무도 나무 앞에 서지 않습니다."},{"say":"마을의 뜻이 둘로 나뉘었습니다. 오늘 처형은 없습니다."},{"say":"누구도 더 많은 표를 얻지 못했습니다. 마을은 하루를 그냥 보냅니다."},{"say":"동수입니다. 오늘은 아무도 처형하지 않습니다."}],"end.good":[{"say":"흉수가 모두 쓰러졌습니다. 마을이 이겼습니다."},{"say":"당산나무가 조용해졌습니다. 마을에 다시 평화가 옵니다. 마을의 승리입니다."},{"say":"액운이 걷혔습니다. 끝까지 마을을 지킨 여러분이 이겼습니다."},{"say":"마지막 흉수가 정체를 드러냈습니다. 마을이 이겼습니다."}],"end.evil":[{"say":"마을은 끝내 흉수를 찾지 못했습니다."},{"say":"마지막 등불이 꺼졌습니다. 흉수의 승리입니다."},{"say":"마을은 어둠에 잠겼습니다. 흉수가 이겼습니다."},{"say":"흉수는 끝까지 사람들 틈에 숨어 있었습니다. 흉수의 승리입니다."}],"end.other":[{"say":"판이 끝났습니다. 이번 판은 뜻밖의 사람이 웃었습니다."},{"say":"마을도 흉수도 아닌 쪽이 이겼습니다. 판이 끝났습니다."},{"say":"판이 끝났습니다."}],"end.void":[{"say":"이번 판은 여기서 접습니다. 수고하셨습니다."},{"say":"판을 멈춥니다. 모두 수고하셨습니다."}]},"classic":{"night.first":[{"say":"시계탑 종이 자정을 칩니다. 첫날 밤입니다. 모두 눈을 감아 주세요."},{"say":"마을에 첫날 밤이 내려앉습니다. 아직 아무도 서로를 모릅니다. 눈을 감아 주세요."},{"say":"등불을 끄세요. 첫날 밤이 시작됩니다. 모두 눈을 감아 주세요."},{"say":"오늘 이 마을에 무언가 들어왔습니다. 첫날 밤입니다. 눈을 감아 주세요."},{"say":"시계탑 바늘이 열두 시를 가리킵니다. 모두 고개를 숙이고 눈을 감아 주세요."}],"night.open":[{"say":"모두 눈을 감아 주세요. 밤이 깊었습니다."},{"say":"시계탑 종이 울립니다. 다시 밤입니다. 모두 눈을 감아 주세요."},{"say":"마을 사람들은 문을 걸어 잠급니다. 악마가 움직일 시간입니다. 눈을 감아 주세요."},{"say":"오늘 낮의 선택이 무거웠습니다. 그래도 밤은 옵니다. 모두 눈을 감아 주세요."},{"say":"골목의 불빛이 하나씩 꺼집니다. 모두 눈을 감아 주세요."},{"say":"자정입니다. 마을이 숨을 죽입니다. 눈을 감아 주세요."}],"dawn.open":[{"say":"날이 밝았습니다. 모두 눈을 떠 주세요."},{"say":"시계탑 종이 아침을 알립니다. 모두 눈을 뜨세요."},{"say":"해가 시계탑 너머로 떠오릅니다. 마을 광장에 사람들이 모입니다."},{"say":"새벽 안개가 걷힙니다. 모두 눈을 뜨세요."},{"say":"아침입니다. 광장으로 모여 주세요."}],"dawn.none":[{"say":"간밤에는 아무도 죽지 않았습니다."},{"say":"조용한 밤이었습니다. 모두 무사합니다."},{"say":"모두의 얼굴이 그대로입니다. 악마가 손을 쓰지 못한 밤이었습니다."},{"say":"빈자리는 없습니다. 하지만 안심하기엔 이릅니다."},{"say":"오늘 아침은 모두가 광장에 나왔습니다. 누군가 지켜 냈을지도 모릅니다."}],"dawn.one":[{"say":"간밤에 한 사람이 죽었습니다.","show":"간밤에 {who}님이 죽었습니다."},{"say":"광장에 자리 하나가 비었습니다.","show":"광장에 {who}님의 자리가 비었습니다."},{"say":"한 사람이 아침을 맞지 못했습니다.","show":"{who}님이 아침을 맞지 못했습니다."},{"say":"시계탑 아래에서 한 사람이 발견되었습니다.","show":"시계탑 아래에서 {who}님이 발견되었습니다."},{"say":"악마가 다녀갔습니다. 한 사람이 눈을 뜨지 못합니다.","show":"악마가 다녀갔습니다. {who}님이 눈을 뜨지 못합니다."}],"dawn.two":[{"say":"간밤에 두 사람이 죽었습니다.","show":"간밤에 {who}님이 죽었습니다."},{"say":"광장에 빈자리가 둘입니다. 길고 어두운 밤이었습니다.","show":"광장에 빈자리가 둘입니다. {who}님. 길고 어두운 밤이었습니다."},{"say":"두 사람이 아침을 맞지 못했습니다. 마을이 술렁입니다.","show":"{who}님이 아침을 맞지 못했습니다. 마을이 술렁입니다."},{"say":"아침이 왔지만 두 사람은 오지 않았습니다.","show":"아침이 왔지만 {who}님은 오지 않았습니다."}],"dawn.many":[{"say":"간밤에 여러 사람이 죽었습니다.","show":"간밤에 {who}님이 죽었습니다."},{"say":"광장이 휑합니다. 끔찍한 밤이었습니다.","show":"{who}님이 죽었습니다. 끔찍한 밤이었습니다."},{"say":"이렇게 많은 사람이 한꺼번에 쓰러진 밤은 처음입니다.","show":"{who}님이 쓰러졌습니다. 이렇게 많은 사람이 한꺼번에 쓰러진 밤은 처음입니다."},{"say":"마을이 크게 줄었습니다. 남은 사람들끼리 서로를 봅니다.","show":"{who}님이 떠났습니다. 남은 사람들끼리 서로를 봅니다."}],"dawn.close":[{"say":"이제 이야기를 나눠 주세요. 악마는 아직 우리 가운데 있습니다."},{"say":"오늘 누구를 처형할지 함께 정해 주세요."},{"say":"서로의 말을 잘 들어 보세요. 거짓말은 어딘가 틈이 있습니다."},{"say":"해가 지기 전에 마을의 뜻을 모아 주세요."},{"say":"광장이 열렸습니다. 지명하고 싶은 사람이 있다면 말해 주세요."}],"exec.call":[{"say":"마을이 뜻을 모았습니다. 한 사람을 처형대에 세웁니다.","show":"마을은 {who}님을 처형대에 세우기로 했습니다."},{"say":"표가 모였습니다. 오늘 마을이 고른 사람이 처형대에 섭니다.","show":"표가 모였습니다. {who}님이 처형대에 섭니다."},{"say":"마을의 뜻이 정해졌습니다. 이제 되돌릴 수 없습니다.","show":"마을의 뜻은 {who}님입니다. 이제 되돌릴 수 없습니다."},{"say":"처형대에 한 사람이 섭니다. 마지막으로 할 말이 있다면 지금입니다.","show":"{who}님이 처형대에 섭니다. 마지막으로 할 말이 있다면 지금입니다."}],"exec.died":[{"say":"그렇게 한 사람이 처형되었습니다."},{"say":"처형대에 오른 사람은 돌아오지 않습니다."},{"say":"마을은 선택했습니다. 그 선택이 옳았는지는 아직 모릅니다."},{"say":"한 사람이 쓰러졌습니다. 악마였을까요, 아니었을까요."}],"exec.survived":[{"say":"그런데 이상합니다. 처형대에 오른 사람이 쓰러지지 않습니다."},{"say":"처형은 이루어졌지만, 그 사람은 아직 서 있습니다."},{"say":"무언가가 그 사람을 지켰습니다. 그는 살아 있습니다."}],"tie.none":[{"say":"표가 똑같이 갈렸습니다. 오늘은 아무도 처형하지 않습니다."},{"say":"마을의 뜻이 둘로 나뉘었습니다. 오늘 처형은 없습니다."},{"say":"누구도 더 많은 표를 얻지 못했습니다. 마을은 하루를 그냥 보냅니다."},{"say":"동수입니다. 오늘은 처형이 없습니다."}],"end.good":[{"say":"악마가 죽었습니다. 선한 편이 이겼습니다."},{"say":"시계탑 종이 다시 평화롭게 울립니다. 선한 편의 승리입니다."},{"say":"마을이 악마를 찾아냈습니다. 끝까지 버틴 여러분이 이겼습니다."},{"say":"마지막 악마가 정체를 드러냈습니다. 선한 편이 이겼습니다."}],"end.evil":[{"say":"마을은 끝내 악마를 찾지 못했습니다. 악한 편이 이겼습니다."},{"say":"마지막 등불이 꺼졌습니다. 악한 편의 승리입니다."},{"say":"마을은 어둠에 잠겼습니다. 악마가 이겼습니다."},{"say":"악마는 끝까지 사람들 틈에 숨어 있었습니다. 악한 편의 승리입니다."}],"end.other":[{"say":"판이 끝났습니다. 이번 판은 뜻밖의 사람이 웃었습니다."},{"say":"선도 악도 아닌 쪽이 이겼습니다. 판이 끝났습니다."},{"say":"판이 끝났습니다."}],"end.void":[{"say":"이번 판은 여기서 접습니다. 수고하셨습니다."},{"say":"판을 멈춥니다. 모두 수고하셨습니다."}]},"mafia":{"night.first":[{"say":"도시에 첫날 밤이 찾아왔습니다. 모두 눈을 감아 주세요."},{"say":"네온사인이 하나둘 꺼집니다. 첫날 밤입니다. 모두 고개를 숙여 주세요."},{"say":"오늘 이 도시에 범죄 조직이 숨어들었습니다. 첫날 밤입니다. 눈을 감아 주세요."},{"say":"골목에 발소리가 사라집니다. 첫날 밤이 시작됩니다. 모두 눈을 감아 주세요."},{"say":"시민 여러분, 오늘 밤은 문을 꼭 잠그세요. 모두 눈을 감아 주세요."}],"night.open":[{"say":"밤이 되었습니다. 모두 눈을 감아 주세요."},{"say":"도시가 잠듭니다. 모두 눈을 감아 주세요."},{"say":"사이렌 소리가 멀어집니다. 다시 밤입니다. 눈을 감아 주세요."},{"say":"오늘 낮의 투표가 끝났습니다. 그래도 밤은 옵니다. 모두 눈을 감아 주세요."},{"say":"가로등 아래로 그림자가 지나갑니다. 모두 눈을 감아 주세요."},{"say":"범죄 조직이 움직일 시간입니다. 모두 눈을 감아 주세요."}],"dawn.open":[{"say":"아침이 되었습니다. 모두 눈을 떠 주세요."},{"say":"해가 떴습니다. 시민 여러분, 눈을 뜨세요."},{"say":"도시에 아침이 왔습니다. 모두 눈을 뜨세요."},{"say":"출근길 소음이 들립니다. 모두 눈을 떠 주세요."},{"say":"아침 뉴스가 시작됩니다. 모두 눈을 뜨세요."}],"dawn.none":[{"say":"지난밤에는 아무도 죽지 않았습니다."},{"say":"조용한 밤이었습니다. 도시는 무사합니다."},{"say":"오늘 아침 뉴스에는 사건이 없습니다. 모두 무사합니다."},{"say":"범죄 조직이 손을 쓰지 못했습니다. 누군가 지켜 냈을지도 모릅니다."},{"say":"빈자리는 없습니다. 하지만 안심하기엔 이릅니다."}],"dawn.one":[{"say":"지난밤, 한 사람이 살해당했습니다.","show":"지난밤, {who}님이 살해당했습니다."},{"say":"오늘 아침 뉴스입니다. 시민 한 명이 숨진 채 발견되었습니다.","show":"오늘 아침 뉴스입니다. {who}님이 숨진 채 발견되었습니다."},{"say":"한 사람이 아침을 맞지 못했습니다.","show":"{who}님이 아침을 맞지 못했습니다."},{"say":"범죄 조직이 다녀갔습니다. 한 사람이 돌아오지 못했습니다.","show":"범죄 조직이 다녀갔습니다. {who}님이 돌아오지 못했습니다."},{"say":"골목에서 한 사람이 발견되었습니다.","show":"골목에서 {who}님이 발견되었습니다."}],"dawn.two":[{"say":"지난밤, 두 사람이 살해당했습니다.","show":"지난밤, {who}님이 살해당했습니다."},{"say":"오늘 아침 뉴스입니다. 두 사람이 숨진 채 발견되었습니다.","show":"오늘 아침 뉴스입니다. {who}님이 숨진 채 발견되었습니다."},{"say":"두 사람이 아침을 맞지 못했습니다. 도시가 술렁입니다.","show":"{who}님이 아침을 맞지 못했습니다. 도시가 술렁입니다."},{"say":"빈자리가 둘입니다. 길고 어두운 밤이었습니다.","show":"빈자리가 둘입니다. {who}님. 길고 어두운 밤이었습니다."}],"dawn.many":[{"say":"지난밤, 여러 사람이 살해당했습니다.","show":"지난밤, {who}님이 살해당했습니다."},{"say":"도시 전체가 충격에 빠졌습니다. 여러 사람이 돌아오지 못했습니다.","show":"도시 전체가 충격에 빠졌습니다. {who}님이 돌아오지 못했습니다."},{"say":"이렇게 많은 사람이 한꺼번에 쓰러진 밤은 처음입니다.","show":"{who}님이 쓰러졌습니다. 이렇게 많은 사람이 한꺼번에 쓰러진 밤은 처음입니다."},{"say":"도시가 크게 줄었습니다. 남은 사람들끼리 서로를 봅니다.","show":"{who}님이 떠났습니다. 남은 사람들끼리 서로를 봅니다."}],"dawn.close":[{"say":"이제 토론을 시작해 주세요. 범죄 조직은 아직 우리 가운데 있습니다."},{"say":"오늘 누구를 지목할지 함께 이야기해 주세요."},{"say":"서로의 말을 잘 들어 보세요. 거짓말은 어딘가 틈이 있습니다."},{"say":"해가 지기 전에 시민의 뜻을 모아 주세요."},{"say":"토론 시간입니다. 의심 가는 사람이 있다면 말해 주세요."}],"exec.call":[{"say":"지목이 끝났습니다. 가장 많이 지목받은 사람을 앞으로 모십니다.","show":"지목이 끝났습니다. {who}님을 앞으로 모십니다."},{"say":"시민의 뜻이 모였습니다. 이제 살릴지 죽일지 정해 주세요.","show":"시민의 뜻이 모였습니다. {who}님을 살릴지 죽일지 정해 주세요."},{"say":"최후 변론 시간입니다. 하고 싶은 말을 해 주세요.","show":"{who}님, 최후 변론 시간입니다. 하고 싶은 말을 해 주세요."},{"say":"시민 여러분, 마지막 결정을 내려 주세요."}],"exec.died":[{"say":"그렇게 한 사람이 처형되었습니다."},{"say":"시민의 결정이 내려졌습니다. 그 사람은 도시를 떠납니다."},{"say":"처형되었습니다. 그 선택이 옳았는지는 아직 모릅니다."},{"say":"한 사람이 쓰러졌습니다. 범죄 조직이었을까요, 시민이었을까요."}],"exec.survived":[{"say":"시민들이 살려 주기로 했습니다. 그 사람은 자리로 돌아갑니다."},{"say":"처형은 없었습니다. 오늘은 그냥 넘어갑니다."},{"say":"목숨을 건졌습니다. 하지만 의심은 남았습니다."}],"tie.none":[{"say":"표가 똑같이 갈렸습니다. 오늘은 아무도 처형하지 않습니다."},{"say":"시민의 뜻이 둘로 나뉘었습니다. 오늘 처형은 없습니다."},{"say":"동수입니다. 오늘은 처형이 없습니다."},{"say":"누구도 더 많은 표를 얻지 못했습니다. 도시는 하루를 그냥 보냅니다."}],"end.good":[{"say":"범죄 조직이 모두 잡혔습니다. 시민의 승리입니다."},{"say":"도시에 다시 평화가 왔습니다. 시민이 이겼습니다."},{"say":"마지막 조직원이 체포되었습니다. 시민의 승리입니다."},{"say":"끝까지 도시를 지킨 시민 여러분이 이겼습니다."}],"end.evil":[{"say":"도시는 범죄 조직의 손에 넘어갔습니다. 범죄 조직의 승리입니다."},{"say":"시민들은 끝내 범죄 조직을 찾지 못했습니다."},{"say":"마지막 가로등이 꺼졌습니다. 범죄 조직이 이겼습니다."},{"say":"범죄 조직은 끝까지 시민들 틈에 숨어 있었습니다. 범죄 조직의 승리입니다."}],"end.other":[{"say":"게임이 끝났습니다. 이번 판은 뜻밖의 사람이 웃었습니다."},{"say":"시민도 범죄 조직도 아닌 쪽이 이겼습니다. 게임이 끝났습니다."},{"say":"게임이 끝났습니다."}],"end.void":[{"say":"이번 판은 여기서 접습니다. 수고하셨습니다."},{"say":"게임을 멈춥니다. 모두 수고하셨습니다."}]}};/*NARRATION:끝*/
+function narrHub(){ const h=hubRep(); return NARRATION[h]?h:'dangsan'; }   // 개인모드는 당산나무 말로
+function narrSeed(sit){ const g=(state.log&&(state.log.uuid||state.log.id))||'x'; let h=0; for(const ch of g+'|'+sit) h=(h*31+ch.charCodeAt(0))|0; return Math.abs(h)+(state.nights||1); }   // 판·밤마다 다른 문장, 같은 판·같은 밤엔 늘 같은 문장
+function narrPick(sit){ const hub=narrHub(), arr=(NARRATION[hub]||{})[sit]||[]; if(!arr.length) return null; const k=narrSeed(sit)%arr.length;
+  return { clip: hub+'_'+sit.replace('.','_')+'_'+k, say: arr[k].say, show: arr[k].show||arr[k].say }; }
+const seatClip=i=>(i>=0&&i<26)?{seat:i+1}:null;   // «N번 자리 참가자» 소리 — 26번까지
+/* 아침 발표 — 화면용 줄(이름)과 소리 순서(이름 대신 자리 번호) */
+function dayNarr(){
+  const n=(state.nights||1);   // 밤 N 의 사망은 causeN=N 으로 찍히고 낮 N 에 발표한다 (감사 2026-09-13)
+  const dead=state.seats.map((s2,i)=>({s2,i})).filter(o=>o.s2.dead&&(o.s2.causeN||0)===n&&!(o.s2.cause==='exec'||o.s2.cause==='day'));
   const nm=o=>(o.s2.name||('좌석 '+(o.i+1)));
-  const lines=[scriptPick(SCRIPT_OPEN,n)];
-  if(dead.length) dead.forEach((o,k)=>lines.push(scriptPick(SCRIPT_DEAD,n+k).replace('{who}',nm(o))));
-  else lines.push(scriptPick(SCRIPT_SAFE,n));
-  lines.push(scriptPick(SCRIPT_CLOSE,n));
-  return lines;
+  const open=narrPick('dawn.open'), mid=narrPick(!dead.length?'dawn.none':dead.length===1?'dawn.one':dead.length===2?'dawn.two':'dawn.many'), close=narrPick('dawn.close');
+  const lines=[], plan=[];
+  [open,mid,close].forEach((x,k)=>{ if(!x) return; lines.push(k===1&&dead.length?x.show.replace('{who}',dead.map(nm).join('님, ')):x.show); plan.push({clip:x.clip, say:x.say});
+    if(k===1) dead.forEach(o=>{ const c=seatClip(o.i); if(c) plan.push(c); }); });
+  return {lines, plan};
 }
+function dayScript(){ return dayNarr().lines; }
 /* 밤 브리핑 — 오늘 몇을 깨우는지 «먼저» 보여준다 (근시안 종료) */
 function nightBriefHtml(list){
   if(!list||!list.length) return '';
@@ -9629,9 +9629,7 @@ function autoFinishIfEnded(){
   const L=logFinish(win, '판정 기준 자동 기록');
   if(L){ state.lastLogId=L.id; save(); }
   bgmStingPlay('end');
-  speak(win==='good'?'흉수가 모두 쓰러졌습니다. 마을이 이겼습니다.'
-       :win==='evil'?'마을은 끝내 흉수를 찾지 못했습니다.'
-       :'판이 끝났습니다.', 'end', 'gameEnd');
+  { const x=narrPick(win==='good'?'end.good':win==='evil'?'end.evil':win==='void'?'end.void':'end.other'); speak(x?x.say:'판이 끝났습니다.', 'end', 'gameEnd', x?[{clip:x.clip,say:x.say}]:null); }
   return win;
 }
 function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 wzEnsure) */

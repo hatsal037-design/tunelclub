@@ -2,6 +2,7 @@
 import * as core from './core.js';
 import { settings } from './settings.js';
 import { speakEffects } from './narrator.js';
+import { bgmSync, bgmEffects } from './bgm.js';
 
 const listeners = new Set();
 export const store = {
@@ -46,10 +47,11 @@ export const store = {
     else reply = { rejected: true, code: r.code || 'coreFailure', recovery: r.recovery || '' };
     store.refresh();
     if (reply.ok && Array.isArray(r.effects) && r.effects.length) {
-      speakEffects(r.effects);
+      speakEffects(r.effects); bgmEffects(r.effects);
       const notes = r.effects.filter(e => e.kind === 'notice').map(e => e.text).filter(Boolean);
       if (notes.length) { store.notice = notes.join('\n'); store.emit(); }
     }
+    if (reply.ok) { try { bgmSync(core.query('bgm.slot')); } catch {} }   // 배경 음악 — 과정이 바뀌면 곡도(2026-10-04)
     if (reply.ok && store.afterCommit) { try { store.afterCommit(type); } catch {} }
     if (reply.ok && store.afterPublic) { try { store.afterPublic(type); } catch {} }   // 큰 화면 — 공개 정보가 바뀌었으면 올린다
     if (reply.ok && STEP.has(type) && settings.get('haptics') && navigator.vibrate) { try { navigator.vibrate(12); } catch {} }

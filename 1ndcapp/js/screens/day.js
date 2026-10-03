@@ -6,6 +6,7 @@ import { Icon } from '../icons.js';
 import { Page, Section, Row, CheckRow, ActionSheet, Menu, NavButton, RoleArt, Sheet, Cover, cx } from '../ui.js';
 import { SeatBoard } from '../seatboard.js';
 import { useNav } from '../nav.js';
+import { speak } from '../narrator.js';
 import { ReplayView } from './replay.js';
 
 /** 코어 항목 묶음 — 글은 글로, 버튼은 명령(day.call). 죽이거나 보호를 뚫는 단추는 한 번 더 묻는다 */
@@ -24,26 +25,34 @@ export function DayView({ m, run, finish }) {
     ${m.ended && html`<${Section} header="판이 끝날 조건이 됐어요">${m.verdict.filter(v => v.level === 'end').map(v => html`<div class="row headline"><${Icon} name="flag" size=${20} />${v.text}</div>`)}<//>`}
     ${!m.ended && m.endIfExecuted && html`<${Section} header="이대로 처형하면 판이 끝나요"><div class="row headline"><${Icon} name="flag" size=${20} />${m.endIfExecuted.text}</div>
       <div class="row"><button class="btn-p" onClick=${() => run('day.executeAndFinish', { k: m.endIfExecuted.k })}>처형하고 마감 — ${m.endIfExecuted.winnerKo}</button></div><//>`}
-    <${Section} header="아침 발표">
-      ${m.deaths.length ? m.deaths.map(p => html`<div class="row">${p.number}번 ${p.name}</div>`) : html`<div class="row sec">밤사이 죽은 사람이 없어요</div>`}
-      <${CheckRow} title="아침 발표를 했어요" on=${m.announced} onClick=${() => run('day.announce', {})} />
+    <${Section} header=${html`<span class="grow">아침 발표</span><button class="blink" style="min-height:24px;font-weight:600" onClick=${() => speak((m.script || []).join(' '), m.scriptPlan || [])}><${Icon} name="speaker" size=${16} /> 읽어 주기</button>`}>
+      <div class="row" style="font-size:19px;line-height:1.45;flex-direction:column;align-items:stretch;gap:6px;padding:16px">${(m.script || []).map(t => html`<div>${t}</div>`)}</div>
+      <div class="row" style="padding:12px 16px"><button class=${cx('pill-act', m.announced && 'done')} aria-pressed=${m.announced} onClick=${() => run('day.announce', {})}>${m.announced ? '발표했어요 ✓' : '발표했어요'}</button></div>
     <//>
-    ${!m.ended && html`<${TalkTimerSection} />`}
+    ${!m.ended && html`<div style=${m.announced ? '' : 'opacity:.4;pointer-events:none'} aria-disabled=${!m.announced}><${TalkTimerSection} /></div>`}
     ${m.notes.length > 0 && html`<${Section} header="알림"><${CoreItems} items=${m.notes} call=${c => run('day.call', { call: c })} /><//>`}
     ${m.mafia ? html`<${MafiaDay} m=${m} run=${run} />` : html`<${Section} header="지명 · 투표 · 처형" footer=${[`생존 ${m.alive}명 · 처형 문턱 ${m.need}표`, m.noExecReason].filter(Boolean).join('\n')}>
-      ${m.noms.map(n => html`<div class="row"><div class="nom grow">
-        <div class="top"><span class="headline grow">${n.target.number}번 ${n.target.name}</span>
-          ${n.tag && html`<span class=${cx('tag', n.tag === '동수' && 'orange')}>${n.tag}</span>`}
-          <span class=${cx('num', n.votes >= m.need ? 'blue' : 'sec')}>${n.votes}표 / ${m.need}</span></div>
-        <div class="sub">${n.by ? `${n.by.number}번 ${n.by.name} 지명` : '지명자 기록 안 함'}</div>
-        ${n.done ? html`<div class="hstack sub" style="color:var(--label)"><${Icon} name="seal" size=${18} /><span class="grow">${n.blocked ? `처형됐지만 살아남음 · ${n.blocked}` : n.dead ? '처형됨' : '처형 처리됨'}</span>
-            <button class="blink" onClick=${() => run('day.executeUndo', { k: n.k })}>되돌리기</button></div>`
-          : html`${n.preview && html`<div class="hstack sub orange"><${Icon} name="flag" size=${16} />${n.preview}</div>`}
-            <div class="hstack" style="gap:12px"><button class="btn-s" onClick=${() => setVoting(n)}>투표</button>
-            ${n.canExecute && m.endIfExecuted && m.endIfExecuted.k === n.k ? html`<button class="btn-s" disabled=${m.ended} onClick=${() => run('day.executeAndFinish', { k: n.k })}>처형하고 마감</button>`
-              : n.canExecute ? html`<button class="btn-s danger" disabled=${m.ended} onClick=${() => run('day.execute', { k: n.k })}>처형</button>`
-              : !m.ended && html`<${Menu} aria="더 보기" label=${html`<${Icon} name="ellipsisCircle" size=${24} />`} items=${[{ label: '예외로 처형', role: 'destructive', onClick: () => run('day.execute', { k: n.k }) }]} />`}</div>`}
-      </div></div>`)}
+      ${m.noms.map(n => {   /* 2026-10-04 햇살님 시안 A — 투표(회색)·처형(빨강) 두 알약을 한 줄에 반씩 */
+        const finish = n.canExecute && m.endIfExecuted && m.endIfExecuted.k === n.k, ready = !!n.canExecute;
+        return html`<div class="row"><div class="nom grow">
+          <div class="top"><span class="headline grow">${n.target.number}번 ${n.target.name}</span>
+            ${n.tag && html`<span class=${cx('tag', n.tag === '동수' && 'orange')}>${n.tag}</span>`}
+            <span class=${cx('num', n.votes >= m.need ? 'blue' : 'sec')}>${n.votes}표 / ${m.need}</span></div>
+          <div class="sub">${n.by ? `${n.by.number}번 ${n.by.name} 지명` : '지명자 기록 안 함'}</div>
+          ${n.done ? html`<div class="hstack sub" style="color:var(--label)"><${Icon} name="seal" size=${18} /><span class="grow">${n.blocked ? `처형됐지만 살아남음 · ${n.blocked}` : n.dead ? '처형됨' : '처형 처리됨'}</span>
+              <button class="blink" onClick=${() => run('day.executeUndo', { k: n.k })}>되돌리기</button></div>`
+            : html`${n.preview && html`<div class="hstack sub orange"><${Icon} name="flag" size=${16} />${n.preview}</div>`}
+              <div class="hstack" style="gap:10px;margin-top:4px"><button class="pill-act gray" onClick=${() => setVoting(n)}>투표</button>
+                <button class=${cx('pill-act', ready ? 'red' : 'off')} disabled=${m.ended || !ready} onClick=${() => run(finish ? 'day.executeAndFinish' : 'day.execute', { k: n.k })}>${finish ? '처형하고 마감' : '처형'}</button></div>
+`}
+        </div></div>`; })}
+      ${m.tie && (m.tie.state === 'none'
+        ? html`<div class="row"><span class="orange grow" style="font-weight:600">= 동수 — 오늘은 처형 없음</span><button class="blink" onClick=${() => run('day.tie', { how: 'undo' })}>되돌리기</button></div>`
+        : html`<div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
+            <div class="orange" style="font-weight:600;font-size:15px">= 동수 — ${(m.tie.names || []).map(p => `${p.number}번 ${p.name}`).join(' · ')}</div>
+            <button class="pill-act" onClick=${() => run('day.tie', { how: 'none' })}>처형 없음 (규칙)</button>
+            <div class="hstack" style="gap:10px"><button class="pill-act gray" onClick=${() => run('day.tie', { how: 'revote' })}>결선 투표</button><button class="pill-act gray" onClick=${() => run('day.tie', { how: 'renominate' })}>다시 지명</button></div>
+          </div>`)}
       <${Row} tint disabled=${!m.targets.length || m.ended} onClick=${() => setNom(true)}><${Icon} name="plus" size=${20} />새 지명<//>
     <//>`}
     ${m.special.length > 0 && html`<${Section} header="특수 승리 확인"><${CoreItems} items=${m.special} call=${c => run('day.call', { call: c })} /><//>`}
