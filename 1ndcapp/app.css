@@ -98,6 +98,12 @@ h1, h2, p { margin: 0; }
 .bprim:disabled { background: var(--fill2); color: var(--ter); }
 .bprim.green { background: var(--green); }
 .bprim.red { background: var(--red); }
+.pill-act { width: 100%; background: var(--blue); color: #fff; font-size: 17px; font-weight: 600; min-height: 50px; padding: 6px 16px; border-radius: 999px; }   /* 아침 «발표했어요»(2026-10-04 햇살님 «알약 버튼으로») */
+.pill-act.gray { background: var(--fill); color: var(--blue); }
+.pill-act.red { background: var(--red); }
+.pill-act.muted-red { background: var(--fill); color: var(--red); }   /* 문턱 전 처형 — 눌러도 코어가 «예외로 처형?»을 묻는다 */
+.pill-act.off, .pill-act:disabled { background: var(--fill); color: var(--ter); }   /* 단독 최다 + 문턱 전엔 꺼짐 */
+.pill-act.done { background: var(--fill); color: var(--sec); }
 .pill-red { background: var(--red); color: #fff; font-size: 15px; font-weight: 600; padding: 7px 16px; border-radius: 999px; flex: none; }   /* 화면 연결 «끊기»(2026-10-03 햇살님 «솔리드 알약») */
 .pin-b { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; color: var(--blue); flex: none; }
 .pin-b.on { background: var(--blue); color: #fff; }

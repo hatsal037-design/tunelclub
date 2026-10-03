@@ -2,7 +2,8 @@
 import { html, useState, useRef } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { settings } from '../settings.js';
-import { say } from '../narrator.js';
+import { say, speak, VOICES } from '../narrator.js';
+import { bgmSync, bgmStop, bgmVolume } from '../bgm.js';
 import { Page, Section, Row, Toggle, Segmented, Labeled, useRun } from '../ui.js';
 import { Back } from '../nav.js';
 import { account } from '../account.js';
@@ -45,10 +46,14 @@ export function SettingsView() {
   return html`<${Page} title="설정" left=${html`<${Back} />`}>
     <${Section} header="진행">
       <${Toggle} checked=${settings.get('haptics')} onChange=${v => set('haptics', v)}>진동 피드백<//>
+      <${Toggle} checked=${settings.get('bgm')} onChange=${v => { set('bgm', v); if (v) bgmSync(store.get('bgm.slot')); else bgmStop(); }}>배경 음악<//>
+      ${settings.get('bgm') && html`<div class="row"><input type="range" min="0" max="1" step="0.05" style="width:100%" value=${settings.get('bgmVolume') ?? 0.5} onInput=${e => { set('bgmVolume', +e.currentTarget.value); bgmVolume(); }} aria-label="배경 음악 크기" /></div>`}
       <${Toggle} checked=${settings.get('sound')} onChange=${v => set('sound', v)}>진행 소리<//>
       <${Toggle} checked=${!!store.get('director.enabled')} onChange=${async v => { await store.dispatch('director.setEnabled', { on: v }); rerender(); }}>판세 보정<//>
-      ${settings.get('sound') && html`<${Row} tint onClick=${() => say('간밤에 한 사람이 돌아오지 못했습니다. 이제 이야기를 나눠 주세요.')}>들어 보기<//>`}
+      ${settings.get('sound') && html`<div class="row"><span class="grow">진행 목소리</span><select class="textin" style="width:auto" value=${settings.get('voice') || 'mujin'} onChange=${e => set('voice', e.currentTarget.value)}>${VOICES.map(([id, nm]) => html`<option value=${id}>${nm}</option>`)}</select></div>
+        <${Row} tint onClick=${() => speak('간밤에 한 사람이 돌아오지 못했습니다. 이제 이야기를 나눠 주세요.', [{ clip: 'dangsan_dawn_one_0' }, { seat: 3 }, { clip: 'dangsan_dawn_close_0' }])}>들어 보기<//>`}
     <//>
+    ${settings.get('bgm') && html`<div class="foot" style="margin:-8px 16px 12px">배경 음악: MiniMax-Music3 로 만들었어요.</div>`}
     <${Section} header="화면">
       <div class="row"><div class="rc">외관</div><div style="width:200px"><${Segmented} value=${settings.get('appearance')} onChange=${v => set('appearance', v)}
         options=${[['system', '시스템'], ['light', '라이트'], ['dark', '다크']]} /></div></div>

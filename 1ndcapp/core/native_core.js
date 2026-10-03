@@ -464,12 +464,17 @@ var NativeCore = (function () {
     var G = execGate();
     return { title: '낮 ' + dayNo(n), announced: !!D.announced, need: Math.ceil(voterCount() / 2), alive: alive,
       deaths: state.seats.map(function (x, i) { return x.dead && x.causeN === n && x.cause !== 'exec' ? seatLabel(i) : null; }).filter(Boolean),
+      /* 아침 발표 대본(2026-10-04 햇살님 «발표는 대본을 좀 써 주면») — 진행자가 읽는 두 줄. 이름만, 사인 없음 */
+      script: dayNarr().lines, scriptPlan: dayNarr().plan,   // 아침 발표 대본 — 화면 줄(이름)과 읽어 주기 순서(이름 대신 자리 번호). 원본 tools/진행목소리/대본.js
       nominators: uiDayNomIdxs().map(seatLabel),
       targets: state.seats.map(function (x, i) { return x.char && cm[x.char].team !== 'host' && !x.dead && !D.noms.some(function (o) { return o.t === i; }) ? seatLabel(i) : null; }).filter(Boolean),
       noms: D.noms.map(function (o, k) { var st = !o.done && G.leaders.indexOf(o) >= 0 ? (G.leaders.length > 1 ? '동수' : (G.ok ? '단독 선두' : null)) : null;
         var pv = null; if (k === G.k) { try { var v = execVerdicts(state.seats[o.t], o.t).find(function (x) { return x.lv === 'end'; }); if (v) pv = textOf(v.t); } catch (e) {} }
         return { k: k, target: seatLabel(o.t), by: o.by === null || o.by === undefined ? null : seatLabel(o.by), votes: o.v || 0, voters: (o.voters || []).length ? o.voters : [], done: !!o.done,
         blocked: o.blockedBy || null, dead: !!(state.seats[o.t] && state.seats[o.t].dead), canExecute: k === G.k, tag: st, preview: pv, saved: !!o.saved }; }),
+      /* 동수(2026-10-04 햇살님 시안 C «선택지 주자») — 문턱 넘은 최다가 둘 이상이면 진행자가 고른다: 처형 없음(규칙)·결선 투표·다시 지명 */
+      tie: (function () { if (D.noms.some(function (o) { return o.done; })) return null; if (D.tieNone) return { state: 'none' };
+        return G.leaders.length > 1 && G.lead >= G.need ? { state: 'open', names: G.leaders.map(function (o) { return seatLabel(o.t); }) } : null; })(),
       mafia: hubRep() === 'mafia', tieVoid: D.tieVoid ? D.tieVoid.map(seatLabel) : null,   // 오리지널 마피아 낮 — 지목받은 사람 → 살린다·죽인다, 동수 무효
       /* 처형만 누르면 판이 끝나는 상태 — 처형 버튼 대신 승패 판정을 앞세운다(2026-09-30 햇살님 «끝났다고 판단해서 처형 안 누르고 얼렁뚱땅 끝나버릴 수 있으니까»). 실제로 처형해 본 뒤 되돌린 판정이라 사후 능력·계승까지 본 값 */
       endIfExecuted: (function () { var pr = pend; if (!pr || pr.how !== '처형 가정') return null; var k = D.noms.findIndex(function (o) { return o.t === pr.seat - 1 && !o.done; }); if (k < 0) return null;
@@ -531,9 +536,23 @@ var NativeCore = (function () {
     /* 역할 넘기기 — 지금 폰을 받아 볼 차례인 자리(누가 폰을 들었는지는 다 보이는 사실, 2026-10-02 햇살님 «역할 배치할때 보고 있는사람 자리 표기»). 직업은 물론 안 나간다 */
     var turn = null; if (!began && typeof state.rvPos === 'number' && (state.seats || []).some(function (x) { return x && x.char; })) {
       var ord = handoffOrder(), k = state.rvPos + 1; turn = { seatId: k < ord.length ? sid(ord[k]) : null, seen: Math.min(k, ord.length), total: ord.length }; }
+    /* 2026-10-04 햇살님 선택(docs/공용화면_추가정보_구상_v1.md 끝 표 · 그리기계약_v2) — 넷 다 공개 사실만, 발표 전엔 null */
+    var morning = null; if (isDay && announced) {   // 1 아침 발표 — 발표를 누른 뒤에만, 이름만(사인 없음). at = 발표 시각(TV 가 잠깐만 크게 보이는 기준)
+      var dead = (state.seats || []).map(function (x, i) { return x && x.dead && x.causeN === n && x.cause !== 'exec' ? sid(i) : null; }).filter(Boolean);
+      morning = { id: 'm' + n, dayNumber: dayNo(n), deaths: dead, revivals: [], at: D.announcedAt || null }; }
+    var past = [];   // 2 마지막 처형 하나 — 오늘보다 앞선 낮 중 가장 최근(«처형 없는 낮»이 지난 처형을 덮지 않는다)
+    if (began) { var days = state.days || {}; Object.keys(days).map(Number).filter(function (d) { return d < n || (ended && d <= n); }).sort(function (a, b) { return b - a; }).some(function (d) {
+      var done = (days[d].noms || []).filter(function (o) { return o.done; }).pop(); var t = done ? done.t : (state.seats || []).findIndex(function (x) { return x && x.dead && x.cause === 'exec' && x.causeN === d; });
+      if (t < 0) return false; var died = !!(state.seats[t] && state.seats[t].dead && state.seats[t].cause === 'exec' && state.seats[t].causeN === d);
+      past.push({ id: 'x' + d, dayNumber: dayNo(d), targetId: sid(t), outcome: died ? 'died' : 'survived' }); return true; }); }
+    var usage = null; if (isDay && hubRep() !== 'mafia') {   // 5 오늘 지명 이력 — 이력만(가능 여부·차단 사유 없음). 오리지널 마피아는 지명 기록이 없어 null
+      var by = [], tg = []; noms.forEach(function (o) { if (o.by !== null && o.by !== undefined && by.indexOf(sid(o.by)) < 0) by.push(sid(o.by)); if (tg.indexOf(sid(o.t)) < 0) tg.push(sid(o.t)); });
+      usage = { dayNumber: dayNo(n), nominatedBy: by, nominatedTargets: tg }; }
+    var ending = null; if (ended) { var R = result(); ending = { kind: state.practice ? 'practice' : (R.winner && R.winner !== 'void') ? 'completed' : 'aborted', winnerLabel: R.winner && R.winner !== 'void' ? (WINKO[R.winner] || R.winner) : null }; }   // 7 승리 진영 — 확정 공개 승리만, 선악 둘로 가두지 않음
     var body = { schema: 1, gameEpoch: P.epoch, handoff: turn, dayNumber: isDay ? dayNo(n) : null, nightNumber: began && !ended && !isDay ? n : null,
       scene: scene, shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, initialComposition: P.comp || null, timer: timer, nomination: nom,
-      neededVotes: nom ? G.need : null, results: results, execution: exec };
+      neededVotes: nom ? G.need : null, results: results, execution: exec,
+      morningAnnouncement: morning, pastExecutions: past, nominationUsage: usage, ending: ending };
     var key = J(body); if (key !== P.last) { P.last = key; P.rev = (P.rev || 0) + 1; }   // 공개 내용이 같으면 revision 그대로
     pubSave(P); body.revision = P.rev; return body;
   }
@@ -629,11 +648,15 @@ var NativeCore = (function () {
      실제 소리는 스위프트가 커밋 뒤 한 번만 낸다(03 §효과). 비밀 답은 NR_SRC 밖이라 여기로 오지 않는다. */
   var effects = [];
   /* 전역 속성이 아니라 이름에 직접 넣는다 — 웹은 코어를 함수 안에서 올려(web/js/core.js new Function) 전역 speak 을 바꿔도 코어 안 호출은 옛 speak 으로 갔다(2026-10-02 Fable 검토 A) */
-  speak = function (text, mood, src) {
+  /* 짧은 소리(처형·판 끝) — 웹 bgmStingPlay 를 가로채 효과로 넘긴다. 판 끝은 이긴 편으로 win/lose */
+  bgmStingPlay = function (kind) { var name = kind === 'end' ? ((function () { try { return endWinner(); } catch (e) { return null; } })() === 'evil' ? 'lose' : 'win') : kind;
+    effects.push({ kind: 'sting', hub: narrHub(), name: name }); return true; };
+  speak = function (text, mood, src, plan) {
     if (typeof NR_SRC === 'undefined' || !NR_SRC[src] || !text) return false;
     var t = String(text).replace(/<[^>]*>/g, ' ').replace(/[『』]/g, '').replace(/\s+/g, ' ').trim();
     if (!t) return false;
-    effects.push({ kind: 'speak', text: t, mood: mood || 'day' }); return true;
+    var e = { kind: 'speak', text: t, mood: mood || 'day' }; if (plan && plan.length) e.plan = plan;   // plan — 미리 뽑은 목소리 순서(clip id · 자리 번호). 목소리를 골랐으면 이걸, 아니면 text 를 기기 음성으로
+    effects.push(e); return true;
   };
 
   /* 직전 상태로 — 웹 load() 는 판을 «읽어 돌려줄» 뿐 바꾸지 않는다(state = load() 로 써야 한다). 좌석 화면 id 는 자리 순서대로 옮겨 붙여 화면이 사람을 잃지 않게 */
@@ -656,6 +679,14 @@ var NativeCore = (function () {
     'game.replayNarrow': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; var k = L.uuid || L.id; if (!(k in narrowMemo)) narrowMemo[k] = GameReplay.narrow(L); return narrowMemo[k]; }, 'day.voters': function (k) { return voters(+k); }, records: records, record: record, library: library, 'library.mode': libraryMode,
     /* 엔진 내부 관측: 공개 확정본의 생사·공개한 밤만. 큰 화면 전송 형식에는 추가하지 않는다. */
     'observation.public': function () { var P = pubState(pubEpoch()); return { through: P.announcedThrough || 0, dead: (P.seats || []).map(function (s) { return !!s.dead; }) }; },
+    /* 배경 음악(2026-10-04 햇살님 «노래, 테마별로 과정별로») — 지금 틀어야 할 곡 이름. 파일은 assets/bgm/<계열>_<과정>.m4a(tools/진행음악). 판이 안 돌면 null */
+    'bgm.slot': function () { var hub = narrHub(), began = firstNightBegun(), ended = began && gameEnded();
+      if (ended) return null;
+      if (!began) return hasRoles() ? { hub: hub, slot: 'prep' } : null;
+      if (state.phase !== 'day') return { hub: hub, slot: (state.nights || 1) > 1 ? 'night' : 'first' };
+      var D = dayRec(), open = (D.noms || []).some(function (o) { return !o.done; }) && !(D.noms || []).some(function (o) { return o.done; });
+      return { hub: hub, slot: open ? 'vote' : 'day' }; },
+    'narration.dawn': function () { if (state.phase !== 'day') return null; var d = dayNarr(); return { text: d.lines.join(' '), plan: d.plan, mood: 'day' }; },   // 아침 발표 «읽어 주기» 단추
     'seat.detail': seatDetail,
     /* 서버 올리기 — 아직 안 올라간 판을 서버 모양 그대로(코어 SRV.payloadOf). 보내는 건 웹앱·아이폰 앱 몫 (2026-09-29) */
     'sync.merged': function () { return lastMerged; },
@@ -882,7 +913,7 @@ var NativeCore = (function () {
       else if (p.confirmation !== undefined) return rejected('invalidSelection', '확인 선택이 올바르지 않아요.');
       return COMMANDS['day.nominate'](action.payload);
     },
-    'day.announce': function () { if (state.phase !== 'day') return rejected('notAllowedInPhase', '낮이 아니에요.'); uiDayAnnounce(); return null; },
+    'day.announce': function () { if (state.phase !== 'day') return rejected('notAllowedInPhase', '낮이 아니에요.'); var was = !!dayRec().announced; uiDayAnnounce(); var D0 = dayRec(); if (D0.announced && !was) D0.announcedAt = Date.now(); else if (!D0.announced) delete D0.announcedAt; save(); return null; },   // 발표 시각 — TV 가 이름을 잠깐만 크게 보이는 기준(2026-10-04)
     'day.nominate': function (p) { if (state.phase !== 'day') return rejected('notAllowedInPhase', '낮이 아니에요.');
       var t = +p.target, D = dayRec(), m = day(), by = (p.by === null || p.by === undefined) ? null : +p.by;
       if (!m.targets.some(function (x) { return x.index === t; })) return rejected('invalidSelection', '지명할 수 없는 사람이에요.');   // 웹 지명 대상·지명자 목록과 같은 잣대(죽은 사람·이미 지명된 사람 거름)
@@ -895,13 +926,22 @@ var NativeCore = (function () {
       if (typeof p.kill !== 'boolean') return rejected('invalidSelection');
       var r = COMMANDS['day.nominate']({ target: p.target, ok_shield: p.ok_shield, decline_shield: p.decline_shield }); if (r) return r;
       var D = dayRec(), k = D.noms.length - 1;
-      if (!p.kill) { D.noms[k].saved = true; save(); return null; }
+      if (!p.kill) { D.noms[k].saved = true; save(); var x = narrPick('exec.survived'); if (x) speak(x.say, 'exec', 'tieNone', [{ clip: x.clip, say: x.say }]); return null; }   // 마피아 «살린다» — 공개 결과라 읽어도 된다
       return COMMANDS['day.execute'](Object.assign({}, p, { k: k, ok_execGate: true })); },
     'day.verdictUndo': function (p) { var n = dayRec().noms[+p.k]; if (!n || n.done || !n.saved) return rejected('invalidSelection', '되돌릴 결과가 없어요.'); dayNomRemove(+p.k); return null; },
+    'day.tie': function (p) { if (state.phase !== 'day') return rejected('notAllowedInPhase', '낮이 아니에요.');
+      var D = dayRec(), G = execGate();
+      if (p.how === 'undo') { if (!D.tieNone) return rejected('invalidSelection', '되돌릴 결정이 없어요.'); delete D.tieNone; save(); return null; }
+      if (!(G.leaders.length > 1 && G.lead >= G.need)) return rejected('invalidSelection', '동수가 아니에요.');
+      var ks = G.leaders.map(function (o) { return D.noms.indexOf(o); }).sort(function (a, b) { return b - a; });
+      if (p.how === 'none') { D.tieNone = true; save(); var x = narrPick('tie.none'); if (x) speak(x.say, 'day', 'tieNone', [{ clip: x.clip, say: x.say }]); return null; }
+      if (p.how === 'revote') { ks.forEach(function (k) { dayVotersClear(k); }); return null; }   // 동수인 둘의 표를 비운다 — 진행자가 각각 다시 «투표»
+      if (p.how === 'renominate') { ks.forEach(function (k) { dayNomRemove(k); }); return null; }   // 동수인 지명을 걷는다 — 다시 지명할 수 있다
+      return rejected('invalidSelection'); },
     'day.tieVoid': function (p) { if (hubRep() !== 'mafia') return rejected('notAllowedInPhase', '오리지널 마피아 판에서만 써요.');
       var t = (p.targets || []).map(Number), m = day();
       if (t.length !== 2 || t[0] === t[1] || !t.every(function (i) { return m.targets.some(function (x) { return x.index === i; }); })) return rejected('invalidSelection', '동수인 두 사람을 골라 주세요.');
-      dayRec().tieVoid = t; save(); return null; },
+      dayRec().tieVoid = t; save(); var x = narrPick('tie.none'); if (x) speak(x.say, 'day', 'tieNone', [{ clip: x.clip, say: x.say }]); return null; },
     'day.tieVoidUndo': function () { var D = dayRec(); if (!D.tieVoid) return rejected('invalidSelection', '되돌릴 결과가 없어요.'); delete D.tieVoid; save(); return null; },
     'day.vote': function (p) { var D = dayRec(), k = +p.k, n = D.noms[k]; if (!n || n.done) return rejected('invalidSelection', '투표할 지명이 없어요.');
       var ok = {}; voters(k).forEach(function (v) { ok[v.index] = 1; }); var sel = (p.voters || []).map(Number);
