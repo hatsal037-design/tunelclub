@@ -2816,6 +2816,12 @@ function rectPositions(){
    원형에서 일어나면 자리를 좁혀 닫고(화면-104), 사각에서는 그 칸이 빈자리가 된다. 좌석 번호가 바뀌는 길은 전부 remapSeatIndices.
    역할을 나눈 뒤 사람이 바뀌면 한 번 묻고 역할을 다시 나누게 비운다. 첫밤을 시작한 판은 바꾸지 않는다(«새 판») */
 function benchList(){ if(!Array.isArray(state.bench)) state.bench=[]; return state.bench; }
+/* 숙련 — 손 입력(20판 미만) 아니면 서버 등급(20판 이상, 0110 member_grades). 둘은 따로 저장한다 — 서버 등급이 손 입력으로 올라가 자기를 키우지 않게(docs/숙련등급_설계_v1.md).
+   배분(악마 무게·자리 섞기)은 전부 이 하나를 읽는다 — 예전엔 잠금 회원을 악마는 일반, 자리는 초보로 제각각 읽었다(2026-10-03 Fable 검토 D) */
+function seatGrade(s){ try{ const w=s&&s.pid?personById(s.pid):null; if(!w||!w.tunelId) return null;
+  const g=JSON.parse(localStorage.getItem('preparation_experience_grades')||'{}')[w.tunelId]; if(Number.isInteger(g)&&g>=1&&g<=5) return g;
+  const lock=JSON.parse(localStorage.getItem('preparation_experience_locks')||'{}')[w.tunelId]; return Number.isInteger(lock)&&lock>=TILT.SKILL_MIN?3:null; }catch(e){ return null; } }   // 잠겼는데 등급이 아직 없으면 중간
+function expOf(s){ if(hubRep()==='mafia') return null; return (s&&s.manualExperience)||seatGrade(s)||null; }   // 오리지널 마피아는 숙련도 적용 안 함 — 무게 전부 1, 자리 벌점 p3 는 상수가 돼 배치를 안 기울인다
 function personOf(s){ return Object.assign({name:(s&&s.name)||''}, s&&s.pid?{pid:s.pid}:{}, s&&s.manualExperience?{manualExperience:s.manualExperience}:{}); }
 function samePerson(a,b){ return !!a&&!!b&&((a.pid&&b.pid)?a.pid===b.pid:(a.name||'')===(b.name||'')); }
 function partyEditOk(){ if(firstNightBegun()) return false;
@@ -4305,7 +4311,7 @@ const SRV = {
     const S=SRV.stored(L)||L;                                   // 저장판이 원본. 없으면(옛 판) 메모리 판으로
     const iso=v=>{ if(!v) return null; const d=new Date(v); return isNaN(d.getTime())?null:d.toISOString(); };
     const game={ client_game_id:L.uuid||L.id, legacy_local_id:L.id||null,   // 보내는 번호는 uuid. 옛 'g…' 는 마당·pin 이 가리키니 같이 남긴다
-      mode:L.mid||L.mode||null, hub:L.hub||null,
+      mode:L.mid||L.mode||null, hub:L.hub||((allMods()[L.mode]||{}).hub)||null,   // 로그엔 hub 가 없어 늘 null 로 갔다(2026-10-03 확인) — 모드에서 채운다. 서버가 오리지널 마피아 판을 숙련에서 빼는 열쇠
       pot_id:L.potId||null, pot_title:SRV.potTitleOf(L.potId),              // 마당 — «내가 참가한 마당의 판»을 서버가 가려낼 열쇠 (2026-09-20)
       mode_name:L.modeName||null,                                          // 이름 표기 — 투넬 쪽엔 등록부가 없다
       started_at:iso(L.at),      started_raw:L.at||null,         // 옛 시각은 시간대 없는 글자다 — 원문도 같이 보낸다
@@ -4314,6 +4320,8 @@ const SRV = {
       reg_ver:(S&&S.reg!==undefined?S.reg:null), detail_level:'full', payload:S };
     /* 좌석 0 은 «퇴장해서 자리가 없다»는 뜻이다. p.seat||i+1 로 두면 0 이 1·2 로 둔갑해
        원본과 서버의 좌석이 어긋난다 — 좌석을 기본키에서 뺀 이유를 앱에서 도로 무너뜨린다 (코덱스 검토 2026-09-13) */
+    const noSkill=hubRepOf(allMods()[L.mode]||{})==='mafia';   // 오리지널 마피아는 숙련도 적용 안 함(2026-10-03 햇살님 «더 라이트하게 즐기는 게임»)
+    let SK={}; try{ SK=noSkill?{}:skillFacts(L); }catch(e){ SK={}; }
     const players=(L.players||[]).map((p,i)=>({ client_aid:aidOf(L,p,i), seat:(typeof p.seat==='number'?p.seat:(i+1)), local_pid:p.pid||null, name:p.name||'',
       tunel_member_id:SRV.tunelIdOf(p.pid),                                  // 투넬 회원이면 그 번호 — 판에 스냅샷으로 남는다 (2026-09-20)
       role_name:p.role||null, final_role_name:p.finalRole||p.role||null,       // 이름 표기 — 투넬 쪽엔 등록부가 없다
@@ -4321,7 +4329,8 @@ const SRV = {
       team:p.finalTeam||p.team||null, side_code:p.sideCode||null,
       won:(p.won===undefined?null:p.won),                        // 미정은 null 그대로. false 로 바꾸면 진 판이 된다
       kind:((p.finalTeam||p.team)==='traveler')?'traveler':'player',
-      joined_late:!!p.late, left_early:!!p.left }));
+      joined_late:!!p.late, left_early:!!p.left,
+      manual_exp:(!noSkill&&typeof p.exp==='number'?p.exp:null), judge:(SK[p.seat]||null) }));   // 숙련 등급 재료 — 손 숙련·판단 사실(docs/숙련등급_설계_v1.md)
     /* 같은 참가 기록 ID 가 둘이면 서버가 한 문장에서 같은 행을 두 번 고치려다 올리기 전체가 실패한다.
        옛 판 도출이나 백업 합치기에서 겹칠 수 있어 보내기 직전에 접는다 (코덱스 검토 2026-09-14) */
     { const ax={}; for(let i=players.length-1;i>=0;i--){ const k=players[i].client_aid;
@@ -7234,7 +7243,7 @@ function pickRevive(owner, ignoreVoid){ const t=pickGet(owner); const c=CMAP()[s
   pickCommit(owner, t, 'revive');
   wz.pickRes={owner, html:(done.length?`🌱 ${done.join(', ')} 부활 처리(유령표 회수).`:'')+(no.length?`<div>🚫 ${no.join(', ')} — ${c.ko}은(는) 마을 사람만 되살릴 수 있어요. 부활되지 않음.</div>`:'')}; render(); pickRerender(); }
 function pickSwap(owner){ const t=pickGet(owner); if(t.length<2) return; const a=state.seats[t[0]], b=state.seats[t[1]]; const tmp=a.char; a.char=b.char; b.char=tmp;
-  logEvent('역할 변경', {from:pickLabel(t[0]), to:pickLabel(t[1]), 방식:'swap'}); pickCommit(owner, t, 'swap');
+  logEvent('역할 변경', {from:pickLabel(t[0]), to:pickLabel(t[1]), 방식:'swap', swapSeats:[t[0]+1,t[1]+1], roleIds:[a.char,b.char]}); pickCommit(owner, t, 'swap');   // 자리·새 직업 — 사후 집계(skillFacts)가 편을 따라가게
   wz.pickRes={owner, html:`🔁 ${pickLabel(t[0])} ↔ ${pickLabel(t[1])} 직업을 맞바꿨어요. 밤 순서가 바뀔 수 있으니 다음 카드부터 다시 확인.`}; render(); pickRerender(); }
 function pickReveal(owner){ const t=pickGet(owner); if(!t.length) return; const c=CMAP()[state.seats[owner].char];
   ANS_CTX={name:state.seats[t[0]].name||pickLabel(t[0]), role:c.ko+' 알림', seat:owner}; pickCommit(owner, t, 'reveal');
@@ -7492,7 +7501,7 @@ function uiDayVoteCommit(){ const f=pickOv.free; const k=wz.voteOpen; const D=da
   const _base=n.voters.reduce((a,seat)=>a+voteWeight(seat),0);   // 곡비 «두 몫» = 두 표 (감사 2026-09-13)
   n.v=Math.max(0,_base+(n.adj||0)); n.adj=n.v-_base; n.manual=!!n.adj;
   { const alive=state.seats.filter(x=>x.char&&!x.dead&&CMAP()[x.char].team!=='host').length; n.alive=alive; n.need=Math.ceil(voterCount()/2); }
-  logEvent('투표',{대상:state.seats[n.t].name||('좌석 '+(n.t+1)), 투표자:n.voters.map(x=>state.seats[x].name||('좌석 '+(x+1))), 투표자seats:n.voters.map(x=>x+1)});
+  logEvent('투표',{대상:state.seats[n.t].name||('좌석 '+(n.t+1)), 대상seat:n.t+1, 투표자:n.voters.map(x=>state.seats[x].name||('좌석 '+(x+1))), 투표자seats:n.voters.map(x=>x+1)});
   wz.voteOpen=null; save(); pickOvClose(); }
 function dayVoterPanel(k){ uiDayVoteOpen(k); }   // 옛 이름 — 검증기·좌석 시트가 부른다
 /* 처형은 지목 마감에서만 — 조건은 화면에 이미 적혀 있으니 확인창 없이 실행한다 */
@@ -7583,7 +7592,7 @@ function dayToggleVoter(k,seat){ const D=dayRec(); const n=D.noms[k]; if(!n)retu
   n.v=Math.max(0,_base+(n.adj||0)); n.adj=n.v-_base; n.manual=!!n.adj;
   { const alive=state.seats.filter(x=>x.char&&!x.dead&&CMAP()[x.char].team!=='host').length;
     n.alive=alive; n.need=Math.ceil(voterCount()/2); }   // 그 시점 처형 기준 스냅샷 — 결정표·만장일치의 원천 (2026-08-31)
-  logEvent('투표',{대상:state.seats[n.t].name||('좌석 '+(n.t+1)),
+  logEvent('투표',{대상:state.seats[n.t].name||('좌석 '+(n.t+1)), 대상seat:n.t+1,
     투표자:n.voters.map(x=>state.seats[x].name||('좌석 '+(x+1))),
     투표자seats:n.voters.map(x=>x+1)});   // 사람 참조 — 좌석 번호(1부터)
   save(); wzRender(); }
@@ -8004,7 +8013,7 @@ function doSuccession(){
   }
   /* 토큰형 계승(창귀·전향)은 직업이 그대로라 이전·이후가 같은 이름으로 찍혔다 — «의원 → 의원».
      무엇이 바뀐 건지는 토큰에 있으니 그걸 이후로 쓴다 (자율점검 low 4차-13, 2026-09-15) */
-  logEvent('계승',{종류:def.이름, 대상:seat.name||('좌석 '+(sucPick+1)), 이전:before,
+  logEvent('계승',{종류:def.이름, 대상:seat.name||('좌석 '+(sucPick+1)), seat:sucPick+1, roleId:seat.char||null, 이전:before,
     이후:def.토큰?(before?`${before}(${def.토큰})`:def.토큰):(seat.char?CMAP()[seat.char].ko:''),
     토큰:def.토큰||undefined, 독해제:sucFreed||undefined});
   save();
@@ -8703,8 +8712,8 @@ function skillGap(){
     inPlaySeats().forEach(s=>{ const k=personSkill(s.pid, s.name); if(k!==null) known++; (realEvil(s)?ev:gd).push(k); });
     loc={gap:known?teamGap(ev, gd):0, n:known}; _skillMemo={key, v:loc}; }
   const sv=(state.director&&state.director.skillSrv)||null;
-  const n=loc.n+((sv&&sv.n)||0); if(!n) return 0;
-  return (loc.gap*loc.n+((sv&&sv.gap)||0)*((sv&&sv.n)||0))/n;
+  if(sv&&sv.n) return sv.gap;   // 서버 값(점수 S 눈금, 0110)이 있으면 그것만 — 기기 승률 눈금과 섞지 않는다(2026-10-03 검토)
+  return loc.n?loc.gap:0;
 }
 /* 구조 기울기 — 이 모드·이 인원에서 실제로 누가 더 이겼나(이 기기 기록 + 서버 전체 판). 판이 적으면 인원 구간 추정으로.
    +면 악이 더 이겨 온 판 → 선을 돕는다. 판이 쌓일수록 실제 승률 쪽으로 넘어간다(10판이면 반반) — 햇살님 «평균값을 찾으면 수시로 보정» */
@@ -9490,7 +9499,7 @@ function ngWinChange(){
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 /* 첫 플레이·입문 참가자의 악마 무게 (2026-09-30 햇살님 «배제는 아쉬우니 가능성을 크게 낮추자» → 1점 1/5, 2점은 그 중간 3/5).
    카드를 다 나눈 뒤 악마 카드만 사람마다 무게를 두고 한 번 더 뽑아 자리를 맞바꾼다 — 확률이 0이 되지 않는다.
-   기록 20판 이상(잠금이라 manualExperience 가 없음)·미입력은 1. 여행자 자리는 건드리지 않는다.
+   기록 20판 이상은 서버 등급(expOf), 미입력은 1. 여행자 자리는 건드리지 않는다.
    pool 을 제자리에서 고치고, 옮겼으면 {처음, 나중}(1부터 센 자리)을, 무게가 전부 1이면 null 을 돌려준다 */
 const DEMON_EXP_W={1:0.2, 2:0.6};
 function demonReseat(pool, exp, isDemon, isFixed, rnd=Math.random){
@@ -9521,7 +9530,7 @@ function seatPrevGame(){ try{
   return {nb, evil:new Set(ps.filter(p=>['minion','demon'].includes(p.team)).map(k))};
   }catch(e){ return null; } }
 function seatTiers(S, prev){
-  const cm=CMAP(), n=S.length, c=i=>cm[S[i].char]||{}, nov=i=>(S[i].manualExperience||2)<=2;
+  const cm=CMAP(), n=S.length, c=i=>cm[S[i].char]||{}, nov=i=>(expOf(S[i])||2)<=2;
   const dm=i=>c(i).team==='demon', nb=i=>isRole(c(i),'empath');
   let p1=0, p2=0, p3=0;
   for(let i=0;i<n;i++){ const j=(i+1)%n; if(j===i) break;
@@ -9538,7 +9547,7 @@ function seatArrange(shuffle){
   const cm=CMAP(), S0=state.seats, n=S0.length, prev=seatPrevGame();
   /* 직업 맞바꾸기 — 같은 편끼리, 편이 다르면 숙련이 같은 두 사람끼리만(역할 나누기의 편 숙련 고르기를 안 흔든다) */
   const canSwap=(S,i,j)=>{ const a=cm[S[i].char], b=cm[S[j].char]; if(!a||!b||a.team==='demon'||b.team==='demon'||a.team==='traveler'||b.team==='traveler'||S[i].char===S[j].char) return false;
-    return isEvilTeam(a)===isEvilTeam(b)||(S[i].manualExperience||2)===(S[j].manualExperience||2); };
+    return isEvilTeam(a)===isEvilTeam(b)||(expOf(S[i])||2)===(expOf(S[j])||2); };
   const swapChars=(S,i,j)=>{ const t=S[i].char; S[i]=Object.assign({},S[i],{char:S[j].char}); S[j]=Object.assign({},S[j],{char:t}); };
   const before=seatTiers(S0, prev);
   if(!shuffle){   // 사람은 그대로 — 벌점이 없으면 그대로, 있으면 exp(−λ·줄일 수 있는 만큼) 확률로만 남기고 아니면 덜한 배치로(1순위만)
@@ -9553,7 +9562,7 @@ function seatArrange(shuffle){
   /* 자리 섞기 — 직전 판 악이었던 사람의 악 카드를 0.4 확률로 안 악이었던 사람에게(악마는 초보에게 안 넘김) */
   const S1=S0.map(s=>Object.assign({},s)), evil=i=>isEvilTeam(cm[S1[i].char]);
   if(prev) S1.forEach((s,i)=>{ if(!evil(i)||!prev.evil.has(seatKey(s))||Math.random()>=0.4) return;
-    const dm=cm[s.char].team==='demon', to=S1.map((x,j)=>j).filter(j=>!evil(j)&&!prev.evil.has(seatKey(S1[j]))&&cm[S1[j].char]&&cm[S1[j].char].team!=='traveler'&&(!dm||(S1[j].manualExperience||2)>2));
+    const dm=cm[s.char].team==='demon', to=S1.map((x,j)=>j).filter(j=>!evil(j)&&!prev.evil.has(seatKey(S1[j]))&&cm[S1[j].char]&&cm[S1[j].char].team!=='traveler'&&(!dm||(expOf(S1[j])||2)>2));
     if(to.length) swapChars(S1, i, to[Math.floor(Math.random()*to.length)]); });
   const shuffled=()=>{ const S=S1.slice(); for(let i=S.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [S[i],S[j]]=[S[j],S[i]]; } return S; };
   /* 후보 = 아무렇게나 앉힌 배치(자연 분포 표본) — 반은 직업도 한 번 맞바꿔(햇살님 «사람 앉히고 직업 맞바꾸고») */
@@ -9620,7 +9629,7 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
      누가 악이 될지는 여전히 운. 실력은 이 기기 기록만(한 사람 전적을 서버에서 받지 않는다). 기록 있는 사람이 셋 미만이면 그냥 무작위 */
   { const keepN0=(state.seats||[]).map(x=>(x&&x.name)||''), keepP0=(state.seats||[]).map(x=>(x&&x.pid)||null);
     const sk=pool.map((_,i)=>personSkill(keepP0[i], keepN0[i]));
-    if(tiltOn()&&sk.filter(x=>x!==null).length>=3){ const cm1=CMAP();
+    if(tiltOn()&&hubRep()!=='mafia'&&sk.filter(x=>x!==null).length>=3){ const cm1=CMAP();   // 오리지널 마피아는 숙련도 적용 안 함(2026-10-03)
       const gap=arr=>{ const e=[], g=[]; arr.forEach((id,i)=>{ (isEvilTeam(cm1[id])?e:g).push(sk[i]); }); return Math.abs(teamGap(e, g)); };   // 편 전체 평균(기록 없는 사람 0.5)
       const tries=[pool.slice()]; for(let k=0;k<11;k++) tries.push(shuffle(pool.slice()));
       const pickd=dirPickT(tries, t=>-TILT_H.dealGap*gap(t), null, null, 1);   // h = −차이(작을수록 좋음), T=1 고정 — 세기는 K(1.6)·바닥·천장이 «살짝»으로 묶는다
@@ -9634,7 +9643,7 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
       for(let i=0;i<pool.length;i++) out.push(seatsTv.indexOf(i)>=0?tvIds[t++]:rest[r++]);
       pool=out; } }
   let demonNote=null;
-  { const cm2=CMAP(), exp=(state.seats||[]).map(x=>x&&x.manualExperience||null);
+  { const cm2=CMAP(), exp=(state.seats||[]).map(x=>expOf(x));
     demonNote=demonReseat(pool, exp, id=>!!cm2[id]&&cm2[id].team==='demon', id=>!!cm2[id]&&cm2[id].team==='traveler'); }
   foldReset();   // 상태성 접기는 판마다 초기화 — 지난 판에서 열어둔 보조 입력이 따라오지 않게
   { const fits=state.layout==='rect'&&typeof rectCap==='function'&&(rectCap()-((state.gaps||[]).length))===total;
@@ -12462,9 +12471,54 @@ function logsSave(a){ if(a.length>300&&!_logTrimWarned){ _logTrimWarned=true; tr
   stSet('botc_logs',JSON.stringify(at)); }  // 최근 300판 — 저장은 kid(v7)
 function nowStamp(){ const d=new Date(), p=n=>String(n).padStart(2,'0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+/* ── 숙련 등급의 판단 사실(2026-10-03, docs/숙련등급_설계_v1.md) — 판 기록 하나에서 선일 때의 «표 판단»·«지명 판단» 합과 수를 자리별로.
+   서버가 판들을 합쳐 점수 S 를 만든다(지명 중심 μN 은 서버가). 순수 계산 — 판을 바꾸지 않는다.
+   기록 정리(코덱스): 편·생사는 «그 순간»(시작 팀 + 계승·역할 변경·사망·부활) · 투표는 (낮, 대상)마다 마지막 하나 · 취소된 지명은 뺀다 ·
+   사람은 자리 번호로(옛 기록은 겹치지 않는 이름일 때만) · 투표 사건이 없거나 지명자 미기록이면 «안 봄»(0점이 아니다) · 악일 때 행동은 안 센다 */
+const SKILL_VOID=['drunk','drunkard','lunatic','chwigaek','mangseokjung','sindeullini'], SKILL_NOVOTE=['butler'], SKILL_NOTARGET=['recluse','virgin'];
+function skillFacts(L){
+  const out={}; if(!L||!Array.isArray(L.players)) return out;
+  const M=allMods()[L.mode], cm={}; if(M&&hubRepOf(M)==='mafia') return out;   // 오리지널 마피아는 숙련도 적용 안 함
+  ((M&&M.chars)||[]).forEach(c=>{ cm[c.id]=c; }); const cOf=id=>cm[id]||CMAP()[id]||null;
+  const evilT=t=>['minion','demon','mafia'].includes(t), goodT=t=>t==='town'||t==='outsider';
+  const team={}, role={}, alive={}, voidGame={}, names={};
+  L.players.forEach(p=>{ if(typeof p.seat!=='number'||p.seat<1||p.left||p.team==='traveler') return; team[p.seat]=p.team; role[p.seat]=p.roleId; alive[p.seat]=true;
+    if(isRoleAny(cOf(p.roleId), SKILL_VOID)) voidGame[p.seat]=1; const k=(p.name||'').trim(); if(k) names[k]=(k in names)?0:p.seat; });
+  const seatOf=(s,name)=>{ if(typeof s==='number') return s; const k=(name||'').trim(), m=/^좌석 (\d+)$/.exec(k); return m?+m[1]:(names[k]||null); };   // 이름이 비면 «좌석 N»으로 남는다
+  const noms=[], byKey={};
+  (L.events||[]).forEach(e=>{ const n=e.n||0;
+    if(e.type==='사망') { const s=seatOf(e.seat,e.name); if(s) alive[s]=false; }
+    else if(e.type==='처형'&&!e.무효) { const s=seatOf(e.seat,e.name); if(s) alive[s]=false; }
+    else if(e.type==='부활') { const s=seatOf(e.seat,e.name); if(s) alive[s]=true; }
+    else if(e.type==='역할 변경'&&Array.isArray(e.swapSeats)) { e.swapSeats.forEach((s,k)=>{ const c=cOf((e.roleIds||[])[k]); if(c){ role[s]=(e.roleIds||[])[k]; team[s]=c.team; } }); }
+    else if(e.type==='역할 변경') { const s=seatOf(e.seat,e.name); if(s&&e.roleId){ role[s]=e.roleId; const c=cOf(e.roleId); if(c) team[s]=c.team; if(isRoleAny(c, SKILL_VOID)) voidGame[s]=1; } }
+    else if(e.type==='계승') { const s=seatOf(e.seat,e.대상); if(!s) return; const c=e.roleId?cOf(e.roleId):null;
+      if(c){ role[s]=e.roleId; team[s]=c.team; } else if(!/대잇기/.test(e.종류||'')) team[s]='demon'; alive[s]=true; }   // 새 직업으로(옛 기록은 종류로) — 계승·옮겨붙기는 되살아남
+    else if(e.type==='지명') { const tgt=e.취소?seatOf(e.bySeat,e.대상):seatOf(e.seat,e.name), key=n+'|'+tgt;
+      if(e.취소){ if(byKey[key]) byKey[key].cancel=true; return; }
+      if(!tgt) return; const x={n, target:tgt, by:typeof e.bySeat==='number'?e.bySeat:null, team:{...team}, role:{...role}, alive:{...alive}, voters:null, cancel:false};
+      noms.push(x); byKey[key]=x; }
+    else if(e.type==='투표') { const tgt=seatOf(e.대상seat,e.대상), x=byKey[n+'|'+tgt]; if(x&&Array.isArray(e.투표자seats)) x.voters=e.투표자seats.slice(); } });   // 고친 투표는 마지막 것이 남는다
+  const add=(s,k,v)=>{ const o=out[s]=out[s]||{vs:0,vn:0,ns:0,nn:0}; o[k]+=v; };
+  const seen={};
+  noms.forEach(x=>{ if(x.cancel) return;
+    if(isRoleAny(cOf(x.role[x.target]), SKILL_NOTARGET)) return;   // 은둔자(오등록)·처녀(시험 지명)는 통째로 뺀다
+    const T=evilT(x.team[x.target])?1:0;
+    /* 지명 판단 — 지명자가 그 순간 선·살아 있음, 같은 대상 반복은 한 번만, 기대 = 산 악 ÷ (산 사람 − 1) */
+    if(x.by&&x.by!==x.target&&goodT(x.team[x.by])&&x.alive[x.by]&&!voidGame[x.by]&&!seen[x.by+'>'+x.target]){ seen[x.by+'>'+x.target]=1;
+      const live=Object.keys(x.alive).filter(s=>x.alive[s]), ev=live.filter(s=>evilT(x.team[s])).length;
+      if(live.length>1){ add(x.by,'ns', T-ev/(live.length-1)); add(x.by,'nn',1); } }
+    /* 표 판단 — 명단이 기록된 지명만. 자격: 그 순간 선·살아 있음(유령표 빼고), 지명자·대상 아님, 능력이 안 듣는 직업·집사 아님 */
+    if(!x.voters) return;
+    const el=Object.keys(x.alive).map(Number).filter(s=>x.alive[s]&&goodT(x.team[s])&&s!==x.target&&s!==x.by&&!voidGame[s]&&!isRoleAny(cOf(x.role[s]), SKILL_NOVOTE));
+    if(el.length<3) return;   // 자기 빼고 둘 이상이 있어야 «같은 표결의 다른 사람 평균»이 선다
+    const c=el.map(s=>{ const up=x.voters.includes(s)?1:0; return T?up:1-up; }), sum=c.reduce((a,b)=>a+b,0);
+    el.forEach((s,i)=>{ add(s,'vs', c[i]-(sum-c[i])/(el.length-1)); add(s,'vn',1); }); });
+  Object.values(out).forEach(o=>{ o.vs=Math.round(o.vs*1e4)/1e4; o.ns=Math.round(o.ns*1e4)/1e4; });
+  return out; }
 function logPlayersOf(){ const cm=CMAP();
   return state.seats.map((s,i)=>(s.char&&cm[s.char]&&!['host','fabled'].includes(cm[s.char].team))?{seat:i+1, name:s.name||'', pid:s.pid||null, role:cm[s.char]?.ko||s.char,
-      roleId:s.char, uid:uidOf(s.char)||null, team:cm[s.char]?.team||'', teamKo:TKO(cm[s.char]?.team), sideCode:seatSide(s)}:null).filter(Boolean); }
+      roleId:s.char, uid:uidOf(s.char)||null, team:cm[s.char]?.team||'', teamKo:TKO(cm[s.char]?.team), sideCode:seatSide(s), exp:s.manualExperience||null}:null).filter(Boolean); }   // exp — 판 시작 때 손 숙련(1~5, 숙련 등급의 출발점 m)
 /* 배정 뒤 자리를 다시 정했을 때(자리 섞기 다시·되돌리기) — 판 기록의 참가자 줄을 지금 자리로. aid 는 판 uuid#순번 그대로 */
 function logPlayersRefresh(){ if(!state.log) return; state.log.players=logPlayersOf(); state.log.players.forEach((p,i)=>{ p.aid=state.log.uuid+'#'+i; }); }
 function logStart(){
@@ -13312,7 +13366,8 @@ function remapSeatIndices(mv, opt){
   if(state.log&&state.log.events) state.log.events.forEach(e=>{ if(!e) return;
     if(e.seat>0){ const i=mv(e.seat-1); e.seat=i<0?0:i+1; }
     if(e.bySeat>0){ const i=mv(e.bySeat-1); e.bySeat=i<0?0:i+1; }
-    if(Array.isArray(e.투표자seats)) e.투표자seats=e.투표자seats.map(x=>{ const i=mv(x-1); return i<0?0:i+1; }).filter(x=>x>0); });
+    if(Array.isArray(e.투표자seats)) e.투표자seats=e.투표자seats.map(x=>{ const i=mv(x-1); return i<0?0:i+1; }).filter(x=>x>0);
+    if(typeof e.대상seat==='number'){ const i=mv(e.대상seat-1); e.대상seat=i<0?null:i+1; } });
   /* 디렉터 좌석 키 — roll(숫자 | 'decoy:<역할>:<idx>')·fav('<밤>:<idx>:<역할>')·spent.tag('…:<idx>') (검토 2-8) */
   if(state.director){ const D=state.director;
     const last=(k,fn)=>{ const p=String(k).split(':'); const i=mv(+p[p.length-1]); if(i<0) return null; p[p.length-1]=String(i); return p.join(':'); };

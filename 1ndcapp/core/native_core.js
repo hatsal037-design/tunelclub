@@ -14,7 +14,8 @@ var NativeCore = (function () {
       try { var saved = JSON.parse(localStorage.getItem('preparation_experience_locks') || '{}'); n = saved[member]; } catch (e) {}
     }
     var locked = Number.isInteger(n) && n >= EXPERIENCE_MIN;
-    return { source: locked ? 'records' : member && !Number.isInteger(n) ? 'unknown' : 'manual',
+    var grade = null; if (locked) { try { grade = JSON.parse(localStorage.getItem('preparation_experience_grades') || '{}')[member] || null; } catch (e) {} }
+    return { source: locked ? 'records' : member && !Number.isInteger(n) ? 'unknown' : 'manual', grade: grade,
       manual: !locked && Number.isInteger(manual) && manual >= 1 && manual <= 5 ? manual : null, threshold: EXPERIENCE_MIN };
   }
   var J = function (o) { return JSON.stringify(o); };
@@ -51,7 +52,7 @@ var NativeCore = (function () {
     var n = (state.seats || []).filter(function (s) { return s && (s.name || s.char); }).length;
     var summary = h === 'play' ? ((state.nights || 1) === 1 ? '첫밤' : (state.phase === 'day' ? '낮 ' : '밤 ') + (state.nights || 1)) + ' · ' + n + '명'
       : h === 'draft' ? n + '명 준비 중' : null;
-    return { destination: dest, ruleFamily: ed.hub || '당산나무', modeName: ed.name || null, demonKo: KO('team', 'demon', hubRep()),   // 화면 글이 쓰는 계열 말(흉수·악마·범죄 조직)
+    return { destination: dest, ruleFamily: ed.hub || '당산나무', modeName: ed.name || null, demonKo: KO('team', 'demon', hubRep()), skillOff: hubRep() === 'mafia',   // 숙련도 안 쓰는 계열(오리지널 마피아) — 준비 화면이 경험 단계를 숨긴다   // 화면 글이 쓰는 계열 말(흉수·악마·범죄 조직)
       summary: summary, hasRecords: logsAll().length > 0,
       practice: h === 'play' ? !!state.practice : localStorage.getItem(PRACTICE_KEY) === '1',
       prepStep: h !== 'draft' ? null : hasRoles() ? 'handoff' : n >= 5 ? 'seats' : 'people' };   // 준비 이어 하기 — 역할을 나눴으면 넘기기부터(앱을 껐다 켜도 하던 자리로)
@@ -484,12 +485,20 @@ var NativeCore = (function () {
   var PUB_KEY = 'dangsan_display_pub';
   function pubState(epoch) { var P = {}; try { P = JSON.parse(localStorage.getItem(PUB_KEY) || 'null') || {}; } catch (e) {}
     return P.epoch === epoch ? P : { epoch: epoch, rev: P.rev || 0 }; }   // 판이 바뀌면 스냅샷·구성은 비우고 revision 은 이어서
-  function pubSave(P) { try { localStorage.setItem(PUB_KEY, J(P)); } catch (e) {} }
+  function pubSave(P) { localStorage.setItem(PUB_KEY, J(P)); }
   function pubEpoch() { return firstNightBegun() && state.log ? (state.log.uuid || state.log.id || null) : null; }
+  /* 조회는 마지막 확정본만 읽는다. 부팅 준비와 성공 명령이 공개 본문·스냅샷을 함께 갱신한다.
+     조회 중 dayRec·execGate를 부르거나 저장하지 않아, 연결 화면을 읽는 횟수가 판에 영향을 주지 않는다. */
   function displayPublic() {
+    var P; try { P = JSON.parse(localStorage.getItem(PUB_KEY) || 'null'); } catch (e) { return null; }
+    if (!P || !P.last) return null;
+    try { var body = JSON.parse(P.last); body.revision = P.rev; return body; } catch (e) { return null; }
+  }
+  function prepareDisplayPublic() {
     var n = state.nights || 1, began = firstNightBegun(), ended = began && gameEnded(), isDay = began && !ended && state.phase === 'day';
     var D = isDay ? dayRec() : null, announced = !!(D && D.announced), P = pubState(pubEpoch());
     var sid = function (i) { return 's' + (i + 1); };
+    if (began && (ended || announced)) P.announcedThrough = Math.max(P.announcedThrough || 0, n);
     if (!began || ended || announced) P.seats = (state.seats || []).map(function (s) { var rem = s.rem || [], fake = !s.dead && rem.indexOf('죽은 척') >= 0, dead = began && (!!s.dead || fake);   // 죽은 척(목숨 소진)은 발표대로 사망 · 유령표가 있는 걸로 — 표식 이름은 안 내보낸다
       return { dead: dead, ghost: fake || (dead && rem.indexOf('유령표') >= 0) }; });
     var seats = (state.seats || []).map(function (s, i) { var v = (P.seats && P.seats[i]) || { dead: false, ghost: false };
@@ -641,11 +650,14 @@ var NativeCore = (function () {
   var narrowMemo = {};
   var QUERIES = { home: home, 'preparation.board': board, 'game.current': nightCard, 'preparation.roles': roles, 'preparation.handoff': handoff, 'handoff.public': handoffPublic, 'game.stage': stage, 'game.process': process, reference: reference, 'roles.art': function () { var mid = state.edition || 'basic'; return CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, mid); return { ko: c.ko, icon: r.icon, e: r.e }; }); }, 'game.day': day, 'display.public': displayPublic, 'game.verdict': function () { return { items: verdict(), winner: endWinner() }; }, 'game.result': result, 'game.replay': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; return GameReplay.build(L, { public: /^public:/.test(String(a || '')) }); },
     'game.replayNarrow': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; var k = L.uuid || L.id; if (!(k in narrowMemo)) narrowMemo[k] = GameReplay.narrow(L); return narrowMemo[k]; }, 'day.voters': function (k) { return voters(+k); }, records: records, record: record, library: library, 'library.mode': libraryMode,
+    /* 엔진 내부 관측: 공개 확정본의 생사·공개한 밤만. 큰 화면 전송 형식에는 추가하지 않는다. */
+    'observation.public': function () { var P = pubState(pubEpoch()); return { through: P.announcedThrough || 0, dead: (P.seats || []).map(function (s) { return !!s.dead; }) }; },
     'seat.detail': seatDetail,
     /* 서버 올리기 — 아직 안 올라간 판을 서버 모양 그대로(코어 SRV.payloadOf). 보내는 건 웹앱·아이폰 앱 몫 (2026-09-29) */
     'sync.merged': function () { return lastMerged; },
     /* 판세 보정 — 서버에 물을 것(이 판 모드·인원, 회원 자리의 편). 켜짐 여부 (2026-09-29) */
-    'director.context': function () { var cm = CMAP(), good = [], evil = [];
+    'director.context': function () { if (hubRep() === 'mafia') return null;   // 오리지널 마피아는 숙련도(편 균형)도 안 쓴다(2026-10-03 햇살님)
+      var cm = CMAP(), good = [], evil = [];
       state.seats.forEach(function (s) { if (!s || !s.char || !s.pid) return; var w = personById(s.pid); if (!w || !w.tunelId) return; (realEvil(s) ? evil : good).push(w.tunelId); });
       return { mode: state.edition, n: inPlaySeats().length, good: good, evil: evil }; },
     'director.enabled': function () { return tiltOn(); },
@@ -685,6 +697,12 @@ var NativeCore = (function () {
       if (!p.member || typeof p.experienced !== 'boolean') return rejected('invalidSelection');
       return COMMANDS['preparation.recordExperience']({ member: p.member, games: p.experienced ? EXPERIENCE_MIN : 0 });
     },
+    /* 서버 등급(0110 member_grades) — 20판 이상 회원의 1~5. 손 입력과 따로 둔다(index.html seatGrade). null 이면 지운다 */
+    'preparation.recordGrade': function (p) {
+      if (!p.member || !(p.grade === null || (Number.isInteger(p.grade) && p.grade >= 1 && p.grade <= 5))) return rejected('invalidSelection');
+      var g = {}; try { g = JSON.parse(localStorage.getItem('preparation_experience_grades') || '{}'); } catch (e) {}
+      if (p.grade === null) delete g[p.member]; else g[p.member] = p.grade;
+      localStorage.setItem('preparation_experience_grades', JSON.stringify(g)); return null; },
     'preparation.recordExperience': function (p) {
       if (!p.member || !Number.isInteger(p.games) || p.games < 0) return rejected('invalidSelection');
       var saved = {}; try { saved = JSON.parse(localStorage.getItem('preparation_experience_locks') || '{}'); } catch (e) {}
@@ -840,6 +858,18 @@ var NativeCore = (function () {
         var num = function (x) { return typeof x === 'number' && isFinite(x) && x >= 0 ? Math.round(x) : null; };
         P.timer = { state: s, endsAt: s === 'paused' ? null : num(p.endsAt), durationMs: num(p.durationMs) || 0, leftMs: s === 'paused' ? num(p.leftMs) : s === 'elapsed' ? 0 : null }; }
       pubSave(P); return null; },
+    /* 진행자 내부 입구. 원격 참가자에게 노출하지 않는다. 기존 플랫폼 dispatch가 저장·복구를 소유한다. */
+    'engine.act': function (p) {
+      if (typeof p.observedRevision !== 'number' || p.observedRevision !== revision) return rejected('staleRevision', '제안 이후 판이 바뀌었어요. 다시 확인해 주세요.');
+      if (typeof GameEngine === 'undefined' || !GameEngine.prepareAction) return rejected('engineUnavailable', '엔진을 불러오지 못했어요.');
+      var action = GameEngine.prepareAction(p.seat, p.action);
+      if (action.status !== 'ready') return rejected(action.code || 'invalidSelection', '지금 적용할 수 없는 행동이에요.');
+      if (action.type !== 'day.nominate') return rejected('unsupportedAction', '아직 지원하지 않는 행동이에요.');
+      if (p.confirmation === 'accept') action.payload.ok_shield = true;
+      else if (p.confirmation === 'decline') action.payload.decline_shield = true;
+      else if (p.confirmation !== undefined) return rejected('invalidSelection', '확인 선택이 올바르지 않아요.');
+      return COMMANDS['day.nominate'](action.payload);
+    },
     'day.announce': function () { if (state.phase !== 'day') return rejected('notAllowedInPhase', '낮이 아니에요.'); uiDayAnnounce(); return null; },
     'day.nominate': function (p) { if (state.phase !== 'day') return rejected('notAllowedInPhase', '낮이 아니에요.');
       var t = +p.target, D = dayRec(), m = day(), by = (p.by === null || p.by === undefined) ? null : +p.by;
@@ -1001,6 +1031,7 @@ var NativeCore = (function () {
   };
 
   return {
+    initializeDisplay: prepareDisplayPublic,   // 플랫폼 부팅: 저장본 복원·타이머 정리 뒤 한 번. 일반 조회/원격 명령으로 노출하지 않음
     query: function (name, arg) { if (name === 'preparation.experience') return J({ revision: revision, data: experienceOf(arg || null, null) }); var f = QUERIES[name]; outHub = null; if (name === 'display.public' || name.indexOf('sync.') === 0 || name === 'backup.export') return J({ revision: revision, data: f(arg) });   // 서버·백업·큰 화면으로 가는 자료는 글을 바꾸지 않는다
       return JT(f ? { revision: revision, data: f(arg) } : { revision: revision, data: null, error: 'unknownQuery' }); },
     dispatch: function (json) {
@@ -1032,7 +1063,11 @@ var NativeCore = (function () {
         if (typeof lastGuardFail !== 'undefined' && lastGuardFail !== guard0) {
           try { undoStorage(); if (snap) restoreState(snap); var w1 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w1); } catch (e3) {}
           r = rejected('persistenceFailed', '저장할 수 없는 값이 있어 이 조작을 취소했어요.'); } }
-      if (!r) { try { displayPublic(); } catch (e) {} revision += 1; r = { status: 'ok', commandId: cmd.commandId, revision: revision, effects: effects.map(function (e, i) { return Object.assign({ effectId: cmd.commandId + ':' + i }, e); }) }; }   // 진행 위치(wz)도 판과 함께 저장 — 다시 켜면 보던 카드로(03 수용 08)
+      if (!r) { try { prepareDisplayPublic(); } catch (e) {
+        try { undoStorage(); if (snap) restoreState(snap); var w2 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w2); } catch (e4) {}
+        r = rejected('persistenceFailed', '공개 화면 정보를 저장하지 못해 이 조작을 취소했어요.');
+      } }
+      if (!r) { revision += 1; r = { status: 'ok', commandId: cmd.commandId, revision: revision, effects: effects.map(function (e, i) { return Object.assign({ effectId: cmd.commandId + ':' + i }, e); }) }; }   // 진행 위치(wz)도 판과 함께 저장 — 다시 켜면 보던 카드로(03 수용 08)
       outHub = null; var out = JT(r); if (r.status === 'ok') replies[cmd.commandId] = out; return out;
     },
     exportStorage: function () { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); o[k] = localStorage.getItem(k); } return J(o); },
