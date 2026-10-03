@@ -213,6 +213,8 @@ function RolesView({ c, next }) {
   const teams = []; m.roles.forEach(r => { if (!teams.includes(r.team)) teams.push(r.team); });
   const modeName = (m.modes.find(x => x.id === m.modeID) || {}).name || '';
   const [newSeats, setNewSeats] = useState(false);   // 자리 섞기 켜고 배정 → 새 자리 시트(2026-10-01)
+  const [pinFor, setPinFor] = useState(null);   // 직업 정해 주기 — 받을 사람 고르는 직업
+  const pinnable = !!(store.home && store.home.skillOff);   // 오리지널 마피아만(2026-10-03 햇살님 «가벼운 마피아게임»)
   const assign = async force => {
     const r = await R.run('roles.assign', force ? { force: true } : {});
     if (r.ok) { if (store.roles && store.roles.newSeats) setNewSeats(true); else next(); } else if (r.confirm) setAsk(r.choices[0] || '역할을 다시 나눌까요?');
@@ -228,7 +230,7 @@ function RolesView({ c, next }) {
       ${m.setups.map(su => html`<${Row} onClick=${() => run('roles.applySetup', { index: su.index })}><span class="grow">${su.name}</span><span class="sub">${su.diff}</span><//>`)}
     <//>
     ${teams.map(team => html`<${Section} header=${(m.roles.find(r => r.team === team) || {}).teamKo || team}>
-      ${m.roles.filter(r => r.team === team).map(r => r.many || r.count > 1
+      ${m.roles.filter(r => r.team === team).map(r => pinnable ? html`<${PinRow} r=${r} run=${run} open=${() => setPinFor(r)} />` : r.many || r.count > 1
         ? html`<${Stepper} value=${r.count} min=${0} max=${20} onChange=${v => run('roles.step', { id: r.id, delta: v - r.count })}><${RoleArt} r=${r.ko} size=${28} /><span class="grow">${r.ko}</span><span class="sec num">${r.count}</span><//>`
         : html`<${CheckRow} title=${r.ko} art=${r.ko} on=${r.count > 0} onClick=${() => run('roles.toggle', { id: r.id })} />`)}
     <//>`)}
@@ -245,10 +247,36 @@ function RolesView({ c, next }) {
       ${m.total !== m.count && html`<${Row} tint onClick=${() => run('roles.fit')}>자리 수에 맞추기<//>`}
     <//>
     <${Section}><${Toggle} checked=${!!m.seatShuffle} onChange=${v => run('roles.setSeatShuffle', { on: v })}>자리 섞기<//><//>
+    <${Sheet} open=${!!pinFor} onClose=${() => setPinFor(null)}>${pinFor && html`<${PinSheet} r=${pinFor} m=${m} close=${() => setPinFor(null)} done=${seats => run('roles.setPins', { id: pinFor.id, seats })} />`}<//>
     <${Sheet} open=${newSeats} onClose=${() => {}}>${newSeats && html`<${NewSeats} done=${async () => { await store.dispatch('seats.arrangeDone', {}); setNewSeats(false); next(); }} />`}<//>
     <${ActionSheet} open=${!!ask} title=${ask} onClose=${() => setAsk(null)} actions=${[{ label: '역할 다시 나누기', role: 'destructive', onClick: () => assign(true) }]} />
     <${ActionSheet} open=${!!confirm} title=${confirm && confirm.text} onClose=${() => setConfirm(null)} actions=${[{ label: '역할 비우고 변경', role: 'destructive', onClick: () => run(confirm.type, { ...confirm.payload, force: true }) }]} />
     ${R.alert}
+  <//>`;
+}
+/** 직업 줄(오리지널 마피아) — 넣기·수 + 오른쪽 사람 단추로 받을 사람 정하기. 정해 두면 줄 아래 «7번 모카» (시안/마피아_직업정해주기_20261003) */
+function PinRow({ r, run, open }) {
+  const seats = store.board.seats, who = r.pinned.map(i => seats.find(s => s.index === i)).filter(Boolean).map(s => `${s.number}번 ${s.name}`).join(' · ');
+  return html`<div class="row">
+    <button class="grow hstack" style="gap:12px;text-align:left;min-height:44px" disabled=${r.many} onClick=${() => run('roles.toggle', { id: r.id })}>
+      <${RoleArt} r=${r.ko} size=${28} /><div class="grow"><div>${r.ko}</div>${who && html`<div class="sub blue">${who}</div>`}</div>
+      ${!r.many && r.count > 0 && html`<span class="blue"><${Icon} name="check" size=${20} stroke=${2.4} /></span>`}</button>
+    ${r.many && html`<span class="sec num">${r.count}</span><div class="stepper"><button disabled=${r.count <= 0} onClick=${() => run('roles.step', { id: r.id, delta: -1 })} aria-label="줄이기"><${Icon} name="minus" size=${18} stroke=${2.2} /></button><i></i>
+      <button disabled=${r.count >= 20} onClick=${() => run('roles.step', { id: r.id, delta: 1 })} aria-label="늘리기"><${Icon} name="plus" size=${18} stroke=${2.2} /></button></div>`}
+    <button class=${cx('pin-b', r.pinned.length && 'on')} disabled=${!r.count} onClick=${open} aria-label=${`${r.ko} 받을 사람 정하기`}><${Icon} name="person" size=${20} /></button>
+  </div>`;
+}
+function PinSheet({ r, m, close, done }) {
+  const b = store.board, idOf = i => { const s = b.seats.find(s => s.index === i); return s ? s.id : null; };
+  const [sel, setSel] = useState(r.pinned.slice());
+  const other = new Set(); m.roles.forEach(x => { if (x.id !== r.id) x.pinned.forEach(i => other.add(i)); });   // 다른 직업을 정해 둔 사람은 못 고름
+  const tap = sid => { const s = b.seats.find(x => x.id === sid); if (!s) return; const i = s.index;
+    setSel(p => p.includes(i) ? p.filter(x => x !== i) : p.length < r.count ? p.concat(i) : r.count === 1 ? [i] : p); };   // 한 자리 직업이면 바꿔 끼우기
+  return html`<${Page} title=${r.ko} left=${html`<${NavButton} label="취소" onClick=${close} />`}
+    right=${html`<${NavButton} label="완료" bold onClick=${() => { done(sel); close(); }} />`}>
+    <${Section} plain><div class="boardwrap"><${SeatBoard} board=${b} enabled=${new Set(b.seats.filter(s => !other.has(s.index)).map(s => s.id))}
+      picked=${sel.map(idOf).filter(Boolean)} numbered=${false} publicView=${true} onTap=${tap} /></div><//>
+    <div class="foot" style="text-align:center">${sel.length} / ${r.count}</div>
   <//>`;
 }
 function ModeList({ run }) {

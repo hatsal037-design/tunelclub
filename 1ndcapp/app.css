@@ -97,6 +97,11 @@ h1, h2, p { margin: 0; }
 .bprim:active:not(:disabled) { filter: brightness(.88); }
 .bprim:disabled { background: var(--fill2); color: var(--ter); }
 .bprim.green { background: var(--green); }
+.bprim.red { background: var(--red); }
+.pill-red { background: var(--red); color: #fff; font-size: 15px; font-weight: 600; padding: 7px 16px; border-radius: 999px; flex: none; }   /* 화면 연결 «끊기»(2026-10-03 햇살님 «솔리드 알약») */
+.pin-b { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; color: var(--blue); flex: none; }
+.pin-b.on { background: var(--blue); color: #fff; }
+.pin-b:disabled { color: var(--ter); }
 .bsec { flex: 1; min-height: 50px; border-radius: 12px; background: var(--fill); color: var(--blue); font-weight: 600; font-size: 17px; padding: 6px 16px; }
 .bsec.danger { color: var(--red); }
 .bsec:disabled { color: var(--ter); }

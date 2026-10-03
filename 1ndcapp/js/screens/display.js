@@ -66,18 +66,18 @@ export function DisplayConnectionView() {
     : html`
       ${links.length > 0 && html`<${Section} header="연결된 화면" footer="12시간 뒤 저절로 끊겨요.">
         ${links.map((l, i) => html`<${Row} onClick=${() => setAsk(l)}><div class="grow"><div>화면 ${links.length - i}</div>
-          <div class="sub">${l.seen_at ? '화면이 연결을 확인했어요' : '화면 응답을 기다리는 중'} · ${hm(l.expires_at)}까지</div></div><span class="red">끊기</span><//>`)}<//>`}
+          <div class="sub">${l.seen_at ? '화면이 연결을 확인했어요' : '화면 응답을 기다리는 중'} · ${hm(l.expires_at)}까지</div></div><span class="pill-red">끊기</span><//>`)}<//>`}
       <${Section} header=${links.length ? '화면 더 연결' : '코드로 연결'} footer=${screens.error || 'TV에 뜬 QR을 폰 카메라로 찍어도 돼요.'}>
-        <div class="row"><input class="textin" style="font:600 22px ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false"
+        <div class="row"><input class="textin" style="font:600 22px ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;text-align:center" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false"
           aria-label="화면에 뜬 연결 코드" placeholder="ABCD EFGH" value=${code} onInput=${e => { screens.error = ''; screens.forget(); setCode(fmtCode(e.currentTarget.value)); }} onKeyDown=${e => { if (e.key === 'Enter' && full) connect(); }} /></div><//>
       <div style="padding:0 16px 20px"><${Primary} title="이 화면에 연결" enabled=${full} loading=${screens.busy} onClick=${() => connect()} /></div>
-      ${navigator.mediaDevices && html`<${Section}><${Row} tint onClick=${() => setScan(true)}>카메라로 QR 찍기<//><//>`}`}
+      ${navigator.mediaDevices && html`<${Section}><${Row} tint onClick=${() => setScan(true)}><span class="grow" style="text-align:center">카메라로 QR 찍기</span><//><//>`}`}
     ${scan && html`<${QrScanner} onClose=${() => setScan(false)} onCode=${c => { setScan(false); screens.error = ''; setCode(fmtCode(c)); setConfirm(fmtCode(c)); }} />`}
     <${ActionSheet} open=${!!confirm} title="이 화면에 연결할까요?" message=${confirm} onClose=${() => { setConfirm(''); screens.forget(); }}
       actions=${[{ label: '연결', onClick: () => { const c = confirm; setConfirm(''); connect(c); } }]} />
     <${Section} header="큰 화면 주소" footer="TV나 컴퓨터 브라우저에서 열면 QR과 코드가 떠요.">
       <${Row} onClick=${copy}><div class="grow">${SCREEN_URL}</div><span class=${copied ? 'sub blue' : 'sub'}>${copied ? '복사했어요' : '눌러서 복사'}</span><//>
-      <${Row} tint onClick=${showQr}>${qr ? '주소 QR 접기' : '주소 QR 보기'}<//>
+      <${Row} tint onClick=${showQr}><span class="grow" style="text-align:center">${qr ? '주소 QR 접기' : '주소 QR 보기'}</span><//>
       ${qr && html`<div class="row" style="justify-content:center;padding:16px"><div role="img" aria-label="큰 화면 주소 QR" style="background:#fff;padding:12px;border-radius:12px;line-height:0;width:200px" dangerouslySetInnerHTML=${{ __html: qr }}></div></div>`}<//>
     <div style="display:flex;padding:0 16px 20px"><button class="bsec" style="background:var(--blue);color:#fff" onClick=${share}>공유하기</button></div>
     <${ActionSheet} open=${!!ask} title="이 화면 연결을 끊을까요?" message="큰 화면에서 이름과 자리가 지워져요. 판과 기록은 그대로예요." onClose=${() => setAsk(null)}

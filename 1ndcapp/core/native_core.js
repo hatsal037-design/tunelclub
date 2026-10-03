@@ -307,7 +307,8 @@ var NativeCore = (function () {
       return { id: id, name: M[id].name, playable: ok, note: ok ? null : n + '명으로는 할 수 없어요' };
     });
     var list = CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) {
-      return { id: c.id, ko: c.ko, team: c.team, teamKo: TKO(c.team), count: ngCounts[c.id] || 0, many: !!ngMany(c) };
+      return { id: c.id, ko: c.ko, team: c.team, teamKo: TKO(c.team), count: ngCounts[c.id] || 0, many: !!ngMany(c),
+        pinned: pinsResolved().filter(function (p) { return p.id === c.id; }).map(function (p) { return p.i; }) };   // 이 직업을 정해 둔 자리
     });
     var need = tvNeed(), tv = tvSeatIdx(), total = ngTotal();
     var reason = total !== n ? '직업 ' + total + '개 · 자리 ' + n + '명 — 수를 맞춰 주세요.' : (need && tv.length !== need ? '여행자 ' + need + '명을 선택해주세요.' : null);
@@ -468,7 +469,8 @@ var NativeCore = (function () {
       noms: D.noms.map(function (o, k) { var st = !o.done && G.leaders.indexOf(o) >= 0 ? (G.leaders.length > 1 ? '동수' : (G.ok ? '단독 선두' : null)) : null;
         var pv = null; if (k === G.k) { try { var v = execVerdicts(state.seats[o.t], o.t).find(function (x) { return x.lv === 'end'; }); if (v) pv = textOf(v.t); } catch (e) {} }
         return { k: k, target: seatLabel(o.t), by: o.by === null || o.by === undefined ? null : seatLabel(o.by), votes: o.v || 0, voters: (o.voters || []).length ? o.voters : [], done: !!o.done,
-        blocked: o.blockedBy || null, dead: !!(state.seats[o.t] && state.seats[o.t].dead), canExecute: k === G.k, tag: st, preview: pv }; }),
+        blocked: o.blockedBy || null, dead: !!(state.seats[o.t] && state.seats[o.t].dead), canExecute: k === G.k, tag: st, preview: pv, saved: !!o.saved }; }),
+      mafia: hubRep() === 'mafia', tieVoid: D.tieVoid ? D.tieVoid.map(seatLabel) : null,   // 오리지널 마피아 낮 — 지목받은 사람 → 살린다·죽인다, 동수 무효
       /* 처형만 누르면 판이 끝나는 상태 — 처형 버튼 대신 승패 판정을 앞세운다(2026-09-30 햇살님 «끝났다고 판단해서 처형 안 누르고 얼렁뚱땅 끝나버릴 수 있으니까»). 실제로 처형해 본 뒤 되돌린 판정이라 사후 능력·계승까지 본 값 */
       endIfExecuted: (function () { var pr = pend; if (!pr || pr.how !== '처형 가정') return null; var k = D.noms.findIndex(function (o) { return o.t === pr.seat - 1 && !o.done; }); if (k < 0) return null;
         return { k: k, seat: pr.seat, winner: pr.winner, winnerKo: (WINKO[pr.winner] || pr.winner), text: seatLabel(pr.seat - 1).number + '번 ' + seatLabel(pr.seat - 1).name + ' 처형 → ' + (WINKO[pr.winner] || pr.winner) }; })(),
@@ -826,6 +828,13 @@ var NativeCore = (function () {
       return null; },
     'seat.setSide': function (p) { var i = +p.seat, x = state.seats[i], c = x && x.char && CMAP()[x.char]; if (!c || ['good', 'evil'].indexOf(p.side) < 0) return rejected('invalidSelection', '편을 골라 주세요.');
       if (c.team === 'traveler') setTravSide(i, p.side); else if (c.team === 'neutral') setLean(i, p.side); else return rejected('invalidSelection', '편을 고르는 직업이 아니에요.'); return null; },   // 같은 편을 다시 누르면 비운다(웹과 같음)
+    /* 직업 정해 주기 — 그 직업을 받을 자리들(직업 수까지). 다른 직업에 정해 둔 사람이면 그쪽에서 빠진다 */
+    'roles.setPins': function (p) { if (inGame()) return rejected('notAllowedInPhase', '첫밤 뒤에는 바꿀 수 없어요.'); ensureNg();
+      var id = p.id, seats = (p.seats || []).map(Number), cm = CMAP();
+      if (!cm[id] || seats.some(function (i) { return !state.seats[i]; }) || seats.length > (ngCounts[id] || 0) || new Set(seats).size !== seats.length) return rejected('invalidSelection', '정할 수 없는 자리예요.');
+      var who = seats.map(function (i) { return pinWho(state.seats[i]); });
+      ngPins = ngPins.filter(function (x) { return x.id !== id && who.indexOf(x.who) < 0; }).concat(who.map(function (w) { return { who: w, id: id }; }));
+      return null; },
     'roles.fit': function () { ensureNg(); ngFit(); return null; },
     'roles.toggleTraveler': function (p) { if (!state.seats[+p.seat]) return rejected('invalidSelection', '자리를 찾지 못했어요.'); tvToggle(+p.seat); return null; },
     'game.beginFirstNight': function () {
@@ -879,6 +888,21 @@ var NativeCore = (function () {
       if (!m.targets.some(function (x) { return x.index === t; })) return rejected('invalidSelection', '지명할 수 없는 사람이에요.');   // 웹 지명 대상·지명자 목록과 같은 잣대(죽은 사람·이미 지명된 사람 거름)
       if (by !== null && !m.nominators.some(function (x) { return x.index === by; })) return rejected('invalidSelection', '지명할 수 없는 사람이 골랐어요.');
       nomBy = by; wz.nomTgt = t; return shieldRun(p, function () { uiDayNomSubmit(); try { uiDayVoteCancel(); } catch (e) {} }); },
+    /* 오리지널 마피아 낮(2026-10-03 햇살님 «이렇게 확정», 시안/오리지널마피아_낮_20261003 v5) — 지목은 기록하지 않고 가장 많이 지목받은 사람만 → 살린다·죽인다.
+       지명 줄 하나를 만들고(지명자 없음) 죽이면 처형(표 문턱 없이), 살리면 그 줄에 «살림». 동수는 그 자리에서 무효·둘 다 찬반·다시 지목.
+       ponytail: 살림은 판 기록 사건을 따로 안 남긴다(지명 사건만) — 복기에서 «살림»을 보이고 싶어지면 그때 */
+    'day.verdict': function (p) { if (hubRep() !== 'mafia') return rejected('notAllowedInPhase', '오리지널 마피아 판에서만 써요.');
+      if (typeof p.kill !== 'boolean') return rejected('invalidSelection');
+      var r = COMMANDS['day.nominate']({ target: p.target, ok_shield: p.ok_shield, decline_shield: p.decline_shield }); if (r) return r;
+      var D = dayRec(), k = D.noms.length - 1;
+      if (!p.kill) { D.noms[k].saved = true; save(); return null; }
+      return COMMANDS['day.execute'](Object.assign({}, p, { k: k, ok_execGate: true })); },
+    'day.verdictUndo': function (p) { var n = dayRec().noms[+p.k]; if (!n || n.done || !n.saved) return rejected('invalidSelection', '되돌릴 결과가 없어요.'); dayNomRemove(+p.k); return null; },
+    'day.tieVoid': function (p) { if (hubRep() !== 'mafia') return rejected('notAllowedInPhase', '오리지널 마피아 판에서만 써요.');
+      var t = (p.targets || []).map(Number), m = day();
+      if (t.length !== 2 || t[0] === t[1] || !t.every(function (i) { return m.targets.some(function (x) { return x.index === i; }); })) return rejected('invalidSelection', '동수인 두 사람을 골라 주세요.');
+      dayRec().tieVoid = t; save(); return null; },
+    'day.tieVoidUndo': function () { var D = dayRec(); if (!D.tieVoid) return rejected('invalidSelection', '되돌릴 결과가 없어요.'); delete D.tieVoid; save(); return null; },
     'day.vote': function (p) { var D = dayRec(), k = +p.k, n = D.noms[k]; if (!n || n.done) return rejected('invalidSelection', '투표할 지명이 없어요.');
       var ok = {}; voters(k).forEach(function (v) { ok[v.index] = 1; }); var sel = (p.voters || []).map(Number);
       if (sel.some(function (i) { return !ok[i]; })) return rejected('invalidSelection', '투표할 수 없는 사람이 있어요.');
