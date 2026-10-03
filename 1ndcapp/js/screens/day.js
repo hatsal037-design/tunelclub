@@ -30,7 +30,7 @@ export function DayView({ m, run, finish }) {
     <//>
     ${!m.ended && html`<${TalkTimerSection} />`}
     ${m.notes.length > 0 && html`<${Section} header="알림"><${CoreItems} items=${m.notes} call=${c => run('day.call', { call: c })} /><//>`}
-    <${Section} header="지명 · 투표 · 처형" footer=${[`생존 ${m.alive}명 · 처형 문턱 ${m.need}표`, m.noExecReason].filter(Boolean).join('\n')}>
+    ${m.mafia ? html`<${MafiaDay} m=${m} run=${run} />` : html`<${Section} header="지명 · 투표 · 처형" footer=${[`생존 ${m.alive}명 · 처형 문턱 ${m.need}표`, m.noExecReason].filter(Boolean).join('\n')}>
       ${m.noms.map(n => html`<div class="row"><div class="nom grow">
         <div class="top"><span class="headline grow">${n.target.number}번 ${n.target.name}</span>
           ${n.tag && html`<span class=${cx('tag', n.tag === '동수' && 'orange')}>${n.tag}</span>`}
@@ -45,13 +45,59 @@ export function DayView({ m, run, finish }) {
               : !m.ended && html`<${Menu} aria="더 보기" label=${html`<${Icon} name="ellipsisCircle" size=${24} />`} items=${[{ label: '예외로 처형', role: 'destructive', onClick: () => run('day.execute', { k: n.k }) }]} />`}</div>`}
       </div></div>`)}
       <${Row} tint disabled=${!m.targets.length || m.ended} onClick=${() => setNom(true)}><${Icon} name="plus" size=${20} />새 지명<//>
-    <//>
+    <//>`}
     ${m.special.length > 0 && html`<${Section} header="특수 승리 확인"><${CoreItems} items=${m.special} call=${c => run('day.call', { call: c })} /><//>`}
     ${!m.ended && html`<${Section}><${Row} tint onClick=${finish}>판 끝내기<//><//>`}
     <${TalkTimerBanner} />
     <${Sheet} open=${nominating} onClose=${() => setNom(false)}>${nominating && html`<${NominateSheet} m=${m} close=${() => setNom(false)} done=${(by, t) => run('day.nominate', by === null ? { target: t } : { by, target: t })} />`}<//>
     <${Cover} open=${!!voting} clear>${voting && html`<${VotePopup} nom=${voting} need=${m.need} close=${() => setVoting(null)} done=${vs => run('day.vote', { k: voting.k, voters: vs })} />`}<//>
   </div>`;
+}
+
+/** 오리지널 마피아 낮(2026-10-03 햇살님 «이렇게 확정», 시안/오리지널마피아_낮_20261003 v5) — 지목은 기록 안 함.
+    가장 많이 지목받은 사람만 누르고 살린다·죽인다. 둘을 누르면 동수 → 무효(룰)·둘 다 찬반·다시 지목 */
+function MafiaDay({ m, run }) {
+  const [picking, setPicking] = useState(false), [queue, setQueue] = useState([]);
+  const nm = p => `${p.number}번 ${p.name}`;
+  const closed = m.ended || m.executed || !!m.tieVoid;
+  const next = () => setQueue(q => q.slice(1));
+  return html`<${Section} header="지목 · 처형" footer=${`생존 ${m.alive}명`}>
+      ${m.noms.map(n => html`<div class="row"><div class="grow"><div class="headline">${nm(n.target)}</div>
+        <div class="sub">${n.done ? (n.blocked ? `처형됐지만 살아남음 · ${n.blocked}` : '처형됨') : n.saved ? '살림' : ''}</div></div>
+        <button class="blink" onClick=${() => run(n.done ? 'day.executeUndo' : 'day.verdictUndo', { k: n.k })}>되돌리기</button></div>`)}
+      ${m.tieVoid && html`<div class="row"><div class="grow"><div class="headline">처형 없음</div><div class="sub">동수</div></div>
+        <button class="blink" onClick=${() => run('day.tieVoidUndo', {})}>되돌리기</button></div>`}
+      <${Row} tint disabled=${!m.targets.length || closed} onClick=${() => setPicking(true)}><${Icon} name="plus" size=${20} />지목받은 사람<//>
+    <//>
+    <${Sheet} open=${picking} onClose=${() => setPicking(false)}>${picking && html`<${MafiaPickSheet} m=${m} close=${() => setPicking(false)}
+      verdict=${ts => { setPicking(false); setQueue(ts); }} tie=${ts => { setPicking(false); run('day.tieVoid', { targets: ts }); }} />`}<//>
+    <${Cover} open=${queue.length > 0} clear>${queue.length > 0 && html`<${VerdictPopup} seat=${store.board.seats.find(s => s.index === queue[0])} close=${() => setQueue([])}
+      done=${kill => { const t = queue[0]; next(); run('day.verdict', { target: t, kill }); }} />`}<//>`;
+}
+
+function MafiaPickSheet({ m, close, verdict, tie }) {
+  const [sel, setSel] = useState([]);
+  const b = store.board, idOf = i => { const s = b.seats.find(s => s.index === i); return s ? s.id : null; };
+  const enabled = new Set(m.targets.map(x => idOf(x.index)).filter(Boolean));
+  const tap = sid => { const s = b.seats.find(x => x.id === sid); if (!s) return; const i = s.index;
+    setSel(p => p.includes(i) ? p.filter(x => x !== i) : p.length < 2 ? p.concat(i) : p); };   // 둘째를 누르면 그게 동수 · 다시 누르면 풀림
+  return html`<${Page} title="지목받은 사람" left=${html`<${NavButton} label="취소" onClick=${close} />`}>
+    <${Section} plain><div class="boardwrap"><${SeatBoard} board=${b} enabled=${enabled} picked=${sel.map(idOf).filter(Boolean)} tints=${Object.fromEntries(sel.map(i => [idOf(i), 'red']))} publicView=${true} onTap=${tap} /></div><//>
+    <div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
+      ${sel.length === 1 && html`<button class="bprim" onClick=${() => verdict(sel)}>살릴까 죽일까</button>`}
+      ${sel.length === 2 && html`<button class="bprim" onClick=${() => tie(sel)}>무효 — 처형 없음</button>
+        <div class="brow"><button class="bsec" onClick=${() => verdict(sel)}>둘 다 찬반</button><button class="bsec" onClick=${() => setSel([])}>다시 지목</button></div>`}
+    </div>
+  <//>`;
+}
+
+function VerdictPopup({ seat, close, done }) {
+  return html`<div class="sheet-wrap on center" style="z-index:61"><div class="scrim"></div>
+    <div class="popup" style="width:calc(100% - 24px);max-width:420px">
+      <div class="headline">${seat ? `${seat.number}번 ${seat.name}` : ''}</div>
+      <div class="brow" style="width:100%"><button class="bsec" onClick=${() => done(false)}>살린다</button><button class="bprim red" style="flex:1" onClick=${() => done(true)}>죽인다</button></div>
+      <button class="blink" onClick=${close}>취소</button>
+    </div></div>`;
 }
 
 /** 지명 — 지명한 사람(회색) → 지명당한 사람(빨강), 둘 사이에 화살표 */

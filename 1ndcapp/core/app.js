@@ -4096,6 +4096,13 @@ function winText(){ const w=state.win||{}; if(w.mode==='custom') return w.text||
   const p=WINPRESETS.find(x=>x.id===(w.mode||'std')); if(!p) return w.text||'';
   return winLabel(p); }   // 오리지널 마피아엔 흉수·마을이 없다 — 판정(winCheckOriginalMafia)과 같은 말로 (2026-09-29)
 let ngCounts={}, ngTarget=8;
+/* 직업 정해 주기(2026-10-03 햇살님 «특정직업을 고르고 나머진 랜덤 배치», 시안/마피아_직업정해주기_20261003) — [{who, id}], who = 사람(pid 아니면 'n:'+이름).
+   배정 때 정해 둔 사람에게 그 직업을 먼저 주고 남은 직업을 남은 자리에 섞는다. ponytail: 구성(ngCounts)처럼 메모리에만 — 앱을 껐다 켜면 다시 정한다 */
+let ngPins=[];
+const pinWho=s=>s?(s.pid||('n:'+(s.name||''))):null;
+function pinsResolved(){ const seats=state.seats||[], used=new Set(), per={};
+  return ngPins.map(p=>({i:seats.findIndex(x=>pinWho(x)===p.who), id:p.id})).filter(p=>{
+    if(p.i<0||used.has(p.i)) return false; per[p.id]=(per[p.id]||0)+1; if(per[p.id]>(ngCounts[p.id]||0)) return false; used.add(p.i); return true; }); }
 function hasTeam(t){ return CHARS().some(c=>c.team===t); }
 function villageType(){ return (hasTeam('demon')&&hasTeam('minion')&&hasTeam('outsider')) || !!ED().botcRules; }
 // 인원 N에 맞춰 역할 자동 구성 (모드 풀에서 무작위 선택)
@@ -9658,6 +9665,10 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
   let demonNote=null;
   { const cm2=CMAP(), exp=(state.seats||[]).map(x=>expPct(x));
     demonNote=demonReseat(pool, exp, id=>!!cm2[id]&&cm2[id].team==='demon', id=>!!cm2[id]&&cm2[id].team==='traveler'); }
+  /* 정해 둔 사람 — 그 자리에 그 직업, 나머지 직업은 남은 자리에 섞인 순서대로(위 보정·무게는 정해 둔 것 밖에서만 뜻이 있다) */
+  const pins=pinsResolved();
+  if(pins.length){ const rest=pool.slice(); pins.forEach(p=>{ const j=rest.indexOf(p.id); if(j>=0) rest.splice(j,1); });
+    const fixed={}; pins.forEach(p=>{ fixed[p.i]=p.id; }); let r=0; pool=pool.map((_,i)=>i in fixed?fixed[i]:rest[r++]); }
   foldReset();   // 상태성 접기는 판마다 초기화 — 지난 판에서 열어둔 보조 입력이 따라오지 않게
   { const fits=state.layout==='rect'&&typeof rectCap==='function'&&(rectCap()-((state.gaps||[]).length))===total;
     if(!fits) state.layout='circle'; }   // 준비에서 잡은 사각 배치·빈자리·기준점을 지우지 않는다 — 딱 맞을 때만 (감사 2026-09-13)
@@ -9668,7 +9679,7 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
   const keepExperience=(state.seats||[]).map(x=>x&&x.manualExperience||null);
   state.seats=pool.map((id,i)=>({name:keepNames[i]||'',char:id,dead:false,rem:[], manualExperience:keepExperience[i], ...(keepPids[i]?{pid:keepPids[i]}:{})}));
   let seatNote=null; delete state.seatUndo; state.newSeats=false;
-  try{ seatNote=seatArrange(!!state.seatShuffle); }catch(e){ seatNote=null; }   // 자리 보정(늘) · 자리 섞기(켰을 때) — 2026-10-01
+  if(!pins.length){ try{ seatNote=seatArrange(!!state.seatShuffle); }catch(e){ seatNote=null; } }   // 정해 둔 사람이 있으면 자리·직업을 다시 섞지 않는다   // 자리 보정(늘) · 자리 섞기(켰을 때) — 2026-10-01
   state.nightBegun=false;
   gameStateClear();
   state.bodiless=blId;
