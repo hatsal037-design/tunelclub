@@ -13,8 +13,10 @@ var NativeCore = (function () {
     if (member && n === undefined) {
       try { var saved = JSON.parse(localStorage.getItem('preparation_experience_locks') || '{}'); n = saved[member]; } catch (e) {}
     }
-    var locked = Number.isInteger(n) && n >= EXPERIENCE_MIN;
-    var grade = null; if (locked) { try { grade = JSON.parse(localStorage.getItem('preparation_experience_grades') || '{}')[member] || null; } catch (e) {} }
+    var grade = null; try { grade = member && JSON.parse(localStorage.getItem('preparation_experience_grades') || '{}')[member] || null; } catch (e) {}
+    /* 잠금 = 20판 + 서버가 자동 판정을 줌(등급 있음). 서버 숙련 판이 100판 전이면 등급이 안 와서 20판 넘어도 손 단계를 고른다(0120, 2026-10-03 «표본이 서버에 일정 이상 모이면 그때부터 자동») */
+    var locked = Number.isInteger(n) && n >= EXPERIENCE_MIN && grade != null;
+    if (!locked) grade = null;
     return { source: locked ? 'records' : member && !Number.isInteger(n) ? 'unknown' : 'manual', grade: grade,
       manual: !locked && Number.isInteger(manual) && manual >= 1 && manual <= 5 ? manual : null, threshold: EXPERIENCE_MIN };
   }
