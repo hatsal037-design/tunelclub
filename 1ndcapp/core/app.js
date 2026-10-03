@@ -2818,10 +2818,22 @@ function rectPositions(){
 function benchList(){ if(!Array.isArray(state.bench)) state.bench=[]; return state.bench; }
 /* 숙련 — 손 입력(20판 미만) 아니면 서버 등급(20판 이상, 0110 member_grades). 둘은 따로 저장한다 — 서버 등급이 손 입력으로 올라가 자기를 키우지 않게(docs/숙련등급_설계_v1.md).
    배분(악마 무게·자리 섞기)은 전부 이 하나를 읽는다 — 예전엔 잠금 회원을 악마는 일반, 자리는 초보로 제각각 읽었다(2026-10-03 Fable 검토 D) */
+/* 숙련 위치 0~100(백분위) — 2026-10-03 햇살님 «안에는 많은 단계, 20판 전엔 5개 중 고르고 그 범위 안 어딘가 랜덤», «중위를 가운데에».
+   손 입력 1~5 는 띠(EXP_BAND) 안의 한 점 — 사람·단계로 정해지는 고정 난수라 같은 사람·같은 단계면 늘 같은 자리, 단계를 바꾸면 다시 뽑힌다.
+   20판 이상은 서버가 준 백분위(0120 member_grades.pct, 서버 회원 전체에서의 위치). 슬라이더 단계와 자동 위치는 일치할 필요가 없다 */
+const EXP_BAND={1:[0,10],2:[10,35],3:[35,65],4:[65,90],5:[90,100]};
+function expHash(t){ let h=2166136261; for(const ch of String(t)){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; } return h/4294967296; }
+function bandPct(lv, who){ const b=EXP_BAND[lv]; return b?Math.round((b[0]+(b[1]-b[0])*(0.05+0.9*expHash(who+'|'+lv)))*10)/10:null; }
 function seatGrade(s){ try{ const w=s&&s.pid?personById(s.pid):null; if(!w||!w.tunelId) return null;
-  const g=JSON.parse(localStorage.getItem('preparation_experience_grades')||'{}')[w.tunelId]; if(Number.isInteger(g)&&g>=1&&g<=5) return g;
-  const lock=JSON.parse(localStorage.getItem('preparation_experience_locks')||'{}')[w.tunelId]; return Number.isInteger(lock)&&lock>=TILT.SKILL_MIN?3:null; }catch(e){ return null; } }   // 잠겼는데 등급이 아직 없으면 중간
-function expOf(s){ if(hubRep()==='mafia') return null; return (s&&s.manualExperience)||seatGrade(s)||null; }   // 오리지널 마피아는 숙련도 적용 안 함 — 무게 전부 1, 자리 벌점 p3 는 상수가 돼 배치를 안 기울인다
+  const g=JSON.parse(localStorage.getItem('preparation_experience_grades')||'{}')[w.tunelId];
+  if(typeof g==='number'&&g>=0&&g<=100&&!Number.isInteger(g)) return g;
+  if(g&&typeof g==='object'&&typeof g.pct==='number') return Math.max(0,Math.min(100,g.pct));
+  if(Number.isInteger(g)&&g>=1&&g<=5) return (EXP_BAND[g][0]+EXP_BAND[g][1])/2;   // 옛 저장(1~5) — 띠 가운데
+  const lock=JSON.parse(localStorage.getItem('preparation_experience_locks')||'{}')[w.tunelId]; return Number.isInteger(lock)&&lock>=TILT.SKILL_MIN?50:null; }catch(e){ return null; } }   // 잠겼는데 위치가 아직 없으면 중위
+function expPct(s){ if(hubRep()==='mafia'||!s) return null; if(s.manualExperience) return bandPct(s.manualExperience, s.pid||s.name||''); return seatGrade(s); }   // 오리지널 마피아는 숙련도 적용 안 함
+const EXP_NONE=22.5;   // 아무것도 모르면 2단계 가운데로 본다(옛 «미입력은 2»)
+/* 초보 정도 0~1 — 20 이하 1, 35(3단계 띠 시작) 이상 0, 사이는 곧게(옛 «2단계 이하 = 초보»를 매끈하게) */
+function expNovice(p){ return Math.max(0, Math.min(1, (35-(p==null?EXP_NONE:p))/15)); }
 function personOf(s){ return Object.assign({name:(s&&s.name)||''}, s&&s.pid?{pid:s.pid}:{}, s&&s.manualExperience?{manualExperience:s.manualExperience}:{}); }
 function samePerson(a,b){ return !!a&&!!b&&((a.pid&&b.pid)?a.pid===b.pid:(a.name||'')===(b.name||'')); }
 function partyEditOk(){ if(firstNightBegun()) return false;
@@ -9499,11 +9511,12 @@ function ngWinChange(){
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 /* 첫 플레이·입문 참가자의 악마 무게 (2026-09-30 햇살님 «배제는 아쉬우니 가능성을 크게 낮추자» → 1점 1/5, 2점은 그 중간 3/5).
    카드를 다 나눈 뒤 악마 카드만 사람마다 무게를 두고 한 번 더 뽑아 자리를 맞바꾼다 — 확률이 0이 되지 않는다.
-   기록 20판 이상은 서버 등급(expOf), 미입력은 1. 여행자 자리는 건드리지 않는다.
+   기록 20판 이상은 서버 위치(expPct), 미입력은 1. 여행자 자리는 건드리지 않는다.
    pool 을 제자리에서 고치고, 옮겼으면 {처음, 나중}(1부터 센 자리)을, 무게가 전부 1이면 null 을 돌려준다 */
-const DEMON_EXP_W={1:0.2, 2:0.6};
+/* 악마 무게 — 위치 p(0~100)의 매끈한 함수. 옛 1단계(가운데 5)=0.2, 2단계(22.5)=0.6, 35 이상 1 을 지나는 꺾은선. 위치 없음(null)은 1 */
+function demonWeight(p){ if(p==null||p>=35) return 1; if(p<=5) return 0.2; return p<=22.5?0.2+0.4*(p-5)/17.5:0.6+0.4*(p-22.5)/12.5; }
 function demonReseat(pool, exp, isDemon, isFixed, rnd=Math.random){
-  const w=pool.map((_,i)=>DEMON_EXP_W[exp[i]]||1);
+  const w=pool.map((_,i)=>demonWeight(exp[i]));
   if(w.every(x=>x===1)) return null;
   const from=[], to=[];
   pool.map((id,i)=>i).filter(i=>isDemon(pool[i])).forEach(i=>{
@@ -9530,13 +9543,13 @@ function seatPrevGame(){ try{
   return {nb, evil:new Set(ps.filter(p=>['minion','demon'].includes(p.team)).map(k))};
   }catch(e){ return null; } }
 function seatTiers(S, prev){
-  const cm=CMAP(), n=S.length, c=i=>cm[S[i].char]||{}, nov=i=>(expOf(S[i])||2)<=2;
+  const cm=CMAP(), n=S.length, c=i=>cm[S[i].char]||{}, nov=i=>expNovice(expPct(S[i]));
   const dm=i=>c(i).team==='demon', nb=i=>isRole(c(i),'empath');
   let p1=0, p2=0, p3=0;
   for(let i=0;i<n;i++){ const j=(i+1)%n; if(j===i) break;
-    if((nov(i)&&dm(i)&&nb(j))||(nov(j)&&dm(j)&&nb(i))||(nov(i)&&nb(i)&&dm(j))||(nov(j)&&nb(j)&&dm(i))) p1+=1;
+    p1+=Math.max(dm(i)&&nb(j)?nov(i):0, dm(j)&&nb(i)?nov(j):0, nb(i)&&dm(j)?nov(i):0, nb(j)&&dm(i)?nov(j):0);   // 초보 정도만큼(옛 0/1 을 매끈하게)
     if(prev&&prev.nb.has([seatKey(S[i]),seatKey(S[j])].sort().join('|'))) p2++;
-    if(nov(i)&&nov(j)) p3++; }
+    p3+=nov(i)*nov(j); }
   return [p1, p2, p3]; }
 /* 고르기 — 기준은 «아무렇게나 앉았을 때»(자연 분포)다(2026-10-01 실측: 층 먼저 뽑기는 드문 나쁜 배치에도 층 몫을 줘서 자리 섞기의 악 2쌍이 5% → 13% 로 늘었다).
    후보가 자연 분포의 표본이면 후보마다 exp(−Σλ·벌점) 무게 — 나쁜 배치만 덜 뽑힌다, 무작위보다 나빠지지 않는다 */
@@ -9547,7 +9560,7 @@ function seatArrange(shuffle){
   const cm=CMAP(), S0=state.seats, n=S0.length, prev=seatPrevGame();
   /* 직업 맞바꾸기 — 같은 편끼리, 편이 다르면 숙련이 같은 두 사람끼리만(역할 나누기의 편 숙련 고르기를 안 흔든다) */
   const canSwap=(S,i,j)=>{ const a=cm[S[i].char], b=cm[S[j].char]; if(!a||!b||a.team==='demon'||b.team==='demon'||a.team==='traveler'||b.team==='traveler'||S[i].char===S[j].char) return false;
-    return isEvilTeam(a)===isEvilTeam(b)||(expOf(S[i])||2)===(expOf(S[j])||2); };
+    const pi=expPct(S[i]), pj=expPct(S[j]); return isEvilTeam(a)===isEvilTeam(b)||Math.abs((pi==null?EXP_NONE:pi)-(pj==null?EXP_NONE:pj))<=15; };   // 편이 다르면 위치 차 15 안쪽끼리만
   const swapChars=(S,i,j)=>{ const t=S[i].char; S[i]=Object.assign({},S[i],{char:S[j].char}); S[j]=Object.assign({},S[j],{char:t}); };
   const before=seatTiers(S0, prev);
   if(!shuffle){   // 사람은 그대로 — 벌점이 없으면 그대로, 있으면 exp(−λ·줄일 수 있는 만큼) 확률로만 남기고 아니면 덜한 배치로(1순위만)
@@ -9562,7 +9575,7 @@ function seatArrange(shuffle){
   /* 자리 섞기 — 직전 판 악이었던 사람의 악 카드를 0.4 확률로 안 악이었던 사람에게(악마는 초보에게 안 넘김) */
   const S1=S0.map(s=>Object.assign({},s)), evil=i=>isEvilTeam(cm[S1[i].char]);
   if(prev) S1.forEach((s,i)=>{ if(!evil(i)||!prev.evil.has(seatKey(s))||Math.random()>=0.4) return;
-    const dm=cm[s.char].team==='demon', to=S1.map((x,j)=>j).filter(j=>!evil(j)&&!prev.evil.has(seatKey(S1[j]))&&cm[S1[j].char]&&cm[S1[j].char].team!=='traveler'&&(!dm||(expOf(S1[j])||2)>2));
+    const dm=cm[s.char].team==='demon', to=S1.map((x,j)=>j).filter(j=>!evil(j)&&!prev.evil.has(seatKey(S1[j]))&&cm[S1[j].char]&&cm[S1[j].char].team!=='traveler'&&(!dm||expNovice(expPct(S1[j]))<0.5));
     if(to.length) swapChars(S1, i, to[Math.floor(Math.random()*to.length)]); });
   const shuffled=()=>{ const S=S1.slice(); for(let i=S.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [S[i],S[j]]=[S[j],S[i]]; } return S; };
   /* 후보 = 아무렇게나 앉힌 배치(자연 분포 표본) — 반은 직업도 한 번 맞바꿔(햇살님 «사람 앉히고 직업 맞바꾸고») */
@@ -9643,7 +9656,7 @@ function startNewGame(){ /* 끝나면 도우미가 판 화면이 된다 (아래 
       for(let i=0;i<pool.length;i++) out.push(seatsTv.indexOf(i)>=0?tvIds[t++]:rest[r++]);
       pool=out; } }
   let demonNote=null;
-  { const cm2=CMAP(), exp=(state.seats||[]).map(x=>expOf(x));
+  { const cm2=CMAP(), exp=(state.seats||[]).map(x=>expPct(x));
     demonNote=demonReseat(pool, exp, id=>!!cm2[id]&&cm2[id].team==='demon', id=>!!cm2[id]&&cm2[id].team==='traveler'); }
   foldReset();   // 상태성 접기는 판마다 초기화 — 지난 판에서 열어둔 보조 입력이 따라오지 않게
   { const fits=state.layout==='rect'&&typeof rectCap==='function'&&(rectCap()-((state.gaps||[]).length))===total;

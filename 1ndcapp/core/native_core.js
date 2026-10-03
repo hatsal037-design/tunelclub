@@ -697,11 +697,12 @@ var NativeCore = (function () {
       if (!p.member || typeof p.experienced !== 'boolean') return rejected('invalidSelection');
       return COMMANDS['preparation.recordExperience']({ member: p.member, games: p.experienced ? EXPERIENCE_MIN : 0 });
     },
-    /* 서버 등급(0110 member_grades) — 20판 이상 회원의 1~5. 손 입력과 따로 둔다(index.html seatGrade). null 이면 지운다 */
+    /* 서버 등급(0110·0120 member_grades) — 20판 이상 회원의 1~5 와 위치 pct(0~100). 손 입력과 따로 둔다(index.html seatGrade). grade 가 null 이면 지운다 */
     'preparation.recordGrade': function (p) {
       if (!p.member || !(p.grade === null || (Number.isInteger(p.grade) && p.grade >= 1 && p.grade <= 5))) return rejected('invalidSelection');
+      if (p.pct != null && !(typeof p.pct === 'number' && p.pct >= 0 && p.pct <= 100)) return rejected('invalidSelection');
       var g = {}; try { g = JSON.parse(localStorage.getItem('preparation_experience_grades') || '{}'); } catch (e) {}
-      if (p.grade === null) delete g[p.member]; else g[p.member] = p.grade;
+      if (p.grade === null) delete g[p.member]; else g[p.member] = p.pct != null ? { grade: p.grade, pct: p.pct } : p.grade;
       localStorage.setItem('preparation_experience_grades', JSON.stringify(g)); return null; },
     'preparation.recordExperience': function (p) {
       if (!p.member || !Number.isInteger(p.games) || p.games < 0) return rejected('invalidSelection');

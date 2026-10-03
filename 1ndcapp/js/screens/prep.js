@@ -81,7 +81,7 @@ function PeopleView({ c, next }) {
       else await store.dispatch('preparation.experienceUnavailable', { member: m });
     }
     const gr = await account.grades([m]); const row = gr && gr.find(r => r.member_id === m);   // 20판 이상이면 서버 등급(손 입력 대신 배분이 읽는다)
-    if (row) await store.dispatch('preparation.recordGrade', { member: m, grade: row.enough && Number.isInteger(row.grade) ? row.grade : null });
+    if (row) await store.dispatch('preparation.recordGrade', { member: m, grade: row.enough && Number.isInteger(row.grade) ? row.grade : null, pct: row.enough && typeof row.pct === 'number' ? row.pct : null });
     setSources(a => ({ ...a, [m]: store.get('preparation.experience', m)?.source || 'unknown' }));
   };
   useEffect(() => { if (!skillOff) members.filter(Boolean).forEach(refreshExperience); }, [members.join('|')]);
