@@ -3873,7 +3873,7 @@ function executeSeat(){ const s=state.seats[editing]; if(!s||s.dead)return false
   /* 처형은 모두가 보는 자리 — 소리와 낭독이 나가도 된다 (2026-09-04) */
   bgmStingPlay('exec');
   { const x=narrPick('exec.call'), r=narrPick(s.dead?'exec.died':'exec.survived'), who=(s.name||('좌석 '+(editing+1)));
-    speak([x?x.show.replace('{who}',who):'', r?r.say:''].join(' '), 'exec', 'execCall', [x&&{clip:x.clip,say:x.say}, seatClip(editing), r&&{clip:r.clip,say:r.say}].filter(Boolean)); }
+    speak([x?x.show.replace('{who}',who):'', r?r.say:''].join(' '), 'exec', 'execCall', [x&&{clip:x.clip,say:x.say}, r&&{clip:r.clip,say:r.say}].filter(Boolean)); }
   save(); render(); closeSheet(); return true; }
 /* 오늘(직전 낮)의 처형자 — 처형 토큰 + 붙인 시점으로 판단. 기록이 없는 옛 토큰은 마지막 수단으로만 */
 function execSeatsToday(){ const list=state.seats.map((s,i)=>({s,i})).filter(o=>o.s.char&&(o.s.rem||[]).some(r=>r==='오늘 처형됨'||r==='처형'));
@@ -6276,7 +6276,6 @@ function narrHub(){ const h=hubRep(); return NARRATION[h]?h:'dangsan'; }   // �
 function narrSeed(sit){ const g=(state.log&&(state.log.uuid||state.log.id))||'x'; let h=0; for(const ch of g+'|'+sit) h=(h*31+ch.charCodeAt(0))|0; return Math.abs(h)+(state.nights||1); }   // 판·밤마다 다른 문장, 같은 판·같은 밤엔 늘 같은 문장
 function narrPick(sit){ const hub=narrHub(), arr=(NARRATION[hub]||{})[sit]||[]; if(!arr.length) return null; const k=narrSeed(sit)%arr.length;
   return { clip: hub+'_'+sit.replace('.','_')+'_'+k, say: arr[k].say, show: arr[k].show||arr[k].say }; }
-const seatClip=i=>(i>=0&&i<26)?{seat:i+1}:null;   // «N번 자리 참가자» 소리 — 26번까지
 /* 아침 발표 — 화면용 줄(이름)과 소리 순서(이름 대신 자리 번호) */
 function dayNarr(){
   const n=(state.nights||1);   // 밤 N 의 사망은 causeN=N 으로 찍히고 낮 N 에 발표한다 (감사 2026-09-13)
@@ -6284,8 +6283,7 @@ function dayNarr(){
   const nm=o=>(o.s2.name||('좌석 '+(o.i+1)));
   const open=narrPick('dawn.open'), mid=narrPick(!dead.length?'dawn.none':dead.length===1?'dawn.one':dead.length===2?'dawn.two':'dawn.many'), close=narrPick('dawn.close');
   const lines=[], plan=[];
-  [open,mid,close].forEach((x,k)=>{ if(!x) return; lines.push(k===1&&dead.length?x.show.replace('{who}',dead.map(nm).join('님, ')):x.show); plan.push({clip:x.clip, say:x.say});
-    if(k===1) dead.forEach(o=>{ const c=seatClip(o.i); if(c) plan.push(c); }); });
+  [open,mid,close].forEach((x,k)=>{ if(!x) return; lines.push(k===1&&dead.length?x.show.replace('{who}',dead.map(nm).join('님, ')):x.show); plan.push({clip:x.clip, say:x.say}); });   // «N번 자리 참가자» 소리는 뺐다(2026-10-04 햇살님 «몇 번 참가자 이런 음성은 빼 버리자») — 이름은 화면 줄에만
   return {lines, plan};
 }
 function dayScript(){ return dayNarr().lines; }
@@ -8192,10 +8190,8 @@ function winCheckBase(){
   const legion=!!(ED().composeFix&&ED().composeFix.legion);
   if(legion){
     out.push({lv:'info', t:'두억시니 판 — 승리는 "두억시니 전멸(마을)" 또는 "사람 전멸(두억시니)"로만 판정합니다.'});
-  } else if(ED().botcRules||String(ED().id||'').indexOf('umulga')===0){   // 클래식(원작)·우물가(모드 글대로, 2026-09-28 햇살님): 생존 2명 + 악마 생존이면 악 승리. 머릿수 규칙은 쓰지 않는다
-    if(alive.length<=2&&demonsAlive.length)
-      out.push({lv:'end', win:'evil', t:'생존 '+alive.length+'명 · 흉수 생존 → 악 승리 조건 충족'});
-  } else {
+  } else {   /* 머릿수 종료(선 ≤ 악)는 모든 모드의 기본 — 모드가 자기 승리 규칙을 따로 정한 경우(두억시니 위·오리지널 마피아 winCheckOriginalMafia)만 예외.
+    2026-10-04 햇살님 «모드 자체에 특별한 지정이 아닌 이상 선 ≤ 악이면 끝, 모든 마피아 룰은 이게 기본» — 클래식·우물가에서 빼 두던 것을 없앰(게임룰-039) */
     /* 흉수가 이미 전멸했으면 그 순간 마을이 이긴 것이라 머릿수 규칙을 겹쳐 쓰지 않는다 —
       하수인만 남은 판에서 «마을 승리»와 «악 승리»가 같이 뜨던 것 (검토 [3]) */
    if(evilAlive.length&&goodAlive.length<=evilAlive.length&&(!hasDemonRole||demonsAlive.length))

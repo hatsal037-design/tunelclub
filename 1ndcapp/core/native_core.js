@@ -451,6 +451,10 @@ var NativeCore = (function () {
   /* 처형 문 — 웹 낮 «처형 확인»과 같은 잣대: 최다표 1명 + 문턱 이상일 때만 그 사람 처형. 동수·문턱 미달이면 처형 없이 밤으로 (2026-09-29 격차 3차 — 아이폰은 아무 후보나 처형 단추가 있었다) */
   function execGate() {
     var D = dayRec(), need = Math.ceil(voterCount() / 2), open = (D.noms || []).filter(function (x) { return !x.done; });
+    /* 처형은 하루 1회(웹 uiDayExec 의 execedToday 와 같은 잣대) — 처형한 지명을 빼고 남은 최다를 다시 뽑으면 둘째 득표자에게 처형 단추가 켜진다(2026-10-04 햇살님 스크린샷). 금부도사 같은 예외는 «예외로 처형» 길로 */
+    var nT = state.nights || 1;
+    if ((D.noms || []).some(function (x) { return x.done; }) || state.seats.some(function (x) { return x && x.dead && x.cause === 'exec' && x.causeN === nT; }))
+      return { ok: false, k: -1, leaders: [], lead: 0, need: need, reason: '오늘 처형 끝', done: true };
     var lead = open.length ? Math.max.apply(null, open.map(function (x) { return x.v || 0; })) : 0;
     var leaders = open.filter(function (x) { return (x.v || 0) === lead && lead > 0; }), ok = leaders.length === 1 && lead >= need;
     var reason = ok ? null : leaders.length > 1 ? '동수 ' + lead + '표 — 처형 없음' : lead ? '최다 ' + lead + '표 < 문턱 ' + need + '표 — 처형 없음' : null;
