@@ -51,7 +51,7 @@ export function SettingsView() {
       <${Toggle} checked=${settings.get('sound')} onChange=${v => set('sound', v)}>진행 소리<//>
       <${Toggle} checked=${!!store.get('director.enabled')} onChange=${async v => { await store.dispatch('director.setEnabled', { on: v }); rerender(); }}>판세 보정<//>
       ${settings.get('sound') && html`<div class="row"><span class="grow">진행 목소리</span><select class="textin" style="width:auto" value=${settings.get('voice') || 'mujin'} onChange=${e => set('voice', e.currentTarget.value)}>${VOICES.map(([id, nm]) => html`<option value=${id}>${nm}</option>`)}</select></div>
-        <${Row} tint onClick=${() => speak('간밤에 한 사람이 돌아오지 못했습니다. 이제 이야기를 나눠 주세요.', [{ clip: 'dangsan_dawn_one_0' }, { seat: 3 }, { clip: 'dangsan_dawn_close_0' }])}>들어 보기<//>`}
+        <${Row} tint onClick=${() => speak('간밤에 한 사람이 돌아오지 못했습니다. 이제 이야기를 나눠 주세요.', [{ clip: 'dangsan_dawn_one_0' }, { clip: 'dangsan_dawn_close_0' }])}>들어 보기<//>`}
     <//>
     ${settings.get('bgm') && html`<div class="foot" style="margin:-8px 16px 12px">배경 음악: MiniMax-Music3 로 만들었어요.</div>`}
     <${Section} header="화면">
