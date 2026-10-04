@@ -556,18 +556,47 @@ var NativeCore = (function () {
     var body = { schema: 1, gameEpoch: P.epoch, handoff: turn, dayNumber: isDay ? dayNo(n) : null, nightNumber: began && !ended && !isDay ? n : null,
       scene: scene, shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, initialComposition: P.comp || null, timer: timer, nomination: nom,
       neededVotes: nom ? G.need : null, results: results, execution: exec,
-      morningAnnouncement: morning, pastExecutions: past, nominationUsage: usage, ending: ending };
+      morningAnnouncement: morning, pastExecutions: past, nominationUsage: usage, ending: ending,
+      endReveal: ended && wz.tvReveal ? endReveal() : null, endReplay: ended && typeof wz.tvReplay === 'number' ? endReplay(wz.tvReplay) : null };   // 7 — 끝난 뒤 진행자가 연 것만
     var key = J(body); if (key !== P.last) { P.last = key; P.rev = (P.rev || 0) + 1; }   // 공개 내용이 같으면 revision 그대로
     pubSave(P); body.revision = P.rev; return body;
   }
   function verdict() { var w = []; try { w = winCheck() || []; } catch (e) {} return w.filter(function (x) { return x.lv === 'end' || x.lv === 'warn'; }).map(function (x) { return { level: x.lv, text: textOf(x.t), win: x.win || null }; }); }
   var WINKO = { good: '선 승리', evil: '악 승리', other: '중립 승리', void: '무효 · 중단' };
+  /* 7 종료 공개·복기(2026-10-04 햇살님 «직업 + 진영 + 바뀐 것» · «낮 + 밤 행동») — 판이 끝난 뒤, 진행자가 누를 때만 TV 로 나간다.
+     앱 재량(판세 보정·앱 선택)은 넣지 않는다 — 그건 진행 도구의 속이라 끝나도 안 보인다 */
+  function endLog() { return (state.log && state.log.winner) ? state.log : (state.lastLogId ? (logsAll().find(function (x) { return x.id === state.lastLogId; }) || null) : null); }
+  function endReveal() {
+    var cm = CMAP(), L = endLog(), ev = (L && L.events) || [];
+    return (state.seats || []).map(function (x, i) { if (!x || !x.char || !cm[x.char] || cm[x.char].team === 'host') return null; var c = cm[x.char], ch = [];
+      ev.forEach(function (e) { if ((e.type === '역할 변경' || e.type === '계승') && e.seat === i + 1) ch.push(e.type === '계승' ? '계승' + (e.role ? ' → ' + e.role : '') : '직업 바뀜' + (e.role ? ' → ' + e.role : '')); });
+      (x.rem || []).forEach(function (r) { var cv = tokConv(r); if (cv) ch.push(r + '(편이 바뀜)'); else if (/^(중독|취함)/.test(r)) ch.push(r); });
+      if (c.drunkAs || (x.rem || []).indexOf('주정뱅이') >= 0) ch.push('자기 직업을 잘못 알았음');
+      return { seatId: 's' + (i + 1), name: x.name || ('좌석 ' + (i + 1)), role: c.ko, team: TKO(c.team), side: realEvil(x) ? 'evil' : (seatSide(x) === 'neutral' ? 'neutral' : 'good'), dead: !!x.dead, icon: roleArt(c, state.edition || 'basic').icon || null, changes: ch }; }).filter(Boolean);
+  }
+  function endReplayDays() { var L = endLog(); return L && L.events ? L.events.reduce(function (m, e) { return Math.max(m, e.n || 0); }, 0) : 0; }
+  function endReplay(n) {   // 하루(밤 n + 낮 n)씩 — 밤 지목·받은 정보·사망 / 지명·투표·처형
+    var L = endLog(), ev = ((L && L.events) || []).filter(function (e) { return e.n === n && !e.cancel; }), night = [], day = [];
+    var nm = function (k) { var x = state.seats[k - 1]; return (x && x.name) || ('좌석 ' + k); };
+    var who = function (e) { return (e.name || nm(e.seat)) + (e.role ? '(' + e.role + ')' : ''); };
+    ev.forEach(function (e) { var dayP = e.phase === 'day', out = dayP ? day : night, t = null;
+      if (e.type === '밤 지목') t = who(e) + ' → ' + (e.대상 || []).join(', ').replace(/좌석 \d+ /g, '');
+      else if (e.type === '정보 전달') t = (e.name || nm(e.누구)) + (e.직업 ? '(' + e.직업 + ')' : '') + ' 받은 정보: ' + (e.답 || '') + (e.거짓 ? ' — 거짓이었음' : '');
+      else if (e.type === '사망') t = who(e) + ' 사망';
+      else if (e.type === '지명') t = (e.by || '') + ' → ' + (e.name || '') + ' 지명';
+      else if (e.type === '투표') t = (e.대상 || '') + ' ' + ((e.투표자 || []).length) + '표';
+      else if (e.type === '처형') t = who(e) + ' 처형';
+      else if (e.type === '계승' || e.type === '역할 변경') t = who(e) + ' ' + e.type;
+      if (t) out.push({ kind: e.code || e.type, text: t }); });
+    return { dayNumber: n, total: endReplayDays(), night: night, day: day };
+  }
   function result() {
     var L = (state.log && state.log.winner) ? state.log : (state.lastLogId ? (logsAll().find(function (x) { return x.id === state.lastLogId; }) || null) : null);
     var win = state.practice ? null : ((L && L.winner) || wz.doneWin || null), ends = verdict().filter(function (x) { return x.level === 'end'; }).map(function (x) { return x.text; });
     return { winner: win, title: win ? WINKO[win] || win : (state.practice ? '연습판 마감' : '판 마감'), why: ends.length ? ends.join(' → ') : (L && L.note ? L.note : (win ? '진행자가 승자를 정해 끝냄' : '승자 없이 마감')),
       recorded: !!(L && L.winner), practice: !!state.practice, politician: htmlItems(state.practice ? '' : polHtml()),
-      players: ((L && L.players) || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: p.side || '', won: p.won === true, dead: !!p.dead }; }) };
+      players: ((L && L.players) || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: p.side || '', won: p.won === true, dead: !!p.dead }; }),
+      tvReveal: !!wz.tvReveal, tvReplay: typeof wz.tvReplay === 'number' ? wz.tvReplay : null, replayDays: endReplayDays() };   // 7 큰 화면 공개·복기 조작용
   }
 
   /* R01 기록 · L01 자료실 · S01 백업 — 기록·통계 수식은 기존 함수(logsAll·statsOf·buildExport) 그대로 */
@@ -653,10 +682,23 @@ var NativeCore = (function () {
   var effects = [];
   /* 전역 속성이 아니라 이름에 직접 넣는다 — 웹은 코어를 함수 안에서 올려(web/js/core.js new Function) 전역 speak 을 바꿔도 코어 안 호출은 옛 speak 으로 갔다(2026-10-02 Fable 검토 A) */
   /* 짧은 소리(처형·판 끝) — 웹 bgmStingPlay 를 가로채 효과로 넘긴다. 판 끝은 이긴 편으로 win/lose */
-  bgmStingPlay = function (kind) { var name = kind === 'end' ? ((function () { try { return endWinner(); } catch (e) { return null; } })() === 'evil' ? 'lose' : 'win') : kind;
+  /* 판 끝 자동 발표(2026-10-04 햇살님 «판 끝 자동 발표») — 명령 뒤 승패가 정해졌으면(종료 판정) «판 끝내기»를 기다리지 않고 그 자리에서 승패 낭독·효과음을 낸다.
+     판을 닫거나 기록하지는 않는다(진행자가 계승·예외를 확인하고 닫는다). 같은 판·같은 승자로는 한 번만 — 나중에 판을 닫을 때 같은 말을 또 하지 않게 endSaid 로 거른다 */
+  var endSaid = null, endSaying = false;   // 자동 발표한 승자 — 판정이 풀리거나(되돌림) 새 판이면 비운다. 판을 닫는 중엔 기록이 바뀌어 판 번호로 못 묶는다
+  function endAlready() { if (endSaying || !endSaid) return false; try { return endWinner() === endSaid; } catch (e) { return false; } }
+  function announceEnd() {
+    if (!firstNightBegun() || state.practice || !state.log) { endSaid = null; return; }
+    if (state.log.winner) return;
+    var w = endWinner(); if (!w) { endSaid = null; return; } if (endSaid === w) return;
+    endSaid = w; endSaying = true;
+    try { bgmStingPlay('end'); var x = narrPick(w === 'good' ? 'end.good' : w === 'evil' ? 'end.evil' : w === 'void' ? 'end.void' : 'end.other');
+      speak(x ? x.say : '판이 끝났습니다.', 'end', 'gameEnd', x ? [{ clip: x.clip, say: x.say }] : null); } finally { endSaying = false; }
+  }
+  bgmStingPlay = function (kind) { if (kind === 'end' && endAlready()) return true; var name = kind === 'end' ? ((function () { try { return endWinner(); } catch (e) { return null; } })() === 'evil' ? 'lose' : 'win') : kind;
     effects.push({ kind: 'sting', hub: narrHub(), name: name }); return true; };
   speak = function (text, mood, src, plan) {
     if (typeof NR_SRC === 'undefined' || !NR_SRC[src] || !text) return false;
+    if (src === 'gameEnd' && endAlready()) return true;   // 이미 자동 발표한 판 — 닫을 때 또 읽지 않는다
     var t = String(text).replace(/<[^>]*>/g, ' ').replace(/[『』]/g, '').replace(/\s+/g, ' ').trim();
     if (!t) return false;
     var e = { kind: 'speak', text: t, mood: mood || 'day' }; if (plan && plan.length) e.plan = plan;   // plan — 미리 뽑은 목소리 순서(clip id · 자리 번호). 목소리를 골랐으면 이걸, 아니면 text 를 기기 음성으로
@@ -922,7 +964,9 @@ var NativeCore = (function () {
       var t = +p.target, D = dayRec(), m = day(), by = (p.by === null || p.by === undefined) ? null : +p.by;
       if (!m.targets.some(function (x) { return x.index === t; })) return rejected('invalidSelection', '지명할 수 없는 사람이에요.');   // 웹 지명 대상·지명자 목록과 같은 잣대(죽은 사람·이미 지명된 사람 거름)
       if (by !== null && !m.nominators.some(function (x) { return x.index === by; })) return rejected('invalidSelection', '지명할 수 없는 사람이 골랐어요.');
-      nomBy = by; wz.nomTgt = t; return shieldRun(p, function () { uiDayNomSubmit(); try { uiDayVoteCancel(); } catch (e) {} }); },
+      nomBy = by; wz.nomTgt = t; var rr = shieldRun(p, function () { uiDayNomSubmit(); try { uiDayVoteCancel(); } catch (e) {} });
+      if (!rr && hubRep() !== 'mafia') { var x = narrPick('nom.call'); if (x) speak(x.show.replace(/\{who\}/g, seatLabel(t).name).replace(/\{by\}/g, by === null ? '진행자' : seatLabel(by).name), 'day', 'nomCall', [{ clip: x.clip, say: x.say }]); }   // 지명 알림 낭독(2026-10-04) — 마피아는 «살린다·죽인다» 흐름이라 없음
+      return rr; },
     /* 오리지널 마피아 낮(2026-10-03 햇살님 «이렇게 확정», 시안/오리지널마피아_낮_20261003 v5) — 지목은 기록하지 않고 가장 많이 지목받은 사람만 → 살린다·죽인다.
        지명 줄 하나를 만들고(지명자 없음) 죽이면 처형(표 문턱 없이), 살리면 그 줄에 «살림». 동수는 그 자리에서 무효·둘 다 찬반·다시 지목.
        ponytail: 살림은 판 기록 사건을 따로 안 남긴다(지명 사건만) — 복기에서 «살림»을 보이고 싶어지면 그때 */
@@ -986,11 +1030,14 @@ var NativeCore = (function () {
       if (wz.mode !== 'done') return rejected('coreFailure', '마감하지 못했어요.');
       effects.push({ kind: 'notice', text: '손대지 않은 판을 ' + (pr.how === '판정' ? '판정 기준' : pr.seat + '번 처형 가정') + '으로 닫았어요.' }); return null;
     },
+    'display.endReveal': function (p) { if (!(firstNightBegun() && gameEnded())) return rejected('notAllowedInPhase', '판이 끝난 뒤에 열 수 있어요.'); wz.tvReveal = !!p.on; return null; },
+    'display.endReplay': function (p) { if (!(firstNightBegun() && gameEnded())) return rejected('notAllowedInPhase', '판이 끝난 뒤에 열 수 있어요.');
+      if (p.day === null || p.day === undefined) { delete wz.tvReplay; return null; } var d = +p.day, t = endReplayDays(); if (!(d >= 1 && d <= t)) return rejected('invalidSelection', '그날 기록이 없어요.'); wz.tvReplay = d; return null; },
     'game.finish': function (p) { if (gameEnded()) return rejected('notAllowedInPhase', '이미 끝난 판이에요.');
       wzFinish(); if (wz.mode === 'done') return null;
       if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0) return rejected('invalidSelection', '승자를 골라 주세요.');
       wzFinishDo(p.winner, true); return wz.mode === 'done' ? null : rejected('coreFailure', '마감하지 못했어요.'); },
-    'game.again': function (p) { if (!gameEnded()) return rejected('notAllowedInPhase', '끝난 판이 아니에요.'); if (state.practice) localStorage.setItem(PRACTICE_KEY, '1');   /* 연습판에서 «한 판 더»는 계속 연습(웹 연습 마당과 같게) */ wz.again = {}; wzAgainGo(); try { prepClose(); } catch (e) {}
+    'game.again': function (p) { if (!gameEnded()) return rejected('notAllowedInPhase', '끝난 판이 아니에요.'); delete wz.tvReveal; delete wz.tvReplay;   /* 한 판 더 — 지난 판 직업 공개·복기를 TV 에서 걷는다 */ if (state.practice) localStorage.setItem(PRACTICE_KEY, '1');   /* 연습판에서 «한 판 더»는 계속 연습(웹 연습 마당과 같게) */ wz.again = {}; wzAgainGo(); try { prepClose(); } catch (e) {}
       if (p && p.shuffle) state.seatShuffle = true;   // «자리 섞어서 다시»
       if (p && p.fresh) { switchEdition(state.edition, { quiet: true, force: true }); state.seats.forEach(function (x) { x.dead = false; delete x.cause; delete x.causeN; }); }   // «바꿔서 한 판 더» — 인원·자리부터 다시 볼 땐 지난 판 흔적(사망·역할)을 걷는다(명단 확정의 끝난 판 갈래와 같게)
       return null; },
@@ -1134,6 +1181,7 @@ var NativeCore = (function () {
         if (typeof lastGuardFail !== 'undefined' && lastGuardFail !== guard0) {
           try { undoStorage(); if (snap) restoreState(snap); var w1 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w1); } catch (e3) {}
           r = rejected('persistenceFailed', '저장할 수 없는 값이 있어 이 조작을 취소했어요.'); } }
+      if (!r) { try { announceEnd(); } catch (e) {} try { if (!(firstNightBegun() && gameEnded())) { delete wz.tvReveal; delete wz.tvReplay; } } catch (e) {} }   // 새 판이면 지난 판 공개를 걷는다   // 판 끝 자동 발표 — 저장 뒤, 효과로만(판 상태는 안 바꾼다)
       if (!r) { try { prepareDisplayPublic(); } catch (e) {
         try { undoStorage(); if (snap) restoreState(snap); var w2 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w2); } catch (e4) {}
         r = rejected('persistenceFailed', '공개 화면 정보를 저장하지 못해 이 조작을 취소했어요.');

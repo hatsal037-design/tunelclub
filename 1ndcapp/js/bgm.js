@@ -6,10 +6,9 @@ function fade(a, to, ms, done) { const from = a.volume, t0 = performance.now(); 
 export function bgmSync(slot) {
   if (!settings.get('bgm') || !slot) { bgmStop(); return; }
   const name = `${slot.hub}_${slot.slot}`; if (name === curName) return;
-  const a = new Audio(`bgm/${name}.m4a`); a.loop = true; a.volume = 0;
-  a.play().then(() => fade(a, vol(), 1200)).catch(() => {});
-  if (cur) { const old = cur; fade(old, 0, 1200, () => old.pause()); }
-  cur = a; curName = name;
+  const a = new Audio(`bgm/${name}.m4a`); a.loop = true; a.volume = 0; const prev = curName; curName = name;
+  // 곡이 실제로 울릴 때만 바꾼다 — 아직 안 만든 곡(투표 등)이면 지금 곡을 그대로 둔다(첫 지명에 음악이 끊기던 것, 2026-10-04)
+  a.play().then(() => { if (curName !== name) { a.pause(); return; } if (cur) { const old = cur; fade(old, 0, 1200, () => old.pause()); } cur = a; fade(a, vol(), 1200); }).catch(() => { if (curName === name) curName = prev; });
 }
 export function bgmEffects(fx) {
   if (!settings.get('bgm')) return;
