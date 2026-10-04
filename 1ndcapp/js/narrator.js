@@ -13,7 +13,7 @@ export async function speak(text, plan, mood = 'day') {
   const v = settings.get('voice') || 'mujin', my = ++gen;
   stopSpeaking();
   if (v !== 'system' && plan && plan.length) {
-    const urls = plan.map(p => p.clip ? `voice/${v}__${p.clip}.m4a` : p.seat ? `voice/${v}__seat_${p.seat}.m4a` : null);
+    const urls = plan.map(p => p.clip ? `voice/${v}__${p.clip}.m4a` : null);
     if (urls.every(Boolean)) {
       try {
         for (const u of urls) {
