@@ -726,6 +726,7 @@ var NativeCore = (function () {
   function announceEnd() {
     if (!firstNightBegun() || state.practice || !state.log) { endSaid = null; return; }
     if (state.log.winner) return;
+    if (state.phase !== 'day') return;   // 밤엔 미루고 아침(낮이 열릴 때)에 읽는다 — 눈 감은 밤에 승패를 말하면 같은 밤 뒤 차례(살림 등)로 판정이 풀리기도 하고 정보가 샌다(2026-10-05 햇살님 «아침에 읽어», 반증 검토 1-2)
     var w = endWinner(); if (!w) { endSaid = null; return; } if (endSaid === w) return;
     endSaid = w; endSaying = true;
     try { bgmStingPlay('end'); var x = narrPick(w === 'good' ? 'end.good' : w === 'evil' ? 'end.evil' : w === 'void' ? 'end.void' : 'end.other');
