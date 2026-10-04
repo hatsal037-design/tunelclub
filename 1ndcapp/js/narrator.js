@@ -7,7 +7,7 @@ export function speakEffects(fx) {
   fx.filter(e => e.kind === 'speak' && e.text && !spoken.has(e.effectId)).forEach(e => { spoken.add(e.effectId); speak(e.text, e.plan, e.mood); });
 }
 /* 진행 목소리(2026-10-04) — 맥에서 미리 뽑은 문장(voice/<목소리>__<id>.m4a)과 «N번 자리 참가자». 하나라도 못 받으면 기기 음성으로 글 전체를 */
-export const VOICES = [['system', '기기 음성'], ['mujin', '백무진'], ['haessal', '햇살'], ['daon', '서다온'], ['ganghyuk', '차강혁']];   // 다 뽑힌 넷(2026-10-04). 최태오·오하람은 뽑는 중 — 다 되면 여기 더한다
+export const VOICES = [['system', '기기 음성'], ['mujin', '백무진'], ['haessal', '햇살'], ['daon', '서다온'], ['ganghyuk', '차강혁'], ['taeo', '최태오'], ['haram', '오하람'], ['sangeun', '이상은'], ['hyeongyeong', '류현경'], ['sujeong', '한수정'], ['cheongha', '이청하'], ['seyeong', '장세영'], ['jangmi', '윤장미']];   // 다 뽑힌 열둘(2026-10-04)
 let cur = null, gen = 0;
 export async function speak(text, plan, mood = 'day') {
   const v = settings.get('voice') || 'mujin', my = ++gen;
@@ -21,8 +21,9 @@ export async function speak(text, plan, mood = 'day') {
           await new Promise((ok, bad) => { const a = new Audio(u); cur = a; a.onended = ok; a.onerror = bad; a.play().catch(bad); });
         }
         return;
-      } catch { if (my !== gen) return; }   // 못 받은 소리가 있으면 기기 음성으로
+      } catch { return; }   // 못 받은 소리(아직 녹음 안 된 새 줄)는 기계 음성으로 섞지 않고 조용히 — 폰 앱과 같게(2026-10-04)
     }
+    return;
   }
   say(text, mood);
 }

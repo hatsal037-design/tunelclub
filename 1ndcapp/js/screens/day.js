@@ -3,7 +3,7 @@ import { html, useState, useEffect, useRef } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { settings } from '../settings.js';
 import { Icon } from '../icons.js';
-import { Page, Section, Row, CheckRow, ActionSheet, Menu, NavButton, RoleArt, Sheet, Cover, cx } from '../ui.js';
+import { Page, Section, Row, CheckRow, ActionSheet, Menu, NavButton, RoleArt, Sheet, Cover, Toggle, cx } from '../ui.js';
 import { SeatBoard } from '../seatboard.js';
 import { useNav } from '../nav.js';
 import { speak } from '../narrator.js';
@@ -172,6 +172,14 @@ export function ResultView({ m, call }) {
   return html`<div>
     <div class="ltitle"><h1>${m.title}</h1><p class="sec" style="white-space:pre-line">${m.why}</p></div>
     ${!m.practice && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${ReplayView} />`)}>복기<//><//>`}
+    <${Section} header="큰 화면">
+      <${Toggle} checked=${!!m.tvReveal} onChange=${v => store.dispatch('display.endReveal', { on: v })}>직업 공개<//>
+      ${m.replayDays > 0 && html`<div class="row"><span class="grow">복기</span>
+        <button class="btn-s" aria-label="앞 날" disabled=${m.tvReplay != null && m.tvReplay <= 1} onClick=${() => store.dispatch('display.endReplay', { day: Math.max(1, (m.tvReplay ?? 2) - 1) })}><${Icon} name="chevronLeft" size=${20} /></button>
+        <span class="num" style="min-width:86px;text-align:center">${m.tvReplay != null ? `${m.tvReplay}일째 / ${m.replayDays}` : '끔'}</span>
+        <button class="btn-s" aria-label="다음 날" disabled=${(m.tvReplay ?? 0) >= m.replayDays} onClick=${() => store.dispatch('display.endReplay', { day: Math.min(m.replayDays, (m.tvReplay ?? 0) + 1) })}><${Icon} name="chevronRight" size=${20} /></button>
+        ${m.tvReplay != null && html`<button class="btn-s" onClick=${() => store.dispatch('display.endReplay', {})}>끄기</button>`}</div>`}
+    <//>
     ${m.politician.length > 0 && html`<${Section} header="판 끝 질문"><${CoreItems} items=${m.politician} call=${call} /><//>`}
     ${m.players.length > 0 && html`<${Section} header="참가자">${m.players.map(p => html`<div class="row"><span>${p.number}번 ${p.name}</span><${RoleArt} r=${p.role} size=${24} />
       <span class="sub grow">${p.role}</span>${p.won && html`<span class="blue" aria-label="이김"><${Icon} name="checkCircle" size=${20} /></span>`}${p.dead && html`<span class="sec" aria-label="사망"><${Icon} name="xmark" size=${18} /></span>`}</div>`)}<//>`}

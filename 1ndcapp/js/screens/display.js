@@ -76,8 +76,7 @@ export function DisplayConnectionView() {
     <${ActionSheet} open=${!!confirm} title="이 화면에 연결할까요?" message=${confirm} onClose=${() => { setConfirm(''); screens.forget(); }}
       actions=${[{ label: '연결', onClick: () => { const c = confirm; setConfirm(''); connect(c); } }]} />
     <${Section} header="큰 화면 주소" footer="TV나 컴퓨터 브라우저에서 열면 QR과 코드가 떠요.">
-      <${Row} onClick=${copy}><div class="grow">${SCREEN_URL}</div><span class=${copied ? 'sub blue' : 'sub'}>${copied ? '복사했어요' : '눌러서 복사'}</span><//>
-      <${Row} tint onClick=${showQr}><span class="grow" style="text-align:center">${qr ? '주소 QR 접기' : '주소 QR 보기'}</span><//>
+      <div class="row"><div class="grow">${SCREEN_URL}</div><button class="btn-s" onClick=${copy}>${copied ? '복사됨' : '복사'}</button><button class="btn-s" aria-pressed=${!!qr} onClick=${showQr}>QR</button></div>
       ${qr && html`<div class="row" style="justify-content:center;padding:16px"><div role="img" aria-label="큰 화면 주소 QR" style="background:#fff;padding:12px;border-radius:12px;line-height:0;width:200px" dangerouslySetInnerHTML=${{ __html: qr }}></div></div>`}<//>
     <div style="display:flex;padding:0 16px 20px"><button class="bsec" style="background:var(--blue);color:#fff" onClick=${share}>공유하기</button></div>
     <${ActionSheet} open=${!!ask} title="이 화면 연결을 끊을까요?" message="큰 화면에서 이름과 자리가 지워져요. 판과 기록은 그대로예요." onClose=${() => setAsk(null)}
