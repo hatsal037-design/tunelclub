@@ -4082,13 +4082,13 @@ const WINPRESETS=[
   {id:'wipe', t:'섬멸: 한쪽 진영이 전멸하면 반대편 승리'},
   {id:'custom', t:'직접 입력…'},
 ];
-/* 인원별 팀 구성 표 (공식 game.json 기반, 16~20은 같은 cadence로 확장) */
+/* 인원별 팀 구성 표 (공식 game.json 기반, 16~20은 하수인을 원작 상한 3에 묶고 마을을 늘린다 — 외지인은 같은 cadence) */
 /* 구성 제약이 걸린 직업 — 판에 들어가면 팀 정원이 달라진다. 표로 두어야 화면·자동 구성이 같은 규칙을 본다 */
 const COMPOSE_EFFECT={ baron:{outsider:2, town:-2}, namjak:{outsider:2, town:-2} };
 const TEAM_SETUP={
   5:{t:3,o:0,m:1,d:1}, 6:{t:3,o:1,m:1,d:1}, 7:{t:5,o:0,m:1,d:1}, 8:{t:5,o:1,m:1,d:1}, 9:{t:5,o:2,m:1,d:1},
   10:{t:7,o:0,m:2,d:1}, 11:{t:7,o:1,m:2,d:1}, 12:{t:7,o:2,m:2,d:1}, 13:{t:9,o:0,m:3,d:1}, 14:{t:9,o:1,m:3,d:1}, 15:{t:9,o:2,m:3,d:1},
-  16:{t:11,o:0,m:4,d:1}, 17:{t:11,o:1,m:4,d:1}, 18:{t:11,o:2,m:4,d:1}, 19:{t:13,o:0,m:5,d:1}, 20:{t:13,o:1,m:5,d:1}
+  16:{t:12,o:0,m:3,d:1}, 17:{t:12,o:1,m:3,d:1}, 18:{t:12,o:2,m:3,d:1}, 19:{t:15,o:0,m:3,d:1}, 20:{t:15,o:1,m:3,d:1}   /* 원작 상한 — 16명부터도 하수인 3(악 4). 늘어난 자리는 마을이, 밸런스는 정보로(2026-09-30 햇살님 결정 ④ «악 수는 원본 상한으로 고정하고 정보로 밸런스» — 2026-10-05 «원작 따라 3명만 하고 대신 다른 걸로 밸런스 잡자고 했잖아»로 반영. 옛 확장은 하수인 4·5) */
 };
 /* 승리 조건 글 — 프리셋이면 지금 계열의 말로 다시 쓴다(시계탑은 «주민·악», 머릿수 규칙 없음). 직접 입력한 글만 그대로 (2026-09-26 햇살님 «시계탑인데 흉수라고 표기하네») */
 /* 프리셋 글을 지금 계열의 말로 — 당산나무 «흉수·마을», 시계탑 «악마·주민», 오리지널 마피아 «마피아·시민» */
@@ -9151,7 +9151,7 @@ function autoAnsRaw(c0, idx){
   if(isRole(c,'undertaker')){ // 오늘 처형된 자의 직업
     const ex=execSeatToday();
     if(!ex) return null; const xc=cm[spyGuise(state.seats.indexOf(ex))||ex.char];   // 처형된 스파이는 가짜 마을주민으로
-    return {type:'char', value:xc.id, label:'처형자: '+xc.e+' '+xc.ko, ambig:[]};
+    return {type:'char', value:xc.id, label:'처형자: '+xc.e+' '+xc.ko, ambig:[], about:[state.seats.indexOf(ex)]};   // about — 누구의 직업인지(답 자리표에 그 자리 표시, 2026-10-04 햇살님 «누가 죽었고 누구의 직업인지 알 수 없다»)
   }
   if(isRole(c,'empath')){ const nb=ansNeighbors(idx); if(!nb.length) return null;   // 이웃이 하나뿐일 수 있다(산 사람 둘) — 그래도 답은 준다
     nb.forEach(x=>{const a=ansSeatAmbig(x); if(a)amb.push(a);});
@@ -9318,7 +9318,7 @@ function fakeFromAnsRaw(a0, c, owner, targets){
   if(a0.type==='ox'){ out={type:'ox', value:!a0.value}; }
   else if(a0.type==='team'){ out={type:'team', value:a0.value==='good'?'evil':'good'}; }
   else if(a0.type==='num'){ const rv=Number(a0.value)||0; const opts=[]; for(let v=0; v<=Math.max(2, rv+1); v++) if(v!==rv) opts.push(v); out={type:'num', value:dirPick(opts, v=>TILT_H.fakeNumPerStep*Math.abs(v-rv), null, '거짓 숫자')}; }
-  else if(a0.type==='char'){ const cand=CHARS().filter(x=>x.id!==a0.value&&x.id!==c.id&&['town','outsider','minion','demon','mafia'].includes(x.team)); const fc=fakeRolePick(cand, inPlay); if(fc) out={type:'char', value:fc.id}; }
+  else if(a0.type==='char'){ const cand=CHARS().filter(x=>x.id!==a0.value&&x.id!==c.id&&['town','outsider','minion','demon','mafia'].includes(x.team)); const fc=fakeRolePick(cand, inPlay); if(fc) out={type:'char', value:fc.id, about:a0.about}; }   // 거짓 답도 «누구의» 자리는 같다
   /* 두 사람+직업(세탁부·사서·조사관 꼴)·세 사람 — 같은 꼴의 거짓. 가짜 직업을 받은 주정뱅이도 그 직업 방식 그대로 받는다 (2026-09-29 햇살님).
      «없음»이었으면 있는 척 두 사람+직업을 준다. 직업은 그 능력이 찾는 계층(마을·외지인·하수인)에서, 진짜 답과 다른 것으로 */
   else if(a0.type==='duo'||a0.type==='trio'||(a0.type==='none'&&(isRole(c,'washerwoman')||isRole(c,'librarian')||isRole(c,'investigator')))){

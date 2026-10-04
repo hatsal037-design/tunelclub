@@ -243,7 +243,9 @@ var NativeCore = (function () {
       var side = function (id) { var c = cm[id]; return c ? (((FIXED.TEAM || {})[c.team] || {}).side || null) : null; };   // 알려 준 직업의 편 — 자리 테두리 색
       if ((o.type === 'duo' || o.type === 'trio' || o.type === 'seats') && v && v.seats) return { seats: v.seats.slice(), roles: v.char ? [ko(v.char)] : [], head: v.head || '', side: v.char ? side(v.char) : (o.type === 'trio' || /흉수|악|하수인/.test(v.head || '') ? 'evil' : null) };
       if (o.type === 'seat' && typeof v === 'number') return { seats: [v], roles: [], head: o.label || '', side: /흉수|악|하수인/.test(o.label || '') ? 'evil' : null };
-      if (o.type === 'char' && v) return { seats: (t || []).slice(), roles: [ko(v)], head: '', side: side(v) };
+      if (o.type === 'char' && v) { var ab = (t && t.length) ? t.slice() : (o.about || []).slice();   // 대상을 고르지 않는 직업 답(장의사 — 처형자)은 답이 가리키는 자리를
+        var dead = !(t && t.length) && ab.length > 0 && ab.every(function (i) { return state.seats[i] && state.seats[i].dead; });
+        return { seats: ab, roles: [ko(v)], head: '', side: dead ? 'dead' : side(v) }; }   // 죽은 사람의 직업이면 side 'dead' — 자리 테두리를 보라로(2026-10-04 햇살님 «보라 테두리»)
       if (o.type === 'dream' && Array.isArray(v)) return { seats: (t || []).slice(), roles: v.map(ko), head: '' };
       return null;
     }
@@ -575,20 +577,55 @@ var NativeCore = (function () {
       return { seatId: 's' + (i + 1), name: x.name || ('좌석 ' + (i + 1)), role: c.ko, team: TKO(c.team), side: realEvil(x) ? 'evil' : (seatSide(x) === 'neutral' ? 'neutral' : 'good'), dead: !!x.dead, icon: roleArt(c, state.edition || 'basic').icon || null, changes: ch }; }).filter(Boolean);
   }
   function endReplayDays() { var L = endLog(); return L && L.events ? L.events.reduce(function (m, e) { return Math.max(m, e.n || 0); }, 0) : 0; }
-  function endReplay(n) {   // 하루(밤 n + 낮 n)씩 — 밤 지목·받은 정보·사망 / 지명·투표·처형
+  /* 복기 하루(2026-10-04 햇살님 «한 줄씩 밤 먼저 낮 아래» · «행동을 아이콘으로» · «직업표에 화살표를 행동 색으로») —
+     줄 = { act(행동 종류), actor(자리 id), targets(자리 id), value(정보·표 수), key(강조), text(글로만 볼 때) }.
+     act: attack 공격 · poison 중독 · protect 보호 · revive 살림 · change 직업 바뀜 · block 막힘 · pick 그 밖 능력 · info 받은 정보 · false 거짓 정보 · death 사망 · nominate 지명 · vote 찬성 · execute 처형 */
+  function endReplay(n) {
     var L = endLog(), ev = ((L && L.events) || []).filter(function (e) { return e.n === n && !e.cancel; }), night = [], day = [];
     var nm = function (k) { var x = state.seats[k - 1]; return (x && x.name) || ('좌석 ' + k); };
     var who = function (e) { return (e.name || nm(e.seat)) + (e.role ? '(' + e.role + ')' : ''); };
-    ev.forEach(function (e) { var dayP = e.phase === 'day', out = dayP ? day : night, t = null;
-      if (e.type === '밤 지목') t = who(e) + ' → ' + (e.대상 || []).join(', ').replace(/좌석 \d+ /g, '');
-      else if (e.type === '정보 전달') t = (e.name || nm(e.누구)) + (e.직업 ? '(' + e.직업 + ')' : '') + ' 받은 정보: ' + (e.답 || '') + (e.거짓 ? ' — 거짓이었음' : '');
-      else if (e.type === '사망') t = who(e) + ' 사망';
-      else if (e.type === '지명') t = (e.by || '') + ' → ' + (e.name || '') + ' 지명';
-      else if (e.type === '투표') t = (e.대상 || '') + ' ' + ((e.투표자 || []).length) + '표';
-      else if (e.type === '처형') t = who(e) + ' 처형';
-      else if (e.type === '계승' || e.type === '역할 변경') t = who(e) + ' ' + e.type;
-      if (t) out.push({ kind: e.code || e.type, text: t }); });
-    return { dayNumber: n, total: endReplayDays(), night: night, day: day };
+    var sid = function (k) { return typeof k === 'number' && k > 0 ? 's' + k : null; };
+    var clean = function (t) { return String(t || '').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').replace(/ \)/g, ')').trim(); };   // 그림 문자는 TV 글꼴에서 네모로 깨진다
+    var cmR = CMAP(), evilPick = function (e) { var c = e.roleId && cmR[e.roleId]; return !!(c && (c.team === 'demon' || c.team === 'mafia')); };
+    var actOf = function (e) { var w = String(e.처리 || '');
+      if (/^void:/.test(w)) return 'block';
+      if (/^kill/.test(w)) return 'attack';
+      if (/^token:/.test(w)) return /중독|취함|만취/.test(w) ? 'poison' : /보호/.test(w) ? 'protect' : 'pick';
+      if (/^revive/.test(w)) return 'revive';
+      if (/^(transform|swap)/.test(w)) return 'change';
+      return evilPick(e) ? 'attack' : 'pick'; };
+    var attacked = {}; ev.forEach(function (e) { if (e.type === '밤 지목' && actOf(e) === 'attack') (e.대상ref || []).forEach(function (r) { attacked[r.seat] = 1; }); });
+    var lastNom = null;
+    ev.forEach(function (e) { var out = e.phase === 'day' ? day : night, l = null;
+      if (e.type === '밤 지목') { var a = actOf(e); l = { act: a, actor: sid(e.seat), targets: (e.대상ref || []).map(function (r) { return sid(r.seat); }).filter(Boolean), value: a === 'block' ? '막힘' : null,
+        key: a === 'attack' || a === 'change' || a === 'revive', text: who(e) + ' → ' + (e.대상 || []).join(', ').replace(/좌석 \d+ /g, '') }; }
+      else if (e.type === '정보 전달') { var seenL = (e.본 || []).map(function (x) { return { seatId: sid(x.자리), role: x.직업, evil: !!x.악 }; });   // 본 사람 — 공감능력자 이웃·요리사 쌍(악으로 센 사람 표시)
+        var pointed = (e.자리 || []).map(sid).filter(Boolean);   // 답이 가리킨 자리(사서·세탁부·점쟁이 대상…) — 화살표로
+        l = { act: e.거짓 ? 'false' : 'info', actor: sid(e.누구), targets: seenL.length ? seenL.map(function (x) { return x.seatId; }) : pointed, seen: seenL, value: (pointed.length && (e.직업들 || []).length ? e.직업들.join('·') : clean(e.답)) + (e.거짓 ? ' · 거짓' : ''),   /* 자리를 가리키는 답은 자리가 대상으로 그려지니 값엔 직업만(«요리사 (좌석 2·7 중 하나)» → «요리사») */ key: !!e.거짓,
+        text: (e.name || nm(e.누구)) + (e.직업 ? '(' + e.직업 + ')' : '') + ' 받은 정보: ' + clean(e.답) + (e.거짓 ? ' — 거짓이었음' : '') + (seenL.length ? ' · 본 사람 ' + (e.본 || []).map(function (x) { return x.자리 + '번 ' + nm(x.자리) + '(' + x.직업 + (x.악 ? '·악으로 셈' : '') + ')'; }).join(', ') : '') }; }
+      else if (e.type === '사망') { if (attacked[e.seat] && e.phase !== 'day') return;   // 공격 줄이 이미 보여 준 죽음은 겹쳐 쓰지 않는다
+        l = { act: 'death', actor: sid(e.seat), targets: [], value: '사망', key: true, text: who(e) + ' 사망' }; }
+      else if (e.type === '지명') { lastNom = e.seat; l = { act: 'nominate', actor: sid(e.bySeat), targets: [sid(e.seat)].filter(Boolean), value: null, key: false, text: (e.by || '') + ' → ' + (e.name || '') + ' 지명' }; }
+      else if (e.type === '투표') l = { act: 'vote', actor: sid(lastNom), targets: [], value: ((e.투표자 || []).length) + '표', key: false, text: (e.대상 || '') + ' ' + ((e.투표자 || []).length) + '표' };
+      else if (e.type === '처형') { var died = !!(state.seats[e.seat - 1] && state.seats[e.seat - 1].dead && state.seats[e.seat - 1].cause === 'exec');
+        l = { act: 'execute', actor: sid(e.seat), targets: [], value: died ? '사망' : '살아남음', key: true, text: who(e) + ' 처형' }; }
+      else if (e.type === '계승' || e.type === '역할 변경') l = { act: 'change', actor: sid(e.seat), targets: [], value: e.type, key: true, text: who(e) + ' ' + e.type };
+      if (l) { l.kind = e.code || e.type;
+        /* 같은 사람의 «고름 → 받은 정보»는 한 줄로(2026-10-04 햇살님 «밤에 받은 정보들도 정리») — 바로 앞 줄이 그 사람의 능력 사용이면 대상을 이어받고 그 줄을 지운다 */
+        var prev = out[out.length - 1];
+        if ((l.act === 'info' || l.act === 'false') && prev && prev.act === 'pick' && prev.actor === l.actor) { if (!l.targets.length) l.targets = prev.targets; out.pop(); }
+        out.push(l); } });
+    /* 낮은 지명 한 건 = 한 줄(2026-10-05 햇살님 확정 타일 — 화면-122): 지명 줄에 그 뒤 찬성 표·처형을 합친다. outcome = execute(처형) · reject(부결) */
+    var merged = [];
+    day.forEach(function (l) {
+      var nomL = merged.filter(function (x) { return x.act === 'nominate'; }).pop();
+      if (l.act === 'vote' && nomL && !nomL.votes) { nomL.votes = l.value; return; }
+      if (l.act === 'execute' && nomL && nomL.targets[0] === l.actor && !nomL.outcome) { nomL.outcome = 'execute'; nomL.key = true; nomL.survived = l.value === '살아남음'; return; }
+      merged.push(l); });
+    merged.forEach(function (l) { if (l.act !== 'nominate') return; if (!l.outcome) l.outcome = 'reject';
+      l.value = [l.votes, l.outcome === 'execute' ? (l.survived ? '처형 · 살아남음' : '처형') : '부결'].filter(Boolean).join(' · ');
+      l.text += ' · ' + l.value; });
+    return { dayNumber: n, total: endReplayDays(), night: night, day: merged };
   }
   function result() {
     var L = (state.log && state.log.winner) ? state.log : (state.lastLogId ? (logsAll().find(function (x) { return x.id === state.lastLogId; }) || null) : null);
@@ -767,7 +804,12 @@ var NativeCore = (function () {
     var nk = (state.nights || 1) + '|' + card.stepKey; wz.noted = wz.noted || {}; if (wz.noted[nk]) return false;
     if (!(card.answer != null || card.falseReason || card.grimoire)) return false;
     try { var bs = (card.ansBoard && card.ansBoard.seats) || [];
-      logEvent('정보 전달', { 누구: card.seatNumber, 직업: card.roleName, 답: card.answer != null ? card.answer : (card.grimoire ? '진행자 판' : null), 판: card.grimoire || undefined, 자리: bs.map(function (i) { return i + 1; }), 직업들: (card.ansBoard && card.ansBoard.roles) || [],
+      /* 숫자로 답하는 정보(공감능력자 이웃·요리사 쌍) — 누구를 보고 셌는지 진짜 판 기준으로 남긴다(복기 «인지된 사람과 직업», 2026-10-04 햇살님). 거짓 답이어도 본 사람은 같다 */
+      var seen; try { var oi = card.seatNumber - 1, oc = CMAP()[state.seats[oi].char], row = function (st) { var k = state.seats.indexOf(st); return { 자리: k + 1, 직업: CMAP()[st.char] ? CMAP()[st.char].ko : '', 악: !!ansSeatEvil(st) }; };
+        if (isRole(oc, 'empath')) seen = ansNeighbors(oi).map(row);
+        else if (isRole(oc, 'chef')) { var au0 = autoAns(oc, oi); seen = []; ((au0 && au0.pairs) || []).forEach(function (pr) { pr.forEach(function (k) { if (!seen.some(function (x) { return x.자리 === k + 1; })) seen.push(row(state.seats[k])); }); }); }
+      } catch (e) { seen = undefined; }
+      logEvent('정보 전달', { 본: seen, 누구: card.seatNumber, 직업: card.roleName, 답: card.answer != null ? card.answer : (card.grimoire ? '진행자 판' : null), 판: card.grimoire || undefined, 자리: bs.map(function (i) { return i + 1; }), 직업들: (card.ansBoard && card.ansBoard.roles) || [],
         악: bs.filter(function (i) { return state.seats[i] && realEvil(state.seats[i]); }).length, 거짓: !!card.falseReason, 까닭: card.falseReason || null, 진짜: card.trueAnswer || null,
         재량: discRecord(card), 편: (card.ansBoard && card.ansBoard.side) || null, 조각: card.boardPieces || undefined }); wz.noted[nk] = 1; return true; } catch (e) { return false; }   // 조각 — 다음 밤에도 취했으면 고정 조각을 여기서 이어받는다
   }
