@@ -195,6 +195,7 @@ h1, h2, p { margin: 0; }
 .face.on.tint-red { background: var(--red); }
 .face.edge-blue { box-shadow: inset 0 0 0 2.5px var(--blue); }
 .face.edge-red { box-shadow: inset 0 0 0 2.5px var(--red); }
+.face.edge-purple { box-shadow: inset 0 0 0 3px var(--purple); }   /* 죽은 사람의 직업(장의사 답) — 2026-10-04 */
 .face.edge-orange { box-shadow: inset 0 0 0 2.5px var(--orange); }
 .face.edge-gray { box-shadow: inset 0 0 0 2.5px var(--gray); }
 .face.on.edge-blue, .face.on.edge-gray { box-shadow: none; }
