@@ -110,7 +110,7 @@ export function GameFlow({ close, toRoles, toPrep }) {
   <//>
   <${Sheet} open=${picking} onClose=${() => setPicking(false)}>${picking && card && html`<${TargetPicker} card=${card} confirmed=${draft.targets} close=${() => setPicking(false)}
     done=${ids => setDraft(d => ({ ...d, targets: ids }))} commit=${commitInSheet ? async ids => { const p = { targets: ids.map(idx).filter(i => i !== undefined) }; const r = await R.run('night.commitTargets', p); return !!r.ok; } : null}
-    markShown=${() => setAnswerSeen(cardKey)} />`}<//>
+    markShown=${() => { setAnswerSeen(cardKey); store.dispatch('night.markShown', {}); }} />`}<//>
   <${Sheet} open=${!!aux} onClose=${() => setAux(null)}>${aux === 'seats' ? html`<${SeatSheet} close=${() => setAux(null)} />`
     : aux === 'process' ? html`<${ProcessSheet} close=${() => setAux(null)} discarded=${toRoles} />` : aux === 'reference' ? html`<${ReferenceSheet} close=${() => setAux(null)} />` : null}<//>
   <${Cover} open=${bluff}>${bluff && html`<${AnswerReveal} name=${store.home.demonKo || '흉수'} answer=${((st && st.bluffs) || []).join(', ')} bluff=${(st && st.bluffs) || []} done=${() => setBluff(false)} />`}<//>
@@ -171,6 +171,7 @@ function NightCardView({ card, draft, setDraft, pick, skip, shown, reveal, setSh
     <//>`}
     ${card.resolved || ((card.answer || card.falseReason) && card.pickCount === 0) ? html`<${Section} header="처리 결과">
         ${card.chosen.length > 0 && html`<div class="row"><${Labeled} label="대상" value=${chosen.join(', ')} /></div>`}
+        ${card.canUndoTargets && !shown && html`<${Row} tint onClick=${() => R.run('night.undoTargets', {})}>되돌리고 다시 고르기<//>`}
         ${card.falseReason ? html`
           <div class="row orange" style="font-size:15px"><${Icon} name="theater" size=${20} />거짓 답을 줘요 · ${card.falseReason}</div>
           ${card.discretion && html`<${DiscretionBand} card=${card} />`}

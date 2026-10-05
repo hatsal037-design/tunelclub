@@ -12508,9 +12508,14 @@ function pinSeat(logId, seat, personId){ const pins=pinsAll();
    저장: localStorage 'botc_logs' (완료분 누적) + state.log (진행 중) */
 let _logsSrc=null, _logsMem='[]';   // 원문이 같으면 변환(v4 kid → 메모리 v3 rep)을 다시 하지 않는다. 돌려주는 건 매번 새 복사본
 function logsAll(){ try{ const src=localStorage.getItem('botc_logs'); if(src!==_logsSrc){ _logsSrc=src; const a=JSON.parse(src||'[]'); _logsMem=JSON.stringify(Array.isArray(a)?a.map(logInMem):[]); } return JSON.parse(_logsMem); }catch(e){ return []; } }
-let _logTrimWarned=false;
-function logsSave(a){ if(a.length>300&&!_logTrimWarned){ _logTrimWarned=true; try{ alert('기록이 300판을 넘어 오래된 판부터 지워져요 — 기록 보기에서 내보내기로 백업해 두세요. (그릇에 담긴 판의 요약은 그릇에 남아요)'); }catch(e){} }
-  const at=a.slice(-300).map(logAtRest); const bad=[]; at.forEach((L,i)=>{ conceptGuard(L, CONCEPT_SHAPE.log).forEach(b=>bad.push('로그'+i+b)); }); if(bad.length){ conceptRefuse('기록', bad); return; }   // 쓰기 문턱 가드 (2026-09-11)
+let _logTrimWarned=false, noticeHook=null;   // noticeHook — 아이폰·웹 코어(native_core)가 화면 알림으로 잇는다
+/* 300판을 넘으면 오래된 판부터 덜어 내되 서버에 안 올린 판은 남긴다 — 다른 곳에 사본이 없다(2026-10-05 앱구조점검). 덜어 낸 수는 알림으로(아이폰·웹은 alert 가 빈 함수라 noticeHook) */
+function logsTrim(a){ if(a.length<=300) return a; let drop=a.length-300; const keep=a.filter(L=>{ if(drop>0&&L&&(L.srvAt||L.practice)){ drop--; return false; } return true; });
+  const gone=a.length-keep.length; if(gone&&!_logTrimWarned){ _logTrimWarned=true; const m=`기록이 300판을 넘어 서버에 올라간 오래된 판 ${gone}개를 기기에서 덜어 냈어요 — 서버에서 다시 받을 수 있어요.`+(keep.length>300?` 안 올린 판 ${keep.length-300}개는 남겨 뒀어요.`:'');
+    try{ (typeof noticeHook==='function'?noticeHook:alert)(m); }catch(e){} }
+  return keep; }
+function logsSave(a){
+  const at=logsTrim(a).map(logAtRest); const bad=[]; at.forEach((L,i)=>{ conceptGuard(L, CONCEPT_SHAPE.log).forEach(b=>bad.push('로그'+i+b)); }); if(bad.length){ conceptRefuse('기록', bad); return; }   // 쓰기 문턱 가드 (2026-09-11)
   at.forEach((L,i)=>{ if(i<at.length-20&&L&&L.rec) delete L.rec; });   // 씨앗+명령 기록은 최근 20판만 — 판마다 원문 7KB 남짓이라 웹 저장 한도를 당긴다(2026-10-05)
   stSet('botc_logs',JSON.stringify(at)); }  // 최근 300판 — 저장은 kid(v7)
 /* 서버에 올릴 씨앗+명령 기록(2026-10-05 햇살님 «용량 최소화는 하지만 받아서 기기에서 다 복구해서 쓸 수 있는 만큼») — 시작 저장소에서

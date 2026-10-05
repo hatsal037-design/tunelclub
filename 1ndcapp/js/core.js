@@ -43,32 +43,15 @@ export async function boot() {
   migrateOld();
 }
 
-/** 옛 웹(tunel.kr/dangsan/)의 판 기록을 한 번 옮긴다 — 같은 사이트라 기기 저장소를 같이 쓴다.
- *  옛 저장본으로 코어를 하나 더 띄워 백업을 뽑고, 새 코어의 «백업 가져오기»로 합친다(없던 기록만 더해진다). 옛 저장소는 건드리지 않는다 */
+/** 옛 웹(tunel.kr/dangsan/) 칸 정리 — 같은 사이트라 기기 저장소를 같이 쓴다. 옮기지 않고 지운다(2026-10-05 햇살님 «이미 중요한 건 다 올렸으니 다 지워»).
+ *  지우는 건 옛 앱 칸(botc_·dangsan_)뿐 — 새 앱이 쓰는 dangsan_pull_since·투넬 로그인 등 다른 칸은 그대로 */
+const OLD_KEY = k => /^(botc|dangsan)_/.test(k) && !k.startsWith('dangsan_pull_since');
 function migrateOld() {
-  const FLAG = '1ndc_migrated';
-  try {
-    if (localStorage.getItem(FLAG)) { markCleanable(); return; }
-    const logs = readable(localStorage.getItem('botc_logs') || '[]');
-    if (!Array.isArray(logs) || !logs.length) { localStorage.setItem(FLAG, 'none'); return; }
-    const old = {};
-    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k.startsWith('1ndc')) old[k] = localStorage.getItem(k); }
-    const tmp = new Function('__boot_storage', 'print', SRC + '\n;__flushTimers(); return NativeCore;')(JSON.stringify(old), () => {});
-    const text = (readable(tmp.query('backup.export')) || {}).data;
-    if (!text) return;
-    const r = dispatch('backup.import', { json: text });
-    if (r.status === 'ok') { localStorage.setItem(FLAG, new Date().toISOString() + ' · ' + logs.length); markCleanable(); }
-  } catch (e) { console.warn('옛 기록 옮기기 실패', e); }
+  try { const ks = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (OLD_KEY(k)) ks.push(k); }
+    if (!ks.length) return; ks.forEach(k => localStorage.removeItem(k)); localStorage.setItem('1ndc_old_cleaned', new Date().toISOString() + ' · ' + ks.length + '칸');
+  } catch (e) { console.warn('옛 칸 정리 실패', e); }
 }
 
-/** 옛 botc_* 판이 전부 새 저장소에 있는지 대조해 «정리 가능» 표시만 남긴다. 지우는 건 사용자 승인 뒤 — 여기서 지우지 않는다 */
-const CLEANABLE = '1ndc_old_cleanable';
-function markCleanable() {
-  try {
-    if (localStorage.getItem(CLEANABLE)) return;
-    const s = oldStatus(); if (s && s.cleanable) localStorage.setItem(CLEANABLE, new Date().toISOString() + ' · ' + s.oldLogs);
-  } catch {}
-}
 /** 옛 키 현황 — {oldKeys, oldLogs, missing, cleanable}. 옛 기록이 없으면 null */
 export function oldStatus() {
   const old = readable(localStorage.getItem('botc_logs') || '[]');

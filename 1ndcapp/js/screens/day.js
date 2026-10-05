@@ -42,6 +42,7 @@ export function DayView({ m, run, finish }) {
           ${n.done ? html`<div class="hstack sub" style="color:var(--label)"><${Icon} name="seal" size=${18} /><span class="grow">${n.blocked ? `처형됐지만 살아남음 · ${n.blocked}` : n.dead ? '처형됨' : '처형 처리됨'}</span>
               <button class="blink" onClick=${() => run('day.executeUndo', { k: n.k })}>되돌리기</button></div>`
             : html`${n.preview && html`<div class="hstack sub orange"><${Icon} name="flag" size=${16} />${n.preview}</div>`}
+              ${!m.ended && html`<div class="hstack" style="justify-content:flex-end"><button class="blink danger" onClick=${() => run('day.nomRemove', { k: n.k })}>지우기</button></div>`}
               <div class="hstack" style="gap:10px;margin-top:4px"><button class="pill-act gray" onClick=${() => setVoting(n)}>투표</button>
                 <button class=${cx('pill-act', ready ? 'red' : 'off')} disabled=${m.ended || !ready} onClick=${() => run(finish ? 'day.executeAndFinish' : 'day.execute', { k: n.k })}>${finish ? '처형하고 마감' : '처형'}</button></div>
 `}

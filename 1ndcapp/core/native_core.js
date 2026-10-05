@@ -5,7 +5,9 @@
    · 응답·조회는 순수 JSON 문자열. 아직 명령에 잇지 못한 것은 notConnected 로 거부한다 — 성공한 척하지 않는다. */
 var NativeCore = (function () {
   var revision = 0, replies = {}, lastImport = null, lastNote = '';
-  var lastMerged = 0;   // 서버에서 내려받아 합친 판 수(sync.merge 결과)
+  var lastMerged = 0;
+  var lastBig = {};
+  var undoTgt = null;   // 직전 대상 확정 되돌리기(2026-10-05 햇살님) — 확정 직전 판 상태. 다른 명령이 성공하면 사라진다(그 차례에서만)   // exportSplit — 마지막으로 파일에 쓴 판 기록·마당 요약 글(같으면 다시 안 쓴다)   // 서버에서 내려받아 합친 판 수(sync.merge 결과)
   // 배분 참고값은 이번 판의 진행자 입력이다. 승률·자동 실력값으로 환산하지 않는다.
   var EXPERIENCE_MIN = 20, experienceRecords = {};   // 앱 TILT.SKILL_MIN 과 같은 값 — 둘을 함께 바꾼다 (2026-09-30 «20판으로 통일»)
   function experienceOf(member, manual) {
@@ -287,7 +289,7 @@ var NativeCore = (function () {
       actions: (function () { try { var fr = wz.pickRes && wz.pickRes.owner === owner ? wz.pickRes.html : '';   // «그래도 처리» — 무효·착호꾼으로 막힌 처리를 진행자 판단으로 밀고 나가기(웹 결과 줄의 단추)
         return htmlItems(fr + wzOnceBtns(o) + ((c.tk || []).some(function (t) { return DELAY_KILL[t]; }) ? delayedHtml() : '') + (o.dk === 'lm' ? blHolderHtml(o) : '')).filter(function (x) { return x.call; }); } catch (e) { return []; } })(),   // 몸 없는 흉수(꼬마 괴물·업귀) — 하수인이 정한 «품은 사람» 옮기기
       allies: usable ? knownAllies(owner) : [],
-      needsTargetsFirst: usable && !resolved && !short, detail: c.ab + (c.say ? '\n\n진행: ' + c.say : ''), stepKey: String(o.dk),
+      needsTargetsFirst: usable && !resolved && !short, canUndoTargets: !!(undoTgt && undoTgt.dk === o.dk && undoTgt.n === (state.nights || 1)), detail: c.ab + (c.say ? '\n\n진행: ' + c.say : ''), stepKey: String(o.dk),
       resolved: resolved, result: result, answer: answer, ansBoard: ansBoard,
       /* 꼭 뭔가 보여 줘야 하는 카드 — 보여 주기 전엔 «재우기»를 잠근다(2026-09-29 햇살님 «잘못 넘기는 일 없게») */
       mustShow: !short && (answer != null || falseReason != null || (usable && ['info', 'guess', 'guesses', 'reveal', 'madness'].indexOf(a.kind) >= 0)),   // 고를 사람이 모자라 넘기는 카드는 빼고
@@ -770,6 +772,7 @@ var NativeCore = (function () {
     var g = function () { if (nm === 'uuidV7' && typeof __recUuid === 'string' && __recUuid) { var u = __recUuid; __recUuid = null; return u; }   // 재생 — 판 번호는 기록된 것(재량 추천이 판 번호 해시로 칸을 고른다)
       var r = state.rng; state.rng = null; try { return f0.apply(this, arguments); } finally { state.rng = r; } };
     if (nm === 'uuidV7') uuidV7 = g; else personNew = g; }, this);
+  noticeHook = function (m) { effects.push({ kind: 'notice', text: String(m) }); };   // 앱 쪽 안내 한 줄을 화면 알림으로(기록 덜어 내기 등)
   var REC_SKIP = { 'sync.markUploaded': 1, 'sync.merge': 1 };   // 판 밖 일(서버 동기화)은 적지 않는다
   function recStore() { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k !== 'botc_logs' && k !== 'botc_pots') o[k] = localStorage.getItem(k); } return o; }
   /* 판 시작 때의 기록 요약(logsDigest) — 앉은 사람 것만. 다른 판 사람 이름은 남기지 않는다(직전 판 자리는 앉은 사람 아니면 '~번호') */
@@ -779,7 +782,10 @@ var NativeCore = (function () {
     return JSON.parse(J({ byN: d.byN, roles: d.roles, people: people, prev: d.prev ? d.prev.map(function (p, i) { return { seat: p.seat, team: p.team, k: keys[p.k] ? p.k : '~' + i }; }) : null })); }
   function recOf() { return (state.log && state.log.rec) || state.rec || null; }
   var pendingResult0 = pendingResult;
-  pendingResult = function () { var n = effects.length; try { return pendingResult0.apply(this, arguments); } finally { effects.length = n; } };
+  var prMemo = null;   /* 같은 판 상태면 다시 처형해 보지 않는다 — 과반 투표 뒤 탭마다 다시 해서 18명 판 낮 조회가 7.5→52.5ms(앱구조점검 «무게», 2026-10-05). 열쇠는 판 상태 글 그대로 */
+  pendingResult = function () { var key = J(state); if (prMemo && prMemo.key === key) return prMemo.v === undefined ? null : JSON.parse(prMemo.v);
+    var n = effects.length, v; try { v = pendingResult0.apply(this, arguments); } finally { effects.length = n; }
+    prMemo = { key: J(state), v: v == null ? undefined : J(v) }; return v; };
 
   /* 직전 상태로 — 웹 load() 는 판을 «읽어 돌려줄» 뿐 바꾸지 않는다(state = load() 로 써야 한다). 좌석 화면 id 는 자리 순서대로 옮겨 붙여 화면이 사람을 잃지 않게 */
   function restoreState(raw) {
@@ -1067,6 +1073,7 @@ var NativeCore = (function () {
       var D = dayRec(), k = D.noms.length - 1;
       if (!p.kill) { D.noms[k].saved = true; save(); var x = narrPick('exec.survived'); if (x) speak(x.say, 'exec', 'tieNone', [{ clip: x.clip, say: x.say }]); return null; }   // 마피아 «살린다» — 공개 결과라 읽어도 된다
       return COMMANDS['day.execute'](Object.assign({}, p, { k: k, ok_execGate: true })); },
+    'day.nomRemove': function (p) { var k = +p.k, n = dayRec().noms[k]; if (!n) return rejected('invalidSelection', '지명을 못 찾았어요.'); if (n.done) return rejected('notAllowedInPhase', '처형한 지명은 지울 수 없어요.'); dayNomRemove(k); return null; },   // 잘못 넣은 지명 지우기(2026-10-05) — 유령표는 돌려준다
     'day.verdictUndo': function (p) { var n = dayRec().noms[+p.k]; if (!n || n.done || !n.saved) return rejected('invalidSelection', '되돌릴 결과가 없어요.'); dayNomRemove(+p.k); return null; },
     'day.tie': function (p) { if (state.phase !== 'day') return rejected('notAllowedInPhase', '낮이 아니에요.');
       var D = dayRec(), G = execGate();
@@ -1159,6 +1166,8 @@ var NativeCore = (function () {
     'record.delete': function (p) { var a = logsAll(), i = a.findIndex(function (x) { return x.id === p.id; }); if (i < 0) return rejected('invalidSelection', '기록을 못 찾았어요.'); var gone = a[i]; deleteLog(i); try { if (gone && endLog() === null && state.lastLogId === gone.id) { delete state.tvReveal; delete state.tvReplay; } } catch (e) {} return null; },   // 지운 판의 TV 공개·복기는 걷는다(반증 검토 2-14)
     'backup.import': function (p) { var data; try { data = JSON.parse(p.json); } catch (e) { return rejected('invalidSelection', '백업 파일을 읽지 못했어요.'); }
       try { var r = importBackup(data); lastImport = r; } catch (e) { return rejected('invalidSelection', String(e.message || e)); } return null; },
+    'night.undoTargets': function () { if (!undoTgt) return rejected('notAllowedInPhase', '되돌릴 확정이 없어요.');
+      var u = undoTgt; restoreState(u.raw); var w0 = JSON.parse(u.wz); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w0); return null; },
     'night.commitTargets': function (p) {
       var cur = current(); if (!cur) return rejected('notAllowedInPhase', '깨울 차례가 없어요.');
       var card = nightCard(), owner = cur.o.i, a = actOf(cur.o.c);
@@ -1259,6 +1268,7 @@ var NativeCore = (function () {
       effects = [];
       /* 밤 도중 좌석 시트에서 죽이기·살리기·표식·지연 사망을 하면 깨울 목록이 바뀐다 — 보던 카드(dk)를 따라가게(웹 wzRender 의 lastWho 와 같은 몫). 안 그러면 다른 사람 카드로 밀려 옛 대상이 확정될 수 있었다 */
       var dk0 = null; if (STAY[cmd.type] && state.phase !== 'day') { try { var c0 = current(); if (c0) dk0 = c0.o.dk; } catch (e) {} }
+      var tgt0 = cmd.type === 'night.commitTargets' ? (function () { var c0 = current(); return c0 ? { raw: snap, wz: wzSnap, dk: c0.o.dk, n: state.nights || 1 } : null; })() : null;
       var r, rc0 = recStart ? null : recOf(), ent = null; if (rc0 && !REC_SKIP[cmd.type]) { ent = [cmd.type, cmd.payload || {}, recAt, 0]; rc0.c.push(ent); }   // 실행 전에 적는다 — 판을 닫는 명령은 실행 중에 판 기록이 보관함으로 옮겨져, 뒤에 적으면 빠졌다
       try { r = f(cmd.payload || {}); __flushTimers(); }
       catch (e) { r = rejected('coreFailure', String(e && e.message || e)); }
@@ -1276,6 +1286,7 @@ var NativeCore = (function () {
         if (typeof lastGuardFail !== 'undefined' && lastGuardFail !== guard0) {
           try { undoStorage(); if (snap) restoreState(snap); var w1 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w1); } catch (e3) {}
           r = rejected('persistenceFailed', '저장할 수 없는 값이 있어 이 조작을 취소했어요.'); } }
+      if (!r) { undoTgt = tgt0; }   // 대상 확정이면 직전 상태를 들고, 다른 명령이 성공하면 버린다
       if (!r) { try { announceEnd(); } catch (e) {} try { if (!(firstNightBegun() && gameEnded())) { delete state.tvReveal; delete state.tvReplay; } } catch (e) {} }   // 새 판이면 지난 판 공개를 걷는다   // 판 끝 자동 발표 — 저장 뒤, 효과로만(판 상태는 안 바꾼다)
       if (!r) { try { prepareDisplayPublic(); } catch (e) {
         try { undoStorage(); if (snap) restoreState(snap); var w2 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w2); } catch (e4) {}
@@ -1284,6 +1295,13 @@ var NativeCore = (function () {
       if (!r) { revision += 1; r = { status: 'ok', commandId: cmd.commandId, revision: revision, effects: effects.map(function (e, i) { return Object.assign({ effectId: cmd.commandId + ':' + i }, e); }) }; }   // 진행 위치(wz)도 판과 함께 저장 — 다시 켜면 보던 카드로(03 수용 08)
       outHub = null; var out = JT(r); if (r.status === 'ok') replies[cmd.commandId] = out; return out;
     },
+    /* 아이폰 저장 두 파일(2026-10-05) — main 은 판 기록·마당 요약 빼고 전부, logs 는 그 둘이 바뀐 때만(아니면 null). 300판이면 7MB 를 명령마다 다시 쓰던 것 */
+    exportSplit: function () { var main = {}, big = {}, changed = false;
+      for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i), v = localStorage.getItem(k); if (k === 'botc_logs' || k === 'botc_pots') big[k] = v; else main[k] = v; }
+      ['botc_logs', 'botc_pots'].forEach(function (k) { if (big[k] !== lastBig[k]) changed = true; });
+      if (changed) lastBig = { botc_logs: big.botc_logs, botc_pots: big.botc_pots };
+      return J({ main: main, logs: changed ? big : null }); },
+    markSplitSaved: function (ok) { if (!ok) lastBig = {}; },   // 쓰기 실패면 다음엔 다시 쓰게
     exportStorage: function () { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); o[k] = localStorage.getItem(k); } return J(o); },
     setRevision: function (n) { revision = n | 0; }
   };
