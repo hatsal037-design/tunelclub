@@ -780,6 +780,9 @@ var NativeCore = (function () {
     (state.seats || []).forEach(function (s) { if (!s) return; if (s.name) names[s.name.trim()] = 1; var w = s.pid ? personById(s.pid) : null; if (w && w.name) names[w.name] = 1; keys[s.pid || s.name] = 1; });
     var people = {}; Object.keys(d.people || {}).forEach(function (k) { if (names[k]) people[k] = d.people[k]; });
     return JSON.parse(J({ byN: d.byN, roles: d.roles, people: people, prev: d.prev ? d.prev.map(function (p, i) { return { seat: p.seat, team: p.team, k: keys[p.k] ? p.k : '~' + i }; }) : null })); }
+  var CANON_SKIP = { at: 1, endedAt: 1, srvAt: 1, announcedAt: 1, touchedAt: 1, rec: 1, uuid: 1, id: 1, oid: 1, pid: 1, aid: 1 };
+  function canonOf(L) { var norm = function (o) { if (Array.isArray(o)) return o.map(norm); if (o && typeof o === 'object') { var r = {}; Object.keys(o).sort().forEach(function (k) { if (!CANON_SKIP[k]) r[k] = norm(o[k]); }); return r; } return o; };
+    return J(norm({ e: L.events || [], p: L.players || [], w: L.winner || null })); }
   function recOf() { return (state.log && state.log.rec) || state.rec || null; }
   var pendingResult0 = pendingResult;
   var prMemo = null;   /* 같은 판 상태면 다시 처형해 보지 않는다 — 과반 투표 뒤 탭마다 다시 해서 18명 판 낮 조회가 7.5→52.5ms(앱구조점검 «무게», 2026-10-05). 열쇠는 판 상태 글 그대로 */
@@ -1279,7 +1282,7 @@ var NativeCore = (function () {
       /* 현재 밤 카드를 명령 안에서 한 번 계산 — 중독·취함 거짓 답 같은 앱 재량이 state.fixed 에 적혀 저장된다.
          안 그러면 첫 «조회»가 판을 바꾸고 난수를 쓴다(2026-10-01 엔진 대량 검사 «조회 불변» 20건) */
       if (!r) { try { if (state.phase !== 'day' && current()) { nightCard(); discPrepare(); } } catch (e) {} }   // 재량표도 명령 안에서 — 조회는 읽기만
-      if (!r) { try { if (recStart) { state.rec = { v: 1, seed: recStart.seed, uuid: (state.log && state.log.uuid) || null, start: recStart.store, digest: recStart.digest, mem: recStart.mem, c: [ent = [cmd.type, cmd.payload || {}, recAt, 0]] }; if (state.log) delete state.log.rec; }   // 씨앗+명령 기록 — 판 기록이 생기면 그 안으로 옮겨 함께 올라간다
+      if (!r) { try { if (recStart) { state.rec = { v: 1, core: typeof __CORE_VER === 'string' ? __CORE_VER : null, archived: typeof __CORE_ARCHIVED !== 'undefined' && !!__CORE_ARCHIVED, seed: recStart.seed, uuid: (state.log && state.log.uuid) || null, start: recStart.store, digest: recStart.digest, mem: recStart.mem, c: [ent = [cmd.type, cmd.payload || {}, recAt, 0]] }; if (state.log) delete state.log.rec; }   // 씨앗+명령 기록 — 판 기록이 생기면 그 안으로 옮겨 함께 올라간다
           if (ent) { var rcN = recOf(), last = rcN && rcN.c[rcN.c.length - 1]; if (last && last[0] === ent[0]) last[3] = (state.rng && state.rng.k) || 0; }   /* 판 기록이 사본으로 바뀌었을 수 있어(가정 처형) 지금 기록의 마지막 줄에 */ /* 넷째 = 이 명령 뒤 판 난수를 쓴 횟수 — 재생이 어디서 갈리는지 바로 보인다 */ if (state.log && state.rec) { state.log.rec = state.rec; delete state.rec; } } catch (e) {}
         try { if (cmd.type !== 'game.autoClose' && cmd.type !== 'sync.markUploaded' && cmd.type !== 'sync.merge') state.touchedAt = new Date().toISOString(); wzPersist(); save(); } catch (e) {}
         /* 저장 가드가 거부했으면(등록부에 없는 값) 성공이 아니다 — 저장 안 된 채 ok 를 내면 화면과 저장본이 갈라지고, 다음 거절 때 그사이 진행이 통째로 사라졌다(2026-10-02 Fable·코덱스 관측 3) */
@@ -1296,6 +1299,18 @@ var NativeCore = (function () {
       outHub = null; var out = JT(r); if (r.status === 'ok') replies[cmd.commandId] = out; return out;
     },
     /* 아이폰 저장 두 파일(2026-10-05) — main 은 판 기록·마당 요약 빼고 전부, logs 는 그 둘이 바뀐 때만(아니면 null). 300판이면 7MB 를 명령마다 다시 쓰던 것 */
+    /* 씨앗+명령 2단계(2026-10-05) — 올리기 전 확인. canonLog: 판 기록에서 시각·번호를 뺀 비교용 글(사건·참가자·승자).
+       replayRun: «새로 띄운» 코어(시작 저장소 = rec.start)에서 씨앗·명령을 다시 돌려 같은 비교용 글을 돌려준다. 둘이 같아야 사건 기록을 빼고 올린다 */
+    coreVersion: function () { return typeof __CORE_VER === 'string' ? __CORE_VER : null; },
+    canonLog: function (id) { var L = logsAll().find(function (x) { return x && (x.id === id || x.uuid === id); }); return L ? canonOf(L) : null; },
+    replayRun: function (recJson) { var rec = JSON.parse(recJson), g = globalThis, out = null;
+      g.__recSeed = rec.seed; g.__recMem = rec.mem; g.__recUuid = rec.uuid; g.__recDigest = rec.digest;   // 다시 돌리는 동안만(동기) — 끝나면 걷는다
+      try { (rec.c || []).forEach(function (x, i) { var r = JSON.parse(NativeCore.dispatch(J({ commandId: 'rp' + i, expectedRevision: revision, type: x[0], payload: x[1] }))); if (r.status === 'ok') revision = r.revision; });
+        var L = logsAll().slice(-1)[0] || state.log; out = L ? canonOf(L) : null;
+      } catch (e) { out = null; } finally { delete g.__recSeed; delete g.__recMem; delete g.__recUuid; delete g.__recDigest; }
+      return out; },
+    /* 받아서 되살리기 — 새로 띄운 코어에서 다시 돌린 판 기록을 «저장된 모양» 그대로(서버 payload 와 같은 꼴). 실패면 null */
+    replayLog: function (recJson) { var c = NativeCore.replayRun(recJson); if (!c) return null; try { var a = JSON.parse(localStorage.getItem('botc_logs') || '[]'); return J(a[a.length - 1] || null); } catch (e) { return null; } },
     exportSplit: function () { var main = {}, big = {}, changed = false;
       for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i), v = localStorage.getItem(k); if (k === 'botc_logs' || k === 'botc_pots') big[k] = v; else main[k] = v; }
       ['botc_logs', 'botc_pots'].forEach(function (k) { if (big[k] !== lastBig[k]) changed = true; });
