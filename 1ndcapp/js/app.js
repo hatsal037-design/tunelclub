@@ -21,6 +21,10 @@ const SCREEN_KEY = 'screen_pending';
   if (c) { try { sessionStorage.setItem(SCREEN_KEY, c); } catch {} u.searchParams.delete('screen'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
   try { screens.pendingCode = sessionStorage.getItem(SCREEN_KEY) || ''; } catch {} }   // 연결에 성공하거나 코드를 고치면 지운다(screenlink.forget)
 const cameFromQr = !!screens.pendingCode;
+/* 광장 체크인 QR(…/1ndcapp/?j=코드) — 코드를 챙기고 주소에서 지운다. 로그인으로 나갔다 와도 남게 sessionStorage (2026-10-05 광장 체크인) */
+{ const u = new URL(location.href), c = u.searchParams.get('j');
+  if (c) { try { sessionStorage.setItem('plaza_join', c.toUpperCase()); } catch {} u.searchParams.delete('j'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
+  try { account.plazaJoin = sessionStorage.getItem('plaza_join') || ''; } catch {} }
 
 function useStore() { const [, f] = useState(0); useEffect(() => store.subscribe(() => f(x => x + 1)), []); }
 

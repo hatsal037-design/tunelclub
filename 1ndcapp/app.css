@@ -471,3 +471,6 @@ h1, h2, p { margin: 0; }
 .qrscan video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .qrscan-t { position: relative; color: #fff; font-size: 17px; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,.7); padding: 0 24px 16px; text-align: center; }
 .qrscan-x { position: relative; margin-bottom: calc(28px + var(--safe-b)); min-width: 160px; min-height: 50px; border-radius: 12px; background: rgba(255,255,255,.22); color: #fff; font-size: 17px; font-weight: 600; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+
+/* 복기 날 넘기기 화살표 — 44px 누르기 칸(2026-10-05 햇살님 «화살표 크게») */
+.btn-s.rp-arrow { min-width: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }

@@ -260,7 +260,7 @@ export function RevealBoard({ roles, shown = [], me, allies = [], title, side, m
   useEffect(() => { let live = true; setRoleColor(null); if (roles.length === 1) artColor(store.artOf(roles[0])).then(c => { if (live) setRoleColor(c); }); return () => { live = false; }; }, [roles.join('|')]);
   const targets = shown.map(id).filter(Boolean);
   const shownIds = new Set(targets); if (meTint && id(me)) shownIds.add(id(me));   // 보는 사람 자리는 번호·이름도 같이
-  const rings = {}; if (side || roleColor) targets.forEach(x => { if (x !== id(me)) rings[x] = side === 'dead' ? 'purple' : (roleColor || (side === 'evil' ? 'red' : 'blue')); });   // 죽은 사람의 직업(장의사)은 보라 — 2026-10-04
+  const rings = {}; if (side || roleColor) targets.forEach(x => { if (x !== id(me)) rings[x] = side === 'dead' ? 'purple' : (roleColor || (side === 'evil' ? 'red' : 'blue')); });   // 죽은 사람의 직업(장의사)은 보라 — 2026-10-04 (줄 끝 주석이 «});»를 삼켜 10-05 05:11 배포부터 웹이 안 떴다 — 2026-10-06 고침)
   return html`<div class=${cx('reveal', meTint && 'me-tint')}>
     ${title && html`<div class="rv-title">${title}</div>`}
     ${!inCenter && roles.length > 0 && cluster}

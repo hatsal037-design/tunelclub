@@ -86,7 +86,7 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .replay-caption{word-break:keep-all;overflow-wrap:normal;font-weight:600}
 .caption-names{display:inline-block;max-width:100%}
 .caption-unit,.caption-result{display:inline-block;white-space:nowrap}
-.caption-result::before{content:'· ';font-weight:400;color:#8e8e93}
+.caption-dot{font-weight:400;color:#8e8e93}
 </style></head><body>
 <div id="stage"><div class="tv" id="tv">
   <div class="topline"><strong id="phase"></strong><small>첫밤 사망자 클럽</small></div>
@@ -283,7 +283,10 @@ function renderEnded(p, arena, W, H) {
     const act=executed?'execute':line.act, targets=line.targets||[], value=line.value||'';
     const color=rejected?'#8e8e93':act==='false'&&line.why==='poison'?'#34c759':colors[act]||'#1c1c1e';
     const resultMark=!rejected&&(executed||act==='execute'||act==='death')?'<svg aria-hidden="true" viewBox="0 0 24 24" style="width:.78em;height:.78em;vertical-align:-.04em"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="m8 8 8 8m0-8-8 8" stroke="white" stroke-width="2"/></svg> ':'';
-    const names='<span class="caption-names">'+(line.actor?'<span class="caption-unit">'+nm(line.actor,false,line.dead)+'</span>':esc(line.text||''))+targets.slice(0,2).map((id,i)=>' <span class="caption-unit">'+(i===0?'→ ':'· ')+nm(id,true,line.dead)+(i===1&&targets.length>2?' 외 '+(targets.length-2):'')+'</span>').join('')+'</span>';
+    /* 가운뎃점은 앞 덩어리 끝에 붙인다 — 줄이 넘어갈 때 다음 줄이 «· 집사»처럼 점으로 시작하지 않게(2026-10-05 햇살님) */
+    const dot='<span class="caption-dot"> ·</span>', tg=targets.slice(0,2);
+    const parts=[line.actor?nm(line.actor,false,line.dead):esc(line.text||'')].concat(tg.map((id,i)=>(i===0?'→ ':'')+nm(id,true,line.dead)+(i===1&&targets.length>2?' 외 '+(targets.length-2):'')));
+    const names='<span class="caption-names">'+parts.map((h,k)=>(k?' ':'')+'<span class="caption-unit">'+h+((k===1&&tg.length>1)||(k===parts.length-1&&value)?dot:'')+'</span>').join('')+'</span>';
     return '<article class="replay-tile"><span class="replay-seq">'+(++seq)+'</span><div class="replay-faces">'+face(line.actor,false,false,line.dead)+icon(line.act,line.why)+targets.slice(0,2).map(id=>face(id,(line.seen||[]).some(s=>s.seatId===id&&s.evil),line.dead==null&&executed,line.dead)).join('')+'</div><div class="replay-caption">'+names+(value?' <strong class="caption-result" style="color:'+color+'">'+resultMark+esc(value)+'</strong>':'')+'</div></article>';
   }).join('');
   arena.insertAdjacentHTML('beforeend','<section class="replay-panel" aria-label="공개 복기" style="--cols:'+cols+';--face:'+(cols===3?36:60)+'"><h2 class="replay-title">'+esc(replay.title||(replay.dayNumber+'일차'))+(replay.dayNumber>0?' <small style="color:var(--mute)">/ '+esc(replay.total)+'일</small>':'')+'</h2>'+((replay.day||[]).length?'<h2 class="replay-title">낮</h2><div class="replay-grid">'+tiles(replay.day||[])+'</div>':'')+((replay.night||[]).length?'<h2 class="replay-title">밤</h2><div class="replay-grid">'+tiles(replay.night||[])+'</div>':'')+'</section>');

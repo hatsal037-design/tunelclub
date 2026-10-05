@@ -12,7 +12,7 @@ const loadScript = src => new Promise((ok, no) => { const s = document.createEle
 export const codeFromQr = s => { const m = /[?&]screen=([A-Za-z]{8})(?:&|#|$)/.exec(String(s || '')); return m ? m[1].toUpperCase() : ''; };
 
 /* 앱 안 카메라 — 뒤 카메라를 열어 QR 을 읽는다. 브라우저에 QR 읽기가 있으면 그걸, 없으면(아이폰 사파리) jsQR 로. 닫으면 카메라를 끈다 */
-function QrScanner({ onCode, onClose }) {
+export function QrScanner({ onCode, onClose, parse = codeFromQr, title }) {
   const video = useRef(null), [err, setErr] = useState('');
   useEffect(() => { let stream = null, raf = 0, dead = false, det = null; const cv = document.createElement('canvas');
     (async () => {
@@ -27,14 +27,14 @@ function QrScanner({ onCode, onClose }) {
           try { if (det) { const r = await det.detect(v); text = r[0] ? r[0].rawValue : ''; }
             else if (window.jsQR) { const k = Math.min(1, 640 / v.videoWidth); cv.width = v.videoWidth * k; cv.height = v.videoHeight * k; const c = cv.getContext('2d', { willReadFrequently: true });
               c.drawImage(v, 0, 0, cv.width, cv.height); const d = c.getImageData(0, 0, cv.width, cv.height), r = window.jsQR(d.data, d.width, d.height, { inversionAttempts: 'dontInvert' }); text = r ? r.data : ''; } } catch {} }
-        const code = codeFromQr(text); if (code) return onCode(code);
+        const code = parse(text); if (code) return onCode(code);
         raf = setTimeout(scan, det ? 120 : 200); };
       scan();
     })();
     return () => { dead = true; clearTimeout(raf); if (stream) stream.getTracks().forEach(t => t.stop()); }; }, []);
   return html`<div class="qrscan" role="dialog" aria-label="QR 찍기">
     <video ref=${video} playsinline muted></video>
-    <div class="qrscan-t">${err || '큰 화면의 QR을 비춰 주세요'}</div>
+    <div class="qrscan-t">${err || title || '큰 화면의 QR을 비춰 주세요'}</div>
     <button class="qrscan-x" onClick=${onClose}>닫기</button></div>`;
 }
 
