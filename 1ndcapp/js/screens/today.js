@@ -14,6 +14,7 @@ export const THEMES = [
   { id: '오리지널', hub: '오리지널 마피아', color: '#3a3a3c', art: '마피아', photos: [] },
   { id: '클래식', hub: '클래식', color: '#5a1f1f', art: '임프', photos: [] },
   { id: '당산나무', hub: '당산나무', color: '#6b4a24', art: '객귀', photos: [] },
+  { id: '파티', soon: true, color: '#1f5a4a' },   // 말판·주사위 — 큰 화면이 말판(2026-10-05)
   { id: '판타지', soon: true, color: '#3d2f6b' },
   { id: '우주', soon: true, color: '#1f3a5a' },
   { id: '스팀펑크', soon: true, color: '#6b5326' },

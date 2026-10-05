@@ -2764,12 +2764,12 @@ function setTheme(rep, o){
 /* ══ 테마 표 (시공 3단계 · 화면-096·102, 2026-09-28) — 테마마다 다른 건 여기 한 곳. 이름은 등록부 hub 표기.
    art 가 없는 테마(오리지널 마피아)는 배경 천(tex)만 — 대문 그림은 5단계 디자인에서 */
 const THEMES=[
-  {rep:'dangsan', art:'img/home-tree-v1.jpg', start:'basic'},
+  {rep:'mafia', art:null, tex:'img/tex/tex-suede.png', start:'om_basic'},   // 오리지널·클래식·당산나무 순(2026-10-05 햇살님)
   {rep:'classic', art:'img/home-clocktower-v1.jpg', start:'botc-tb'},
-  {rep:'mafia', art:null, tex:'img/tex/tex-suede.png', start:'om_basic'},
+  {rep:'dangsan', art:'img/home-tree-v1.jpg', start:'basic'},
 ];
 function themeName(rep){ const k=Object.keys(KREG.개념).find(x=>KREG.개념[x].kind==='hub'&&KREG.개념[x].rep===rep); return k?KREG.개념[k].ko:rep; }
-function themeOf(rep){ return THEMES.find(t=>t.rep===rep)||THEMES[0]; }
+function themeOf(rep){ return THEMES.find(t=>t.rep===rep)||THEMES[2]; }   // 모르면 당산나무
 function themeUsable(){ return THEMES.filter(t=>themeModes(t.rep).length); }
 function themeSwatch(t){ return t.art?`<img class="th-sw" src="${t.art}" alt="">`:`<i class="th-sw" style="background:url(${t.tex}) center/120px, #232326; background-blend-mode:soft-light"></i>`; }
 /* 처음 설치 — 판도 기록도 테마 선택도 없으면 테마 고르기 한 장부터(화면-102). 옛 설치는 강요하지 않는다 */
@@ -4132,7 +4132,7 @@ function autoCompose(N){
   const Tc=tiltOn()?structTilt(N).S:0, strengthH=c=>TILT_H.roleStrength*(isEvilTeam(c)?-1:1)*roleStrength(c.id);
   const order=arr=>Tc?dirOrderT(arr, strengthH, Tc):shuffle(arr.slice());
   const pick=(arr,k)=>{ if(!arr.length||k<=0)return; const bag=order(arr); for(let i=0;i<k;i++)add(bag[i%bag.length]); };
-  let out=0,minion=Math.max(0,Math.ceil(N/4)-1),demon=1;
+  let out=0,minion=Math.min(3,Math.max(0,Math.ceil(N/4)-1)),demon=1;   // 하수인 최대 3(원작 상한, 2026-09-30 결정 ④) — 표준 편성이 아닌 모드도 17명부터 4가 되던 것(2026-10-05 햇살님 «하수인 3인까지 하자던 거 왜 안 지켜»)
   if(villageType()){ const s=TEAM_SETUP[N]; if(s){ out=s.o; demon=s.d; minion=s.m; } }
   const fix=ED().composeFix||null;
   if(fix){
@@ -8791,7 +8791,7 @@ function tiltValue(){
 function modeEvilCount(n){
   const ct=ED().composeTable; if(ct){ if(!ct[n]) return null; let e=0; Object.keys(ct[n]).forEach(id=>{ if(isEvilTeam(CHARS().find(x=>x.id===id))) e+=ct[n][id]; }); return e; }
   if(ED().botcRules&&n>15) return null;   // 시계탑 16명부터는 여행자 — 판 인원(inPlaySeats)은 15 를 넘지 않는다
-  let minion=Math.max(0,Math.ceil(n/4)-1), demon=1;
+  let minion=Math.min(3,Math.max(0,Math.ceil(n/4)-1)), demon=1;   // autoCompose 와 같은 상한
   if(villageType()){ const t=TEAM_SETUP[n]; if(!t) return null; minion=t.m; demon=t.d; }
   const fix=ED().composeFix||null;
   if(fix){ if(fix.legion) return null; if(fix.m!==undefined) minion=fix.m; if(fix.d!==undefined) demon=fix.d; }
