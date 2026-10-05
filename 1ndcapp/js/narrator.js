@@ -15,11 +15,11 @@ async function speakAll(list) {
   finally { if (my === gen) bgmDuck(false); }
 }
 /* 진행 목소리(2026-10-04) — 맥에서 미리 뽑은 문장(voice/<목소리>__<id>.m4a)과 «N번 자리 참가자». 하나라도 못 받으면 기기 음성으로 글 전체를 */
-export const VOICES = [['system', '기기 음성'], ['mujin', '백무진'], ['haessal', '햇살'], ['taeo', '최태오'], ['sangeun', '이상은'], ['hyeongyeong', '류현경'], ['sujeong', '한수정'], ['cheongha', '이청하'], ['seyeong', '장세영'], ['jangmi', '윤장미']];   // 아홉(2026-10-05 햇살님 «서다온·차강혁·오하람은 빼자»)
+export const VOICES = [['system', '기기 음성'], ['mujin', '백무진'], ['haessal', '햇살'], ['taeo', '최태오'], ['hyeongyeong', '류현경'], ['cheongha', '이청하'], ['seyeong', '장세영']];   // 여섯(2026-10-05 «서다온·차강혁·오하람은 빼자» · 2026-10-06 «이상은·한수정·윤장미 빼 줘»)
 let cur = null, gen = 0;
 export async function speak(text, plan, mood = 'day') { const my = ++gen; stopSpeaking(); return speakOne(text, plan, mood, my); }
 async function speakOne(text, plan, mood, my) {
-  const v = settings.get('voice') || 'mujin';
+  const v0 = settings.get('voice') || 'mujin', v = VOICES.some(x => x[0] === v0) ? v0 : 'mujin';   // 목록에서 뺀 목소리를 골라 뒀으면 기본으로(2026-10-06)
   if (v !== 'system' && plan && plan.length) {
     const urls = plan.filter(p => p.clip).map(p => `voice/${v}__${p.clip}.m4a`);   // 문장 조각만(«N번 자리» 소리는 2026-10-04 뺐다)
     if (urls.every(Boolean)) {

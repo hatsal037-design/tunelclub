@@ -4,7 +4,6 @@ import { store } from '../store.js';
 import { Icon } from '../icons.js';
 import { Page, Section, Row, Labeled, Empty, ActionSheet, Menu, useRun, LargeTitle } from '../ui.js';
 import { useNav, Back } from '../nav.js';
-import { FriendsView } from './friends.js';
 import { ReplayView } from './replay.js';
 
 const day = s => String(s || '').slice(0, 16).replace('T', ' ');
@@ -21,7 +20,7 @@ export function RecordsView({ embedded }) {
     ${m.people.length > 0 && html`<${Section} header="사람별">${m.people.map(p => html`<div class="row"><${Labeled} label=${p.name} value=${`${p.games}판 · ${p.wins}승 · 선${p.good} 악${p.evil}`} /></div>`)}<//>`}`
     : html`<${Empty} icon="clock" title="아직 완료한 판이 없어요" text="판을 끝내면 여기에 결과와 과정이 쌓여요." />`;
   return html`<${Page} title=${embedded ? '기록' : ''} left=${embedded ? html`<${Back} />` : null}>${!embedded && html`<${LargeTitle}>기록<//>`}
-    <${Section}><${Row} chevron onClick=${() => nav.push(html`<${FriendsView} />`)}><${Icon} name="person2" size=${20} /><span class="grow">친구 · 내 전적</span><//><//>${body}<//>`;
+    ${body}<//>`;
 }
 
 function RecordDetail({ id, reload }) {

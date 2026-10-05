@@ -75,7 +75,7 @@ export function AccountView() {
   useEffect(() => account.subscribe(() => f(x => x + 1)), []);
   return html`<${Page} title="계정" left=${html`<${Back} />`}>
     <${AccountSection} />
-    ${account.user && html`<${ProfileSection} />`}
+    ${account.user && html`<${ProfileCard} />`}
     ${account.user && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${FriendsView} />`)}><${Icon} name="person2" size=${20} /><span class="grow">친구 · 내 전적</span><//><//>`}
     ${account.user && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${SeatedView} />`)}><${Icon} name="listBullet" size=${20} /><span class="grow">내가 들어간 판</span><//><//>`}
   <//>`;
@@ -97,18 +97,54 @@ function SeatedView() {
   <//>`;
 }
 
-/* @아이디·이름 — 아이디는 찾고 가리키는 열쇠(30일에 한 번), 이름은 본명도 닉네임도 아닌 프로필 이름(친구에게만). 2026-10-05 햇살님 */
-function ProfileSection() {
-  const [h, setH] = useState(''), [n, setN] = useState(''), [next, setNext] = useState(null), [msg, setMsg] = useState(null);
-  const load = async () => { const p = await account.plaza('my_profile'); if (!p) return; setH(p.handle || ''); setN(p.display_name || '');
-    setNext(p.handle_next && new Date(p.handle_next) > new Date() ? String(p.handle_next).slice(0, 10) : null); };
+/* 계정 맨 위 프로필 카드 + 프로필 수정 (2026-10-06 햇살님 «프로필 수정 기능, 허용 글자·중복 확인, 닉네임 한글만 제한 없애자») — 폰 앱 ProfileCard·ProfileEditView 와 같다 */
+export const nickProblem = raw => {   // 서버(0180 set_nickname)와 같은 규칙을 저장 전에 미리 — 판정은 서버
+  const v = String(raw || '').trim().normalize('NFC');
+  if (!v || [...v].length > 12) return '닉네임은 1~12자예요';
+  if (/[\u0000-\u001f\u007f]/.test(v)) return '쓸 수 없는 글자가 있어요';
+  if (/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}]/u.test(v)) return '이모지·그림 문자는 쓸 수 없어요';
+  if (/[!"#$%&()*+,/:;<=>?@[\\\]^`{|}~]/.test(v)) return "기호는 . _ - ' · 만 쓸 수 있어요";
+  const flat = v.toLowerCase().replace(/\s/g, '');
+  if (['운영자', '관리자', '진행자', '운영진', 'admin', 'administrator', 'official', 'support', 'moderator', 'tunel', '투넬', '첫밤사망자클럽', '1ndclub', '1ndcapp', '당산나무'].some(w => flat.includes(w))) return '운영·진행자로 보이는 이름은 쓸 수 없어요';
+  return null;
+};
+function ProfileCard() {
+  const nav = useNav(), [p, setP] = useState({});
+  const load = async () => setP(await account.plaza('my_profile') || {});
   useEffect(() => { load(); }, []);
-  const save = async (fn, args) => { const o = await account.plaza(fn, args); if (!o || !o.ok) setMsg((o && o.error) || '저장하지 못했어요.'); load(); };
-  return html`<${Section} header="프로필" footer=${next ? '아이디는 ' + next + ' 뒤에 바꿀 수 있어요' : null}>
-    <div class="row"><span>@</span><input id="pf-handle" class="textin grow" value=${h} placeholder="아이디" autocapitalize="off" autocomplete="off" spellcheck="false"
-      onInput=${e => setH(e.currentTarget.value)} onKeyDown=${e => { if (e.key === 'Enter') save('set_handle', { p_handle: h }); }} onBlur=${() => h && save('set_handle', { p_handle: h })} /></div>
-    <div class="row"><input id="pf-name" class="textin grow" value=${n} placeholder="이름" onInput=${e => setN(e.currentTarget.value)}
-      onKeyDown=${e => { if (e.key === 'Enter') save('set_display_name', { p_name: n }); }} onBlur=${() => save('set_display_name', { p_name: n })} /></div>
-    <${Alert} open=${!!msg} title=${msg} onClose=${() => setMsg(null)} />
+  return html`<${Section}>
+    <div class="row" style="flex-direction:column;align-items:flex-start;gap:2px"><div style="font-size:20px;font-weight:600">${p.nick || account.nick()}</div>
+      ${p.handle ? html`<div class="sub">@${p.handle}</div>` : html`<div class="orange">아이디를 정해 주세요</div>`}${p.display_name && html`<div class="sub">${p.display_name}</div>`}</div>
+    <${Row} chevron onClick=${() => nav.push(html`<${ProfileEdit} profile=${p} done=${load} />`)}>프로필 수정<//>
+  <//>`;
+}
+function ProfileEdit({ profile, done }) {
+  const nav = useNav();
+  const [h, setH] = useState(profile.handle || ''), [n, setN] = useState(profile.nick || account.nick()), [nm, setNm] = useState(profile.display_name || '');
+  const [hn, setHn] = useState(null), [err, setErr] = useState({}), [saving, setSaving] = useState(false);
+  useEffect(() => { setErr(e => ({ ...e, handle: null })); const v = h.trim().toLowerCase(); if (!v || v === (profile.handle || '')) { setHn(null); return; }
+    const t = setTimeout(async () => { const r = await account.plaza('handle_check', { p_handle: v }); setHn(r ? { ok: r.ok, text: r.ok ? '쓸 수 있어요' : r.reason } : { ok: false, text: '확인하지 못했어요' }); }, 400);
+    return () => clearTimeout(t); }, [h]);
+  const nickNote = n === (profile.nick || '') ? null : nickProblem(n);
+  const [ns, setNs] = useState(null);   // 서버 확인 — 겹침·한 달 규칙
+  useEffect(() => { setErr(e => ({ ...e, nick: null })); if (n === (profile.nick || '') || nickProblem(n)) { setNs(null); return; }
+    const t = setTimeout(async () => { const r = await account.plaza('nick_check', { p_nick: n }); setNs(r ? { ok: r.ok, text: r.ok ? '쓸 수 있어요' : r.reason } : { ok: false, text: '확인하지 못했어요' }); }, 400);
+    return () => clearTimeout(t); }, [n]);
+  const note = (ok, t) => html`<div class="row sub" style=${'color:' + (ok ? 'var(--green)' : 'var(--red)')}>${ok ? '✓' : '!'} ${t}</div>`;
+  const save = async () => { setSaving(true); const e = {};
+    if (h && h.toLowerCase() !== (profile.handle || '')) { const r = await account.plaza('set_handle', { p_handle: h }); if (!r || !r.ok) e.handle = (r && r.error) || '저장하지 못했어요'; }
+    if (n !== (profile.nick || '')) { const r = await account.plaza('set_nickname', { p_nick: n }); if (!r || !r.ok) e.nick = (r && r.error) || '저장하지 못했어요'; }
+    if (nm !== (profile.display_name || '')) { const r = await account.plaza('set_display_name', { p_name: nm }); if (!r || !r.ok) e.name = (r && r.error) || '저장하지 못했어요'; }
+    setSaving(false); setErr(e); if (!Object.keys(e).length) { await account.load(); done && done(); nav.pop(); } };
+  return html`<${Page} title="프로필 수정" left=${html`<${Back} />`} right=${html`<button class="nbtn bold" disabled=${saving || !!nickNote || (hn && !hn.ok) || (ns && !ns.ok)} onClick=${save}>${saving ? '저장 중…' : '저장'}</button>`}>
+    <${Section} header="아이디" footer="영문 소문자·숫자·밑줄·점, 3~20자 · 30일에 한 번 바꿀 수 있어요">
+      <div class="row"><span class="sub">@</span><input id="pe-handle" class="textin grow" value=${h} placeholder="아이디" autocapitalize="off" autocomplete="off" spellcheck="false" onInput=${e => setH(e.currentTarget.value)} /></div>
+      ${err.handle ? note(false, err.handle) : hn && note(hn.ok, hn.text)}<//>
+    <${Section} header="닉네임" footer=${'게임에서 보이는 이름 · 1~12자 · 다른 사람과 겹칠 수 없어요 · 한 달에 한 번 바꿀 수 있어요' + (profile.nick_next ? ' · ' + String(profile.nick_next).slice(0, 10) + ' 뒤에' : '')}>
+      <div class="row"><input id="pe-nick" class="textin grow" value=${n} placeholder="닉네임" onInput=${e => setN(e.currentTarget.value)} /></div>
+      ${(err.nick || nickNote) ? note(false, err.nick || nickNote) : ns && note(ns.ok, ns.text)}<//>
+    <${Section} header="이름" footer="본명이 아니어도 돼요 · 친구에게만 보여요">
+      <div class="row"><input id="pe-name" class="textin grow" value=${nm} placeholder="이름" onInput=${e => setNm(e.currentTarget.value)} /></div>
+      ${err.name && note(false, err.name)}<//>
   <//>`;
 }

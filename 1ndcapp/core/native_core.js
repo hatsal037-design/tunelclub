@@ -1191,6 +1191,7 @@ var NativeCore = (function () {
     'night.undoTargets': function () { if (!undoTgt) return rejected('notAllowedInPhase', '되돌릴 확정이 없어요.');
       var u = undoTgt; restoreState(u.raw); var w0 = JSON.parse(u.wz); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w0); return null; },
     'night.commitTargets': function (p) {
+      try { var c00 = current(); if (c00 && c00.o.dk === 'lm') blAutoHolder(c00.o); } catch (e) {}   /* 품은 하수인 자동 — 진행자가 안 골랐을 때만 */
       var cur = current(); if (!cur) return rejected('notAllowedInPhase', '깨울 차례가 없어요.');
       var card = nightCard(), owner = cur.o.i, a = actOf(cur.o.c);
       if (!card.needsTargetsFirst) return rejected('notAllowedInPhase', '이미 처리한 차례예요.');
@@ -1262,6 +1263,7 @@ var NativeCore = (function () {
       logDelivery(card); save(); return null;
     },
     'night.advance': function (p) {   // 대상이 없는 카드만(또는 skip). 대상이 있는 카드는 night.commitTargets 가 이어져야 한다
+      try { var c01 = current(); if (c01 && c01.o.dk === 'lm') blAutoHolder(c01.o); } catch (e) {}   /* 품은 하수인 자동 — 진행자가 안 골랐을 때만 */
       var card = nightCard(); if (!card) return rejected('notAllowedInPhase', '깨울 차례가 없어요.');
       if (card.needsTargetsFirst && !p.skip) return rejected('invalidSelection', '먼저 대상을 확정해 주세요.');   // skip — 고르지 않고 재움(웹 «재웠음 · 다음»: 안 쓰겠다는 사람·쓸 수 없는 밤)
       /* 참가자에게 보여 준 답 — «정보 전달» 한 줄(판세 분석: 짚인 사람이 이후 지명·표·처형·밤 사망에 오르나를 잇는다, 2026-09-30). 진행자가 직접 고른 답을 이미 적었으면 앱 답은 안 적는다 */
