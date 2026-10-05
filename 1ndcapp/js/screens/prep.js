@@ -300,27 +300,29 @@ function HandoffView({ c, start }) {
     ${m && m.composition && m.position < 0 && html`<${Section} header="구성 발표"><${Composition} c=${m.composition} /><//>`}
     ${m && m.notice && m.notice.length > 0 && m.position < 0 && html`<${Section} header="이번 판 공지">${m.notice.map((t, k) => html`<div class="row" style="align-items:baseline"><span class="sec num">${k + 1}</span><span class="grow" style="white-space:pre-line">${t}</span></div>`)}<//>`}
     ${m && html`<${Section} header=${`${m.position + 1} / ${m.order.length}`}>${m.order.map((p, k) => html`<${Row} onClick=${() => setTurn(k)}>
-      <span class=${k <= m.position ? 'blue' : 'sec'}><${Icon} name=${k <= m.position ? 'checkCircle' : 'circle'} size=${22} /></span>
+      <span class=${k <= m.position || (m.seen || []).includes(k) ? 'blue' : 'sec'}><${Icon} name=${k <= m.position || (m.seen || []).includes(k) ? 'checkCircle' : 'circle'} size=${22} /></span>
       <span class="grow">${p.number} · ${p.name}</span>${k === m.position + 1 && html`<span class="sub">다음 차례</span>`}<//>`)}<//>`}
     ${m && m.position >= 0 && html`<${Section}><${Row} tint onClick=${() => store.dispatch('handoff.seen', { position: -1 })}>처음부터 다시 넘기기<//><//>`}
     ${m && m.fakes.length > 0 && html`<${Section}><${Disclosure} label=${`진행자만 — 가짜 카드 ${m.fakes.length}`}>${m.fakes.map(f => `${f.number}번(${f.real})에겐 «${f.shown}» 카드`).join('\n')}<//><//>`}
-    <${Cover} open=${turn !== null && m && turn < m.order.length}>${turn !== null && m && turn < m.order.length && html`<${PlayerTurn} key=${turn} m=${m} k=${turn} done=${last => setTurn(last ? null : turn + 1)} />`}<//>
+    <${Cover} open=${turn !== null && m && turn < m.order.length}>${turn !== null && m && turn < m.order.length && html`<${PlayerTurn} key=${turn} m=${m} k=${turn} done=${(last, inOrder) => setTurn(last || !inOrder ? null : turn + 1)} close=${() => setTurn(null)} />`}<//>
     ${R.alert}
   <//>`;
 }
-function PlayerTurn({ m, k, done }) {
+/* 참가자 화면 — 왼쪽 위 닫기는 확인 없이 목록으로, 본 기록은 그대로(2026-10-05) */
+function PlayerTurn({ m, k, done, close }) {
   const p = m.order[k], last = k === m.order.length - 1, R = useRun();
   const [shown, setShown] = useState(null), [seen, setSeen] = useState(false);
   const cur = useRef(null);
   const hold = on => { if (on) { cur.current = store.publicCard(p.index); setShown(cur.current); } else if (cur.current) { cur.current = null; setShown(null); setSeen(true); } };
   return html`<div class="reveal-page">
+    <button class="blink" style="position:absolute;top:calc(4px + var(--safe-t));left:16px" onClick=${() => { setShown(null); close(); }}>닫기</button>
     <div class="who"><div class="title2">${p.name}님 차례</div><div class="sub">${k + 1} / ${m.order.length}</div></div>
     <div class="mid">${shown ? html`<div class="pcard"><${RoleArt} r=${shown.roleName} size=${96} /><div class="rn">${shown.roleName}</div>
         <div class=${cx('tn', shown.side === 'evil' ? 'red' : shown.side === 'good' ? 'blue' : 'sec')}>${shown.teamName}</div><div class="ab2">${shown.ability}</div></div>`
       : html`<span class="hid" aria-label="가려져 있어요"><${Icon} name="eyeSlash" size=${44} stroke=${1.5} /></span>`}</div>
     <div class="acts"><${HoldButton} onChange=${hold} />
       <${Primary} title=${last ? '확인했어요 · 반납' : '확인했어요 · 다음 사람'} enabled=${seen && !shown} loading=${R.busy}
-        onClick=${() => { setShown(null); R.run('handoff.seen', { position: k }, () => done(last)); }} /></div>
+        onClick=${() => { const inOrder = k === m.position + 1; setShown(null); R.run('handoff.seen', { position: k }, () => done(last, inOrder)); }} />   /* 차례대로면 다음 사람, 다시 보거나 건너뛰어 본 거면 목록으로(2026-10-05) */</div>
     ${R.alert}
   </div>`;
 }

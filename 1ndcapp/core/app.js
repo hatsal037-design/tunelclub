@@ -2564,7 +2564,7 @@ function normTokens(m){ if(!m||!m.chars) return m; let a=_NT.get(m); if(a) retur
   ['reminders','remAuto','remBlue'].forEach(k=>{ if(Array.isArray(m[k])) a[k]=m[k].map(f); });
   _NT.set(m,a); return a; }
 function allMods(){ const all=Object.assign({}, BUILTIN); Object.keys(all).forEach(k=>{ all[k]=normTokens(withChars(all[k])); }); return all; }
-function ED(){ return allMods()[state.edition] || BUILTIN.basic; }
+function ED(){ const m=BUILTIN[state.edition]; return m?normTokens(withChars(m)):BUILTIN.basic; }   // allMods() 와 같은 객체(모드별 캐시) — 59개 모드를 매번 다시 펴던 게 첫밤 정보 카드 1~3초 멈춤의 원인(앱구조점검 2-1, 2026-10-05)
 /* 캐릭터 그림 — 스킨/<모드id>/<직업id>.webp 가 있으면 이모지 대신 쓴다.
    파일이 없으면 onerror 가 이모지로 되돌린다. 데이터는 안 건드리고 표시만 갈아 끼우는 구조라
    스킨 폴더가 없는 모드는 지금까지와 똑같이 이모지로 그려진다. */
@@ -3866,15 +3866,16 @@ function toggleRem(r){ const s=state.seats[editing]; s.rem=s.rem||[]; const i=s.
   }
   if(typeof event!=='undefined'&&event&&event.target) /** @type {HTMLElement} */(event.target).classList.toggle('on'); save(); }
 function executeSeat(){ const s=state.seats[editing]; if(!s||s.dead)return false;
+  const tok=(ED().reminders||[]).includes('오늘 처형됨')?'오늘 처형됨':'처형', had=(s.rem||[]).includes(tok);
   /* 처형 = 사망 처리(유령표 포함) + 처형 토큰(붙인 낮 기록 → 이방·판정은 '오늘' 것만, 다음다음 밤에 자동 정리) */
-  if(!toggleDead('exec')) return false;           // 확인창에서 취소하면 로그·토큰·처형 표시 아무것도 남기지 않는다 (이벤트 '처형'은 toggleDead가 남긴다 — 사망+처형 이중 기록 방지)
-  const tok=(ED().reminders||[]).includes('오늘 처형됨')?'오늘 처형됨':'처형';
+  if(!toggleDead('exec')){ if(!had&&(s.rem||[]).includes(tok)) execAnnounce(editing); return false; }   // 막힌 처형(죽은 척·처형 방어)도 처형은 있었다 — 소리·낭독은 공개 생사로(2026-10-05). 확인창 취소만 조용
   s.rem=s.rem||[]; if(!s.rem.includes(tok)) s.rem.push(tok); tokAtSet(editing,tok);
-  /* 처형은 모두가 보는 자리 — 소리와 낭독이 나가도 된다 (2026-09-04) */
-  bgmStingPlay('exec');
-  { const x=narrPick(s.dead?'execfull.died':'execfull.survived'), who=(s.name||('좌석 '+(editing+1)));   // 선언 + 결과를 한 번에 녹음한 통 음원(2026-10-04 «잘라 붙이면 어색해»)
-    if(x) speak(x.show.replace('{who}',who), 'exec', 'execCall', [{clip:x.clip,say:x.say}]); }
+  execAnnounce(editing);
   save(); render(); closeSheet(); return true; }
+/* 처형은 모두가 보는 자리 — 소리와 낭독이 나가도 된다 (2026-09-04). 결과는 공개 생사(죽은 척 = 사망) */
+function execAnnounce(i){ const s=state.seats[i]; bgmStingPlay('exec');
+  const x=narrPick(pubDead(s)?'execfull.died':'execfull.survived'), who=(s.name||('좌석 '+(i+1)));   // 선언 + 결과를 한 번에 녹음한 통 음원(2026-10-04 «잘라 붙이면 어색해»)
+  if(x) speak(x.show.replace('{who}',who), 'exec', 'execCall', [{clip:x.clip,say:x.say}]); }
 /* 오늘(직전 낮)의 처형자 — 처형 토큰 + 붙인 시점으로 판단. 기록이 없는 옛 토큰은 마지막 수단으로만 */
 function execSeatsToday(){ const list=state.seats.map((s,i)=>({s,i})).filter(o=>o.s.char&&(o.s.rem||[]).some(r=>r==='오늘 처형됨'||r==='처형'));
   const aged=list.map(o=>{ const ages=['오늘 처형됨','처형'].filter(t=>(o.s.rem||[]).includes(t)).map(t=>tokAge(o.i,t)).filter(a=>a!==null); return {o, a:ages.length?Math.min(...ages):null}; });
@@ -3938,7 +3939,15 @@ function firstNightNoDemonKill(){ try{ if((state.nights||1)!==1||state.phase==='
    2목숨(가사 상태)과 변론(처형 면제)을 같게 다룬다 (2026-09-15 햇살님 «2목숨과 같게»).
    안 남기면 그날 또 처형할 수 있고, 그날 밤 시귀가 «처형 없던 날» 로 읽는다. */
 /* 죽은 척 — 목숨을 쓰고 살아남은 사람은 «죽었다고 발표»한다. 판정은 살아 있는 그대로, 큰 화면 공개 생사만 이 표식을 따른다(native_core displayPublic, 2026-10-02) */
-function fakeDeadMark(i){ const s=state.seats[i]; if(!s) return; s.rem=s.rem||[]; if(!s.rem.includes('죽은 척')){ s.rem.push('죽은 척'); try{ tokAtSet(i,'죽은 척'); }catch(e){} } }
+function fakeDeadMark(i){ const s=state.seats[i]; if(!s) return; s.rem=s.rem||[]; if(!s.rem.includes('죽은 척')){ s.rem.push('죽은 척'); try{ tokAtSet(i,'죽은 척'); }catch(e){} }
+  if(villageType()&&!s.rem.includes('유령표')){ s.rem.push('유령표'); try{ tokAtSet(i,'유령표'); }catch(e){} } }   // 낮엔 죽은 사람처럼 — 지명 못 하고 유령표 한 번(2026-10-05 햇살님 «죽은 사람처럼»)
+/* 공개 생사(2026-10-05) — 참가자가 보고 듣는 곳(TV 자리표·아침 발표·낭독·처형 결과·지난 처형)은 이 셋만 읽는다. 판정·진행자 화면은 s.dead 그대로.
+   죽은 척이 붙은 밤·낮은 tokAt/tokPh 가 이미 적어 둔다 */
+function fakeAt(i){ const s=state.seats[i], k=i+'|죽은 척'; return s&&(s.rem||[]).includes('죽은 척')?{n:(state.tokAt||{})[k], ph:(state.tokPh||{})[k]}:null; }
+function pubDead(s){ return !!s&&(!!s.dead||(s.rem||[]).includes('죽은 척')); }
+function pubNightDeaths(n){ return state.seats.map((s,i)=>({s,i})).filter(({s,i})=>{ if(!s) return false; const f=fakeAt(i);
+  if(s.dead) return (s.causeN||0)===n&&s.cause!=='exec'&&s.cause!=='day'&&!(f&&f.n<n);   // 이미 죽었다고 발표한 사람은 다시 부르지 않는다
+  return !!f&&f.n===n&&f.ph!=='day'; }); }   // 이번 밤 죽은 척 — 발표는 사망
 function execHappenedMark(i, why){
   const s=state.seats[i]; if(!s) return null;
   const tk=(ED().reminders||[]).includes('오늘 처형됨')?'오늘 처형됨':'처형';
@@ -4312,9 +4321,12 @@ const SRV = {
       if(error) throw error; return data||null; }catch(e){ return null; } },
   /* 저장된 판을 그대로 집어온다 — logsAll() 이 주는 건 메모리 꼴이라 등록부 판본(reg)이 떼여 있다.
      그걸 올리면 그 판이 어느 판본 규칙으로 돌았는지가 서버에서 사라진다 (2026-09-13) */
+  /* 저장 원문이 그대로면 한 번 편 표를 다시 쓴다 — 판마다 전체를 다시 펴서 안 올린 판이 쌓이면 제곱으로 느려졌다(300판 3~7초, 앱구조점검 2-2, 2026-10-05).
+     ponytail: 돌려준 객체를 고쳐 쓰면 다음 조회에도 남는다 — 지금 부르는 곳(payloadOf)은 읽기만 */
   stored(L){ if(!L) return null;
-    try{ const a=JSON.parse(localStorage.getItem('botc_logs')||'[]');
-      return a.find(x=>x&&((L.uuid&&x.uuid===L.uuid)||x.id===L.id))||null; }catch(e){ return null; } },
+    try{ const raw=localStorage.getItem('botc_logs')||'[]';
+      if(SRV._sr!==raw){ const m=new Map(); JSON.parse(raw).forEach(x=>{ if(!x) return; if(x.uuid&&!m.has('u'+x.uuid)) m.set('u'+x.uuid,x); if(!m.has('i'+x.id)) m.set('i'+x.id,x); }); SRV._sr=raw; SRV._sm=m; }
+      return (L.uuid&&SRV._sm.get('u'+L.uuid))||SRV._sm.get('i'+L.id)||null; }catch(e){ return null; } },
   /* 기기 pid ↔ 서버 사람 맞추기. 이걸 먼저 해야 참가 기록이 사람에게 붙는다 */
   async syncPeople(list){ const cl=SRV.client(); if(!cl||!list||!list.length) return null;
     try{ const { data, error } = await cl.schema('dangsan').rpc('sync_people', { p_people: list });
@@ -4337,7 +4349,7 @@ const SRV = {
       started_at:iso(L.at),      started_raw:L.at||null,         // 옛 시각은 시간대 없는 글자다 — 원문도 같이 보낸다
       ended_at:iso(L.endedAt),   ended_raw:L.endedAt||null,
       winner:L.winner||null, nights:L.nights||null,
-      reg_ver:(S&&S.reg!==undefined?S.reg:null), detail_level:'full', payload:S };
+      reg_ver:(S&&S.reg!==undefined?S.reg:null), detail_level:'full', payload:(S&&S.rec)?Object.assign({},S,{rec:recPublic(S.rec)}):S };   // 씨앗+명령 기록은 공개용(recPublic — 앉은 사람 것만)으로 같이 올린다(2026-10-05). 사건 기록 전체도 아직 같이 — 옛 규칙 판본 보관을 정하기 전 안전망
     /* 좌석 0 은 «퇴장해서 자리가 없다»는 뜻이다. p.seat||i+1 로 두면 0 이 1·2 로 둔갑해
        원본과 서버의 좌석이 어긋난다 — 좌석을 기본키에서 뺀 이유를 앱에서 도로 무너뜨린다 (코덱스 검토 2026-09-13) */
     const noSkill=hubRepOf(allMods()[L.mode]||{})==='mafia';   // 오리지널 마피아는 숙련도 적용 안 함(2026-10-03 햇살님 «더 라이트하게 즐기는 게임»)
@@ -4395,6 +4407,8 @@ const SRV = {
     let raw=[]; try{ raw=JSON.parse(localStorage.getItem('botc_logs')||'[]'); if(!Array.isArray(raw)) raw=[]; }catch(e){ raw=[]; }
     let n=0;
     rows.forEach(r=>{ if(!r||!r.owner_me||!r.payload||typeof r.payload!=='object') return; const P=r.payload;
+      /* 진행 중 판·승자 없는 판은 합치지 않는다 — 판 도중에 내려받으면 같은 판이 두 줄이 되고 하나는 매번 다시 올라갔다(앱구조점검, 2026-10-05). 서버가 닫은 판이면 서버 승자로 채운다 */
+      if(r.status==='in_progress') return; if(!P.winner&&r.winner) P.winner=r.winner; if(!P.winner) return;
       if(raw.some(x=>x&&((P.uuid&&x.uuid===P.uuid)||(P.id&&x.id===P.id)))) return;
       P.srvAt=Date.now(); raw.push(P); n++; });
     if(n){ raw.sort((a,b)=>String((a&&a.at)||'').localeCompare(String((b&&b.at)||''))); try{ localStorage.setItem('botc_logs', JSON.stringify(raw)); }catch(e){ return null; } }
@@ -6279,7 +6293,7 @@ function narrPick(sit){ const hub=narrHub(), arr=(NARRATION[hub]||{})[sit]||[]; 
 /* 아침 발표 — 화면용 줄(이름)과 통 음원 하나 */
 function dayNarr(){
   const n=(state.nights||1);   // 밤 N 의 사망은 causeN=N 으로 찍히고 낮 N 에 발표한다 (감사 2026-09-13)
-  const dead=state.seats.map((s2,i)=>({s2,i})).filter(o=>o.s2.dead&&(o.s2.causeN||0)===n&&!(o.s2.cause==='exec'||o.s2.cause==='day'));
+  const dead=pubNightDeaths(n).map(o=>({s2:o.s,i:o.i}));   // 공개 생사 — 죽은 척도 부른다
   const nm=o=>(o.s2.name||('좌석 '+(o.i+1)));
   /* 통 음원 하나(여는 말 + 사망 + 토론 열기) — 두 명 이상은 «여러 사람» 한 묶음 (2026-10-04 햇살님 «잘라 붙이면 어색해, 통 음원» · «두 명 이상은 많은 사람이») */
   const x=narrPick(!dead.length?'morning.none':dead.length===1?'morning.one':'morning.many');
@@ -6340,8 +6354,7 @@ function meetScriptHtml(){
 /* 낮 브리핑 — 발표할 것과 챙길 것을 갈라 준다 */
 function dayBriefHtml(alive,need){
   const n=(state.nights||1), cm=CMAP();   // 낮 N = 밤 N 이 끝난 뒤 (감사 2026-09-13)
-  const dead=state.seats.map((s2,i)=>({s2,i})).filter(o=>o.s2.dead&&(o.s2.causeN||0)===n
-    &&!(o.s2.cause==='exec'||o.s2.cause==='day'));
+  const dead=pubNightDeaths(n).map(o=>({s2:o.s,i:o.i}));   // 발표할 사망 — 공개 생사(죽은 척 포함)
   const nm=o=>(o.s2.name||('좌석 '+(o.i+1)));
   const say=dead.length?`밤사이 <b>${dead.map(nm).join(' · ')}</b>님이 쓰러졌습니다 — 사인은 말하지 않습니다.`
                        :'밤사이 아무도 죽지 않았습니다.';
@@ -7400,7 +7413,7 @@ function uiDayAnnounce(){ const D=dayRec(); D.announced=!D.announced; save(); wz
 function uiDayNomOpen(){ nomBy=null; wz.nomTgt=null; wz.nomStep='by'; wz.dayStep='nom'; wzRender(); }
 function uiDayNomSkipBy(){ nomBy=null; wz.nomStep='skip'; wzRender(); }
 function uiDayNomCancel(){ nomBy=null; wz.nomTgt=null; wz.nomStep=null; wzRender(); }
-function uiDayNomIdxs(){ const cm=CMAP(); return state.seats.map((x,i)=>({x,i})).filter(o=>o.x.char&&cm[o.x.char].team!=='host'&&(!o.x.dead||(o.x.rem||[]).includes('두 몫'))).map(o=>o.i); }   // 죽은 곡비(두 몫)도 지명할 수 있다
+function uiDayNomIdxs(){ const cm=CMAP(); return state.seats.map((x,i)=>({x,i})).filter(o=>o.x.char&&cm[o.x.char].team!=='host'&&(!pubDead(o.x)||(o.x.rem||[]).includes('두 몫'))).map(o=>o.i); }   // 죽은 곡비(두 몫)도 지명할 수 있다 · 죽은 척은 못 한다(공개 생사)
 function uiDayPickBy(){ seatChoose({ ok:uiDayNomIdxs(), sel:nomBy===null?-1:nomBy, title:'① 지목한 사람', sub:'오늘 이미 지명한 사람은 판 규칙을 확인하세요',
   onPick:i=>{ nomBy=i; if(wz.nomStep==='by'||wz.nomStep==='skip') wz.nomStep='target'; wzRender(); } }); }
 function uiDayPickTarget(){ const cm=CMAP(); const D=dayRec();
@@ -7492,7 +7505,7 @@ function voteWeight(seat){ const st=state.seats[seat]; if(!st) return 1;
 /* 투표 = 자리표 덮개(15). 손든 사람은 초안 — «이번 투표 확정»에서만 기록되고 유령표가 소비된다 */
 function uiDayVoteOpen(k){ const D=dayRec(); const n=D.noms[k]; if(!n) return; const cm=CMAP();
   const cur=(n.voters||[]).slice();
-  const ok=state.seats.map((x,i)=>({x,i})).filter(o=>o.x.char&&cm[o.x.char].team!=='host'&&(!o.x.dead||(o.x.rem||[]).includes('유령표')||(o.x.rem||[]).includes('두 몫')||cur.includes(o.i))).map(o=>o.i);
+  const ok=state.seats.map((x,i)=>({x,i})).filter(o=>o.x.char&&cm[o.x.char].team!=='host'&&(!pubDead(o.x)||(o.x.rem||[]).includes('유령표')||(o.x.rem||[]).includes('두 몫')||cur.includes(o.i))).map(o=>o.i);
   const ghosts=ok.filter(i=>state.seats[i].dead&&!(state.seats[i].rem||[]).includes('두 몫'));
   const need=()=>Math.ceil(state.seats.filter(x=>x.char&&!x.dead&&cm[x.char].team!=='host').length/2);
   const nmk=i=>uiSeatNo(i)+' '+escH((state.seats[i]&&state.seats[i].name)||('좌석 '+(i+1)));
@@ -7513,13 +7526,13 @@ function uiDayVoteCommit(){ const f=pickOv.free; const k=wz.voteOpen; const D=da
   /* 유령표: 빠진 사람은 돌려주고, 새로 든 죽은 사람은 여기서 소비한다 */
   (n.ghostUsed||[]).forEach(seat=>{ if(!draft.includes(seat)){ const st=state.seats[seat]; if(st){ st.rem=st.rem||[]; if(!st.rem.includes('유령표')){ st.rem.push('유령표'); tokAtSet(seat,'유령표'); } } } });
   n.ghostUsed=(n.ghostUsed||[]).filter(seat=>draft.includes(seat));
-  draft.forEach(seat=>{ const st=state.seats[seat]; if(st&&st.dead&&!(st.rem||[]).includes('두 몫')&&!n.ghostUsed.includes(seat)&&!prevVoters.includes(seat)){
+  draft.forEach(seat=>{ const st=state.seats[seat]; if(st&&pubDead(st)&&!(st.rem||[]).includes('두 몫')&&!n.ghostUsed.includes(seat)&&!prevVoters.includes(seat)){
     if(!(st.rem||[]).includes('유령표')) return; st.rem=st.rem.filter(r=>r!=='유령표'); tokAtDel(seat,'유령표'); n.ghostUsed.push(seat); } });
-  n.voters=draft.filter(seat=>{ const st=state.seats[seat]; return st&&(!st.dead||(st.rem||[]).includes('두 몫')||n.ghostUsed.includes(seat)||prevVoters.includes(seat)); });   // 산 채로 던진 표는 그날 죽어도 남는다 (코덱스 검토 2026-09-13)
+  n.voters=draft.filter(seat=>{ const st=state.seats[seat]; return st&&(!pubDead(st)||(st.rem||[]).includes('두 몫')||n.ghostUsed.includes(seat)||prevVoters.includes(seat)); });   // 산 채로 던진 표는 그날 죽어도 남는다 (코덱스 검토 2026-09-13)
   const _base=n.voters.reduce((a,seat)=>a+voteWeight(seat),0);   // 곡비 «두 몫» = 두 표 (감사 2026-09-13)
   n.v=Math.max(0,_base+(n.adj||0)); n.adj=n.v-_base; n.manual=!!n.adj;
   { const alive=state.seats.filter(x=>x.char&&!x.dead&&CMAP()[x.char].team!=='host').length; n.alive=alive; n.need=Math.ceil(voterCount()/2); }
-  logEvent('투표',{대상:state.seats[n.t].name||('좌석 '+(n.t+1)), 대상seat:n.t+1, 투표자:n.voters.map(x=>state.seats[x].name||('좌석 '+(x+1))), 투표자seats:n.voters.map(x=>x+1)});
+  logEvent('투표',{대상:state.seats[n.t].name||('좌석 '+(n.t+1)), 대상seat:n.t+1, 표:n.v, 투표자:n.voters.map(x=>state.seats[x].name||('좌석 '+(x+1))), 투표자seats:n.voters.map(x=>x+1)});
   wz.voteOpen=null; save(); pickOvClose(); }
 function dayVoterPanel(k){ uiDayVoteOpen(k); }   // 옛 이름 — 검증기·좌석 시트가 부른다
 /* 처형은 지목 마감에서만 — 조건은 화면에 이미 적혀 있으니 확인창 없이 실행한다 */
@@ -7551,7 +7564,7 @@ function uiDayExecUndo(k){ const D=dayRec(); const n=D.noms[k]; if(!n||!n.done) 
   logEvent('되돌림', Object.assign({종류:'처형 취소'}, logSeat(n.t)));   // 진행자가 얼마나 손댔는지 (2026-09-30)
   const s=state.seats[n.t]; if(s&&s.dead&&(s.cause==='exec'||s.cause===undefined)){ const keep=editing; editing=n.t; toggleDead(); editing=keep; }   // 살리기(사망·유령표·사인 되돌림)
   { const back=n.lifeUsed||(n.twoUsed?'가사 상태':null);   // 취소하면 쓴 목숨 표식(가사 상태·명줄…)을 돌려준다 (감사 2026-09-13 · 명줄 2026-09-27) — twoUsed 는 옛 판 호환
-    if(back&&s){ s.rem=s.rem||[]; if(!s.rem.includes(back)){ s.rem.push(back); try{ tokAtSet(n.t,back); }catch(e){} } if(s.rem.includes('죽은 척')){ s.rem=s.rem.filter(r=>r!=='죽은 척'); try{ tokAtDel(n.t,'죽은 척'); }catch(e){} } }
+    if(back&&s){ s.rem=s.rem||[]; if(!s.rem.includes(back)){ s.rem.push(back); try{ tokAtSet(n.t,back); }catch(e){} } if(s.rem.includes('죽은 척')){ s.rem=s.rem.filter(r=>r!=='죽은 척'&&(s.dead||r!=='유령표')); try{ tokAtDel(n.t,'죽은 척'); if(!s.dead) tokAtDel(n.t,'유령표'); }catch(e){} } }
     delete n.lifeUsed; delete n.twoUsed; }
   /* 막혀서 안 죽은 처형을 취소하면 «처형이 있었던 낮» 표도 거둔다 — toggleDead 가 안 불려 저절로 안 걷힌다 (2026-09-15) */
   if(n.blockedBy&&s){ const tk=(ED().reminders||[]).includes('오늘 처형됨')?'오늘 처형됨':'처형';
@@ -7598,11 +7611,11 @@ function dayToggleVoter(k,seat){ const D=dayRec(); const n=D.noms[k]; if(!n)retu
   const i=n.voters.indexOf(seat);
   const st=state.seats[seat];
   if(i>=0){ n.voters.splice(i,1);
-    if(st&&st.dead&&n.ghostUsed&&n.ghostUsed.includes(seat)){   // 취소 → 유령표 복구
+    if(st&&pubDead(st)&&n.ghostUsed&&n.ghostUsed.includes(seat)){   // 취소 → 유령표 복구
       st.rem=st.rem||[]; if(!st.rem.includes('유령표')) st.rem.push('유령표');
       n.ghostUsed=n.ghostUsed.filter(x=>x!==seat); }
   } else { n.voters.push(seat);
-    if(st&&st.dead&&!(st.rem||[]).includes('두 몫')){          // 죽은 사람 = 유령표 소모 (곡비 '두 몫'은 죽어서도 매일 투표 — 유령표 안 씀)
+    if(st&&pubDead(st)&&!(st.rem||[]).includes('두 몫')){          // 죽은 사람(죽은 척 포함) = 유령표 소모 (곡비 '두 몫'은 죽어서도 매일 투표 — 유령표 안 씀)
       if(!(st.rem||[]).includes('유령표')){ alert('이 사람은 유령표를 이미 썼어요.'); n.voters.pop(); return; }
       st.rem=st.rem.filter(r=>r!=='유령표'); tokAtDel(seat,'유령표'); n.ghostUsed=(n.ghostUsed||[]).concat([seat]); }
   }
@@ -7610,7 +7623,7 @@ function dayToggleVoter(k,seat){ const D=dayRec(); const n=D.noms[k]; if(!n)retu
   n.v=Math.max(0,_base+(n.adj||0)); n.adj=n.v-_base; n.manual=!!n.adj;
   { const alive=state.seats.filter(x=>x.char&&!x.dead&&CMAP()[x.char].team!=='host').length;
     n.alive=alive; n.need=Math.ceil(voterCount()/2); }   // 그 시점 처형 기준 스냅샷 — 결정표·만장일치의 원천 (2026-08-31)
-  logEvent('투표',{대상:state.seats[n.t].name||('좌석 '+(n.t+1)), 대상seat:n.t+1,
+  logEvent('투표',{대상:state.seats[n.t].name||('좌석 '+(n.t+1)), 대상seat:n.t+1, 표:n.v,   // 표 = 가중 득표(두 몫 등) — 복기가 사람 수 대신 읽는다(반증 검토 2-4)
     투표자:n.voters.map(x=>state.seats[x].name||('좌석 '+(x+1))),
     투표자seats:n.voters.map(x=>x+1)});   // 사람 참조 — 좌석 번호(1부터)
   save(); wzRender(); }
@@ -8740,14 +8753,27 @@ function modeStatsSrv(n){ try{ const M=JSON.parse(localStorage.getItem('dangsan_
     let good=0, evil=0; Object.keys(M).forEach(k=>{ if(+k.split('|').pop()===n){ good+=(M[k]&&M[k].good)||0; evil+=(M[k]&&M[k].evil)||0; } });
     return { good, evil }; }catch(e){ return null; } }
 let _structMemo=null;
+/* 기록 요약(2026-10-05 «씨앗+명령 기록») — 판세 보정이 이 기기 지난 판에서 읽는 넷을 한 곳에서 센다: 인원별 선·악 승수(서버에 올라간 판 뺀 것 따로),
+   직업별 승률(같은 두 갈래), 사람별 전적(statsOf), 직전 판 자리. 재생 도구는 판 시작 때 적어 둔 요약(__recDigest)을 넣는다 — 지난 판 기록 전체 없이 같은 판이 나온다 */
+let _digMemo=null;
+function logsDigest(){
+  const RD=globalThis.__recDigest; if(RD&&typeof RD==='object') return RD;   // 재생 도구가 넣는 요약
+  const k=logsKey(); if(_digMemo&&_digMemo.k===k) return _digMemo.d;
+  const logs=logsAll(), byN={}, roles={};
+  logs.forEach(L=>{ if(!L||L.practice) return; const cnt=(L.players||[]).filter(p=>p&&!['traveler','host','fabled'].includes(p.finalTeam||p.team)).length;   // 여행자·진행자는 인원에 안 센다(inPlaySeats 와 같게)
+    const b=byN[cnt]=byN[cnt]||{g:0,e:0,gn:0,en:0}; if(L.winner==='good'){ b.g++; if(!L.srvAt) b.gn++; } else if(L.winner==='evil'){ b.e++; if(!L.srvAt) b.en++; } });
+  [['all',false],['ns',true]].forEach(([nm,hasSrv])=>{ const R={}, T={};
+    logs.forEach(L=>{ if(!L||L.practice||(hasSrv&&L.srvAt)) return; (L.players||[]).forEach(p=>{ if(p.won===undefined||p.won===null||!p.roleId) return; const side=isEvilTeam(CMAP()[p.roleId]||{team:p.team})?'evil':'good';
+      (R[p.roleId]=R[p.roleId]||{g:0,w:0,side}); R[p.roleId].g++; if(p.won) R[p.roleId].w++; (T[side]=T[side]||{g:0,w:0}); T[side].g++; if(p.won) T[side].w++; }); });
+    roles[nm]={R,T}; });
+  const pl=logs.slice().reverse().find(x=>x&&x.winner&&Array.isArray(x.players)&&x.players.length>2);
+  const d={byN, roles, people:statsOf(logs), prev:pl?pl.players.map(p=>({seat:p.seat, team:p.team, k:p.pid||p.name})):null};
+  _digMemo={k, d}; return d; }
 function structTilt(n0){
   const n=n0||inPlaySeats().length, sv=modeStatsSrv(n)||(state.director&&state.director.rateSrv)||null, pos=plateauPos(n0);
   const key=logsKey()+'|'+n+'|'+JSON.stringify(sv)+'|'+pos;
   if(_structMemo&&_structMemo.key===key) return _structMemo.v;
-  let good=0, evil=0;
-  logsAll().forEach(L=>{ if(!L||L.practice) return; if(sv&&L.srvAt) return;   // 모드는 합친다 · 서버에 올라간 판은 서버 합계에 이미 들어 있다
-    const cnt=(L.players||[]).filter(p=>p&&!['traveler','host','fabled'].includes(p.finalTeam||p.team)).length; if(cnt!==n) return;   // 여행자·진행자는 인원에 안 센다(inPlaySeats 와 같게)
-    if(L.winner==='good') good++; else if(L.winner==='evil') evil++; });
+  const b=logsDigest().byN[n]||{g:0,e:0,gn:0,en:0}; let good=sv?b.gn:b.g, evil=sv?b.en:b.e;   // 모드는 합친다 · 서버에 올라간 판은 서버 합계에 이미 들어 있다(기록 요약)
   if(sv){ good+=sv.good||0; evil+=sv.evil||0; }
   const g=good+evil, prior=-0.6*(pos-0.5), w=g>=TILT.RATE_MIN?g/(g+10):0;   // 문턱 전엔 인원 구간만
   const calib=2*((evil+5)/(g+10)-0.5);
@@ -8888,7 +8914,7 @@ function flowSnap(){ try{ const d=directorState(), t=tiltValue(), al=aliveInPlay
 /* 가중 순서 — 셔플 대신. 앞에 올 확률만 기울인다 */
 function dirOrderT(arr, hOf, T){ const a=arr.slice(), out=[]; while(a.length){ const x=dirPickT(a, hOf, null, null, T); out.push(x); a.splice(a.indexOf(x),1); } return out; }
 /* 사람 실력 — (승+2)/(판+4), 이 기기 기록. 기록 없으면 null */
-function statsAll(){ const k=logsKey(); if(!_statsMemo||_statsMemo.n!==k) _statsMemo={n:k, P:statsOf(logsAll())}; return _statsMemo.P; }
+function statsAll(){ return logsDigest().people; }   // 사람별 전적 — 기록 요약(2026-10-05)
 function personSkill(pid, name){ const P=statsAll();
   const who=pid?personById(pid):null, st=P[(who&&who.name)||(name||'').trim()];
   return (st&&(st.승+st.패)>=TILT.SKILL_MIN)?(st.승+2)/(st.승+st.패+4):null; }   // 문턱 전엔 기록 없는 사람과 같게
@@ -8897,10 +8923,7 @@ let _statsMemo=null;
 function roleStrength(id){
   let srv={}; try{ srv=JSON.parse(localStorage.getItem('dangsan_rolestats')||'{}')||{}; }catch(e){}
   const hasSrv=!!(srv._good||srv._evil);
-  const key=logsKey()+'|'+hasSrv; if(!_roleMemo||_roleMemo.key!==key){ const R={}, T={};
-    logsAll().forEach(L=>{ if(!L||L.practice||(hasSrv&&L.srvAt)) return; (L.players||[]).forEach(p=>{ if(p.won===undefined||p.won===null||!p.roleId) return; const side=isEvilTeam(CMAP()[p.roleId]||{team:p.team})?'evil':'good';
-      (R[p.roleId]=R[p.roleId]||{g:0,w:0,side}); R[p.roleId].g++; if(p.won) R[p.roleId].w++; (T[side]=T[side]||{g:0,w:0}); T[side].g++; if(p.won) T[side].w++; }); });
-    _roleMemo={key, R, T}; }
+  _roleMemo=logsDigest().roles[hasSrv?'ns':'all'];   // 직업별 승률 — 기록 요약(2026-10-05)
   const c=CMAP()[id]||CHARS().find(x=>x.id===id); if(!c) return 0; const side=isEvilTeam(c)?'evil':'good';
   const r=_roleMemo.R[id]||{g:0,w:0}, sv=srv[id]||{g:0,w:0}, tl=_roleMemo.T[side]||{g:0,w:0}, ts=(srv['_'+side]||{g:0,w:0});
   const g=r.g+sv.g, w=r.w+sv.w, tg=tl.g+ts.g, tw=tl.w+ts.w;
@@ -9541,8 +9564,9 @@ function demonReseat(pool, exp, isDemon, isFixed, rnd=Math.random){
 const SEAT_LAMBDA=[1.5, 0.75, 0.3];
 function seatKey(s){ return (s&&(s.pid||s.name))||''; }
 function seatPrevGame(){ try{
-  const L=[state.log].concat(logsAll().slice().reverse()).find(x=>x&&x.winner&&Array.isArray(x.players)&&x.players.length>2); if(!L) return null;
-  const ps=L.players.slice().sort((a,b)=>a.seat-b.seat), k=p=>p.pid||p.name, nb=new Set();
+  const cur=(state.log&&state.log.winner&&Array.isArray(state.log.players)&&state.log.players.length>2)?state.log.players.map(p=>({seat:p.seat, team:p.team, k:p.pid||p.name})):null;
+  const ps0=cur||logsDigest().prev; if(!ps0) return null;   // 직전 판 — 기록 요약(2026-10-05)
+  const ps=ps0.slice().sort((a,b)=>a.seat-b.seat), k=p=>p.k, nb=new Set();
   ps.forEach((p,i)=>nb.add([k(p),k(ps[(i+1)%ps.length])].sort().join('|')));
   return {nb, evil:new Set(ps.filter(p=>['minion','demon'].includes(p.team)).map(k))};
   }catch(e){ return null; } }
@@ -12487,7 +12511,18 @@ function logsAll(){ try{ const src=localStorage.getItem('botc_logs'); if(src!==_
 let _logTrimWarned=false;
 function logsSave(a){ if(a.length>300&&!_logTrimWarned){ _logTrimWarned=true; try{ alert('기록이 300판을 넘어 오래된 판부터 지워져요 — 기록 보기에서 내보내기로 백업해 두세요. (그릇에 담긴 판의 요약은 그릇에 남아요)'); }catch(e){} }
   const at=a.slice(-300).map(logAtRest); const bad=[]; at.forEach((L,i)=>{ conceptGuard(L, CONCEPT_SHAPE.log).forEach(b=>bad.push('로그'+i+b)); }); if(bad.length){ conceptRefuse('기록', bad); return; }   // 쓰기 문턱 가드 (2026-09-11)
+  at.forEach((L,i)=>{ if(i<at.length-20&&L&&L.rec) delete L.rec; });   // 씨앗+명령 기록은 최근 20판만 — 판마다 원문 7KB 남짓이라 웹 저장 한도를 당긴다(2026-10-05)
   stSet('botc_logs',JSON.stringify(at)); }  // 최근 300판 — 저장은 kid(v7)
+/* 서버에 올릴 씨앗+명령 기록(2026-10-05 햇살님 «용량 최소화는 하지만 받아서 기기에서 다 복구해서 쓸 수 있는 만큼») — 시작 저장소에서
+   그 판에 앉은 사람의 명부·등급만, 판에 쓰는 설정·서버 합계만 남긴다. 대기석 이름·다른 판 사람·마당 목록은 뺀다. 지난 판 요약(digest)은 이미 앉은 사람 것만 */
+const REC_PUB_KEEP=['dangsan_rolestats','dangsan_modestats','dangsan_tilt','dangsan_practice_next','botc_pot_now'];
+function recPublic(rec){ if(!rec||!rec.start||!rec.start.botc_state) return undefined;
+  try{ const st=JSON.parse(rec.start.botc_state), pids=new Set((st.seats||[]).map(x=>x&&x.pid).filter(Boolean)); st.bench=[];
+    const ppl=JSON.parse(rec.start.botc_people||'[]').filter(p=>p&&pids.has(p.id)), tids=new Set(ppl.map(p=>p.tunelId).filter(Boolean)), start={botc_state:JSON.stringify(st)};
+    if(rec.start.botc_people) start.botc_people=JSON.stringify(ppl);
+    ['preparation_experience_grades','preparation_experience_locks'].forEach(k=>{ if(rec.start[k]==null) return; const o=JSON.parse(rec.start[k]||'{}'), r={}; Object.keys(o).forEach(t=>{ if(tids.has(t)) r[t]=o[t]; }); start[k]=JSON.stringify(r); });
+    REC_PUB_KEEP.forEach(k=>{ if(rec.start[k]!=null) start[k]=rec.start[k]; });
+    return Object.assign({}, rec, {start}); }catch(e){ return undefined; } }
 function nowStamp(){ const d=new Date(), p=n=>String(n).padStart(2,'0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
 /* ── 숙련 등급의 판단 사실(2026-10-03, docs/숙련등급_설계_v1.md) — 판 기록 하나에서 선일 때의 «표 판단»·«지명 판단» 합과 수를 자리별로.

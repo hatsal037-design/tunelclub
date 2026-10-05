@@ -11,7 +11,7 @@ export const account = {
   on: false, user: null, info: null, busy: false, pending: 0,
   rpc,   // 큰 화면 연결(screenlink.js)이 같은 로그인으로 서버 함수를 부른다
   subscribe(f) { subs.add(f); return () => subs.delete(f); },
-  emit() { this.pending = (store.get('sync.pending') || []).length; subs.forEach(f => f()); },
+  emit() { this.pending = store.get('sync.pendingCount') || 0; subs.forEach(f => f()); },
   nick() { const u = this.user, i = this.info; return (i && i.nick) || (u && u.user_metadata && (u.user_metadata.name || u.user_metadata.nickname)) || ''; },
 
   async init() {
@@ -69,15 +69,20 @@ export const account = {
     let skill = null; try { skill = await rpc('team_skill_gap', { p_good: c.good, p_evil: c.evil }); } catch {}
     if (skill) await store.dispatch('director.setServer', { skill });
   },
-  /** 서버에 있는 내 판 중 이 기기에 없는 것을 받는다 — 기기를 바꿨을 때 */
+  /** 서버에 있는 내 판 중 이 기기에 없는 것을 받는다 — 기기를 바꿨을 때.
+   *  마지막으로 받은 판의 updated_at 을 두었다가 그 뒤 바뀐 판만 묻는다(0150 p_since). 처음·실패 때는 전체 */
   async pull() {
     if (!this.user) return null;
+    const key = 'dangsan_pull_since:' + this.user.id;
+    let since = null; try { since = localStorage.getItem(key); } catch {}
     try {
-      const rows = await rpc('my_games', { p_limit: 200, p_with_payload: true });
-      const r = await store.dispatch('sync.merge', { rows: rows || [] });
+      const rows = (await rpc('my_games', since ? { p_limit: 200, p_with_payload: true, p_since: since } : { p_limit: 200, p_with_payload: true })) || [];
+      const r = await store.dispatch('sync.merge', { rows });
       if (!r.ok) return null;
+      const last = rows.reduce((m, g) => (g && g.updated_at && g.updated_at > m ? g.updated_at : m), since || '');   // 서버가 같은 꼴(UTC ISO)로 줘서 글자 비교로 충분
+      if (last) { try { localStorage.setItem(key, last); } catch {} }
       this.emit(); return store.get('sync.merged');
-    } catch { return null; }
+    } catch { if (since) { try { localStorage.removeItem(key); } catch {} } return null; }   // 실패하면 다음엔 전체
   },
   /** 진행 중인 판을 서버에 두기 — 밤·낮 경계와 처형 뒤. 결과가 정해진 채 12시간 방치되면 서버가 닫는다 (2026-09-30) */
   async snapshot() {

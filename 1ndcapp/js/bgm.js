@@ -12,8 +12,14 @@ export function bgmSync(slot) {
 }
 export function bgmEffects(fx) {
   if (!settings.get('bgm')) return;
-  fx.filter(e => e.kind === 'sting').forEach(e => { const s = new Audio(`bgm/${e.hub}_${e.name}.m4a`); s.volume = Math.min(1, vol() * 1.2);
-    if (cur) fade(cur, vol() * 0.35, 250); s.onended = () => { if (cur) fade(cur, vol(), 400); }; s.play().catch(() => {}); });
+  /* 한 응답의 짧은 소리 여럿(처형 → 승패)은 차례로(2026-10-05) */
+  const list = fx.filter(e => e.kind === 'sting').map(e => `bgm/${e.hub}_${e.name}.m4a`);
+  const next = () => { const u = list.shift(); if (!u) { if (cur && !ducked) fade(cur, vol(), 400); return; }
+    const s = new Audio(u); s.volume = Math.min(1, vol() * 1.2); if (cur) fade(cur, vol() * 0.35, 250); s.onended = next; s.onerror = next; s.play().catch(next); };
+  if (list.length) next();
 }
+/* 낭독하는 동안 줄이기 — narrator.js 가 부른다 */
+let ducked = false;
+export function bgmDuck(on) { ducked = on; if (cur) fade(cur, on ? vol() * 0.35 : vol(), on ? 250 : 400); }
 export function bgmVolume() { if (cur) cur.volume = vol(); }
 export function bgmStop() { if (cur) { const old = cur; fade(old, 0, 600, () => old.pause()); } cur = null; curName = null; }

@@ -1,6 +1,8 @@
 /* 네이티브 코어 받침 — 앱(build/app.js)을 브라우저 없이 JavaScriptCore 에 올린다 (2026-09-28 iOS 3단계).
    tests/_harness.js 의 DOM 스텁(anything)·저장소를 옮겨 왔다 — node 전용(Buffer·vm) 없이. 화면은 그리지 않는다.
    저장소는 메모리 — 스위프트가 부팅 때 __boot_storage 로 채우고, 명령 성공 뒤 NativeCore.exportStorage() 를 파일로 쓴다. */
+/* 코어 전용 Math — 판 난수(state.rng)를 코어 안에서만 바꾼다. 웹은 코어를 화면과 같은 페이지의 함수 안에서 올려서, 전역 Math 를 바꾸면 화면까지 판 난수를 먹는다(2026-10-05 «씨앗+명령 기록») */
+var Math = Object.create(globalThis.Math);
 function anything(name = 'el') {
   const el = function () { return anything(name + '()'); };
   el._name = name; el._attrs = {}; el.children = []; el.dataset = {};
