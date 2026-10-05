@@ -1,13 +1,14 @@
 // A01 사람 상세 — 직업·상태(사망/부활)·여행자 편·판에서 빼기·표식. 보호·면역이면 코어가 묻는다
 import { html, useState } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
-import { Page, Section, Row, CheckRow, Labeled, ActionSheet, Alert, RoleArt, useRun } from '../ui.js';
+import { Page, Section, Row, CheckRow, Labeled, ActionSheet, Alert, RoleArt, useRun, Cover, HoldButton } from '../ui.js';
 import { Back, useNav } from '../nav.js';
+import { Icon } from '../icons.js';
 
 export function SeatDetailView({ index, title }) {
   const nav = useNav(), R = useRun();
   const [m, setM] = useState(() => store.get('seat.detail', String(index)));
-  const [ask, setAsk] = useState(null);   // 'day' | 'cause' | 'remove' | {confirm}
+  const [ask, setAsk] = useState(null), [recheck, setRecheck] = useState(false);   // recheck — 역할 다시 보여주기(2026-10-05)   // 'day' | 'cause' | 'remove' | {confirm}
   const load = () => setM(store.get('seat.detail', String(index)));
   const run = async (t, p) => {
     const r = await store.dispatch(t, p);
@@ -29,7 +30,8 @@ export function SeatDetailView({ index, title }) {
   return html`<${Page} title=${title} left=${html`<${Back} />`}>
     ${m && html`
       <${Section}><div class="row"><${Labeled} label="직업" value=${html`<span class="hstack" style="justify-content:flex-end">${m.role && html`<${RoleArt} r=${m.role} size=${24} />`}${m.role ? `${m.role} · ${m.teamKo}` : '없음'}</span>`} /></div>
-        ${m.ability && html`<div class="row sub" style="white-space:pre-line">${m.ability}</div>`}<//>
+        ${m.ability && html`<div class="row sub" style="white-space:pre-line">${m.ability}</div>`}
+        ${m.role && html`<${Row} tint onClick=${() => setRecheck(true)}>역할 다시 보여주기<//>`}<//>
       <${Section}>${m.dead ? html`<div class="row"><${Labeled} label="상태" value=${`사망 · ${m.cause || ''}`} /></div><${Row} tint onClick=${() => run('seat.revive', { seat: index })}>부활<//>`
         : html`<div class="row"><${Labeled} label="상태" value="생존" /></div><${Row} danger onClick=${kill}>사망 처리<//>`}<//>
       ${m.sideKind && html`<${Section} header=${m.sideKind === 'traveler' ? '여행자 편' : '편들기(기록용)'}>${[['good', '선팀'], ['evil', '악팀']].map(([sd, l]) => html`<${CheckRow} title=${l} on=${m.side === sd} onClick=${() => run('seat.setSide', { seat: index, side: sd })} />`)}<//>`}
@@ -37,6 +39,20 @@ export function SeatDetailView({ index, title }) {
       <${Section} header="표식">${m.tokens.map(t => html`<${CheckRow} title=${t.label} on=${t.on} onClick=${() => run('seat.toggleToken', { seat: index, token: t.id })} />`)}<//>`}
     <${ActionSheet} open=${!!conf} ...${conf || {}} onClose=${() => setAsk(null)} />
     <${Alert} open=${!!store.notice} title="알림" message=${store.notice} onClose=${() => { store.notice = null; store.emit(); }} />
+    <${Cover} open=${recheck}>${recheck && html`<${RoleRecheck} index=${index} name=${m ? m.name : ''} close=${() => setRecheck(false)} />`}<//>
     ${R.alert}
   <//>`;
+}
+
+/* 판 중 «역할 다시 보여주기» — 역할 넘기기 참가자 화면과 같은 «누르는 동안 보기». 카드는 코어 handoff.public(취한 사람은 처음 받은 가짜 카드). 판은 바꾸지 않는다 */
+function RoleRecheck({ index, name, close }) {
+  const [shown, setShown] = useState(null);
+  return html`<div class="reveal-page">
+    <button class="blink" style="position:absolute;top:calc(4px + var(--safe-t));left:16px" onClick=${() => { setShown(null); close(); }}>닫기</button>
+    <div class="who"><div class="title2">${name}님</div></div>
+    <div class="mid">${shown ? html`<div class="pcard"><${RoleArt} r=${shown.roleName} size=${96} /><div class="rn">${shown.roleName}</div>
+        <div class=${shown.side === 'evil' ? 'tn red' : shown.side === 'good' ? 'tn blue' : 'tn sec'}>${shown.teamName}</div><div class="ab2">${shown.ability}</div></div>`
+      : html`<span class="hid" aria-label="가려져 있어요"><${Icon} name="eyeSlash" size=${44} stroke=${1.5} /></span>`}</div>
+    <div class="acts"><${HoldButton} onChange=${on => setShown(on ? store.publicCard(index) : null)} /></div>
+  </div>`;
 }
