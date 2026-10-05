@@ -185,7 +185,7 @@ var NativeCore = (function () {
   function nightCard() {
     var card = nightCardRaw(); if (!card) return card;
     try {
-      var cur = current(), o = cur.o, c = o.real || o.c, s = o.s || {}, RR = fxRule(c) || {}, W = RR.when || [];
+      var cur = current(), o = cur.o, c = o.c, s = o.s || {}, RR = fxRule(c) || {}, W = RR.when || [];   // 깨우는 때는 보이는 직업 기준 — 주정뱅이가 받은 가짜 레이븐키퍼가 살아서도 매밤 깨던 것(2026-10-05)
       var deathOnly = W.indexOf('death') >= 0 && !W.some(function (x) { return ['first', 'every', 'later', 'night', 'day'].indexOf(x) >= 0; });
       var dormant = (deathOnly && !(s.dead && diedTonight(s))) || isRoleAny(c, ['scarletwoman', 'momju']);
       if (dormant) {

@@ -6846,7 +6846,7 @@ function wzCardWarns(o){
     if(isRoleAny(c, ['kkamagwi', 'doomsayer'])&&aliveN<4) warns+=`<div class="wz-warn">🐦‍⬛ 생존 ${aliveN}명 — 까마귀 울음은 산 자 4명 이상일 때만 가능.</div>`;
     if(isRoleAny(c, ['momju', 'scarletwoman'])&&aliveN<5) warns+=`<div class="wz-note">ℹ️ 생존 ${aliveN}명 — 흉수가 죽는 순간 생존이 5명 미만이면 계승되지 않아요.</div>`;
     if(subUsed.length) warns+=`<div class="wz-note">ℹ️ 부속 1회 능력 이미 사용: ${subUsed.join(', ')} — 본 능력은 평소대로 진행.</div>`;
-    if(o.fake) warns+=`<div class="wz-warn">🎭 실제는 <b>${o.real.ko}</b> — 가짜 직업 <b>${c.ko}</b> 순서에 깨워 그럴듯한 거짓 정보를 주세요(자동 정답은 잠겨 있음).</div>`;
+    if(o.fake) warns+=`<div class="wz-warn">🎭 실제는 <b>${o.real.ko}</b> — 가짜 직업 <b>${c.ko}</b> 순서에 깨워요. 답은 앱이 고른 거짓이에요.</div>`;   // 거짓 답은 자동(2026-10-05 햇살님 «주정뱅이 가짜 직업일 때 답도 자동으로 가짜 답»)
     warns+=timedNotes(c, seat, o.i);
     if((c.tk||[]).some(t=>DELAY_KILL[t])) warns+=delayedHtml();
     return warns;
@@ -9332,6 +9332,7 @@ function fakeFromAnsRaw(a0, c, owner, targets){
   const cm=CMAP(), rnd=a=>a[Math.floor(Math.random()*a.length)];
   const lab=o=>{ if(o.type==='ox') return o.value?'O 그렇다':'X 아니다'; if(o.type==='team') return o.value==='good'?'선':'악'; if(o.type==='num') return String(o.value);
     if(o.type==='char'){ const x=cm[o.value]; return x?x.e+' '+x.ko:''; } if(o.type==='seats') return '좌석 '+((o.value&&o.value.seats)||[]).map(x=>x+1).join('·');
+    if(o.type==='dir') return o.value==='cw'?'시계 방향':'반시계 방향';
     if(o.type==='duo'){ const x=cm[o.value.char]; return `${x?x.e+' '+x.ko:''} (좌석 ${o.value.seats.map(v=>v+1).join('·')} 중 하나)`; }
     if(o.type==='trio') return `좌석 ${o.value.seats.map(v=>v+1).join('·')} 중 정확히 하나가 악팀`; return ''; };
   const memo=state.fixed[key]; if(memo&&memo.type) return Object.assign({fake:true, ambig:[]}, memo, {label:lab(memo)});
@@ -9339,6 +9340,7 @@ function fakeFromAnsRaw(a0, c, owner, targets){
   const others=state.seats.map((s2,i)=>i).filter(i=>i!==owner&&state.seats[i]&&state.seats[i].char&&!state.seats[i].dead&&FAKE_PEOPLE_TEAMS.includes((cm[state.seats[i].char]||{}).team));
   let out=null;
   if(a0.type==='ox'){ out={type:'ox', value:!a0.value}; }
+  else if(a0.type==='dir'){ out={type:'dir', value:a0.value==='cw'?'ccw':a0.value==='ccw'?'cw':rnd(['cw','ccw'])}; }   // 풍수쟁이 — 취객·주정뱅이가 받은 가짜 직업일 때 거짓 답이 비던 것(2026-10-05 햇살님)
   else if(a0.type==='team'){ out={type:'team', value:a0.value==='good'?'evil':'good'}; }
   else if(a0.type==='num'){ const rv=Number(a0.value)||0; const opts=[]; for(let v=0; v<=Math.max(2, rv+1); v++) if(v!==rv) opts.push(v); out={type:'num', value:dirPick(opts, v=>TILT_H.fakeNumPerStep*Math.abs(v-rv), null, '거짓 숫자')}; }
   else if(a0.type==='char'){ const cand=CHARS().filter(x=>x.id!==a0.value&&x.id!==c.id&&['town','outsider','minion','demon','mafia'].includes(x.team)); const fc=fakeRolePick(cand, inPlay); if(fc) out={type:'char', value:fc.id, about:a0.about}; }   // 거짓 답도 «누구의» 자리는 같다
