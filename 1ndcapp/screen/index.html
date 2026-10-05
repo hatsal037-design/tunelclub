@@ -83,7 +83,7 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .replay-face.executed img{filter:grayscale(1)}.evil-dot{position:absolute;right:0;top:0;width:calc(9 * var(--u));height:calc(9 * var(--u));border:2px solid white;border-radius:50%;background:#ff3b30}
 .action-icon{width:calc(28 * var(--u));height:calc(28 * var(--u));flex-shrink:0;vertical-align:-.15em}
 .replay-caption{font-size:calc(17 * var(--u));line-height:1.35;overflow-wrap:anywhere}.replay-caption .target{color:#737379}.replay-caption .dead-name{text-decoration:line-through}.replay-caption strong{font-weight:600}
-.replay-caption{word-break:keep-all;overflow-wrap:normal}
+.replay-caption{word-break:keep-all;overflow-wrap:normal;font-weight:600}
 .caption-names{display:inline-block;max-width:100%}
 .caption-unit,.caption-result{display:inline-block;white-space:nowrap}
 .caption-result::before{content:'· ';font-weight:400;color:#8e8e93}
@@ -282,7 +282,7 @@ function renderEnded(p, arena, W, H) {
     const executed=line.act==='nominate'&&line.outcome==='execute', rejected=line.act==='nominate'&&line.outcome==='reject';
     const act=executed?'execute':line.act, targets=line.targets||[], value=line.value||'';
     const color=rejected?'#8e8e93':act==='false'&&line.why==='poison'?'#34c759':colors[act]||'#1c1c1e';
-    const resultMark=!rejected&&(executed||act==='execute'||act==='death')?'<svg aria-hidden="true" viewBox="0 0 24 24" style="width:1em;height:1em;vertical-align:-.12em"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="m8 8 8 8m0-8-8 8" stroke="white" stroke-width="2"/></svg> ':'';
+    const resultMark=!rejected&&(executed||act==='execute'||act==='death')?'<svg aria-hidden="true" viewBox="0 0 24 24" style="width:.78em;height:.78em;vertical-align:-.04em"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="m8 8 8 8m0-8-8 8" stroke="white" stroke-width="2"/></svg> ':'';
     const names='<span class="caption-names">'+(line.actor?'<span class="caption-unit">'+nm(line.actor,false,line.dead)+'</span>':esc(line.text||''))+targets.slice(0,2).map((id,i)=>' <span class="caption-unit">'+(i===0?'→ ':'· ')+nm(id,true,line.dead)+(i===1&&targets.length>2?' 외 '+(targets.length-2):'')+'</span>').join('')+'</span>';
     return '<article class="replay-tile"><span class="replay-seq">'+(++seq)+'</span><div class="replay-faces">'+face(line.actor,false,false,line.dead)+icon(line.act,line.why)+targets.slice(0,2).map(id=>face(id,(line.seen||[]).some(s=>s.seatId===id&&s.evil),line.dead==null&&executed,line.dead)).join('')+'</div><div class="replay-caption">'+names+(value?' <strong class="caption-result" style="color:'+color+'">'+resultMark+esc(value)+'</strong>':'')+'</div></article>';
   }).join('');
