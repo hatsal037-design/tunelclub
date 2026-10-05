@@ -232,7 +232,7 @@ function renderEnded(p, arena, W, H) {
     rectangular.seats.forEach((pt,i) => { points[i] = pt; });
   }
   let svg = '', html = '', defs = '';
-  const lines = replay ? [...(replay.night || []), ...(replay.day || [])] : [];
+  const lines = replay ? [...(replay.day || []), ...(replay.night || [])] : [];   // 타일 번호와 같은 순서(낮 먼저, 2026-10-05)
   const edgeCounts = new Map();
   lines.forEach((line,i) => (line.targets || []).forEach(id => {
     const from = points[p.seats.findIndex(s=>s.id===line.actor)], to = points[p.seats.findIndex(s=>s.id===id)];
@@ -279,7 +279,7 @@ function renderEnded(p, arena, W, H) {
     const resultMark=!rejected&&(executed||act==='execute'||act==='death')?'<svg aria-hidden="true" viewBox="0 0 24 24" style="width:1em;height:1em;vertical-align:-.12em"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="m8 8 8 8m0-8-8 8" stroke="white" stroke-width="2"/></svg> ':'';
     return '<article class="replay-tile"><span class="replay-seq">'+(++seq)+'</span><div class="replay-faces">'+face(line.actor,false,false)+icon(line.act)+targets.slice(0,2).map(id=>face(id,(line.seen||[]).some(s=>s.seatId===id&&s.evil),executed)).join('')+'</div><div class="replay-caption">'+(line.actor?nm(line.actor,false):'')+(targets.length?' → '+targets.slice(0,2).map(id=>nm(id,true)).join(' · ')+(targets.length>2?' 외 '+(targets.length-2):''):'')+(value?' · <strong style="color:'+color+'">'+resultMark+esc(value)+'</strong>':!line.actor?esc(line.text||''):'')+'</div></article>';
   }).join('');
-  arena.insertAdjacentHTML('beforeend','<section class="replay-panel" aria-label="공개 복기" style="--cols:'+cols+';--face:'+(cols===3?36:60)+'"><h2 class="replay-title">'+esc(replay.dayNumber)+'일째 <small style="color:var(--mute)">/ '+esc(replay.total)+'일</small></h2><h2 class="replay-title">밤</h2><div class="replay-grid">'+tiles(replay.night||[])+'</div><h2 class="replay-title">낮</h2><div class="replay-grid">'+tiles(replay.day||[])+'</div></section>');
+  arena.insertAdjacentHTML('beforeend','<section class="replay-panel" aria-label="공개 복기" style="--cols:'+cols+';--face:'+(cols===3?36:60)+'"><h2 class="replay-title">'+esc(replay.title||(replay.dayNumber+'일차'))+(replay.dayNumber>0?' <small style="color:var(--mute)">/ '+esc(replay.total)+'일</small>':'')+'</h2>'+((replay.day||[]).length?'<h2 class="replay-title">낮</h2><div class="replay-grid">'+tiles(replay.day||[])+'</div>':'')+((replay.night||[]).length?'<h2 class="replay-title">밤</h2><div class="replay-grid">'+tiles(replay.night||[])+'</div>':'')+'</section>');
   const panel=arena.querySelector('.replay-panel'), base=k;
   let scale=1; do {panel.style.setProperty('--u',base*scale+'px'); if(panel.scrollHeight<=panel.clientHeight+1)break;scale-=.02;}while(scale>=13/17);
 }

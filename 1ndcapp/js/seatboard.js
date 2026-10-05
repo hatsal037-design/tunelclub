@@ -151,7 +151,7 @@ export function SeatBoard(p) {
     const off = p.enabled ? !p.enabled.has(s.id) : false;
     const order = p.numbered !== false && (p.picked || []).length > 1 ? (p.picked.indexOf(s.id) + 1 || null) : null;
     const mine = p.me === s.id, ally = p.allies && p.allies.has(s.id);
-    const dead = s.dead && !(p.publicView && s.tonight), tk = s.tokens || [];
+    const dead = p.publicView ? (s.pdead ?? s.dead) && !s.tonight : s.dead, tk = s.tokens || [];   // 참가자 판 — 죽은 척은 발표된 뒤 사망(2026-10-05)
     const bare = p.shownOnly ? !p.shownOnly.has(s.id) : false;
     const edge = lifted && !drag.outside ? 'blue' : ally ? 'red' : on ? (tint || 'blue') : mine ? 'orange' : (p.rings && p.rings[s.id]) || null;
     const edgeHex = edge && /^(#|rgb)/.test(edge) ? edge : null;   // 색 이름(blue·red·orange)이 아니면 그 색 그대로 — 답 자리표의 «직업 색 테두리»

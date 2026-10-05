@@ -38,7 +38,7 @@ export function DawnView({ m }) {
     <${LargeTitle}>${m.nextNight ? '첫밤이 끝났어요' : '밤이 끝났어요'}<//>
     ${m.nextNight ? html`<${Section}><div class="row">『눈을 계속 감아 주세요. 둘째 밤입니다.』</div><//>` : html`
       <${Section}><div class="row">『날이 밝았습니다. 모두 눈을 뜨세요.』</div><//>
-      <${Section} header="밤사이 죽은 사람">${(m.deaths || []).length ? m.deaths.map(p => html`<div class="row">${p.number}번 ${p.name}</div>`) : html`<div class="row sec">없어요</div>`}<//>`}
+      <${Section} header="밤사이 죽은 사람">${(m.deaths || []).length ? m.deaths.map(p => html`<div class="row">${p.number}번 ${p.name}${p.fake && html` <span style="color:var(--purple,#af52de);font-weight:600">죽은 척</span>`}</div>`) : html`<div class="row sec">없어요</div>`}<//>`}
   </div>`;
 }
 

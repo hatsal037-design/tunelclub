@@ -29,7 +29,7 @@ export function DayView({ m, run, finish }) {
       <div class="row" style="font-size:19px;line-height:1.45;flex-direction:column;align-items:stretch;gap:6px;padding:16px">${(m.script || []).map(t => html`<div>${t}</div>`)}</div>
       <div class="row" style="padding:12px 16px"><button class=${cx('pill-act', m.announced && 'done')} aria-pressed=${m.announced} onClick=${() => run('day.announce', {})}>${m.announced ? '발표했어요 ✓' : '발표했어요'}</button></div>
     <//>
-    ${!m.ended && html`<div style=${m.announced ? '' : 'opacity:.4;pointer-events:none'} aria-disabled=${!m.announced}><${TalkTimerSection} /></div>`}
+    ${!m.ended && html`<div style=${m.announced ? '' : 'opacity:.4;pointer-events:none'} aria-disabled=${!m.announced}><${TalkTimerSection} whisper=${!m.mafia} /></div>`}
     ${m.notes.length > 0 && html`<${Section} header="알림"><${CoreItems} items=${m.notes} call=${c => run('day.call', { call: c })} /><//>`}
     ${m.mafia ? html`<${MafiaDay} m=${m} run=${run} />` : html`<${Section} header="지명 · 투표 · 처형" footer=${[`생존 ${m.alive}명 · 처형 문턱 ${m.need}표`, m.noExecReason].filter(Boolean).join('\n')}>
       ${m.noms.map(n => {   /* 2026-10-04 햇살님 시안 A — 투표(회색)·처형(빨강) 두 알약을 한 줄에 반씩 */
@@ -174,10 +174,10 @@ export function ResultView({ m, call }) {
     ${!m.practice && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${ReplayView} />`)}>복기<//><//>`}
     <${Section} header="큰 화면">
       <${Toggle} checked=${!!m.tvReveal} onChange=${v => store.dispatch('display.endReveal', { on: v })}>직업 공개<//>
-      ${m.replayDays > 0 && html`<div class="row"><span class="grow">복기</span>
-        <button class="btn-s" aria-label="앞 날" disabled=${m.tvReplay != null && m.tvReplay <= 1} onClick=${() => store.dispatch('display.endReplay', { day: Math.max(1, (m.tvReplay ?? 2) - 1) })}><${Icon} name="chevronLeft" size=${20} /></button>
-        <span class="num" style="min-width:86px;text-align:center">${m.tvReplay != null ? `${m.tvReplay}일째 / ${m.replayDays}` : '끔'}</span>
-        <button class="btn-s" aria-label="다음 날" disabled=${(m.tvReplay ?? 0) >= m.replayDays} onClick=${() => store.dispatch('display.endReplay', { day: Math.min(m.replayDays, (m.tvReplay ?? 0) + 1) })}><${Icon} name="chevronRight" size=${20} /></button>
+      ${m.replayDays != null && html`<div class="row"><span class="grow">복기</span>
+        <button class="btn-s" aria-label="앞 날" disabled=${m.tvReplay != null && m.tvReplay <= 0} onClick=${() => store.dispatch('display.endReplay', { day: Math.max(0, (m.tvReplay ?? 1) - 1) })}><${Icon} name="chevronLeft" size=${20} /></button>
+        <span class="num" style="min-width:86px;text-align:center">${m.tvReplay != null ? (m.tvReplay === 0 ? '정보의 밤' : `${m.tvReplay}일차 / ${m.replayDays}`) : '끔'}</span>
+        <button class="btn-s" aria-label="다음 날" disabled=${(m.tvReplay ?? -1) >= m.replayDays} onClick=${() => store.dispatch('display.endReplay', { day: Math.min(m.replayDays, (m.tvReplay ?? -1) + 1) })}><${Icon} name="chevronRight" size=${20} /></button>
         ${m.tvReplay != null && html`<button class="btn-s" onClick=${() => store.dispatch('display.endReplay', {})}>끄기</button>`}</div>`}
     <//>
     ${m.politician.length > 0 && html`<${Section} header="판 끝 질문"><${CoreItems} items=${m.politician} call=${call} /><//>`}
@@ -190,15 +190,17 @@ export function ResultView({ m, call }) {
 /* ── 이야기 시간 타이머 — 5분마다·2분 전·1분 전·끝에 알림. 끝 시각으로 재서 화면을 떠났다 와도 어긋나지 않는다 ── */
 const subs = new Set();
 export const timer = {
-  total: 0, endAt: null, pausedLeft: null, shout: null, shouted: new Set(), tick: null,
+  total: 0, endAt: null, pausedLeft: null, shout: null, shouted: new Set(), tick: null, kind: 'whisper',   // kind — 밀담(whisper)·광장(square) 두 줄(2026-10-05, 폰 앱 TalkTimer 와 같음)
   get running() { return this.total > 0; }, get paused() { return this.pausedLeft !== null; },
   left(now = Date.now()) { return this.pausedLeft ?? Math.max(0, ((this.endAt ?? now) - now) / 1000); },
   emit() { subs.forEach(f => f()); },
   /* 큰 화면에 타이머 상태를 알린다 — 바뀔 때만(매초 아님). 저절로 끝나면 00:00 으로 남기고, 지우면 없앤다 */
   tell(done) { const ms = x => Math.round(x * 1000);
-    store.dispatch('display.setTimer', done ? { state: 'elapsed', endsAt: Date.now(), durationMs: ms(done) }
-      : !this.running ? { state: null } : this.paused ? { state: 'paused', leftMs: ms(this.pausedLeft), durationMs: ms(this.total) } : { state: 'running', endsAt: this.endAt, durationMs: ms(this.total) }); },
-  start(min) { this.total = min * 60; this.endAt = Date.now() + this.total * 1000; this.pausedLeft = null; this.shouted = new Set(); this.shout = null;
+    const k = this.kind;
+    store.dispatch('display.setTimer', done ? { state: 'elapsed', endsAt: Date.now(), durationMs: ms(done), kind: k }
+      : !this.running ? { state: null } : this.paused ? { state: 'paused', leftMs: ms(this.pausedLeft), durationMs: ms(this.total), kind: k } : { state: 'running', endsAt: this.endAt, durationMs: ms(this.total), kind: k }); },
+  start(min, kind = 'whisper') { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch {}   // 누른 순간에 소리를 깨워 둔다 — 사파리는 터치 밖에서 만든 소리를 막는다(2026-10-05)
+    this.kind = kind; this.total = min * 60; this.endAt = Date.now() + this.total * 1000; this.pausedLeft = null; this.shouted = new Set(); this.shout = null;
     clearInterval(this.tick); this.tick = setInterval(() => this.poll(), 1000); this.emit(); this.tell(); },
   pause() { if (this.running && !this.paused) { this.pausedLeft = this.left(); this.emit(); this.tell(); } },
   resume() { if (this.paused) { this.endAt = Date.now() + this.pausedLeft * 1000; this.pausedLeft = null; this.emit(); this.tell(); } },
@@ -207,7 +209,7 @@ export const timer = {
   poll() {
     if (!this.running || this.paused) { this.emit(); return; }
     const l = this.left();
-    if (l <= 0) { this.alert('끝', '이야기 시간이 끝났어요 — 지목을 받으세요', true); clearInterval(this.tick); this.tick = null; const dur = this.total; this.total = 0; this.endAt = null; this.emit(); this.tell(dur); return; }
+    if (l <= 0) { this.alert('끝', this.kind === 'whisper' ? '밀담 끝 — 광장으로 모여 주세요' : '이야기 시간이 끝났어요 — 지목을 받으세요', true); clearInterval(this.tick); this.tick = null; const dur = this.total; this.total = 0; this.endAt = null; this.emit(); this.tell(dur); return; }
     const passed = this.total - l, marks = [];
     for (let m = 5; m * 60 < this.total; m += 5) marks.push(['p' + m, m * 60, `${m}분 지났어요`]);
     marks.push(['m2', this.total - 120, '2분 남았어요'], ['m1', this.total - 60, '1분 남았어요']);
@@ -232,22 +234,25 @@ function beep(strong) {
 }
 function useTimer() { const [, f] = useState(0); useEffect(() => { const h = () => f(x => x + 1); subs.add(h); return () => subs.delete(h); }, []); return timer; }
 
-function TalkTimerSection() {
+/* 분은 바퀴로 돌려 고르고(2026-10-05 «타이머 버튼은 돌리는 게 나아»), 시작은 밀담·광장 두 단추. 도는 동안엔 그 줄 이름 + 큰 시계. 마피아는 광장만 */
+function TalkTimerSection({ whisper = true }) {
   const t = useTimer(), [, re] = useState(0);
   const bell = settings.get('timerSound'), min = settings.get('talkMinutes');
   const wheel = useRef(null);
   useEffect(() => { if (!t.running && wheel.current) wheel.current.scrollTop = (min - 1) * 36; }, [t.running]);
   const onScroll = e => { const v = Math.min(60, Math.max(1, Math.round(e.currentTarget.scrollTop / 36) + 1)); if (v !== settings.get('talkMinutes')) { settings.set('talkMinutes', v); re(x => x + 1); } };
-  const l = t.left();
+  const l = t.left(), title = t.kind === 'whisper' ? '밀담' : '광장';
   return html`<${Section} header=${html`<span class="grow">이야기 시간</span><button class="blink" style="min-height:24px" aria-label="이야기 시간 알림음" aria-pressed=${bell}
       onClick=${() => { settings.set('timerSound', !bell); re(x => x + 1); }}><${Icon} name=${bell ? 'bell' : 'bellSlash'} size=${18} /></button>`}>
-    ${t.running ? html`<div class="row"><div class="timer" aria-label=${`남은 시간 ${Math.floor(l / 60)}분 ${Math.floor(l % 60)}초${t.paused ? ', 멈춤' : ''}`}>
+    ${t.running ? html`<div class="row"><div class="timer" aria-label=${`${title} 남은 시간 ${Math.floor(l / 60)}분 ${Math.floor(l % 60)}초${t.paused ? ', 멈춤' : ''}`}>
+        <b>${title}${t.kind === 'whisper' && html` <span class="sec" aria-label="음악">♪</span>`}</b>
         <div class=${cx('tt', l <= 60 && 'red')}>${fmt(l)}</div><div class=${cx('tbar', l <= 60 && 'red')}><i style=${`width:${(t.total - l) / Math.max(t.total, 1) * 100}%`}></i></div></div></div>
       <div class="row" style="justify-content:space-between"><button class="blink" onClick=${() => t.paused ? t.resume() : t.pause()}><${Icon} name=${t.paused ? 'play' : 'pause'} size=${18} />${t.paused ? '이어서' : '멈춤'}</button>
         <button class="blink" onClick=${() => t.add(1)}>+1분</button><button class="blink danger" onClick=${() => t.reset()}>그만</button></div>`
     : html`<div class="row" style="flex-direction:column;gap:12px"><div class="wheel-wrap"><div class="wheel" ref=${wheel} onScroll=${onScroll}><div class="pad"></div>
         ${Array.from({ length: 60 }, (_, i) => html`<div class=${i + 1 === min ? 'on' : ''}>${i + 1}분</div>`)}<div class="pad"></div></div></div>
-      <button class="bprim green" onClick=${() => t.start(min)}><${Icon} name="play" size=${18} />시작</button></div>`}
+      <div class="row" style="padding:0;gap:12px;width:100%">${whisper && html`<button class="bprim green grow" onClick=${() => t.start(min, 'whisper')}>♪ 밀담</button>`}
+        <button class="bprim grow" onClick=${() => t.start(min, 'square')}><${Icon} name="play" size=${18} />광장</button></div></div>`}
   <//>`;
 }
 function TalkTimerBanner() {
