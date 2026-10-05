@@ -603,6 +603,12 @@ var NativeCore = (function () {
       if (/^revive/.test(w)) return 'revive';
       if (/^(transform|swap)/.test(w)) return 'change';
       return evilPick(e) ? 'attack' : 'pick'; };
+    /* 그 순간의 생사(2026-10-05 햇살님 «복기 시점에서 죽은 사람 시점도, 아직 죽기 전 행동이면 죽기 전으로») — 판 기록 전체에서 자리마다 처음 죽은 사건 순번을 잡고,
+       줄마다 «그 사건 전에 이미 죽어 있던» 행동자·대상만 dead 로 붙인다. 화면은 이것만 긋는다(판이 끝난 시점의 생사가 아니라) */
+    var allEv = (L && L.events) || [], diedAt = {}, seg = [], sg = 0, prevKey = null;   // seg — 같은 밤·같은 낮이 한 구간(사망이 지목보다 먼저 적혀도 그 구간 안 죽음은 «그 전»이 아니다)
+    allEv.forEach(function (e, i) { var key = e.n + '|' + (e.phase === 'day' ? 'day' : 'night'); if (key !== prevKey) { sg++; prevKey = key; } seg[i] = sg;
+      var k = e.type === '사망' ? e.seat : (e.type === '처형' && !e.무효 ? e.seat : null); if (k && diedAt[k] === undefined) diedAt[k] = sg; });
+    var deadBefore = function (e, ids) { var sgi = seg[allEv.indexOf(e)]; return ids.filter(function (id) { var k = +String(id).slice(1); return diedAt[k] !== undefined && diedAt[k] < sgi; }); };
     var attacked = {}; ev.forEach(function (e) { if (e.type === '밤 지목' && actOf(e) === 'attack') (e.대상ref || []).forEach(function (r) { attacked[r.seat] = 1; }); });
     var diedNight = {}; ev.forEach(function (e) { if (e.type === '사망' && e.phase !== 'day') diedNight[e.seat] = 1; });   // 공격 줄에 «사망/막힘»을 붙인다 — 둘이 똑같이 나와 죽은 밤에 사망 정보가 사라졌다(반증 검토 2-6)
     var lastNom = null;
@@ -611,7 +617,7 @@ var NativeCore = (function () {
         key: a === 'attack' || a === 'change' || a === 'revive', text: who(e) + ' → ' + (e.대상 || []).join(', ').replace(/좌석 \d+ /g, '') }; }
       else if (e.type === '정보 전달') { var seenL = (e.본 || []).map(function (x) { return { seatId: sid(x.자리), role: x.직업, evil: !!x.악 }; });   // 본 사람 — 공감능력자 이웃·요리사 쌍(악으로 센 사람 표시)
         var pointed = (e.자리 || []).map(sid).filter(Boolean);   // 답이 가리킨 자리(사서·세탁부·점쟁이 대상…) — 화살표로
-        l = { act: e.거짓 ? 'false' : 'info', actor: sid(e.누구), targets: seenL.length ? seenL.map(function (x) { return x.seatId; }) : pointed, seen: seenL, value: (pointed.length && (e.직업들 || []).length ? e.직업들.join('·') : clean(e.답)) + (e.거짓 ? ' · 거짓' : ''),   /* 자리를 가리키는 답은 자리가 대상으로 그려지니 값엔 직업만(«요리사 (좌석 2·7 중 하나)» → «요리사») */ key: !!e.거짓,
+        l = { act: e.거짓 ? 'false' : 'info', why: e.거짓 ? (/중독/.test(e.까닭 || '') ? 'poison' : /취|주정/.test(e.까닭 || '') ? 'drunk' : 'other') : null, arrow: false, actor: sid(e.누구), targets: seenL.length ? seenL.map(function (x) { return x.seatId; }) : pointed, seen: seenL, value: (pointed.length && (e.직업들 || []).length ? e.직업들.join('·') : clean(e.답)) + (e.거짓 ? (/중독/.test(e.까닭 || '') ? ' · 거짓(중독)' : /취|주정/.test(e.까닭 || '') ? ' · 거짓(취함)' : ' · 거짓') : ''),   /* 왜 거짓인지(2026-10-05 «독에 의해 잘못 간 정보도») */   /* 자리를 가리키는 답은 자리가 대상으로 그려지니 값엔 직업만(«요리사 (좌석 2·7 중 하나)» → «요리사») */ key: !!e.거짓,
         text: (e.name || nm(e.누구)) + (e.직업 ? '(' + e.직업 + ')' : '') + ' 받은 정보: ' + clean(e.답) + (e.거짓 ? ' — 거짓이었음' : '') + (seenL.length ? ' · 본 사람 ' + (e.본 || []).map(function (x) { return x.자리 + '번 ' + nm(x.자리) + '(' + x.직업 + (x.악 ? '·악으로 셈' : '') + ')'; }).join(', ') : '') }; }
       else if (e.type === '사망') { if (attacked[e.seat] && e.phase !== 'day') return;   // 공격 줄이 이미 보여 준 죽음은 겹쳐 쓰지 않는다
         l = { act: 'death', actor: sid(e.seat), targets: [], value: '사망', key: true, text: who(e) + ' 사망' }; }
@@ -622,10 +628,10 @@ var NativeCore = (function () {
         l = { act: 'execute', actor: sid(e.seat), targets: [], value: died ? '사망' : '살아남음', key: true, text: who(e) + ' 처형' }; }
       else if (e.type === '계승' || e.type === '역할 변경') { var sw = e.swapSeats || []; l = sw.length === 2 ? { act: 'change', actor: sid(sw[0]), targets: [sid(sw[1])].filter(Boolean), value: '맞바꿈', key: true, text: nm(sw[0]) + ' ↔ ' + nm(sw[1]) + ' ' + e.type }   // 맞바꾸기 — «좌석 undefined» 칸이 생기던 것
         : { act: 'change', actor: sid(e.seat), targets: [], value: e.type, key: true, text: who(e) + ' ' + e.type }; }
-      if (l) { l.kind = e.code || e.type;
+      if (l) { l.kind = e.code || e.type; l.dead = deadBefore(e, [l.actor].concat(l.targets || []).filter(Boolean));
         /* 같은 사람의 «고름 → 받은 정보»는 한 줄로(2026-10-04 햇살님 «밤에 받은 정보들도 정리») — 바로 앞 줄이 그 사람의 능력 사용이면 대상을 이어받고 그 줄을 지운다 */
         var prev = out[out.length - 1];
-        if ((l.act === 'info' || l.act === 'false') && prev && prev.act === 'pick' && prev.actor === l.actor) { if (!l.targets.length) l.targets = prev.targets; out.pop(); }
+        if ((l.act === 'info' || l.act === 'false') && prev && prev.act === 'pick' && prev.actor === l.actor) { if (!l.targets.length) l.targets = prev.targets; l.arrow = true; out.pop(); }   /* 찍어서 알아본 정보만 화살표(2026-10-05 햇살님 «정보를 얻은 화살표는 그냥 넣지 말자, 찍어서 알아본 것만») */
         out.push(l); } });
     /* 낮은 지명 한 건 = 한 줄(2026-10-05 햇살님 확정 타일 — 화면-122): 지명 줄에 그 뒤 찬성 표·처형을 합친다. outcome = execute(처형) · reject(부결) */
     var merged = [];

@@ -83,6 +83,10 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .replay-face.executed img{filter:grayscale(1)}.evil-dot{position:absolute;right:0;top:0;width:calc(9 * var(--u));height:calc(9 * var(--u));border:2px solid white;border-radius:50%;background:#ff3b30}
 .action-icon{width:calc(28 * var(--u));height:calc(28 * var(--u));flex-shrink:0;vertical-align:-.15em}
 .replay-caption{font-size:calc(17 * var(--u));line-height:1.35;overflow-wrap:anywhere}.replay-caption .target{color:#737379}.replay-caption .dead-name{text-decoration:line-through}.replay-caption strong{font-weight:600}
+.replay-caption{word-break:keep-all;overflow-wrap:normal}
+.caption-names{display:inline-block;max-width:100%}
+.caption-unit,.caption-result{display:inline-block;white-space:nowrap}
+.caption-result::before{content:'· ';font-weight:400;color:#8e8e93}
 </style></head><body>
 <div id="stage"><div class="tv" id="tv">
   <div class="topline"><strong id="phase"></strong><small>첫밤 사망자 클럽</small></div>
@@ -211,7 +215,7 @@ function renderEnded(p, arena, W, H) {
   const seat = id => p.seats.find(s => s.id === id);
   const name = id => { const s = seat(id); return s ? s.name || s.number + '번' : ''; };
   const art = r => r?.icon && /^[\w-]+$/.test(r.icon) ? '<img src="../art/' + encodeURIComponent(r.icon) + '.webp" alt="' + esc(r.role) + '">' : '';
-  const colors = { attack:'#ff3b30', execute:'#ff3b30', death:'#ff3b30', poison:'#af52de', change:'#af52de', protect:'#007aff', revive:'#34c759', false:'#ff9500' };
+  const colors = { attack:'#ff3b30', execute:'#ff3b30', death:'#ff3b30', poison:'#34c759', change:'#af52de', protect:'#007aff', revive:'#34c759', false:'#ff9500' };
   const paths = {
     attack:'M14 2 5 14h6l-1 8 9-13h-6z', execute:'M8 8l8 8M16 8l-8 8M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
     death:'M8 8l8 8M16 8l-8 8', poison:'M12 2C10 7 5 11 5 16a7 7 0 0 0 14 0C19 11 14 7 12 2Z',
@@ -222,8 +226,8 @@ function renderEnded(p, arena, W, H) {
     nominate:'M3 10h3l3-4h3l8 2a2 2 0 0 1 0 4h-7l2 1a2 2 0 0 1-1 3h-1a2 2 0 0 1-1 3H8l-2-2H3Z M3 10v7', vote:'M6 12V5a2 2 0 0 1 4 0v6-8a2 2 0 0 1 4 0v8-6a2 2 0 0 1 4 0v8-4a2 2 0 0 1 4 0v7c0 6-13 8-16 1L2 13',
     block:'M4 4l16 16M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0'
   };
-  const icon = act => '<svg class="action-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="' + (colors[act] || '#8e8e93') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (paths[act] || paths.info) + '"/></svg>';
-  const points = [], n=p.seats.length, d = Math.min(MW*.09,H*(n<=8?.115:n<=12?.085:.06)), k=d/44, cx = MW / 2, cy = H / 2;
+  const icon = (act, why) => '<svg class="action-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="' + (act === 'false' && why === 'poison' ? '#34c759' : colors[act] || '#8e8e93') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (paths[act] || paths.info) + '"/></svg>';
+  const points = [], n=p.seats.length, d = Math.min(MW*.105,H*(n<=8?.125:n<=12?.10:.075)), k=d/44, cx = MW / 2, cy = H / 2;
   // 원 중심 방향의 지시선 → 꺾이는 점 → 같은 높이의 글자 끝.
   p.seats.forEach((s,i) => { const angle = -Math.PI/2 + i * Math.PI*2/n; points.push({x:cx+Math.cos(angle)*MW*.23,y:cy+Math.sin(angle)*H*.27,mid:Math.abs(Math.cos(angle))<.1?(Math.sin(angle)<0?-1:1):0}); });
   if (p.shape === 'rect') {
@@ -232,7 +236,7 @@ function renderEnded(p, arena, W, H) {
     rectangular.seats.forEach((pt,i) => { points[i] = pt; });
   }
   let svg = '', html = '', defs = '';
-  const lines = replay ? [...(replay.day || []), ...(replay.night || [])] : [];   // 타일 번호와 같은 순서(낮 먼저, 2026-10-05)
+  const lines = replay ? [...(replay.day || []), ...(replay.night || [])].filter(row=>row.arrow!==false) : [];   // 수신형 정보는 타일에만
   const edgeCounts = new Map();
   lines.forEach((line,i) => (line.targets || []).forEach(id => {
     const from = points[p.seats.findIndex(s=>s.id===line.actor)], to = points[p.seats.findIndex(s=>s.id===id)];
@@ -253,34 +257,37 @@ function renderEnded(p, arena, W, H) {
   const fs = 12*k, labels = points.map((pt,i)=>({pt,i,right:pt.x>=cx,y:pt.y}));
   for (const right of [false,true]) {
     const side=labels.filter(l=>!l.pt.mid&&l.right===right).sort((a,b)=>a.y-b.y);
-    side.forEach((l,i)=>{l.y=side.length<=1?cy:H*(.15+.7*i/(side.length-1));});
+    const span=side.length>1?(side[side.length-1].pt.y-side[0].pt.y)/(side.length-1):0;
+    const gap=Math.max(70*k,span);
+    side.forEach((l,i)=>{l.y=cy+(i-(side.length-1)/2)*gap;});
   }
   labels.forEach(({pt,i,right,y})=>{
-    const s=p.seats[i],r=role(s.id),tx=right?MW*.79:MW*.21,kx=pt.x+(right?1:-1)*d*.7,ky=y;
+    const s=p.seats[i],r=role(s.id),tx=pt.x+(right?1:-1)*d*.78,kx=pt.x+(right?1:-1)*d*.7,ky=y;
     const vx=kx-pt.x,vy=ky-pt.y,len=Math.hypot(vx,vy)||1;
-    if(!pt.mid)svg+='<path class="ld" d="M'+(pt.x+vx/len*d*.5)+','+(pt.y+vy/len*d*.5)+' L'+kx+','+ky+' H'+tx+'"/>';
+    if(p.shape!=='rect'&&!pt.mid)svg+='<path class="ld" style="stroke:#737373;stroke-width:1.3" d="M'+(pt.x+vx/len*d*.5)+','+(pt.y+vy/len*d*.5)+' L'+kx+','+ky+' H'+tx+'"/>';
     html+='<div class="end-seat '+(s.dead?'dead':'')+'" style="left:'+pt.x+'px;top:'+pt.y+'px;width:'+d+'px;height:'+d+'px;font-size:'+fs*.65+'px">'+(art(r)||s.number)+'<span class="seat-badge number">'+s.number+'</span>'+(s.dead?'<span class="seat-badge death">×</span>':'')+(s.dead&&s.ghost?'<span class="seat-badge ghost">●</span>':'')+'</div>';
-    const pos=pt.mid?'left:'+pt.x+'px;top:'+(pt.y+pt.mid*(d*.5+5*k))+'px;transform:translate(-50%,'+(pt.mid<0?'-100%':'0')+')': 'top:'+y+'px;transform:translateY(-50%);'+(right?'left:'+(tx+4*k):'right:'+(MW-tx+4*k))+'px';
+    const pos=p.shape==='rect'?'left:'+pt.x+'px;top:'+(pt.y+d*.5+5*k)+'px;transform:translateX(-50%)':pt.mid?'left:'+pt.x+'px;top:'+(pt.y+pt.mid*(d*.5+5*k))+'px;transform:translate(-50%,'+(pt.mid<0?'-100%':'0')+')': 'top:'+y+'px;transform:translateY(-50%);'+(right?'left:'+(tx+4*k):'right:'+(MW-tx+4*k))+'px';
     const sideColor={good:'#007aff',evil:'#ff3b30',neutral:'#ff9500'}[r?.side]||'#737379';
-    html+='<div class="end-label" style="width:'+MW*.20+'px;white-space:normal;font-size:'+11*k+'px;'+pos+';text-align:'+(pt.mid?'center':right?'left':'right')+'">'+s.number+' · '+esc(name(s.id))+(r?'<div class="role" style="font-size:'+14*k+'px;color:'+sideColor+'">'+esc(r.role)+'</div><div style="font-size:'+12*k+'px;color:'+sideColor+'">'+esc(r.team)+'</div><small style="font-size:'+8*k+'px">'+esc((r.changes||[]).join(' · '))+'</small>':'')+'</div>';
+    html+='<div class="end-label" style="width:'+MW*.20+'px;white-space:normal;font-size:'+13*k+'px;'+pos+';text-align:'+(p.shape==='rect'||pt.mid?'center':right?'left':'right')+'">'+s.number+' · '+esc(name(s.id))+(r?'<div class="role" style="font-size:'+16*k+'px;color:'+sideColor+'">'+esc(r.role)+'</div><div style="font-size:'+13*k+'px;color:'+sideColor+'">'+esc(r.team)+'</div><small style="font-size:'+8*k+'px">'+esc((r.changes||[]).join(' · '))+'</small>':'')+'</div>';
   });
   const winner = p.ending?.winnerLabel;
   const flag='<svg aria-hidden="true" viewBox="0 0 32 32" style="display:block;margin:0 auto '+H*.0168+'px;width:'+H*.06+'px;height:'+H*.06+'px;color:var(--mute)" fill="currentColor"><path d="M6 4h2v25H6zM8 5h6v5H8zm12 0h6v5h-6zm-6 5h6v5h-6zm-6 5h6v5H8zm12 0h6v5h-6z"/><path d="M8 5h18v15H8" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
   arena.innerHTML='<div class="end-map '+(replay?'split':'')+'"><svg class="ov"><defs>'+defs+'</defs>'+svg+'</svg>'+html+(winner?'<div class="box end-winner" style="left:50%;top:50%;font-size:'+24*k+'px;font-weight:600">'+flag+esc(winner)+'</div>':'')+'</div>';
   if (!replay) return;
-  const face=(id,evil,executed)=>{const s=seat(id);if(!s)return '';return '<span class="replay-face '+(s.dead?'dead ':'')+(executed?'executed':'')+'">'+(art(role(id))||s.number)+(evil?'<span class="evil-dot" aria-label="악으로 셈"></span>':'')+'</span>';};
-  const nm=(id,target)=>'<span class="'+(target?'target ':'')+(seat(id)?.dead?'dead-name':'')+'">'+esc(name(id))+'</span>';
+  const face=(id,evil,executed,dead)=>{const s=seat(id);if(!s)return '';const wasDead=dead?.includes(id)??s.dead;return '<span class="replay-face '+(wasDead?'dead ':'')+(executed?'executed':'')+'">'+(art(role(id))||s.number)+(evil?'<span class="evil-dot" aria-label="악으로 셈"></span>':'')+'</span>';};
+  const nm=(id,target,dead)=>'<span class="'+(target?'target ':'')+((dead?.includes(id)??seat(id)?.dead)?'dead-name':'')+'">'+esc(name(id))+'</span>';
   const cols=(replay.night||[]).length>9?3:2;
   let seq=0;
   const tiles=rows=>rows.map(line=>{
     const executed=line.act==='nominate'&&line.outcome==='execute', rejected=line.act==='nominate'&&line.outcome==='reject';
     const act=executed?'execute':line.act, targets=line.targets||[], value=line.value||'';
-    const color=rejected?'#8e8e93':colors[act]||'#1c1c1e';
+    const color=rejected?'#8e8e93':act==='false'&&line.why==='poison'?'#34c759':colors[act]||'#1c1c1e';
     const resultMark=!rejected&&(executed||act==='execute'||act==='death')?'<svg aria-hidden="true" viewBox="0 0 24 24" style="width:1em;height:1em;vertical-align:-.12em"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="m8 8 8 8m0-8-8 8" stroke="white" stroke-width="2"/></svg> ':'';
-    return '<article class="replay-tile"><span class="replay-seq">'+(++seq)+'</span><div class="replay-faces">'+face(line.actor,false,false)+icon(line.act)+targets.slice(0,2).map(id=>face(id,(line.seen||[]).some(s=>s.seatId===id&&s.evil),executed)).join('')+'</div><div class="replay-caption">'+(line.actor?nm(line.actor,false):'')+(targets.length?' → '+targets.slice(0,2).map(id=>nm(id,true)).join(' · ')+(targets.length>2?' 외 '+(targets.length-2):''):'')+(value?' · <strong style="color:'+color+'">'+resultMark+esc(value)+'</strong>':!line.actor?esc(line.text||''):'')+'</div></article>';
+    const names='<span class="caption-names">'+(line.actor?'<span class="caption-unit">'+nm(line.actor,false,line.dead)+'</span>':esc(line.text||''))+targets.slice(0,2).map((id,i)=>' <span class="caption-unit">'+(i===0?'→ ':'· ')+nm(id,true,line.dead)+(i===1&&targets.length>2?' 외 '+(targets.length-2):'')+'</span>').join('')+'</span>';
+    return '<article class="replay-tile"><span class="replay-seq">'+(++seq)+'</span><div class="replay-faces">'+face(line.actor,false,false,line.dead)+icon(line.act,line.why)+targets.slice(0,2).map(id=>face(id,(line.seen||[]).some(s=>s.seatId===id&&s.evil),line.dead==null&&executed,line.dead)).join('')+'</div><div class="replay-caption">'+names+(value?' <strong class="caption-result" style="color:'+color+'">'+resultMark+esc(value)+'</strong>':'')+'</div></article>';
   }).join('');
   arena.insertAdjacentHTML('beforeend','<section class="replay-panel" aria-label="공개 복기" style="--cols:'+cols+';--face:'+(cols===3?36:60)+'"><h2 class="replay-title">'+esc(replay.title||(replay.dayNumber+'일차'))+(replay.dayNumber>0?' <small style="color:var(--mute)">/ '+esc(replay.total)+'일</small>':'')+'</h2>'+((replay.day||[]).length?'<h2 class="replay-title">낮</h2><div class="replay-grid">'+tiles(replay.day||[])+'</div>':'')+((replay.night||[]).length?'<h2 class="replay-title">밤</h2><div class="replay-grid">'+tiles(replay.night||[])+'</div>':'')+'</section>');
-  const panel=arena.querySelector('.replay-panel'), base=k;
+  const panel=arena.querySelector('.replay-panel'), base=Math.min(MW*.09,H*(n<=8?.115:n<=12?.085:.06))/44; // 자리 확대가 타일을 키우지 않게 기존 배율 유지
   let scale=1; do {panel.style.setProperty('--u',base*scale+'px'); if(panel.scrollHeight<=panel.clientHeight+1)break;scale-=.02;}while(scale>=13/17);
 }
 function render() {
