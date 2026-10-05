@@ -2,10 +2,12 @@
 import { html, useState, useEffect, useRef } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { Icon } from '../icons.js';
-import { Page, Section, Row, Primary, NavButton, LargeTitle, RoleArt, ActionSheet, cx } from '../ui.js';
+import { Page, Section, Row, Primary, NavButton, LargeTitle, RoleArt, ActionSheet, Labeled, Alert, cx } from '../ui.js';
+import { account } from '../account.js';
+import { QrScanner } from './display.js';
 import { settings } from '../settings.js';
 import { useNav } from '../nav.js';
-import { SettingsView } from './settingsView.js';
+import { SettingsView, AccountView } from './settingsView.js';
 import { RecordsView } from './records.js';
 
 /* 테마 = 계열(2026-10-01 햇살님 «버튼으로 계열 고르기», 29차 시안) — 고르면 사진·색과 새 판 준비의 «게임 계열»(roles.setFamily)이 같이 바뀐다.
@@ -26,11 +28,14 @@ export function TodayView({ openSpace }) {
   const nav = useNav(), h = store.home;
   const step = h.prepStep === 'handoff' ? 'handoff' : h.prepStep === 'people' ? 'people' : 'seats';
   const hero = {
-    newPreparation: ['plus', '새 판을 준비해 볼까요?', '사람을 모으고 자리를 정하면 차근차근 안내할게요', '새 판 준비', { prep: 'people' }],
+    /* 마당(광장)을 먼저 열고 그 안에서 새 판(2026-10-06 햇살님 «일단 마당을 열고 거기서 새 판을 할 수 있어야») */
+    newPreparation: h.pot && !h.pot.practice ? ['plus', h.pot.title || '오늘 ' + (h.potKo || '광장'), h.pot.games ? '판 ' + h.pot.games + '개 · 다음 판을 준비해요' : '사람을 모으고 자리를 정하면 차근차근 안내할게요', '새 판 준비', { prep: 'people' }]
+      : ['house', '오늘 ' + (h.potKo || '광장') + '을 열어 볼까요?', '모인 사람들이 QR로 들어오고 여기서 판을 이어 가요', (h.potKo || '광장') + ' 열기', null],
     resumePreparation: ['listNumber', '준비하던 판이 있어요', h.summary || '', '준비 계속', { prep: step }],
     resumeGame: ['moon', '진행 중인 판이 있어요', h.summary || '', '이어 하기', { game: true }],
   }[h.destination] || [];
   const go = async () => {
+    if (h.destination === 'newPreparation' && !(h.pot && !h.pot.practice)) { if (h.pot) await store.dispatch('pot.close', {}); await store.dispatch('pot.open', {}); return; }   // 먼저 마당만 연다 — 새 판은 그 안에서
     if (h.destination === 'newPreparation') { await store.dispatch('preparation.enter', { practice: false }); }   // 새 판은 실전
     openSpace(hero[4]);
   };
@@ -39,7 +44,7 @@ export function TodayView({ openSpace }) {
   const photo = theme.photos.length ? theme.photos[(h.summary || '').length % theme.photos.length] : null;   // 돌아가며 — 같은 판이면 같은 사진
   return html`<${Page} title=${html`<${ThemePill} theme=${theme} />`}
       left=${html`<${NavButton} icon="gear" label="설정" onClick=${() => nav.push(html`<${SettingsView} />`)} />`}
-      right=${html`<${NavButton} icon="personCircle" label="계정" onClick=${() => nav.push(html`<${SettingsView} account />`)} />`}>
+      right=${html`<${NavButton} icon="personCircle" label="계정" onClick=${() => nav.push(html`<${AccountView} />`)} />`}>
     <${LargeTitle}>오늘<//>
     <${Section} footer=${h.ruleFamily + (h.modeName ? ' · ' + h.modeName : '')}>
       <div class="hero2">
@@ -51,6 +56,7 @@ export function TodayView({ openSpace }) {
         <${Primary} title=${hero[3]} onClick=${go} />
       </div>
     <//>
+    <${PlazaSection} />
     <${Section} header="바로 가기">
       <${Row} onClick=${practice} disabled=${h.destination === 'resumeGame'}>
         <${Shortcut} icon="play" title="연습판" text=${h.destination === 'resumeGame' ? '진행 중인 판을 먼저 끝내요' : '기록 없이 흐름을 익혀요'} />
@@ -82,3 +88,45 @@ function ThemePill({ theme }) {
 }
 const Shortcut = ({ icon, title, text }) => html`<div class="hstack shortcut" style="gap:12px;padding:4px 0">
   <span class="sym"><${Icon} name=${icon} size=${18} /></span><div><div class="shortcut-t">${title}</div><div class="sub">${text}</div></div></div>`;
+
+/* 오늘 화면 «광장» 칸(당산나무 마당·클래식 광장·오리지널 구역 — 계열 말) — 2026-10-05 햇살님 «B안 · 광장 체크인». 폰 앱 PlazaSection 과 같다.
+   진행자: 열기 → 체크인 QR(10분마다 새 코드) → 체크인 명단·판 수 → 닫기. 참가자: QR 로 참가(…/?j=코드로 들어오면 로그인 뒤 저절로) · 나 갈게요 */
+const plazaCodeFrom = t => { const m = /[?&]j=([A-Za-z]{8})(?:&|#|$)/.exec(String(t || '')); if (m) return m[1].toUpperCase(); const u = String(t || '').toUpperCase().replace(/[^A-Z]/g, ''); return u.length === 8 ? u : ''; };
+function PlazaSection() {
+  const h = store.home, word = h.potKo || '광장', pot = h.pot;
+  const [, re] = useState(0), [srv, setSrv] = useState(null), [code, setCode] = useState(''), [qr, setQr] = useState(''), [roster, setRoster] = useState([]);
+  const [joined, setJoined] = useState([]), [scan, setScan] = useState(false), [msg, setMsg] = useState(null), [fixes, setFixes] = useState([]);   // fixes — 내 판에 들어온 정정 요청(0180)
+  useEffect(() => account.subscribe(() => re(x => x + 1)), []);
+  const logged = !!account.user;
+  const showCode = async c => { setCode(c || ''); if (!c) return setQr('');
+    if (!window.qrcode) await new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'lib/qrcode.js'; s.onload = ok; s.onerror = no; document.head.appendChild(s); }).catch(() => {});
+    if (!window.qrcode) return; const q = window.qrcode(0, 'M'); q.addData('https://tunel.kr/1ndcapp/?j=' + c); q.make(); setQr(q.createSvgTag({ cellSize: 4, margin: 0, scalable: true })); };
+  const openServer = async () => { if (!logged || !pot || pot.practice) return; const r = await account.plaza('plaza_open', { p_pot: pot.id }); if (r) { setSrv(r.id); showCode(r.code); } };
+  // 명단 20초마다, 코드 9분마다(서버 코드 10분). QR 로 들어온 참가자는 로그인되면 저절로 체크인
+  useEffect(() => { if (!logged) return; let dead = false, lastCode = 0, id = srv;
+    (async () => { const r = await account.plazaCheckinPending(); if (r && !dead) setMsg(r.ok ? r.host + '님의 ' + word + '에 들어왔어요' : r.error); })();
+    const tick = async () => { if (dead) return; setJoined(await account.plaza('plaza_joined') || []); setFixes(await account.plaza('fix_requests_mine') || []);
+      if (pot && !pot.practice) { const m = await account.plaza('plaza_mine'); if (m && m.pot_id === pot.id) { id = m.id; setSrv(m.id); setRoster(m.roster || []); } else if (!id) { const r = await account.plaza('plaza_open', { p_pot: pot.id }); if (r) { id = r.id; setSrv(r.id); showCode(r.code); lastCode = Date.now(); } }   // 마당을 열면 체크인 QR 도 바로
+        if (id && Date.now() - lastCode > 540000 && (code || lastCode)) { const r = await account.plaza('plaza_code', { p_id: id }); if (r && r.ok) { showCode(r.code); lastCode = Date.now(); } } } };
+    tick(); const t = setInterval(tick, 20000); return () => { dead = true; clearInterval(t); }; }, [logged, pot && pot.id]);
+  const close = async () => { const r = await store.dispatch('pot.close', {}); if (!r.ok) return; const id = srv || ((await account.plaza('plaza_mine')) || {}).id; if (id) await account.plaza('plaza_close', { p_id: id }); setSrv(null); showCode(''); setRoster([]); };
+  const here = roster.filter(r => !r.left);
+  if (!pot && !logged && !account.plazaJoin) return null;   // 열기는 오늘 화면 큰 버튼(마당 먼저)
+  return html`<${Section} header=${word}>
+    ${pot ? html`
+      ${pot.practice ? html`<div class="row"><${Labeled} label="연습" value="기록 안 남김" /></div>` : logged && html`
+        ${qr ? html`<div class="row" style="flex-direction:column;align-items:center;gap:8px;padding:14px 0"><div style="width:180px;height:180px" aria-label=${word + ' 체크인 QR'} dangerouslySetInnerHTML=${{ __html: qr }}></div><div class="num" style="font-size:20px;font-weight:600;letter-spacing:.06em">${code}</div></div>`
+          : html`<${Row} tint onClick=${openServer}>체크인 QR<//>`}
+        <div class="row"><${Labeled} label="체크인" value=${here.length + '명'} /></div>
+        ${roster.length > 0 && html`<div class="row sub">${roster.map(r => r.nick + (r.left ? '(나감)' : '')).join(' · ')}</div>`}`}
+      <div class="row"><${Labeled} label="판" value=${pot.games + '개'} /></div>
+      <${Row} danger disabled=${h.destination === 'resumeGame'} onClick=${close}>${word} 닫기<//>`
+    : null}
+    ${logged && joined.map(j => html`<div class="row"><span class="grow">${j.host}님의 ${word}</span><button class="btn-s" onClick=${async () => { await account.plaza('plaza_leave', { p_id: j.plaza }); setJoined(await account.plaza('plaza_joined') || []); }}>나 갈게요</button></div>`)}
+    ${logged && fixes.map(f => html`<div class="row" style="flex-direction:column;align-items:stretch;gap:6px"><div>${f.nick} · ${f.mode || ''} ${f.seat ? f.seat + '번 자리' : ''}</div><div class="sub">이 판에 없었다고 해요</div>
+      <div style="display:flex;gap:8px"><button class="btn-s" onClick=${async () => { await account.plaza('fix_decide', { p_id: f.id, p_accept: true }); setFixes(await account.plaza('fix_requests_mine') || []); }}>수락</button><button class="btn-s" onClick=${async () => { await account.plaza('fix_decide', { p_id: f.id, p_accept: false }); setFixes(await account.plaza('fix_requests_mine') || []); }}>거절</button></div></div>`)}
+    ${logged ? html`<${Row} tint onClick=${() => setScan(true)}>QR로 ${word} 참가<//>` : account.plazaJoin && html`<${Row} tint onClick=${() => account.login()}>로그인하고 ${word} 참가<//>`}
+  <//>
+  ${scan && html`<${QrScanner} title=${word + ' QR을 비춰 주세요'} parse=${plazaCodeFrom} onClose=${() => setScan(false)} onCode=${async c => { setScan(false); const r = await account.plaza('plaza_checkin', { p_code: c }); setMsg(r && r.ok ? r.host + '님의 ' + word + '에 들어왔어요' : (r && r.error) || '참가하지 못했어요. 연결을 확인해 주세요.'); setJoined(await account.plaza('plaza_joined') || []); }} />`}
+  <${Alert} open=${!!msg} title=${msg} onClose=${() => setMsg(null)} />`;
+}

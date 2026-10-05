@@ -56,6 +56,12 @@ export const account = {
     return { ok, bad };
   },
   /** 투넬 회원 명단 — 오늘 참석·최근 두 달·전체(서버가 닉·참석 여부만 준다) */
+  /* 광장 체크인(0170) — 진행자: 열기·코드·명단·닫기 / 참가자: 체크인·나 갈게요. 실패는 null(서버에 아직 없을 때도) */
+  plazaJoin: '',   // QR(…/?j=코드)로 들어온 참가 코드 — 로그인 뒤 저절로 체크인한다
+  async plaza(fn, args) { if (!this.user) return null; try { return await rpc(fn, args || {}); } catch { return null; } },
+  async plazaCheckinPending() { const c = this.plazaJoin; if (!c || !this.user) return null;
+    this.plazaJoin = ''; try { sessionStorage.removeItem('plaza_join'); } catch {}
+    return await this.plaza('plaza_checkin', { p_code: c }) || { ok: false, error: '참가하지 못했어요. 연결을 확인해 주세요.' }; },
   async members() { if (!this.user) return null; try { return (await rpc('list_members')) || []; } catch { return null; } },
   /** 친구 — 서로 수락. 목록(friend·received·sent)·요청·수락·끊기, 전적은 서로 친구이거나 나일 때만 서버가 준다 */
   async friends() { if (!this.user) return null; try { return (await rpc('friends_list')) || []; } catch { return null; } },

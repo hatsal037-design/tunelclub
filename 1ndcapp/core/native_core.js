@@ -50,13 +50,19 @@ var NativeCore = (function () {
 
   /* 연습판 — 오늘 화면에서 고른 «다음 판은 연습»을 배정 때까지 들고 있다(웹 ngPractice 는 메모리라 앱을 껐다 켜면 사라진다). 판에 들어가면 state.practice 가 잇는다 */
   var PRACTICE_KEY = 'dangsan_practice_next';
+  /* 광장(그릇) — 그날 모임. 화면 말은 계열 말(PKO). 새 화면엔 없던 것을 다시 들인다(2026-10-05 햇살님 «오늘 화면에 광장 칸») */
+  function potView() {
+    var p = potNow(); if (!p) return null;   /* 조회는 순수하게 — 닫기는 명령(preparation.enter·pot.*)과 앱을 열 때만. 여기선 24시간 지난 광장을 «없음»으로만 보인다 */
+    if (Date.now() >= potEndsAt(p) && !(state.log && state.log.potId === p.id && !state.practice && !gameEnded())) return null;
+    return { id: p.id, title: p.title || '', practice: !!p.practice, openedAt: p.openedAt, endsAt: potEndsAt(p), games: (p.gameIds || []).length };
+  }
   function home() {
     var h = homeState(), ed = ED();
     var dest = h === 'play' ? 'resumeGame' : h === 'draft' ? 'resumePreparation' : 'newPreparation';
     var n = (state.seats || []).filter(function (s) { return s && (s.name || s.char); }).length;
     var summary = h === 'play' ? ((state.nights || 1) === 1 ? '첫밤' : (state.phase === 'day' ? '낮 ' : '밤 ') + (state.nights || 1)) + ' · ' + n + '명'
       : h === 'draft' ? n + '명 준비 중' : null;
-    return { destination: dest, ruleFamily: ed.hub || '당산나무', modeName: ed.name || null, demonKo: KO('team', 'demon', hubRep()), skillOff: hubRep() === 'mafia',   // 숙련도 안 쓰는 계열(오리지널 마피아) — 준비 화면이 경험 단계를 숨긴다   // 화면 글이 쓰는 계열 말(흉수·악마·범죄 조직)
+    return { destination: dest, ruleFamily: ed.hub || '당산나무', modeName: ed.name || null, demonKo: KO('team', 'demon', hubRep()), potKo: PKO('그릇'), pot: potView(),   /* 그날 모임·낮 다 같이 이야기 자리의 계열 말 — 당산나무 마당·클래식 광장·오리지널 구역(2026-10-05 햇살님 «테마 따라 이름, 낮에도») */ skillOff: hubRep() === 'mafia',   // 숙련도 안 쓰는 계열(오리지널 마피아) — 준비 화면이 경험 단계를 숨긴다   // 화면 글이 쓰는 계열 말(흉수·악마·범죄 조직)
       summary: summary, hasRecords: (localStorage.getItem('botc_logs') || '[]').length > 2,   // 원문 길이로 — 홈을 그릴 때마다 기록 전체를 펴던 것(앱구조점검, 2026-10-05)
       practice: h === 'play' ? !!state.practice : localStorage.getItem(PRACTICE_KEY) === '1',
       prepStep: h !== 'draft' ? null : hasRoles() ? 'handoff' : n >= 5 ? 'seats' : 'people' };   // 준비 이어 하기 — 역할을 나눴으면 넘기기부터(앱을 껐다 켜도 하던 자리로)
@@ -927,7 +933,14 @@ var NativeCore = (function () {
       return null;
     },
     /* 새 판 준비로 들어간다 — practice 면 이번 준비의 판은 연습판(기록 안 남김). 진행 중인 판이 있으면 거부 */
-    'preparation.enter': function (p) { if (inGame()) return rejected('notAllowedInPhase', '진행 중인 판이 있어요.'); if (p.practice) localStorage.setItem(PRACTICE_KEY, '1'); else localStorage.removeItem(PRACTICE_KEY); return null; },
+    'preparation.enter': function (p) { if (inGame()) return rejected('notAllowedInPhase', '진행 중인 판이 있어요.'); if (p.practice) localStorage.setItem(PRACTICE_KEY, '1'); else localStorage.removeItem(PRACTICE_KEY);
+      /* 판은 광장 안에서 — 없으면 조용히 연다(화면-038b). 연습이면 즉석 광장(요약 안 남김), 실전인데 연습 광장이 열려 있으면 닫고 새로(웹 newGameEntry 와 같게) */
+      try { potAutoCloseCheck(); } catch (e) {}   // 24시간 지난 광장은 여기서 닫는다
+      var cur = potNow(); if (cur && cur.practice && !p.practice) { try { potClose('practice'); } catch (e) {} cur = null; }
+      if (!cur) potOpen(p.practice ? { practice: true } : undefined);
+      return null; },
+    'pot.open': function () { try { potAutoCloseCheck(); } catch (e) {} if (potNow()) return rejected('notAllowedInPhase', '이미 열린 ' + PKO('그릇') + '이 있어요.'); potOpen(); return null; },
+    'pot.close': function () { if (!potNow()) return null; if (inGame() && !gameEnded()) return rejected('notAllowedInPhase', '진행 중인 판이 있어 닫을 수 없어요.'); potClose('hand'); return null; },
     'board.setLayout': function (p) { var g = guardSetup(); if (g) return g; setLayout(p.layout === 'rect' ? 'rect' : 'circle'); save(); return null; },
     /* 사각 빈자리 — 웹 자리 잡기의 «빈자리 없애기»(sbCloseGaps, 인원에 맞게 칸을 다시 고름)·«빈자리 고르게»(gapsSpread) */
     'board.closeGaps': function () { var g = guardSetup(); if (g) return g; if (state.layout !== 'rect') return rejected('invalidSelection', '사각 배치에서만 써요.');

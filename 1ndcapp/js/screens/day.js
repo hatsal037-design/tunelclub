@@ -176,10 +176,9 @@ export function ResultView({ m, call }) {
     <${Section} header="큰 화면">
       <${Toggle} checked=${!!m.tvReveal} onChange=${v => store.dispatch('display.endReveal', { on: v })}>직업 공개<//>
       ${m.replayDays != null && html`<div class="row"><span class="grow">복기</span>
-        <button class="btn-s" aria-label="앞 날" disabled=${m.tvReplay != null && m.tvReplay <= 0} onClick=${() => store.dispatch('display.endReplay', { day: Math.max(0, (m.tvReplay ?? 1) - 1) })}><${Icon} name="chevronLeft" size=${20} /></button>
+        <button class="btn-s rp-arrow" aria-label="앞 날" disabled=${m.tvReplay == null} onClick=${() => store.dispatch('display.endReplay', m.tvReplay > 0 ? { day: m.tvReplay - 1 } : {})}><${Icon} name="chevronLeft" size=${28} stroke=${2.4} /></button>
         <span class="num" style="min-width:86px;text-align:center">${m.tvReplay != null ? (m.tvReplay === 0 ? '정보의 밤' : `${m.tvReplay}일차 / ${m.replayDays}`) : '끔'}</span>
-        <button class="btn-s" aria-label="다음 날" disabled=${(m.tvReplay ?? -1) >= m.replayDays} onClick=${() => store.dispatch('display.endReplay', { day: Math.min(m.replayDays, (m.tvReplay ?? -1) + 1) })}><${Icon} name="chevronRight" size=${20} /></button>
-        ${m.tvReplay != null && html`<button class="btn-s" onClick=${() => store.dispatch('display.endReplay', {})}>끄기</button>`}</div>`}
+        <button class="btn-s rp-arrow" aria-label="다음 날" disabled=${(m.tvReplay ?? -1) >= m.replayDays} onClick=${() => store.dispatch('display.endReplay', { day: Math.min(m.replayDays, (m.tvReplay ?? -1) + 1) })}><${Icon} name="chevronRight" size=${28} stroke=${2.4} /></button></div>`}
     <//>
     ${m.politician.length > 0 && html`<${Section} header="판 끝 질문"><${CoreItems} items=${m.politician} call=${call} /><//>`}
     ${m.players.length > 0 && html`<${Section} header="참가자">${m.players.map(p => html`<div class="row"><span>${p.number}번 ${p.name}</span><${RoleArt} r=${p.role} size=${24} />
@@ -191,7 +190,7 @@ export function ResultView({ m, call }) {
 /* ── 이야기 시간 타이머 — 5분마다·2분 전·1분 전·끝에 알림. 끝 시각으로 재서 화면을 떠났다 와도 어긋나지 않는다 ── */
 const subs = new Set();
 export const timer = {
-  total: 0, endAt: null, pausedLeft: null, shout: null, shouted: new Set(), tick: null, kind: 'whisper',   // kind — 밀담(whisper)·광장(square) 두 줄(2026-10-05, 폰 앱 TalkTimer 와 같음)
+  total: 0, endAt: null, pausedLeft: null, shout: null, shouted: new Set(), tick: null, kind: 'whisper', place: '광장',   // place — 다 같이 이야기하는 자리의 계열 말(마당·광장·구역, 화면이 home.potKo 로 채움 — 2026-10-05 «낮에도 테마 따라»). kind — 밀담(whisper)·광장(square) 두 줄(2026-10-05, 폰 앱 TalkTimer 와 같음)
   get running() { return this.total > 0; }, get paused() { return this.pausedLeft !== null; },
   left(now = Date.now()) { return this.pausedLeft ?? Math.max(0, ((this.endAt ?? now) - now) / 1000); },
   emit() { subs.forEach(f => f()); },
@@ -210,7 +209,7 @@ export const timer = {
   poll() {
     if (!this.running || this.paused) { this.emit(); return; }
     const l = this.left();
-    if (l <= 0) { this.alert('끝', this.kind === 'whisper' ? '밀담 끝 — 광장으로 모여 주세요' : '이야기 시간이 끝났어요 — 지목을 받으세요', true); clearInterval(this.tick); this.tick = null; const dur = this.total; this.total = 0; this.endAt = null; this.emit(); this.tell(dur); return; }
+    if (l <= 0) { this.alert('끝', this.kind === 'whisper' ? '밀담 끝 — ' + this.place + '으로 모여 주세요' : '이야기 시간이 끝났어요 — 지목을 받으세요', true); clearInterval(this.tick); this.tick = null; const dur = this.total; this.total = 0; this.endAt = null; this.emit(); this.tell(dur); return; }
     const passed = this.total - l, marks = [];
     for (let m = 5; m * 60 < this.total; m += 5) marks.push(['p' + m, m * 60, `${m}분 지났어요`]);
     marks.push(['m2', this.total - 120, '2분 남았어요'], ['m1', this.total - 60, '1분 남았어요']);
@@ -238,11 +237,12 @@ function useTimer() { const [, f] = useState(0); useEffect(() => { const h = () 
 /* 분은 바퀴로 돌려 고르고(2026-10-05 «타이머 버튼은 돌리는 게 나아»), 시작은 밀담·광장 두 단추. 도는 동안엔 그 줄 이름 + 큰 시계. 마피아는 광장만 */
 function TalkTimerSection({ whisper = true }) {
   const t = useTimer(), [, re] = useState(0);
+  t.place = (store.home && store.home.potKo) || '광장';   // 계열 말(마당·광장·구역)
   const bell = settings.get('timerSound'), min = settings.get('talkMinutes');
   const wheel = useRef(null);
   useEffect(() => { if (!t.running && wheel.current) wheel.current.scrollTop = (min - 1) * 36; }, [t.running]);
   const onScroll = e => { const v = Math.min(60, Math.max(1, Math.round(e.currentTarget.scrollTop / 36) + 1)); if (v !== settings.get('talkMinutes')) { settings.set('talkMinutes', v); re(x => x + 1); } };
-  const l = t.left(), title = t.kind === 'whisper' ? '밀담' : '광장';
+  const l = t.left(), title = t.kind === 'whisper' ? '밀담' : t.place;
   return html`<${Section} header=${html`<span class="grow">이야기 시간</span><button class="blink" style="min-height:24px" aria-label="이야기 시간 알림음" aria-pressed=${bell}
       onClick=${() => { settings.set('timerSound', !bell); re(x => x + 1); }}><${Icon} name=${bell ? 'bell' : 'bellSlash'} size=${18} /></button>`}>
     ${t.running ? html`<div class="row"><div class="timer" aria-label=${`${title} 남은 시간 ${Math.floor(l / 60)}분 ${Math.floor(l % 60)}초${t.paused ? ', 멈춤' : ''}`}>
@@ -253,7 +253,7 @@ function TalkTimerSection({ whisper = true }) {
     : html`<div class="row" style="flex-direction:column;gap:12px"><div class="wheel-wrap"><div class="wheel" ref=${wheel} onScroll=${onScroll}><div class="pad"></div>
         ${Array.from({ length: 60 }, (_, i) => html`<div class=${i + 1 === min ? 'on' : ''}>${i + 1}분</div>`)}<div class="pad"></div></div></div>
       <div class="row" style="padding:0;gap:12px;width:100%">${whisper && html`<button class="bprim green grow" onClick=${() => t.start(min, 'whisper')}>♪ 밀담</button>`}
-        <button class="bprim grow" onClick=${() => t.start(min, 'square')}><${Icon} name="play" size=${18} />광장</button></div></div>`}
+        <button class="bprim grow" onClick=${() => t.start(min, 'square')}><${Icon} name="play" size=${18} />${t.place}</button></div></div>`}
   <//>`;
 }
 function TalkTimerBanner() {

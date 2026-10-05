@@ -2180,7 +2180,7 @@ const POT_KO={
     '당산나무':{ 그릇:'마당', 열기:'마당 열기', 닫기:'마당 닫기', 내역:'내가 참가한 마당' },
     '클래식':  { 그릇:'광장', 열기:'광장 열기', 닫기:'광장 닫기', 내역:'내가 참가한 광장' },
     '오리지널 마피아': { 그릇:'구역', 열기:'구역 열기', 닫기:'구역 닫기', 내역:'내가 참가한 구역' },
-    _:         { 그릇:'모임', 열기:'모임 열기', 닫기:'모임 닫기', 내역:'내가 참가한 모임' },   // 옛 hub '마을' 등은 여기로 떨어진다 (들여쓰기 4칸 — 게이트의 BUILTIN 키 스캔과 안 겹치게)
+    _:         { 그릇:'광장', 열기:'광장 열기', 닫기:'광장 닫기', 내역:'내가 참가한 광장' },   // 기본 이름 «광장»(2026-10-05 햇살님)   // 옛 hub '마을' 등은 여기로 떨어진다 (들여쓰기 4칸 — 게이트의 BUILTIN 키 스캔과 안 겹치게)
 };
 function PKO(k){ return (ED().potKo||{})[k] || (POT_KO[ED().hub]||{})[k] || POT_KO._[k] || k; }
 function PKOofHub(hub,k){ return (POT_KO[hub]||{})[k] || POT_KO._[k] || k; }   // 닫힌 그릇을 다른 판본에서 볼 때 — 그 그릇의 hub 로
@@ -8169,6 +8169,12 @@ function winCheckBase(){
     out.push({lv:'end', win:'good', t:'셋째 밤이 지나도 객귀(악마)가 태어나지 않았어요 → 마을 승리'});
     return out;
   }
+  /* 흉수 좌석이 아예 없어진 판 — 둔갑쟁이·마귀할멈이 흉수를 다른 직업으로 바꿔 판에 흉수가 하나도 남지 않으면 마을 승리(원작 «살아 있는 악마가 없으면 선 승리»).
+     요승(위)·몸 없는 악마(blT)·두억시니는 따로 본다. 예전엔 이 경우 아무 판정이 없어 모두 죽을 때까지 판이 안 끝났다(2026-10-05 지원표 멈춤) */
+  if(!hasDemonRole&&!yoSeat&&!blT&&inPlay.some(s=>(s.rem||[]).includes('둔갑'))){
+    out.push({lv:'end', win:'good', t:'둔갑으로 판에 흉수가 남지 않았어요 → 마을 승리'});
+    return out;
+  }
   if(hasDemonRole&&!demonsAlive.length&&twinsAlive)
     out.push({lv:'warn', t:'쌍둥이(배냇쌍둥이·이블 트윈) 둘이 모두 살아 있어요 — 둘 중 하나가 죽기 전엔 선이 이길 수 없습니다.'});
   if(hasDemonRole&&!demonsAlive.length&&!twinsAlive){
@@ -9956,17 +9962,17 @@ function potReconcile(){
   mine.forEach(L=>potAddGame(L)); }
 /* 자동 닫기 — 마지막 행동 날짜 D 기준, D+1 은 묻기만·D+2 부터 닫는다(자정 넘겨 이어가는 판 보호).
    now 를 받는 순수 함수 — 테스트가 시계를 흉내 낸다 */
+/* 광장(그릇) 수명 — 연 때부터 24시간, 그때 진행 중인 판이 있으면 그 판이 끝날 때까지(2026-10-05 햇살님 «24시간 + 판 끝까지»).
+   옛 규칙(날짜가 하루 바뀌면 묻고, 이틀이면 닫기)은 밤 11시에 연 모임이 한 시간 만에 물음이 뜨는 문제가 있었다. 서버 광장(0170 plaza_live)과 같은 기준 */
+const POT_LIFE_MS=24*3600*1000;
+function potEndsAt(p){ return (p.openedAt||Date.now())+POT_LIFE_MS; }
 function potAutoCloseCheck(now){
   now=now||Date.now();
   const id=potNowId(); if(!id) return null;
   const p=potById(id); if(!p) return null;
-  if(state&&state.log&&state.log.potId===id&&!state.practice){ potTouch(); return null; }   // 진행 중 판이 있으면 절대 안 닫는다(연습판은 예외)
-  const last=p.lastActAt||p.openedAt||now;
-  const d0=new Date(dayKey(last)+'T00:00:00').getTime(), d1=new Date(dayKey(now)+'T00:00:00').getTime();
-  const diff=Math.round((d1-d0)/86400000);
-  if(diff<=0) return null;                      // 같은 날(또는 시계 역행) — 아무것도 안 한다
-  if(diff===1) return { ask:true, pot:p };      // D+1 — 이어서 할까요/닫을까요
-  const closed=potClose('auto');                 // D+2 이후 — 닫고 알린다. closedAt=마지막 행동 시각
+  if(state&&state.log&&state.log.potId===id&&!state.practice&&!gameEnded()){ potTouch(); return null; }   // 진행 중 판이 있으면 안 닫는다(연습판은 예외)
+  if(now<potEndsAt(p)) return null;
+  const closed=potClose('auto');
   return closed?{ closed:true, pot:closed }:null; }
 
 /* ══ 그릇 화면 — 열기·참가자·초대·닫기 (D단계) ══ */
