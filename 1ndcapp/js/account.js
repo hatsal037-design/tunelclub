@@ -1,6 +1,7 @@
 // 투넬 계정 — 투넬(tunel.kr)과 같은 카카오 로그인·같은 서버. 같은 사이트라 투넬에 로그인돼 있으면 여기도 켜진다.
 // 판을 서버 모양으로 만드는 건 코어(sync.pending), 여기는 보내기·받기만. 판이 끝나면 조용히 올린다
 import { store } from './store.js';
+import { slimGame, restoreGames } from './core.js';
 const URL_ = 'https://yguvfogtzazoawtclqvf.supabase.co', KEY = 'sb_publishable_KeezD9hmEnxSTEWA_w8x-A_Tgk3roUf';   // 공개 키(투넬 앱도 그대로 싣는다)
 let cl = null;
 const client = () => cl || (window.supabase && window.supabase.createClient ? (cl = window.supabase.createClient(URL_, KEY)) : null);
@@ -43,7 +44,7 @@ export const account = {
       for (const g of store.get('sync.pending') || []) {
         try {
           if (g.people.length && !(await rpc('sync_people', { p_people: g.people }))) throw new Error('people');
-          await rpc('upload_game', { p_game: g.game, p_players: g.players });
+          await rpc('upload_game', { p_game: slimGame(g.game), p_players: g.players });   // 확인되면 사건 기록 빼고(씨앗+명령 2단계)
           try { await rpc('game_skill_facts', { p_client_game_id: g.game.client_game_id, p_players: g.players }); } catch {}   // 숙련 등급 재료(0110) — 실패해도 판 올리기는 성공
           done.push(g.id); ok++;
         } catch { bad++; }
@@ -77,6 +78,7 @@ export const account = {
     let since = null; try { since = localStorage.getItem(key); } catch {}
     try {
       const rows = (await rpc('my_games', since ? { p_limit: 200, p_with_payload: true, p_since: since } : { p_limit: 200, p_with_payload: true })) || [];
+      await restoreGames(rows);   // 사건 기록을 빼고 올라간 판은 기기에서 다시 돌려 채운다(씨앗+명령 3단계)
       const r = await store.dispatch('sync.merge', { rows });
       if (!r.ok) return null;
       const last = rows.reduce((m, g) => (g && g.updated_at && g.updated_at > m ? g.updated_at : m), since || '');   // 서버가 같은 꼴(UTC ISO)로 줘서 글자 비교로 충분

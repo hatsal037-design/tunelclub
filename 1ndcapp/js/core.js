@@ -27,7 +27,7 @@ function start(saved) {
 }
 
 export async function boot() {
-  const files = ['core/dom_stub.js', 'core/app.js', 'core/native_core.js'];
+  const files = ['core/dom_stub.js', 'core/core_ver.js', 'core/app.js', 'core/native_core.js'];   // core_ver — 규칙 코드 판본(2026-10-05)
   SRC = (await Promise.all(files.map(f => fetch(f).then(r => { if (!r.ok) throw new Error(f); return r.text(); })))).join('\n;\n');
   // 공통 엔진(2026-10-01) — 코어 위 모듈, 화면 연결 전. 없거나 깨져도 코어는 선다(try 안에서 var GameEngine 은 이 함수 범위로)
   for (const m of ['engine', 'reasoner', 'replay']) { try { const en = await fetch('core/' + m + '.js'); if (en.ok) SRC += '\n;try{\n' + (await en.text()) + '\n}catch(e){ print && print("' + m + ': " + e); }\n'; } catch {} }   // reasoner — 풀이기(P4 v2)
@@ -132,4 +132,37 @@ function commit(rev) {
   // KEY 한 번 쓰기가 확정점. 이후 알림 실패로 이미 저장된 명령을 실패라고 돌려주지 않는다.
   try { localStorage.setItem(REV, String(rev)); } catch {}
   return 'ok';
+}
+
+/** 씨앗+명령 2단계(2026-10-05) — 올리기 직전 확인: 보관된 규칙 판본으로 돈 판이고, 새로 띄운 코어에서 공개용 기록(rec)만으로 다시 돌린 판이
+ *  지금 판과 같으면 사건 기록(events)을 빼고 올린다(slim 표시). 하나라도 어긋나거나 실패하면 그대로(전체) 올린다 — 기록이 사라질 일은 없다 */
+export function slimGame(game) {
+  try { const P = game && game.payload, rec = P && P.rec;
+    if (!rec || !rec.archived || !Array.isArray(rec.c) || !rec.c.length || !Array.isArray(P.events) || rec.core !== NC.coreVersion()) return game;
+    const orig = NC.canonLog(P.id); if (!orig) return game;
+    const fresh = new Function('__boot_storage', 'print', SRC + '\n;__flushTimers(); return NativeCore;')(JSON.stringify(rec.start), () => {});
+    if (fresh.replayRun(JSON.stringify(rec)) !== orig) return game;
+    const P2 = { ...P, slim: { core: rec.core, events: P.events.length } }; delete P2.events;
+    return { ...game, payload: P2 };
+  } catch { return game; } }
+
+/** 받아서 되살리기(씨앗+명령 3단계, 2026-10-05) — 사건 기록을 빼고 올라간 판(payload.slim)을 그 판이 돈 규칙 판본으로 다시 돌려 채운다.
+ *  판본 코드는 지금 것과 같으면 그대로, 다르면 사이트의 core-archive/<판본>/ 에서 받는다. 실패하면 결과만 있는 판으로 둔다 */
+const archSrc = {};
+async function srcFor(v) {
+  if (NC && v === NC.coreVersion()) return SRC;
+  if (!archSrc[v]) archSrc[v] = Promise.all(['dom_stub', 'app', 'native_core'].map(f => fetch('core-archive/' + v + '/' + f + '.js').then(r => { if (!r.ok) throw new Error(f); return r.text(); })))
+    .then(([a, b, c]) => [a, "var __CORE_VER = '" + v + "', __CORE_ARCHIVED = true;", b, c].join('\n;\n')).catch(() => null);
+  return archSrc[v];
+}
+export async function restoreGames(rows) {
+  for (const r of rows || []) {
+    const P = r && r.payload; if (!P || !P.slim || Array.isArray(P.events) || !P.rec || !P.rec.start) continue;
+    try { const src = await srcFor(P.slim.core || P.rec.core); if (!src) continue;
+      const fresh = new Function('__boot_storage', 'print', src + '\n;__flushTimers(); return NativeCore;')(JSON.stringify(P.rec.start), () => {});
+      const L = readable(fresh.replayLog(JSON.stringify(P.rec)) || 'null');
+      if (L && Array.isArray(L.events)) P.events = L.events;
+    } catch {}
+  }
+  return rows;
 }
