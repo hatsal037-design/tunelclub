@@ -543,7 +543,7 @@ var NativeCore = (function () {
       return { dead: dead, ghost: dead && ((s.rem || []).indexOf('유령표') >= 0 || (!s.dead && !villageType())) }; });   // 죽은 척도 유령표를 받는다(fakeDeadMark, 유령표 쓰는 판) — 안 쓰는 판은 예전처럼 있음으로
     var seats = (state.seats || []).map(function (s, i) { var v = (P.seats && P.seats[i]) || { dead: false, ghost: false };
       return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost }; });
-    var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), waiting = !began && tvp && tvp.code && localStorage.getItem(TVW_KEY) !== '0' ? { code: tvp.code, title: (pot0 && pot0.title) || tvp.title || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: (tvp.people || []).slice(0, 20) } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
+    var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), tvw = localStorage.getItem(TVW_KEY), waiting = tvp && tvp.code && (tvw === '1' ? (!began || ended) : tvw !== '0' && !began) ? { code: tvp.code, title: (pot0 && pot0.title) || tvp.title || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: (tvp.people || []).slice(0, 20) } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
     var scene = waiting ? 'waiting' : !began ? 'prep' : ended ? 'ended' : !isDay ? 'night' : !announced ? 'dawn' : 'discussion';
     var noms = D ? D.noms || [] : [], G = isDay ? execGate() : null, nom = null, exec = null;
     var vo = typeof wz.voteOpen === 'number' && noms[wz.voteOpen] && !noms[wz.voteOpen].done ? wz.voteOpen : -1;
@@ -959,7 +959,7 @@ var NativeCore = (function () {
       return null; },
     'pot.open': function (p) { try { potAutoCloseCheck(); } catch (e) {} if (potNow()) return rejected('notAllowedInPhase', '이미 열린 ' + PKO('그릇') + '이 있어요.'); var o = potOpen();
       var t = String((p && p.title) || '').trim().slice(0, 40); if (t && o) potUpdate(o.id, function (x) { x.title = t; x.titleEdited = true; });   // 열 때 이름을 정한다(2026-10-06 햇살님 «광장 열면 이름 정하게»)
-      try { localStorage.removeItem(TVW_KEY); } catch (e) {}   // 광장을 열면 큰 화면은 바로 대기
+      try { localStorage.setItem(TVW_KEY, '1'); } catch (e) {}   // 광장을 열면 큰 화면은 바로 대기 — 지난 판 종료·복기 화면이 남아 있어도(2026-10-06 햇살님 «광장 열어도 이전 복기가 뜬다»)
       return null; },
     'pot.rename': function (p) { var o = potNow(), t = String((p && p.title) || '').trim().slice(0, 40); if (!o) return rejected('notAllowedInPhase', '열린 ' + PKO('그릇') + '이 없어요.'); if (!t) return rejected('invalidSelection', '이름을 적어 주세요.'); potUpdate(o.id, function (x) { x.title = t; x.titleEdited = true; }); return null; },
     'pot.close': function () { if (!potNow()) return null; if (inGame() && !gameEnded()) return rejected('notAllowedInPhase', '진행 중인 판이 있어 닫을 수 없어요.'); potClose('hand'); return null; },
@@ -1339,7 +1339,7 @@ var NativeCore = (function () {
           r = rejected('persistenceFailed', '저장할 수 없는 값이 있어 이 조작을 취소했어요.'); } }
       if (!r) { undoTgt = tgt0; }   // 대상 확정이면 직전 상태를 들고, 다른 명령이 성공하면 버린다
       if (!r) { try { announceEnd(); } catch (e) {} try { if (!(firstNightBegun() && gameEnded())) { delete state.tvReveal; delete state.tvReplay; } } catch (e) {} }   // 새 판이면 지난 판 공개를 걷는다   // 판 끝 자동 발표 — 저장 뒤, 효과로만(판 상태는 안 바꾼다)
-      if (!r) { try { if (PREP_CMD.test(cmd.type)) localStorage.setItem(TVW_KEY, '0'); else if (cmd.type === 'game.again') localStorage.removeItem(TVW_KEY); } catch (e) {} }   // 자리 잡기를 시작하면 대기 끝 · 한 판 더면 다시 대기
+      if (!r) { try { if (PREP_CMD.test(cmd.type)) localStorage.setItem(TVW_KEY, '0'); else if (cmd.type === 'game.again') localStorage.setItem(TVW_KEY, '1'); } catch (e) {} }   // 자리 잡기를 시작하면 대기 끝 · 한 판 더면 다시 대기
       if (!r) { try { prepareDisplayPublic(); } catch (e) {
         try { undoStorage(); if (snap) restoreState(snap); var w2 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w2); } catch (e4) {}
         r = rejected('persistenceFailed', '공개 화면 정보를 저장하지 못해 이 조작을 취소했어요.');
