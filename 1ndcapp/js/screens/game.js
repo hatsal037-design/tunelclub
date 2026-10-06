@@ -93,7 +93,7 @@ export function GameFlow({ close, toRoles, toPrep }) {
   return html`<div class="page" style="position:absolute;inset:0"><${Page}
     title=${(st && st.title) || (card && card.phaseTitle) || ''}
     left=${html`<${NavButton} icon="chevronLeft" label="오늘로 돌아가기" onClick=${close} />`}
-    right=${html`${kind !== 'done' && html`<${Menu} aria="판 메뉴" disabled=${R.busy} label=${html`<${Icon} name="ellipsisCircle" size=${24} />`} items=${menuItems} />`}
+    right=${html`${kind !== 'done' && store.home.practice && html`<${NavButton} label="연습 끝" onClick=${endGame} />`}${kind !== 'done' && html`<${Menu} aria="판 메뉴" disabled=${R.busy} label=${html`<${Icon} name="ellipsisCircle" size=${24} />`} items=${menuItems} />`}
       ${!folded && kind === 'card' && html`<${NavButton} label="판 보기" onClick=${() => fold(true)} />`}`}
     bottom=${html`
       ${kind !== 'done' && html`<div class="toolbar"><button onClick=${() => setAux('seats')}><${Icon} name="person2" size=${20} />좌석</button>
