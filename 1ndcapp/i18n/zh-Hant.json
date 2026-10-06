@@ -154,5 +154,7 @@
   "data.ko": "韓文文本",
   "lib.players": "{r}名玩家",
   "signup.easy": "註冊時不收集姓名、電子郵件或電話號碼。隨時可以立即註銷，30天後帳號資訊將全部刪除。",
-  "err.admin": "管理員帳號無法註銷"
+  "err.admin": "管理員帳號無法註銷",
+  "ui.later": "稍後",
+  "games.hosted": "主持"
 }

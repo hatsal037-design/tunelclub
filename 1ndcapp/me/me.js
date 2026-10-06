@@ -206,7 +206,7 @@ function Profile({ handle }) {
 function AccountTab() {
   const on = useAuth(), nav = useNav();
   const [me, setMe] = useState({}), [st, setSt] = useState({});
-  const load = async () => { if (!on || DEMO) return; const m = await P.me(); const v = m.value || m; setMe(v); setSt(await P.status()); setLang(v.lang); if ((v.needs || []).length) { nav.push(html`<${Signup} me=${v} done=${load} />`); window.dispatchEvent(new Event('me-fill')); } };   // 빠진 칸(0250) — 계정 탭으로 넘겨 채우게
+  const load = async () => { if (!on || DEMO) return; const m = await P.me(); const v = m.value || m; setMe(v); setSt(await P.status()); setLang(v.lang); if ((v.needs || []).length && !seen()) { seen(true); nav.push(html`<${Signup} me=${v} done=${load} />`); window.dispatchEvent(new Event('me-fill')); } };   // 처음 한 번·로그인했을 때만(2026-10-06 «나중에»)   // 빠진 칸(0250) — 계정 탭으로 넘겨 채우게
   useEffect(() => { load(); }, [on]);
   return html`<${Page}>
     <${LargeTitle}>${T('tab.account')}<//>
@@ -228,7 +228,7 @@ function Seated() {
   useEffect(() => { load(); }, []);
   const S = { pending: T('requests.title'), accepted: T('fix.accepted'), rejected: T('fix.rejected') };
   return html`<${Page} title=${T('games.mine')} left=${html`<${Back} />`}><${Loading} v=${l}>${l && html`<${Section}>${l.length ? l.map(g => html`<${Row}><${RowLabel} title=${T('games.row', { host: g.host, mode: g.mode || '' })} text=${(g.at || '').slice(0, 10)} />
-    ${g.request ? html`<span class="sec">${S[g.request]}</span>` : html`<button class="blink" onClick=${async () => { await P.fixRequest(g.game); load(); }}>${T('fix.request')}</button>`}<//>`) : html`<${Row}><span class="sec">${T('empty.games')}</span><//>`}<//>`}<//><//>`;
+    ${g.role === 'host' ? html`<span class="sec">${T('games.hosted')}</span>` : g.request ? html`<span class="sec">${S[g.request]}</span>` : html`<button class="blink" onClick=${async () => { await P.fixRequest(g.game); load(); }}>${T('fix.request')}</button>`}<//>`) : html`<${Row}><span class="sec">${T('empty.games')}</span><//>`}<//>`}<//><//>`;
 }
 function useNameCheck(kind, value, orig) {
   const [n, setN] = useState(null);
@@ -237,15 +237,18 @@ function useNameCheck(kind, value, orig) {
   return n;
 }
 const Note = ({ n }) => n && html`<div class=${n[0] ? 'green' : 'red'} style="font-size:13px;padding:0 16px 8px">${n[1]}</div>`;
+const seen = v => { try { if (v) sessionStorage.setItem('me.welcomed', '1'); return !!sessionStorage.getItem('me.welcomed'); } catch { return false; } };
 function Signup({ me, done }) {
   const need = k => (me.needs || ['nick', 'handle', 'agree']).includes(k);
-  const nav = useNav(); const [nick, setNick] = useState(me.nick || ''), [handle, setHandle] = useState(me.handle || ''), [agree, setAgree] = useState(false), [busy, setBusy] = useState(false), [fail, setFail] = useState({});
+  const nav = useNav(); const [nick, setNick] = useState(me.nick || ''), [handle, setHandle] = useState(me.handle || ''), [nm, setNm] = useState(me.display_name || ''), [agree, setAgree] = useState(false), [busy, setBusy] = useState(false), [fail, setFail] = useState({});
   const nn = useNameCheck('nick', nick, me.nick), hn = useNameCheck('handle', handle, me.handle || '');
   const ok = (agree || !need('agree')) && handle && nick && !(nn && !nn[0]) && !(hn && !hn[0]);
-  const save = async () => { setBusy(true); const ch = {}; if (need('agree')) ch.agreed = true; if (handle !== (me.handle || '')) ch.handle = handle; if (nick !== me.nick) ch.nick = nick; const r = await P.setProfile(ch); setBusy(false); if (r.ok) { nav.pop(); done(); } else setFail(r.failed || {}); };
+  const save = async () => { setBusy(true); const ch = {}; if (need('agree')) ch.agreed = true; if (handle !== (me.handle || '')) ch.handle = handle; if (nick !== me.nick) ch.nick = nick; if (nm !== (me.display_name || '')) ch.name = nm; const r = await P.setProfile(ch); setBusy(false); if (r.ok) { nav.pop(); done(); } else setFail(r.failed || {}); };
   return html`<${Page} title=${T('signup.title')} right=${html`<${NavButton} label=${T('signup.go')} bold disabled=${!ok || busy} onClick=${save} />`}>
-    ${need('nick') && html`<${Section} header=${T('profile.nick')}><div class="row"><input class="textin grow" id="su-nick" value=${nick} onInput=${e => setNick(e.currentTarget.value)} /></div><//><${Note} n=${fail.nick ? [false, T('err.' + fail.nick)] : nn} />`}
-    ${need('handle') && html`<${Section} header=${T('profile.handle')}><div class="row"><span class="sec">@</span><input class="textin grow" id="su-handle" value=${handle} autocapitalize="off" autocomplete="off" spellcheck="false" onInput=${e => setHandle(e.currentTarget.value)} /></div><//><${Note} n=${fail.handle ? [false, T('err.' + fail.handle)] : hn} />`}
+    <${Section}><div class="row" style="white-space:pre-line">${T(me.from_tunel ? 'signup.intro.tunel' : 'signup.intro')}</div><//>
+    ${html`<${Section} header=${T('profile.nick')} footer=${T('signup.nick.help') + (me.from_tunel ? ' ' + T('signup.nick.tunel') : '')}><div class="row"><input class="textin grow" id="su-nick" value=${nick} onInput=${e => setNick(e.currentTarget.value)} /></div><//><${Note} n=${fail.nick ? [false, T('err.' + fail.nick)] : nn} />`}
+    ${html`<${Section} header=${T('profile.handle')} footer=${T('signup.handle.help')}><div class="row"><span class="sec">@</span><input class="textin grow" id="su-handle" value=${handle} autocapitalize="off" autocomplete="off" spellcheck="false" onInput=${e => setHandle(e.currentTarget.value)} /></div><//><${Note} n=${fail.handle ? [false, T('err.' + fail.handle)] : hn} />`}
+    <${Section} header=${T('profile.name')} footer=${T('signup.name.help')}><div class="row"><input class="textin grow" id="su-name" value=${nm} onInput=${e => setNm(e.currentTarget.value)} /></div><//><${Note} n=${fail.name ? [false, T('err.' + fail.name)] : null} />
     ${need('agree') && html`<${Section} footer=${T('signup.easy')}><${Toggle} checked=${agree} onChange=${setAgree}>${T('signup.agree')}<//>
       <${Row} chevron onClick=${() => open('../terms.html')}>${T('signup.terms')}<//><${Row} chevron onClick=${() => open('../privacy.html')}>${T('signup.privacy')}<//><//>`}
   <//>`;

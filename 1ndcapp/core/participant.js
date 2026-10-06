@@ -27,7 +27,7 @@
       if (!v) return 'too_short';
       if (v.length > LIMIT.handle) return 'too_long';
       if (!/^[a-z0-9._]+$/.test(v) || /\.\./.test(v) || /\.$/.test(v) || /^\./.test(v)) return 'bad_chars';
-      if (HANDLE_RESERVED.indexOf(v) >= 0 || impersonates(v)) return 'impersonate';
+      // 예약어(운영·진행자로 보이는 이름)는 서버가 판단한다 — 운영자는 쓸 수 있다(0290, 2026-10-06)
       return null;
     }
     if (kind === 'nick') {
@@ -36,8 +36,7 @@
       if (CTRL.test(v)) return 'bad_chars';
       if (EMOJI.test(v)) return 'emoji';
       if (NICK_SYMBOL.test(v)) return 'bad_chars';
-      if (impersonates(v)) return 'impersonate';
-      return null;
+      return null;   // 예약어는 서버가(운영자 예외, 0290)
     }
     if (kind === 'name' || kind === 'bio') {
       if (!v) return null;   // 비워 두기 됨
@@ -79,9 +78,10 @@
 
       // ── 나·프로필 ──
       me: function () {   // needs = 채워야 할 칸(nick·handle·agree) — 투넬에서 넘어온 계정은 다음 로그인 때 채운다(0250, 스위치 complete_profile)
-        return Promise.all([call('my_profile'), call('my_needs')]).then(function (a) {
+        return Promise.all([call('my_profile'), call('my_needs'), call('my_origin')]).then(function (a) {
           var r = a[0]; if (!r.ok) return r;
           var v = r.value || r; v.needs = a[1].ok && Array.isArray(a[1].value) ? a[1].value : (v.handle ? [] : ['handle', 'agree']);
+          v.from_tunel = !!(a[2].ok && a[2].value && a[2].value.from_tunel);   // 계정 정보 창 설명(0291)
           return set('me', v);
         });
       },
