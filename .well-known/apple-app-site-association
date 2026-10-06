@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["39XH2XW8FV.kr.tunel.1ndcapp"],
+        "components": [
+          { "/": "/1ndcapp/me/*", "comment": "참가자 웹 — 체크인(?j=)·프로필(?u=)" },
+          { "/": "/1ndcapp/", "?": { "screen": "*" }, "comment": "큰 화면 연결" }
+        ]
+      }
+    ]
+  }
+}
