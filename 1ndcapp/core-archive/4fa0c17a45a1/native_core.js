@@ -1169,7 +1169,7 @@ var NativeCore = (function () {
       wzFinish(); if (wz.mode === 'done') return null;
       if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0) return rejected('invalidSelection', '승자를 골라 주세요.');
       wzFinishDo(p.winner, true); return wz.mode === 'done' ? null : rejected('coreFailure', '마감하지 못했어요.'); },
-    'game.again': function (p) { if (!gameEnded()) return rejected('notAllowedInPhase', '끝난 판이 아니에요.'); state.tvReveal = false; delete state.tvReplay;   /* 끈 채로 — 새 판이 시작되면 아래 걷기에서 지워져 다음 종료 때 다시 먼저 뜬다 */   /* 한 판 더 — 지난 판 직업 공개·복기를 TV 에서 걷는다 */ if (state.practice) localStorage.setItem(PRACTICE_KEY, '1');   /* 연습판에서 «한 판 더»는 계속 연습(웹 연습 마당과 같게) */ wz.again = {}; wzAgainGo(); try { prepClose(); } catch (e) {}
+    'game.again': function (p) { if (!gameEnded()) return rejected('notAllowedInPhase', '끝난 판이 아니에요.'); delete state.tvReveal; delete state.tvReplay;   /* 한 판 더 — 지난 판 직업 공개·복기를 TV 에서 걷는다 */ if (state.practice) localStorage.setItem(PRACTICE_KEY, '1');   /* 연습판에서 «한 판 더»는 계속 연습(웹 연습 마당과 같게) */ wz.again = {}; wzAgainGo(); try { prepClose(); } catch (e) {}
       if (p && p.shuffle) state.seatShuffle = true;   // «자리 섞어서 다시»
       if (p && p.fresh) { switchEdition(state.edition, { quiet: true, force: true }); state.seats.forEach(function (x) { x.dead = false; delete x.cause; delete x.causeN; }); }   // «바꿔서 한 판 더» — 인원·자리부터 다시 볼 땐 지난 판 흔적(사망·역할)을 걷는다(명단 확정의 끝난 판 갈래와 같게)
       return null; },

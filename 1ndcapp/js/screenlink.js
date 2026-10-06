@@ -36,6 +36,7 @@ export const screens = {
     try { await account.rpc('screen_revoke', { p_id: id }); } catch { this.error = '끊지 못했어요. 다시 시도해 주세요.'; this.emit(); return false; }   // 실패하면 연결은 그대로
     delete this.sent[id]; await this.load(); return true;
   },
+  _retry() { clearTimeout(this._rt); const k = this._rk = Math.min(3, (this._rk ?? -1) + 1); this._rt = setTimeout(() => this.push(), 1000 * 2 ** k); },
   /** 공개 정보 올리기 — 한 번에 하나, 도는 동안 바뀌면 끝나고 한 번 더(중간 것은 건너뛰고 최신만) */
   async push() {
     if (!account.user || !this.active().length) return;
@@ -48,10 +49,11 @@ export const screens = {
           if (this.sent[l.id] >= p.revision) continue;
           try { const r = await account.rpc('screen_push', { p_id: l.id, p_epoch: p.gameEpoch, p_rev: p.revision, p_state: p });
             if (r && r.ok) this.sent[l.id] = p.revision; else { this.sent[l.id] = p.revision; this._stale = true; }   // 끊김·만료·낡은 판본 — 목록을 다시 읽는다
-          } catch { /* 인터넷이 없으면 다음 명령 때 최신 것으로 다시 */ }
+          } catch { this._retry(); }   // 인터넷이 잠깐 끊기면 1·2·4·8초 뒤 최신 것으로 다시(2026-10-06 — 전에는 다음 명령까지 멈춰 있었다)
         }
       } while (this._dirty);
     } finally { this._pushing = false; }
+    if (this.active().every(l => this.sent[l.id] >= (store.get('display.public')?.revision ?? -1))) this._rk = -1;   // 다 올라가면 재시도 간격 처음부터
     if (this._stale) { this._stale = false; this.load(); }
   },
 };

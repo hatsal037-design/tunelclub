@@ -13,7 +13,8 @@
     function whole(s) {
       if (exact[s] != null) return exact[s]; if (data[s] != null) return data[s];
       for (var i = 0; i < tmpls.length; i++) { var t = tmpls[i], m = s.match(t.re); if (!m) continue;
-        var out = t.en; t.slots.forEach(function (c, k) { var v = m[k + 1]; out = out.replace('{' + c + '}', c === 'n' ? v : (data[v] || exact[v] || v));   /* 빈칸에 든 낱말(마당·직업 이름)도 사전에 있으면 */ }); return out; }
+        var out = t.en.replace(/\{#(\d)\}/g, function (x, j) { var v = m[+j], c = t.slots[j - 1]; return v == null ? x : (c === 'n' ? v : (data[v] || exact[v] || v)); });   /* {#2} = 두 번째 빈칸 — 번역 어순이 바뀐 %2$lld (2026-10-06) */
+        t.slots.forEach(function (c, k) { var v = m[k + 1]; out = out.replace('{' + c + '}', c === 'n' ? v : (data[v] || exact[v] || v));   /* 빈칸에 든 낱말(마당·직업 이름)도 사전에 있으면 */ }); return out; }
       return null;
     }
     function tr(s) {

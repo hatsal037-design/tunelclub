@@ -579,7 +579,7 @@ var NativeCore = (function () {
       scene: scene, shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, board: pubBoard(), initialComposition: P.comp || null, timer: timer, nomination: nom,
       neededVotes: nom ? G.need : null, results: results, execution: exec,
       morningAnnouncement: morning, pastExecutions: past, nominationUsage: usage, ending: ending,
-      endReveal: ended && state.tvReveal !== false ? endReveal() : null, endReplay: ended && typeof state.tvReplay === 'number' ? endReplay(state.tvReplay) : null };   // 7 — 끝나면 직업 공개가 먼저 크게(2026-10-06 햇살님 «처음에 직업 공개를 공통으로 크게»), 진행자가 끄거나 복기를 열면 그쪽
+      endReveal: ended && state.tvReveal ? endReveal() : null, endReplay: ended && typeof state.tvReplay === 'number' ? endReplay(state.tvReplay) : null };   // 7 — 끝난 뒤 진행자가 연 것만
     var key = J(body); if (key !== P.last) { P.last = key; P.rev = (P.rev || 0) + 1; }   // 공개 내용이 같으면 revision 그대로
     pubSave(P); body.revision = P.rev; return body;
   }
@@ -668,7 +668,7 @@ var NativeCore = (function () {
     return { winner: win, title: win ? WINKO[win] || win : (state.practice ? '연습판 마감' : '판 마감'), why: ends.length ? ends.join(' → ') : (L && L.note ? L.note : (win ? '진행자가 승자를 정해 끝냄' : '승자 없이 마감')),
       recorded: !!(L && L.winner), practice: !!state.practice, politician: htmlItems(state.practice ? '' : polHtml()),
       players: ((L && L.players) || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: p.side || '', won: p.won === true, dead: !!p.dead }; }),
-      tvReveal: state.tvReveal !== false, tvReplay: typeof state.tvReplay === 'number' ? state.tvReplay : null, replayDays: endReplayDays() };   // 7 큰 화면 공개·복기 조작용
+      tvReveal: !!state.tvReveal, tvReplay: typeof state.tvReplay === 'number' ? state.tvReplay : null, replayDays: endReplayDays() };   // 7 큰 화면 공개·복기 조작용
   }
 
   /* R01 기록 · L01 자료실 · S01 백업 — 기록·통계 수식은 기존 함수(logsAll·statsOf·buildExport) 그대로 */
@@ -1169,7 +1169,7 @@ var NativeCore = (function () {
       wzFinish(); if (wz.mode === 'done') return null;
       if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0) return rejected('invalidSelection', '승자를 골라 주세요.');
       wzFinishDo(p.winner, true); return wz.mode === 'done' ? null : rejected('coreFailure', '마감하지 못했어요.'); },
-    'game.again': function (p) { if (!gameEnded()) return rejected('notAllowedInPhase', '끝난 판이 아니에요.'); state.tvReveal = false; delete state.tvReplay;   /* 끈 채로 — 새 판이 시작되면 아래 걷기에서 지워져 다음 종료 때 다시 먼저 뜬다 */   /* 한 판 더 — 지난 판 직업 공개·복기를 TV 에서 걷는다 */ if (state.practice) localStorage.setItem(PRACTICE_KEY, '1');   /* 연습판에서 «한 판 더»는 계속 연습(웹 연습 마당과 같게) */ wz.again = {}; wzAgainGo(); try { prepClose(); } catch (e) {}
+    'game.again': function (p) { if (!gameEnded()) return rejected('notAllowedInPhase', '끝난 판이 아니에요.'); delete state.tvReveal; delete state.tvReplay;   /* 한 판 더 — 지난 판 직업 공개·복기를 TV 에서 걷는다 */ if (state.practice) localStorage.setItem(PRACTICE_KEY, '1');   /* 연습판에서 «한 판 더»는 계속 연습(웹 연습 마당과 같게) */ wz.again = {}; wzAgainGo(); try { prepClose(); } catch (e) {}
       if (p && p.shuffle) state.seatShuffle = true;   // «자리 섞어서 다시»
       if (p && p.fresh) { switchEdition(state.edition, { quiet: true, force: true }); state.seats.forEach(function (x) { x.dead = false; delete x.cause; delete x.causeN; }); }   // «바꿔서 한 판 더» — 인원·자리부터 다시 볼 땐 지난 판 흔적(사망·역할)을 걷는다(명단 확정의 끝난 판 갈래와 같게)
       return null; },

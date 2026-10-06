@@ -15,7 +15,7 @@ export async function startDomI18n(root) {
   const get = f => fetch(BASE + 'i18n/data/' + f).then(r => r.ok ? r.json() : {}).catch(() => ({}));
   const [app, core, data] = await Promise.all([get(`앱_${lang}_전체.json`), get(`코어_${lang}.json`), get(`${lang}.json`)]);
   /* 앱 카탈로그의 %lld·%@ 열쇠도 틀로({n}·{p}) — 화면에 숫자가 끼워진 채 오므로 */
-  const tm = {}; for (const k in app) tm[k.replace(/%(\d\$)?(lld|ld|d)/g, '{n}').replace(/%(\d\$)?@/g, '{p}')] = app[k].replace(/%(\d\$)?(lld|ld|d)/g, '{n}').replace(/%(\d\$)?@/g, '{p}');
+  const tm = {}; for (const k in app) tm[k.replace(/%(\d\$)?(lld|ld|d)/g, '{n}').replace(/%(\d\$)?@/g, '{p}')] = app[k].replace(/%(\d)\$(?:lld|ld|d|@)/g, '{#$1}').replace(/%(lld|ld|d)/g, '{n}').replace(/%@/g, '{p}');   // %2$lld → {#2}: 번역 어순이 바뀌어도 그 자리 값(2026-10-06 코덱스 재현 «Turn 10 of 2»)
   const tr = window.CoreText.make(Object.assign(tm, core), data);
   const HAN = /[가-힣]/, ATTR = ['placeholder', 'aria-label', 'title'];
   const fix = n => {

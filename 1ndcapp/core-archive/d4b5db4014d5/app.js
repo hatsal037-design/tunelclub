@@ -4024,11 +4024,10 @@ function changeCount(d){
 function capOf(c,r){ if(c<2||r<2) return Math.max(c,r); return 2*c+2*r-4; }
 /* 인원이 다 앉는 가로·세로 — 지금 값이 맞으면 그대로, 아니면 남는 칸이 가장 적고 네모에 가까운 것(가로 우선).
    2026-09-22 햇살님 «참석자로 정한 인원이 있으면 그 사람이 앉을 수 있는 배열로 알아서 바뀐 다음 사각으로». */
-function gridOk(c,r,n){ return Math.min(c,r)>=2 && !(Math.min(c,r)===2 && Math.max(c,r)>8) && (n==null || capOf(c,r)-n<=Math.floor(n/2)); }   // 한 줄 없음 · 두 줄은 2×8(16명)까지 — 더 많으면 ㅁ자 · 빈자리는 인원의 절반까지(2026-10-06 햇살님 «10×10에 20명 같은 걸 누가 하냐»)
 function fitGrid(n, force){
-  if(!force&&capOf(state.cols,state.rows)>=n&&gridOk(state.cols,state.rows,n)) return;
+  if(!force&&capOf(state.cols,state.rows)>=n) return;
   let best=null;
-  for(let c=2;c<=10;c++) for(let r=2;r<=10;r++){ const cap=capOf(c,r); if(cap<n||!gridOk(c,r,n)) continue;   // 한 줄(1×n)·긴 두 줄은 고르지 않는다
+  for(let c=2;c<=10;c++) for(let r=2;r<=10;r++){ const cap=capOf(c,r); if(cap<n) continue;   // 한 줄(1×n)은 고르지 않는다
     const k=[cap-n, Math.abs(c-r), c<r?1:0]; if(!best||k[0]<best.k[0]||(k[0]===best.k[0]&&(k[1]<best.k[1]||(k[1]===best.k[1]&&k[2]<best.k[2])))) best={c,r,k}; }
   if(best){ state.cols=best.c; state.rows=best.r; }
 }
@@ -4040,9 +4039,9 @@ function setLayout(l){
 function changeGrid(which,d){
   const n=state.count||0, other=which==='cols'?'rows':'cols';
   const c0=state.cols, r0=state.rows;
-  state[which]=Math.max(2,Math.min(10,state[which]+d));   // 한 줄 배치는 없앰(2026-10-06 햇살님 «1배열은 버려»)
+  state[which]=Math.max(1,Math.min(10,state[which]+d));
   while(rectCap()<n&&state[other]<10) state[other]++;
-  if(rectCap()<n||!gridOk(state.cols,state.rows,n)){ state.cols=c0; state.rows=r0; }
+  if(rectCap()<n){ state.cols=c0; state.rows=r0; }
   render();
 }
 function cyclePhase(){ const o=['firstnight','day','night']; state.phase=o[(o.indexOf(state.phase)+1)%3]; render(); bgmSync(); }
