@@ -154,5 +154,13 @@
   "data.mt": "Machine translation",
   "data.ko": "Korean text",
   "lib.players": "{r} players",
-  "err.admin": "Admin accounts can't be deleted"
+  "err.admin": "Admin accounts can't be deleted",
+  "ui.later": "Later",
+  "signup.intro.tunel": "Tunel and 1ND Club now share one account. You are signed in with your Tunel account, and your game history carries over.\nJust set the name tag you will use in 1ND Club.",
+  "signup.intro": "Set the name tag you will use in 1ND Club.",
+  "signup.nick.help": "Shown on game screens and seat maps. It must be unique and can be changed once every 30 days.",
+  "signup.nick.tunel": "We brought over your Tunel nickname. If it is empty because someone else uses it, please choose a new one.",
+  "signup.handle.help": "Friends use this ID to find and follow you. Lowercase letters, numbers, underscores (_) and dots (.), up to 30 characters. You can change it twice every 14 days.",
+  "signup.name.help": "Optional. It does not have to be your real name, and it only appears on your profile.",
+  "games.hosted": "Host"
 }

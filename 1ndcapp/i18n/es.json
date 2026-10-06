@@ -154,5 +154,7 @@
   "data.ko": "Texto coreano",
   "lib.players": "{r} jugadores",
   "signup.easy": "Al registrarte no pedimos tu nombre, correo ni teléfono. Puedes darte de baja cuando quieras y tus datos de cuenta se borran a los 30 días.",
-  "err.admin": "Las cuentas de administrador no se pueden eliminar"
+  "err.admin": "Las cuentas de administrador no se pueden eliminar",
+  "ui.later": "Más tarde",
+  "games.hosted": "Narrador"
 }

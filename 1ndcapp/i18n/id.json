@@ -154,5 +154,7 @@
   "data.ko": "Teks Korea",
   "lib.players": "{r} pemain",
   "signup.easy": "Saat mendaftar, kami tidak meminta nama, email, atau nomor telepon. Kamu bisa menghapus akun kapan saja, dan info akun dihapus seluruhnya setelah 30 hari.",
-  "err.admin": "Akun admin tidak bisa dihapus"
+  "err.admin": "Akun admin tidak bisa dihapus",
+  "ui.later": "Nanti",
+  "games.hosted": "Pemandu"
 }

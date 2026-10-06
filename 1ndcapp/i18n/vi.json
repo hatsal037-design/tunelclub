@@ -154,5 +154,7 @@
   "data.ko": "Văn bản tiếng Hàn",
   "lib.players": "{r} người chơi",
   "signup.easy": "Khi đăng ký, chúng tôi không hỏi tên, email hay số điện thoại. Bạn có thể xóa tài khoản ngay bất cứ lúc nào, và thông tin tài khoản sẽ bị xóa hết sau 30 ngày.",
-  "err.admin": "Không thể xóa tài khoản quản trị viên"
+  "err.admin": "Không thể xóa tài khoản quản trị viên",
+  "ui.later": "Để sau",
+  "games.hosted": "Quản trò"
 }
