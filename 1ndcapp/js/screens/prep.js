@@ -15,18 +15,19 @@ function MemberPicker({ taken, close, done }) {
   useEffect(() => { Promise.all([account.members(), account.friends().catch(() => null), account.plaza('plaza_mine')]).then(([m, l, pz]) => {
     const roster = ((pz && pz.roster) || []).filter(x => !x.left);
     /* 투넬 회원이 아닌 첫밤 계정도 체크인했으면 앉힐 수 있다 — 열쇠는 «a:계정번호»(코어가 계정으로 잇는다, 2026-10-06) */
-    const extra = roster.filter(x => !x.member_id && x.account).map(x => ({ member_id: 'a:' + x.account, nick: x.nick || ('@' + (x.handle || '')), today: false, recent: false }));
+    const extra = roster.filter(x => !x.member_id && x.account).map(x => ({ member_id: 'a:' + x.account, nick: x.nick || ('@' + (x.handle || '')), handle: x.handle, today: false, recent: false }));
     setFriends((l || []).filter(x => x.state === 'friend').map(x => x.member_id));
     setChecked(roster.map(x => x.member_id || ('a:' + x.account)));
     setRows(m || extra.length ? [...extra, ...(m || [])] : m); }); }, []);   // 친구 분류가 준비된 뒤 목록을 보인다 — 늦게 온 친구 응답이 고르던 행을 옮기지 않게(2026-10-01)
-  const list = (rows || []).filter(r => !q || String(r.nick || '').toLowerCase().includes(q.toLowerCase()));
+  const k = q.replace(/^@/, '').toLowerCase();   // 이름·닉네임·아이디 중 하나라도(2026-10-06 햇살님)
+  const list = (rows || []).filter(r => !k || [r.nick, r.handle, r.name].some(v => String(v || '').toLowerCase().includes(k)));
   const row = r => { const on = sel.has(r.member_id) || taken.includes(r.member_id);
     return html`<${Row} disabled=${taken.includes(r.member_id)} sel=${on} onClick=${() => setSel(s => { const n = new Set(s); n.has(r.member_id) ? n.delete(r.member_id) : n.add(r.member_id); return n; })}>
-      <span class="avatar" aria-hidden="true"><${Icon} name="personCircle" size=${28} stroke=${1.5} /></span><span class="grow">${r.nick}</span>${on && html`<span class="blue"><${Icon} name="check" size=${20} stroke=${2.4} /></span>`}<//>`; };   // 썸네일 — 공개 사진 필드가 아직 없어 기본 아바타(크기 고정)
+      <span class="avatar" aria-hidden="true"><${Icon} name="personCircle" size=${28} stroke=${1.5} /></span><span class="grow">${r.nick}${r.handle && html`<br/><span class="sub">@${r.handle}</span>`}</span>${on && html`<span class="blue"><${Icon} name="check" size=${20} stroke=${2.4} /></span>`}<//>`; };   // 썸네일 — 공개 사진 필드가 아직 없어 기본 아바타(크기 고정)
   const grp = (t, l) => l.length ? html`<${Section} header=${t}>${l.map(row)}<//>` : null;
   return html`<${Page} title="회원에서 찾기" left=${html`<${NavButton} label="취소" onClick=${close} />`}
     right=${html`<${NavButton} label=${sel.size ? sel.size + '명 넣기' : '넣기'} bold disabled=${!sel.size} onClick=${() => { done((rows || []).filter(r => sel.has(r.member_id))); close(); }} />`}>
-    <${Search} value=${q} onInput=${setQ} placeholder="닉네임 검색" />
+    <${Search} value=${q} onInput=${setQ} placeholder="@아이디 또는 닉네임" />
     ${rows === undefined ? html`<${Empty} title="명단 받는 중…" />` : rows === null ? html`<${Empty} icon="warn" title="명단을 못 받았어요" text="로그인·연결을 확인해 주세요." />`
       : html`${grp('체크인', list.filter(r => checked.includes(r.member_id)))}${grp('친구', list.filter(r => friends.includes(r.member_id) && !checked.includes(r.member_id)))}${grp('오늘 참석', list.filter(r => r.today && !friends.includes(r.member_id) && !checked.includes(r.member_id)))}${grp('최근', list.filter(r => !r.today && r.recent && !friends.includes(r.member_id) && !checked.includes(r.member_id)))}${grp(q ? '찾은 회원' : '모든 회원', list.filter(r => !r.today && !r.recent && !friends.includes(r.member_id) && !checked.includes(r.member_id)))}
         ${!list.length && html`<${Empty} title="해당하는 회원이 없어요" />`}`}
