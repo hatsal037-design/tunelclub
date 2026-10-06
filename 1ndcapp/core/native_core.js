@@ -529,6 +529,11 @@ var NativeCore = (function () {
       var col = c < 2 ? 0 : Math.round((p.x - 13) / 74 * (c - 1)), row = r < 2 ? 0 : Math.round((p.y - 15) / 70 * (r - 1)), si = gaps.has(cell) ? -1 : order.indexOf(cell);
       return { id: cell, row: row, col: col, seatId: si >= 0 && si < n ? 's' + (si + 1) : null }; }) };
   }
+  /* 큰 화면 대기(2026-10-06 햇살님 «게임 시작 전 대기 화면 — 참가 QR») — 광장 체크인 코드·이름·들어온 사람은 진행자 화면이 display.plaza 로 넣는다.
+     판을 시작하기 전, 진행자가 자리 잡기(준비 명령)를 하기 전까지 대기. «한 판 더»를 누르면 다시 대기 */
+  var TVP_KEY = 'dangsan_tv_plaza', TVW_KEY = 'dangsan_tv_wait';
+  function tvPlaza() { try { return JSON.parse(localStorage.getItem(TVP_KEY) || 'null'); } catch (e) { return null; } }
+  var PREP_CMD = /^(preparation|board|handoff)\.|^roles\.(?!setFamily$)/;   // 계열 고르기(오늘 화면)는 자리 잡기가 아니다
   function prepareDisplayPublic() {
     var n = state.nights || 1, began = firstNightBegun(), ended = began && gameEnded(), isDay = began && !ended && state.phase === 'day';
     var D = isDay ? dayRec() : null, announced = !!(D && D.announced), P = pubState(pubEpoch());
@@ -538,7 +543,8 @@ var NativeCore = (function () {
       return { dead: dead, ghost: dead && ((s.rem || []).indexOf('유령표') >= 0 || (!s.dead && !villageType())) }; });   // 죽은 척도 유령표를 받는다(fakeDeadMark, 유령표 쓰는 판) — 안 쓰는 판은 예전처럼 있음으로
     var seats = (state.seats || []).map(function (s, i) { var v = (P.seats && P.seats[i]) || { dead: false, ghost: false };
       return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost }; });
-    var scene = !began ? 'prep' : ended ? 'ended' : !isDay ? 'night' : !announced ? 'dawn' : 'discussion';
+    var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), waiting = !began && tvp && tvp.code && localStorage.getItem(TVW_KEY) !== '0' ? { code: tvp.code, title: (pot0 && pot0.title) || tvp.title || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: (tvp.people || []).slice(0, 20) } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
+    var scene = waiting ? 'waiting' : !began ? 'prep' : ended ? 'ended' : !isDay ? 'night' : !announced ? 'dawn' : 'discussion';
     var noms = D ? D.noms || [] : [], G = isDay ? execGate() : null, nom = null, exec = null;
     var vo = typeof wz.voteOpen === 'number' && noms[wz.voteOpen] && !noms[wz.voteOpen].done ? wz.voteOpen : -1;
     var execd = noms.filter(function (o) { return o.done; }).pop(), execSeat = execd ? execd.t : (state.seats || []).findIndex(function (x) { return x && x.dead && x.cause === 'exec' && x.causeN === n; });
@@ -576,7 +582,7 @@ var NativeCore = (function () {
       usage = { dayNumber: dayNo(n), nominatedBy: by, nominatedTargets: tg }; }
     var ending = null; if (ended) { var R = result(); ending = { kind: state.practice ? 'practice' : (R.winner && R.winner !== 'void') ? 'completed' : 'aborted', winnerLabel: R.winner && R.winner !== 'void' ? (WINKO[R.winner] || R.winner) : null }; }   // 7 승리 진영 — 확정 공개 승리만, 선악 둘로 가두지 않음
     var body = { schema: 1, gameEpoch: P.epoch, handoff: turn, dayNumber: isDay ? dayNo(n) : null, nightNumber: began && !ended && !isDay ? n : null,
-      scene: scene, shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, board: pubBoard(), initialComposition: P.comp || null, timer: timer, nomination: nom,
+      scene: scene, waiting: waiting, shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, board: pubBoard(), initialComposition: P.comp || null, timer: timer, nomination: nom,
       neededVotes: nom ? G.need : null, results: results, execution: exec,
       morningAnnouncement: morning, pastExecutions: past, nominationUsage: usage, ending: ending,
       endReveal: ended && state.tvReveal !== false ? endReveal() : null, endReplay: ended && typeof state.tvReplay === 'number' ? endReplay(state.tvReplay) : null };   // 7 — 끝나면 직업 공개가 먼저 크게(2026-10-06 햇살님 «처음에 직업 공개를 공통으로 크게»), 진행자가 끄거나 복기를 열면 그쪽
@@ -793,7 +799,7 @@ var NativeCore = (function () {
       var r = state.rng; state.rng = null; try { return f0.apply(this, arguments); } finally { state.rng = r; } };
     if (nm === 'uuidV7') uuidV7 = g; else personNew = g; }, this);
   noticeHook = function (m) { effects.push({ kind: 'notice', text: String(m) }); };   // 앱 쪽 안내 한 줄을 화면 알림으로(기록 덜어 내기 등)
-  var REC_SKIP = { 'sync.markUploaded': 1, 'sync.merge': 1 };   // 판 밖 일(서버 동기화)은 적지 않는다
+  var REC_SKIP = { 'sync.markUploaded': 1, 'sync.merge': 1, 'display.plaza': 1 };   // 판 밖 일(서버 동기화)은 적지 않는다
   function recStore() { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k !== 'botc_logs' && k !== 'botc_pots') o[k] = localStorage.getItem(k); } return o; }
   /* 판 시작 때의 기록 요약(logsDigest) — 앉은 사람 것만. 다른 판 사람 이름은 남기지 않는다(직전 판 자리는 앉은 사람 아니면 '~번호') */
   function recDigest() { var d = logsDigest(), names = {}, keys = {};
@@ -951,7 +957,11 @@ var NativeCore = (function () {
       var cur = potNow(); if (cur && cur.practice && !p.practice) { try { potClose('practice'); } catch (e) {} cur = null; }
       if (!cur) potOpen(p.practice ? { practice: true } : undefined);
       return null; },
-    'pot.open': function () { try { potAutoCloseCheck(); } catch (e) {} if (potNow()) return rejected('notAllowedInPhase', '이미 열린 ' + PKO('그릇') + '이 있어요.'); potOpen(); return null; },
+    'pot.open': function (p) { try { potAutoCloseCheck(); } catch (e) {} if (potNow()) return rejected('notAllowedInPhase', '이미 열린 ' + PKO('그릇') + '이 있어요.'); var o = potOpen();
+      var t = String((p && p.title) || '').trim().slice(0, 40); if (t && o) potUpdate(o.id, function (x) { x.title = t; x.titleEdited = true; });   // 열 때 이름을 정한다(2026-10-06 햇살님 «광장 열면 이름 정하게»)
+      try { localStorage.removeItem(TVW_KEY); } catch (e) {}   // 광장을 열면 큰 화면은 바로 대기
+      return null; },
+    'pot.rename': function (p) { var o = potNow(), t = String((p && p.title) || '').trim().slice(0, 40); if (!o) return rejected('notAllowedInPhase', '열린 ' + PKO('그릇') + '이 없어요.'); if (!t) return rejected('invalidSelection', '이름을 적어 주세요.'); potUpdate(o.id, function (x) { x.title = t; x.titleEdited = true; }); return null; },
     'pot.close': function () { if (!potNow()) return null; if (inGame() && !gameEnded()) return rejected('notAllowedInPhase', '진행 중인 판이 있어 닫을 수 없어요.'); potClose('hand'); return null; },
     'board.setLayout': function (p) { var g = guardSetup(); if (g) return g; setLayout(p.layout === 'rect' ? 'rect' : 'circle'); save(); return null; },
     /* 사각 빈자리 — 웹 자리 잡기의 «빈자리 없애기»(sbCloseGaps, 인원에 맞게 칸을 다시 고름)·«빈자리 고르게»(gapsSpread) */
@@ -1071,6 +1081,11 @@ var NativeCore = (function () {
       ((state.log && state.log.players) || []).forEach(function (p) { if (p.team === 'town' || p.team === 'outsider') c.good++; else if (['minion', 'demon', 'mafia'].indexOf(p.team) >= 0) c.evil++; });
       P.comp = c; pubSave(P); return null; },
     /* 큰 화면 — 토론 타이머가 코어(tm)가 아니라 화면 쪽에 있는 앱(웹·아이폰)이 시작·멈춤·재개·추가·끝·지움을 알린다. 허용한 칸만 받는다 */
+    'display.plaza': function (p) {   // 진행자 화면이 광장 체크인 코드·이름·들어온 사람 닉네임을 넣는다(null 이면 걷는다)
+      if (!p || !p.code) { localStorage.removeItem(TVP_KEY); return null; }
+      if (!/^[A-Z]{8}$/.test(String(p.code))) return rejected('invalidSelection', '체크인 코드가 아니에요.');
+      localStorage.setItem(TVP_KEY, J({ code: String(p.code), title: String(p.title || '').slice(0, 40), people: (Array.isArray(p.people) ? p.people : []).map(function (x) { return String(x || '').slice(0, 30); }).slice(0, 20) }));   // 한 판 최대 20명
+      return null; },
     'display.setTimer': function (p) { var P = pubState(pubEpoch()), s = p && p.state;
       if (!p || s === null || s === undefined) P.timer = null;
       else { if (['running', 'paused', 'elapsed'].indexOf(s) < 0) return rejected('invalidSelection', '타이머 상태가 아니에요.');
@@ -1324,6 +1339,7 @@ var NativeCore = (function () {
           r = rejected('persistenceFailed', '저장할 수 없는 값이 있어 이 조작을 취소했어요.'); } }
       if (!r) { undoTgt = tgt0; }   // 대상 확정이면 직전 상태를 들고, 다른 명령이 성공하면 버린다
       if (!r) { try { announceEnd(); } catch (e) {} try { if (!(firstNightBegun() && gameEnded())) { delete state.tvReveal; delete state.tvReplay; } } catch (e) {} }   // 새 판이면 지난 판 공개를 걷는다   // 판 끝 자동 발표 — 저장 뒤, 효과로만(판 상태는 안 바꾼다)
+      if (!r) { try { if (PREP_CMD.test(cmd.type)) localStorage.setItem(TVW_KEY, '0'); else if (cmd.type === 'game.again') localStorage.removeItem(TVW_KEY); } catch (e) {} }   // 자리 잡기를 시작하면 대기 끝 · 한 판 더면 다시 대기
       if (!r) { try { prepareDisplayPublic(); } catch (e) {
         try { undoStorage(); if (snap) restoreState(snap); var w2 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w2); } catch (e4) {}
         r = rejected('persistenceFailed', '공개 화면 정보를 저장하지 못해 이 조작을 취소했어요.');
