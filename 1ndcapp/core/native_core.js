@@ -84,7 +84,7 @@ var NativeCore = (function () {
       var causeKo = { exec: '처형', demon: '흉수 습격', night: '밤', day: '낮', curse: '저주', succession: '계승' };
       var tokens = rem.map(function (t) { return TK(t); });
       var rc = s.char ? CMAP()[s.char] : null;
-      return { id: seatKey(s, i), index: i, number: i + 1, name: s.name || '', role: rc ? rc.ko : null, evil: rc ? ['minion', 'demon', 'mafia'].indexOf(rc.team) >= 0 : false, member: (function () { var w = s.pid ? personById(s.pid) : null; return (w && w.tunelId) || null; })(), dead: dead, tonight: diedTonight(s), ghost: dead && (s.rem || []).indexOf('유령표') >= 0, pdead: dead || (function () { var f = fakeAt(i); return !!f && !(state.phase !== 'day' && f.n === (state.nights || 1) && f.ph !== 'day'); })(),   /* 참가자 판의 생사 — 죽은 척은 발표된 뒤부터 사망(2026-10-05 «죽은 사람처럼») */ tokens: tokens,
+      return { id: seatKey(s, i), index: i, number: i + 1, name: s.name || '', role: rc ? rc.ko : null, evil: rc ? ['minion', 'demon', 'mafia'].indexOf(rc.team) >= 0 : false, member: (function () { var w = s.pid ? personById(s.pid) : null; return (w && (w.tunelId || (w.accountId ? 'a:' + w.accountId : null))) || null; })(), dead: dead, tonight: diedTonight(s), ghost: dead && (s.rem || []).indexOf('유령표') >= 0, pdead: dead || (function () { var f = fakeAt(i); return !!f && !(state.phase !== 'day' && f.n === (state.nights || 1) && f.ph !== 'day'); })(),   /* 참가자 판의 생사 — 죽은 척은 발표된 뒤부터 사망(2026-10-05 «죽은 사람처럼») */ tokens: tokens,
         manualExperience: s.manualExperience || null,
         status: [dead ? '사망' + (s.cause && causeKo[s.cause] ? ' · ' + causeKo[s.cause] : '') : '생존'].concat(tokens).join(' · ') };
     });
@@ -838,7 +838,7 @@ var NativeCore = (function () {
     /* 판세 보정 — 서버에 물을 것(이 판 모드·인원, 회원 자리의 편). 켜짐 여부 (2026-09-29) */
     'director.context': function () { if (hubRep() === 'mafia') return null;   // 오리지널 마피아는 숙련도(편 균형)도 안 쓴다(2026-10-03 햇살님)
       var cm = CMAP(), good = [], evil = [];
-      state.seats.forEach(function (s) { if (!s || !s.char || !s.pid) return; var w = personById(s.pid); if (!w || !w.tunelId) return; (realEvil(s) ? evil : good).push(w.tunelId); });
+      state.seats.forEach(function (s) { if (!s || !s.char || !s.pid) return; var w = personById(s.pid); if (!w || !(w.tunelId || w.accountId)) return; (realEvil(s) ? evil : good).push(w.tunelId || w.accountId); });   // 계정만 있는 사람도(서버가 계정 번호를 받는다)
       return { mode: state.edition, n: inPlaySeats().length, good: good, evil: evil }; },
     'director.enabled': function () { return tiltOn(); },
     'director.tilt': function () { var t = tiltValue(); return { T: Math.round(t.T * 100) / 100, why: t.why }; },
@@ -909,6 +909,10 @@ var NativeCore = (function () {
       people = people.map(function (x) {
         var nm = String(x.name).trim(), manual = experienceOf(x.member, x.manualExperience).manual;
         if (!x.member) return { name: nm, manualExperience: manual };
+        if (String(x.member).indexOf('a:') === 0) {   // 투넬 회원이 아닌 첫밤 계정(광장 체크인) — 계정 번호로 잇는다(2026-10-06)
+          var acc = String(x.member).slice(2), wa = personByAccountId(acc) || personNew(nm);
+          personLinkAccount(wa.id, acc); return { name: wa.name, pid: wa.id, manualExperience: manual };
+        }
         var who = personByTunelId(x.member) || personNew(nm);
         if (experienceOf(x.member, null).source === 'unknown') {
           var old = state.seats.find(function (s) { return s.pid === who.id; });

@@ -2824,12 +2824,12 @@ function benchList(){ if(!Array.isArray(state.bench)) state.bench=[]; return sta
 const EXP_BAND={1:[0,10],2:[10,35],3:[35,65],4:[65,90],5:[90,100]};
 function expHash(t){ let h=2166136261; for(const ch of String(t)){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; } return h/4294967296; }
 function bandPct(lv, who){ const b=EXP_BAND[lv]; return b?Math.round((b[0]+(b[1]-b[0])*(0.05+0.9*expHash(who+'|'+lv)))*10)/10:null; }
-function seatGrade(s){ try{ const w=s&&s.pid?personById(s.pid):null; if(!w||!w.tunelId) return null;
-  const g=JSON.parse(localStorage.getItem('preparation_experience_grades')||'{}')[w.tunelId];
+function seatGrade(s){ try{ const w=s&&s.pid?personById(s.pid):null; if(!w||!(w.tunelId||w.accountId)) return null; const key=w.tunelId||('a:'+w.accountId);
+  const g=JSON.parse(localStorage.getItem('preparation_experience_grades')||'{}')[key];
   if(typeof g==='number'&&g>=0&&g<=100&&!Number.isInteger(g)) return g;
   if(g&&typeof g==='object'&&typeof g.pct==='number') return Math.max(0,Math.min(100,g.pct));
   if(Number.isInteger(g)&&g>=1&&g<=5) return (EXP_BAND[g][0]+EXP_BAND[g][1])/2;   // 옛 저장(1~5) — 띠 가운데
-  const lock=JSON.parse(localStorage.getItem('preparation_experience_locks')||'{}')[w.tunelId]; return Number.isInteger(lock)&&lock>=TILT.SKILL_MIN?50:null; }catch(e){ return null; } }   // 잠겼는데 위치가 아직 없으면 중위
+  const lock=JSON.parse(localStorage.getItem('preparation_experience_locks')||'{}')[key]; return Number.isInteger(lock)&&lock>=TILT.SKILL_MIN?50:null; }catch(e){ return null; } }   // 잠겼는데 위치가 아직 없으면 중위
 function expPct(s){ if(hubRep()==='mafia'||!s) return null; if(s.manualExperience) return bandPct(s.manualExperience, s.pid||s.name||''); return seatGrade(s); }   // 오리지널 마피아는 숙련도 적용 안 함
 const EXP_NONE=22.5;   // 아무것도 모르면 2단계 가운데로 본다(옛 «미입력은 2»)
 /* 초보 정도 0~1 — 20 이하 1, 35(3단계 띠 시작) 이상 0, 사이는 곧게(옛 «2단계 이하 = 초보»를 매끈하게) */
@@ -4355,6 +4355,7 @@ const SRV = {
     let SK={}; try{ SK=noSkill?{}:skillFacts(L); }catch(e){ SK={}; }
     const players=(L.players||[]).map((p,i)=>({ client_aid:aidOf(L,p,i), seat:(typeof p.seat==='number'?p.seat:(i+1)), local_pid:p.pid||null, name:p.name||'',
       tunel_member_id:SRV.tunelIdOf(p.pid),                                  // 투넬 회원이면 그 번호 — 판에 스냅샷으로 남는다 (2026-09-20)
+      account_id:SRV.accountIdOf(p.pid),                                     // 투넬 회원이 아닌 첫밤 계정(체크인한 사람) — 서버 관문이 체크인을 본다 (2026-10-06)
       role_name:p.role||null, final_role_name:p.finalRole||p.role||null,       // 이름 표기 — 투넬 쪽엔 등록부가 없다
       role_id:p.roleId||null, final_role_id:p.finalRoleId||p.roleId||null,
       team:p.finalTeam||p.team||null, side_code:p.sideCode||null,
@@ -4385,6 +4386,7 @@ const SRV = {
       if(error) throw error; SRV.lastRedeem=data||'bad'; return data==='ok'; }catch(e){ SRV.lastRedeem='error'; return false; } },
   /* ── 회원 통합 (2026-09-20) — 사람 명부의 투넬 회원 번호, 자동 올리기, 내려받기, 회원 명단 ── */
   tunelIdOf(pid){ const who=pid?personById(pid):null; return (who&&who.tunelId)||null; },
+  accountIdOf(pid){ const who=pid?personById(pid):null; return (who&&who.accountId)||null; },
   potTitleOf(potId){ try{ const p=potId?potById(potId):null; return (p&&p.title)||null; }catch(e){ return null; } },
   /* 올라간 판은 srvAt 로 표시한다 — «밀린 기록»은 이 표시가 없는 판. logsAll/logsSave 경계를 지나 저장한다 */
   markUploaded(L){ try{ const a=logsAll(); const x=a.find(y=>y&&((L.uuid&&y.uuid===L.uuid)||y.id===L.id)); if(!x) return; x.srvAt=Date.now(); logsSave(a); }catch(e){} },
@@ -4473,6 +4475,9 @@ function renderTunelPick(){
     || '<div class="wz-note">해당하는 회원이 없어요.</div>';
 }
 function personByTunelId(id){ if(!id) return null; return peopleAll().find(p=>p&&p.tunelId===id)||null; }
+/* 투넬 회원이 아닌 첫밤 계정(광장에 체크인한 사람) — 사람 명부에 계정 번호를 잇는다. 판을 올릴 때 account_id 로 가고 서버가 체크인을 확인한다(2026-10-06) */
+function personByAccountId(id){ if(!id) return null; return peopleAll().find(p=>p&&p.accountId===id)||null; }
+function personLinkAccount(pid, acc){ const a=peopleAll(); const p=a.find(x=>x&&x.id===pid); if(!p||p.accountId===acc) return; p.accountId=acc; peopleSave(a); }
 function personLinkTunel(pid, tunelId){ const a=peopleAll(); const p=a.find(x=>x&&x.id===pid); if(!p||p.tunelId===tunelId) return; p.tunelId=tunelId; peopleSave(a); }
 function tunelPickApply(){
   const rows=(tunelPick.rows||[]).filter(r=>tunelPick.sel.has(r.member_id));

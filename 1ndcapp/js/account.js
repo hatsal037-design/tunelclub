@@ -23,6 +23,7 @@ export const account = {
   },
   async load() {
     if (this.user) { try { const d = await rpc('me_info'); this.info = (d && d[0]) || null; } catch { this.info = null; } this.sync();
+      try { this.needs = (await rpc('my_needs')) || []; } catch { this.needs = []; }   // 빠진 계정 칸(0250) — 계정 칸에 «채우기»
       rpc('role_stats').then(rows => rows && store.dispatch('director.setRoleStats', { rows }), () => {});   // 직업 세기 — 구성 기울이기
       rpc('mode_stats_all').then(rows => rows && store.dispatch('director.setModeStats', { rows }), () => {}); }   // 모드·인원별 승수 — 구조 기울기
     else this.info = null;

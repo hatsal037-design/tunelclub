@@ -78,7 +78,13 @@
       problem: problem,
 
       // ── 나·프로필 ──
-      me: function () { return call('my_profile').then(function (r) { return r.ok ? set('me', r.value || r) : r; }); },
+      me: function () {   // needs = 채워야 할 칸(nick·handle·agree) — 투넬에서 넘어온 계정은 다음 로그인 때 채운다(0250, 스위치 complete_profile)
+        return Promise.all([call('my_profile'), call('my_needs')]).then(function (a) {
+          var r = a[0]; if (!r.ok) return r;
+          var v = r.value || r; v.needs = a[1].ok && Array.isArray(a[1].value) ? a[1].value : (v.handle ? [] : ['handle', 'agree']);
+          return set('me', v);
+        });
+      },
       nameCheck: function (kind, value) {   // 입력 중 — 글자 문제는 서버에 묻지 않는다
         var p = problem(kind, value); if (p) return Promise.resolve({ ok: false, code: p });
         return call(kind === 'handle' ? 'handle_check' : 'nick_check', kind === 'handle' ? { p_handle: value } : { p_nick: value });
@@ -163,10 +169,18 @@
     var s = (dict && dict[key]) || (fallback && fallback[key]) || key;
     return s.replace(/\{(\w+)\}/g, function (m, k) { return vars && vars[k] != null ? String(vars[k]) : m; });
   }
-  // 언어 고르기 — 계정에 정한 것 → 기기 언어 → 한국어·영어가 아니면 영어(정함 2026-10-06)
-  function lang(account, device) { var a = account || String(device || '').slice(0, 2).toLowerCase(); return a === 'ko' ? 'ko' : 'en'; }
+  // 언어 고르기 — 계정에 정한 것 → 기기 언어 → 지원하지 않는 언어면 영어(정함 2026-10-06). 중국어는 대만·홍콩·번체면 번체, 나머지 간체
+  var LANGS = ['ko', 'en', 'ja', 'es', 'zh-Hans', 'zh-Hant', 'th', 'vi', 'id', 'pt-BR'];   // 한류가 통하는 나라에서 많이 쓰는 말(2026-10-06 햇살님)
+  function lang(account, device) {
+    if (account && LANGS.indexOf(account) >= 0) return account;
+    var d = String(device || '').replace('_', '-'), l = d.slice(0, 2).toLowerCase();
+    if (l === 'zh') return /Hant|TW|HK|MO/i.test(d) ? 'zh-Hant' : 'zh-Hans';
+    if (l === 'pt') return 'pt-BR';
+    if (l === 'in') return 'id';   // 옛 인도네시아어 코드
+    return LANGS.indexOf(l) >= 0 ? l : 'en';
+  }
 
-  var api = { create: create, problem: problem, codeFrom: codeFrom, text: text, lang: lang, LIMIT: LIMIT };
+  var api = { create: create, problem: problem, codeFrom: codeFrom, text: text, lang: lang, LANGS: LANGS, LIMIT: LIMIT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Participant = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

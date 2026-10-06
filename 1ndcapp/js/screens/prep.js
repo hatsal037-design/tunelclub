@@ -12,7 +12,13 @@ import { Search } from '../ui.js';
 function MemberPicker({ taken, close, done }) {
   const [rows, setRows] = useState(undefined), [sel, setSel] = useState(() => new Set()), [q, setQ] = useState('');
   const [friends, setFriends] = useState([]), [checked, setChecked] = useState([]);   // checked — 지금 열린 내 광장에 체크인한 회원(이 사람들만 전적에, 2026-10-05)
-  useEffect(() => { Promise.all([account.members(), account.friends().catch(() => null), account.plaza('plaza_mine')]).then(([m, l, pz]) => { setFriends((l || []).filter(x => x.state === 'friend').map(x => x.member_id)); setChecked(((pz && pz.roster) || []).filter(x => !x.left && x.member_id).map(x => x.member_id)); setRows(m); }); }, []);   // 친구 분류가 준비된 뒤 목록을 보인다 — 늦게 온 친구 응답이 고르던 행을 옮기지 않게(2026-10-01)
+  useEffect(() => { Promise.all([account.members(), account.friends().catch(() => null), account.plaza('plaza_mine')]).then(([m, l, pz]) => {
+    const roster = ((pz && pz.roster) || []).filter(x => !x.left);
+    /* 투넬 회원이 아닌 첫밤 계정도 체크인했으면 앉힐 수 있다 — 열쇠는 «a:계정번호»(코어가 계정으로 잇는다, 2026-10-06) */
+    const extra = roster.filter(x => !x.member_id && x.account).map(x => ({ member_id: 'a:' + x.account, nick: x.nick || ('@' + (x.handle || '')), today: false, recent: false }));
+    setFriends((l || []).filter(x => x.state === 'friend').map(x => x.member_id));
+    setChecked(roster.map(x => x.member_id || ('a:' + x.account)));
+    setRows(m || extra.length ? [...extra, ...(m || [])] : m); }); }, []);   // 친구 분류가 준비된 뒤 목록을 보인다 — 늦게 온 친구 응답이 고르던 행을 옮기지 않게(2026-10-01)
   const list = (rows || []).filter(r => !q || String(r.nick || '').toLowerCase().includes(q.toLowerCase()));
   const row = r => { const on = sel.has(r.member_id) || taken.includes(r.member_id);
     return html`<${Row} disabled=${taken.includes(r.member_id)} sel=${on} onClick=${() => setSel(s => { const n = new Set(s); n.has(r.member_id) ? n.delete(r.member_id) : n.add(r.member_id); return n; })}>
@@ -72,6 +78,12 @@ function PeopleView({ c, next }) {
   const skillOff = !!store.home.skillOff;   // 오리지널 마피아 — 경험 단계를 받지도 보여 주지도 않는다(2026-10-03 햇살님 «숙련도 적용하지 말자»)
   const source = m => skillOff ? 'off' : !m ? 'manual' : sources[m] || store.get('preparation.experience', m)?.source || 'unknown';
   const refreshExperience = async m => {
+    if (m.startsWith('a:')) {   // 첫밤 계정(투넬 회원 아님) — 판 수는 모르니 손 단계, 등급은 계정 번호로 물어본다
+      await store.dispatch('preparation.recordExperienced', { member: m, experienced: false });
+      const gr = await account.grades([m.slice(2)]); const row = gr && gr.find(r => r.member_id === m.slice(2));
+      if (row) await store.dispatch('preparation.recordGrade', { member: m, grade: row.enough && Number.isInteger(row.grade) ? row.grade : null, pct: null });
+      setSources(a => ({ ...a, [m]: store.get('preparation.experience', m)?.source || 'manual' })); return;
+    }
     const stats = await account.stats(m);
     if (stats?.member_id === m && Number.isInteger(stats.wins) && Number.isInteger(stats.losses)) {
       await store.dispatch('preparation.recordExperience', { member: m, games: stats.wins + stats.losses });
