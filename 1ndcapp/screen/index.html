@@ -1,6 +1,7 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>첫밤 사망자 클럽 · 큰 화면</title><meta name="robots" content="noindex">
 <link rel="icon" href="../icons/favicon-32.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&display=swap">
 <style>
 /* 큰 화면(TV·프로젝터) — 진행자 폰이 올린 «공개 정보»만 받아 그린다. 배치·모양은 시안 큰화면_v8 그대로(시안/큰화면_자리타이머_20261001) */
 *{box-sizing:border-box}
@@ -254,7 +255,7 @@ function renderWaiting(p, arena, W, H) {
     row.forEach((name, i) => { const cx = x0 + shift + (i + 0.5) * span / per - (r % 2 ? span / per / 4 : 0), fs = Math.max(12 * u, Math.min(sh * 0.6 / Math.max(2, [...name].length) * 0.95, sw * 0.32));   // 이름은 세로로
       if (r === 0 && i === 0) crow = { x: cx - sw * 0.45, y: y - sw * 0.95, w: sw * 0.9 };
       h += '<div style="position:absolute;left:' + (cx - sw / 2) + 'px;top:' + y + 'px;width:' + sw + 'px;height:' + sh + 'px;filter:brightness(' + dim + ') drop-shadow(0 ' + 6 * u + 'px ' + 6 * u + 'px rgba(0,0,0,.55));-webkit-mask-image:linear-gradient(#000 88%,transparent);mask-image:linear-gradient(#000 88%,transparent)"><img src="wait/stone_only.webp" alt="" style="width:100%;height:100%;display:block">'
-        + '<div style="position:absolute;left:10%;width:80%;top:16%;height:66%;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;text-orientation:upright;font-weight:700;font-size:' + fs + 'px;line-height:1;letter-spacing:.02em;color:#f6eee4;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 1px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden">' + esc(name) + '</div></div>'; });
+        + '<div style="position:absolute;left:10%;width:80%;top:16%;height:66%;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;text-orientation:upright;font-family:\'Gowun Batang\',serif;font-weight:700;font-size:' + fs + 'px;line-height:1;letter-spacing:.02em;color:rgba(214,206,196,.82);text-shadow:-1px -1px 1px rgba(0,0,0,.75),1px 1px 0 rgba(255,255,255,.22),0 0 2px rgba(0,0,0,.35);white-space:nowrap;overflow:hidden">' + esc(name) + '</div></div>'; });
   }
   if (crow) h += img('crow.webp', 'left:' + crow.x + 'px;top:' + crow.y + 'px;width:' + crow.w + 'px;z-index:2');
   else h += img('crow.webp', 'left:' + (W * 0.12) + 'px;top:' + (TH * 0.62 - top) + 'px;width:' + 110 * u + 'px');   // 아직 아무도 없으면 흙 위에
