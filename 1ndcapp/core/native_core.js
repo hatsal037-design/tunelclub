@@ -705,7 +705,7 @@ var NativeCore = (function () {
   }
   function libraryMode(id) {
     var m = allMods()[id]; if (!m) return null; outHub = hubRepOf(m);   // 보고 있는 모드의 계열 말로(지금 고른 계열이 아니라)
-    return { id: id, name: m.name, guide: textOf(m.guide || ''), roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, id); return { id: c.id, ko: c.ko, team: c.team, teamKo: TKOof(m, c.team), ab: c.ab || '', icon: r.icon, e: r.e }; }) };
+    return { id: id, name: m.name, guide: textOf(m.guide || ''), rules: (m.guideBlocks || []).map(function (b) { return { ph: b.ph, steps: b.steps || [] }; }), tips: m.guideTips || [], roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, id); return { id: c.id, ko: c.ko, team: c.team, teamKo: TKOof(m, c.team), ab: c.ab || '', icon: r.icon, e: r.e }; }) };
   }
 
   /* A01 사람 상세 — 웹 좌석 시트(openSheet)와 같은 표식 목록: 판에 든 직업의 전용 표식 → 모드 공통 → 지금 붙은 것 */
