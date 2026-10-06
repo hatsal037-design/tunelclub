@@ -100,7 +100,7 @@ function PlazaSection() {
   const logged = !!account.user;
   const showCode = async c => { setCode(c || ''); if (!c) return setQr('');
     if (!window.qrcode) await new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'lib/qrcode.js'; s.onload = ok; s.onerror = no; document.head.appendChild(s); }).catch(() => {});
-    if (!window.qrcode) return; const q = window.qrcode(0, 'M'); q.addData('https://tunel.kr/1ndcapp/?j=' + c); q.make(); setQr(q.createSvgTag({ cellSize: 4, margin: 0, scalable: true })); };
+    if (!window.qrcode) return; const q = window.qrcode(0, 'M'); q.addData('https://tunel.kr/1ndcapp/me/?j=' + c); q.make(); setQr(q.createSvgTag({ cellSize: 4, margin: 0, scalable: true })); };
   const openServer = async () => { if (!logged || !pot || pot.practice) return; const r = await account.plaza('plaza_open', { p_pot: pot.id }); if (r) { setSrv(r.id); showCode(r.code); } };
   // 명단 20초마다, 코드 9분마다(서버 코드 10분). QR 로 들어온 참가자는 로그인되면 저절로 체크인
   useEffect(() => { if (!logged) return; let dead = false, lastCode = 0, id = srv;
