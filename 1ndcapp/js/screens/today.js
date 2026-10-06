@@ -2,7 +2,7 @@
 import { html, useState, useEffect, useRef } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { Icon } from '../icons.js';
-import { Page, Section, Row, Primary, NavButton, LargeTitle, RoleArt, ActionSheet, Labeled, Alert, cx } from '../ui.js';
+import { Page, Section, Row, Primary, NavButton, LargeTitle, RoleArt, ActionSheet, Labeled, Alert, Sheet, cx } from '../ui.js';
 import { account } from '../account.js';
 import { QrScanner } from './display.js';
 import { settings } from '../settings.js';
@@ -35,14 +35,17 @@ export function TodayView({ openSpace }) {
     resumeGame: ['moon', '진행 중인 판이 있어요', h.summary || '', '이어 하기', { game: true }],
   }[h.destination] || [];
   const go = async () => {
-    if (h.destination === 'newPreparation' && !(h.pot && !h.pot.practice)) { if (h.pot) await store.dispatch('pot.close', {}); await store.dispatch('pot.open', {}); return; }   // 먼저 마당만 연다 — 새 판은 그 안에서
+    if (h.destination === 'newPreparation' && !(h.pot && !h.pot.practice)) { setNaming(''); return; }   // 먼저 마당만 연다 — 열 때 이름부터(2026-10-06 햇살님 «광장 열면 이름 정하게»)
     if (h.destination === 'newPreparation') { await store.dispatch('preparation.enter', { practice: false }); }   // 새 판은 실전
     openSpace(hero[4]);
   };
+  const [naming, setNaming] = useState(null);
+  const openPot = async () => { const t = naming; setNaming(null); if (h.pot) await store.dispatch('pot.close', {}); await store.dispatch('pot.open', { title: t || '' }); };
   const practice = async () => { const r = await store.dispatch('preparation.enter', { practice: true }); if (r.ok) openSpace({ prep: 'people' }); };
   const theme = currentTheme();
   const photo = theme.photos.length ? theme.photos[(h.summary || '').length % theme.photos.length] : null;   // 돌아가며 — 같은 판이면 같은 사진
-  return html`<${Page} title=${html`<${ThemePill} theme=${theme} />`}
+  const nameSheet = html`<${NameSheet} open=${naming !== null} title=${(h.potKo || '광장') + ' 이름'} value=${naming || ''} onInput=${setNaming} go=${openPot} goLabel="열기" onClose=${() => setNaming(null)} />`;
+  return html`${nameSheet}<${Page} title=${html`<${ThemePill} theme=${theme} />`}
       left=${html`<${NavButton} icon="gear" label="설정" onClick=${() => nav.push(html`<${SettingsView} />`)} />`}
       right=${html`<${NavButton} icon="personCircle" label="계정" onClick=${() => nav.push(html`<${AccountView} />`)} />`}>
     <${LargeTitle}>오늘<//>
@@ -91,6 +94,13 @@ const Shortcut = ({ icon, title, text }) => html`<div class="hstack shortcut" st
 
 /* 오늘 화면 «광장» 칸(당산나무 마당·클래식 광장·오리지널 구역 — 계열 말) — 2026-10-05 햇살님 «B안 · 광장 체크인». 폰 앱 PlazaSection 과 같다.
    진행자: 열기 → 체크인 QR(10분마다 새 코드) → 체크인 명단·판 수 → 닫기. 참가자: QR 로 참가(…/?j=코드로 들어오면 로그인 뒤 저절로) · 나 갈게요 */
+/* 광장 이름 정하기·바꾸기 — 큰 화면 대기에 크게 나온다 */
+function NameSheet({ open, title, value, onInput, go, goLabel, onClose }) {
+  return html`<${Sheet} open=${open} onClose=${onClose} detent="medium" label=${title}>
+    <${Page} title=${title} left=${html`<${NavButton} label="취소" onClick=${onClose} />`} right=${html`<${NavButton} label=${goLabel} bold onClick=${go} />`}>
+      <${Section} footer="큰 화면 대기 화면에 크게 나와요. 비워 두면 날짜로 정해요."><div class="row"><input class="textin grow" id="pot-name" maxlength="40" placeholder="예: 어른이 놀이터 8회" value=${value} onInput=${e => onInput(e.currentTarget.value)} /></div><//>
+    <//><//>`;
+}
 const plazaCodeFrom = t => { const m = /[?&]j=([A-Za-z]{8})(?:&|#|$)/.exec(String(t || '')); if (m) return m[1].toUpperCase(); const u = String(t || '').toUpperCase().replace(/[^A-Z]/g, ''); return u.length === 8 ? u : ''; };
 function PlazaSection() {
   const h = store.home, word = h.potKo || '광장', pot = h.pot;
@@ -108,11 +118,17 @@ function PlazaSection() {
     const tick = async () => { if (dead) return; setJoined(await account.plaza('plaza_joined') || []); setFixes(await account.plaza('fix_requests_mine') || []);
       if (pot && !pot.practice) { const m = await account.plaza('plaza_mine'); if (m && m.pot_id === pot.id) { id = m.id; setSrv(m.id); setRoster(m.roster || []); } else if (!id) { const r = await account.plaza('plaza_open', { p_pot: pot.id }); if (r) { id = r.id; setSrv(r.id); showCode(r.code); lastCode = Date.now(); } }   // 마당을 열면 체크인 QR 도 바로
         if (id && Date.now() - lastCode > 540000 && (code || lastCode)) { const r = await account.plaza('plaza_code', { p_id: id }); if (r && r.ok) { showCode(r.code); lastCode = Date.now(); } } } };
-    tick(); const t = setInterval(tick, 20000); return () => { dead = true; clearInterval(t); }; }, [logged, pot && pot.id]);
-  const close = async () => { const r = await store.dispatch('pot.close', {}); if (!r.ok) return; const id = srv || ((await account.plaza('plaza_mine')) || {}).id; if (id) await account.plaza('plaza_close', { p_id: id }); setSrv(null); showCode(''); setRoster([]); };
+    tick(); const t = setInterval(tick, 5000); return () => { dead = true; clearInterval(t); }; }, [logged, pot && pot.id]);   // 들어온 사람이 큰 화면에 빨리 뜨게 5초(전 20초)
+  const close = async () => { const r = await store.dispatch('pot.close', {}); if (!r.ok) return; const id = srv || ((await account.plaza('plaza_mine')) || {}).id; if (id) await account.plaza('plaza_close', { p_id: id }); setSrv(null); showCode(''); store.dispatch('display.plaza', {}); setRoster([]); };
   const here = roster.filter(r => !r.left);
+  const [renaming, setRenaming] = useState(null);
+  // 큰 화면 대기(참가 QR·광장 이름·들어온 사람) — 판 시작 전·자리 잡기 전까지 TV 에 뜬다(2026-10-06)
+  const tvKey = code + '|' + (pot && pot.title || '') + '|' + here.map(r => r.nick).join(',');
+  useEffect(() => { if (!code || !pot) return; store.dispatch('display.plaza', { code, title: pot.title || word, people: here.map(r => r.nick) }); }, [tvKey]);
   if (!pot && !logged && !account.plazaJoin) return null;   // 열기는 오늘 화면 큰 버튼(마당 먼저)
-  return html`<${Section} header=${word}>
+  return html`<${NameSheet} open=${renaming !== null} title=${word + ' 이름'} value=${renaming || ''} onInput=${setRenaming} goLabel="바꾸기" go=${async () => { const t = renaming; setRenaming(null); if (t && t.trim()) await store.dispatch('pot.rename', { title: t }); }} onClose=${() => setRenaming(null)} />
+  <${Section} header=${word}>
+    ${pot && !pot.practice ? html`<${Row} chevron onClick=${() => setRenaming(pot.title || '')}><${Labeled} label="이름" value=${pot.title || ''} /><//>` : ''}
     ${pot ? html`
       ${pot.practice ? html`<div class="row"><${Labeled} label="연습" value="기록 안 남김" /></div>` : logged && html`
         ${qr ? html`<div class="row" style="flex-direction:column;align-items:center;gap:8px;padding:14px 0"><div style="width:180px;height:180px" aria-label=${word + ' 체크인 QR'} dangerouslySetInnerHTML=${{ __html: qr }}></div><div class="num" style="font-size:20px;font-weight:600;letter-spacing:.06em">${code}</div></div>`

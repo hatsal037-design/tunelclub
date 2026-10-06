@@ -7,6 +7,9 @@
 html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -apple-system,"SF Pro Text","Apple SD Gothic Neo","Noto Sans KR",sans-serif;overflow:hidden}
 #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
 .tv{position:relative;width:100%;max-width:1120px;aspect-ratio:16/9;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.25);--bg:#f5f5f7;--fg:#1c1c1e;--mute:#8e8e93;--seat:#fff;--line:rgba(60,60,67,.24);background:var(--bg);color:var(--fg)}
+.tv.waiting{background:url(wait/dirt.jpg) center bottom/100% 34% no-repeat,#221a40 url(night.jpg) center/cover}   /* 대기 화면 — 첫밤 밤하늘 + 흙밭 */
+.tv.waiting #arena{overflow:visible}
+.tv.waiting .topline{visibility:hidden}   /* 대기 화면은 제목이 크게 있으니 위 줄을 비운다 */
 .tv.night{--bg:#0b0f1c;--fg:#f2f2f7;--mute:#8e8e9a;--seat:#1c2233;--line:rgba(235,235,245,.18)}
 .tv svg.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .tv svg.ov path.ld{fill:none;stroke:var(--line);stroke-width:1.3}
@@ -228,6 +231,49 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 let P = null;   // 지금 그리는 공개 정보
 const SCENE = { discussion: '토론', nomination: '지명', voting: '투표 중', confirmed: '투표 결과', execution: '처형 결과' };
 // 종료 전에는 호출하지 않는다. 공개 DTO만 사용하고 직업/판정은 추론하지 않는다.
+/* 대기 화면(2026-10-06) — 햇살님 «게임 시작 전 대기 화면 — 참가 QR» · «QR 더 작게, 첫밤 테마로» · «흙밭에 뼈·달·까마귀·거미줄 등 디자인 포인트 살려서,
+   참가자는 비석에 닉네임 써서 참가하면 하나씩 늘어나게». 소재는 첫밤/소재(조각·배경판) 그대로 — 새로 그리지 않았다. 빨강은 «클럽» 두 글자에만(기준/심볼.md) */
+function renderWaiting(p, arena, W, H) {
+  $('ribbon').innerHTML = ''; $('composition').textContent = ''; $('phase').textContent = ''; $('legend').hidden = true;
+  const tv = $('tv'); tv.classList.add('night', 'waiting');
+  const T = tv.getBoundingClientRect(), A = arena.getBoundingClientRect(), top = A.top - T.top, TH = T.height, left = A.left - T.left;
+  const w = p.waiting, u = TH / 1080, q = qrcode(0, 'M'); q.addData('https://tunel.kr/1ndcapp/me/?j=' + w.code); q.make();
+  const cream = '#f6eee4', moon = '#f0d79a', ground = TH * 0.70 - top, img = (src, st) => '<img src="wait/' + src + '" alt="" style="position:absolute;' + st + '">';
+  let h = '';
+  // 하늘: 초승달 · 거미줄(왼쪽 위 구석) · 마른가지와 까마귀(왼쪽, 흙에 꽂힘)
+  h += '<svg aria-hidden="true" viewBox="0 0 100 100" style="position:absolute;left:' + (W * 0.6) + 'px;top:' + (TH * 0.05 - top) + 'px;width:' + 150 * u + 'px;height:' + 150 * u + 'px;filter:drop-shadow(0 0 ' + 24 * u + 'px rgba(240,215,154,.55))"><path d="M62 8a42 42 0 1 0 30 70A36 36 0 1 1 62 8z" fill="' + moon + '"/></svg>';
+  h += img('web.webp', 'left:' + (-left) + 'px;top:' + (-top) + 'px;width:' + 200 * u + 'px;opacity:.45;transform:scaleX(-1)');
+  h += img('branch.webp', 'left:' + (W * 0.005) + 'px;top:' + (TH * 0.74 - top) + 'px;width:' + 210 * u + 'px;transform:rotate(-80deg);transform-origin:50% 50%');   // 지푸라기는 바닥에 눕힘(2026-10-06 햇살님)
+  // 비석 — 들어온 순서대로 흙밭에 줄지어. 한 줄 최대 12, 넘치면 앞줄로(앞줄이 크고 아래) — 비석만 잘라 쓴 조각(stone_only, 원본 조각_비석)
+  const n = w.people.length, rows = n <= 10 ? 1 : 2, per = Math.max(6, Math.ceil(n / rows)), span = W * 0.78, x0 = (W - span) / 2 - left;   // 비석 줄을 화면 가운데로   // 10명까지 한 줄, 그 위 두 줄(한 판 최대 20명)
+  let crow = null;   // 까마귀는 늘 맨 윗줄 왼쪽 비석 위(햇살님)
+  for (let r = 0; r < rows; r++) {
+    const k = rows === 1 ? 1 : 0.86 + 0.14 * r / (rows - 1), sw0 = Math.min(span / per * 0.8, 150 * u), sw = sw0 * k, sh = sw * 1.71, row = w.people.slice(r * per, r * per + per);
+    const bottom = rows === 1 ? TH * 0.88 : TH * 0.97 - (rows - 1 - r) * sw0 * 1.71 * 0.8, y = bottom - top - sh;   // 뒷줄 이름이 앞줄 비석 위로 보이게
+    const shift = r % 2 ? span / per / 2 : 0, dim = rows === 1 ? 1 : 0.7 + 0.3 * r / (rows - 1);
+    row.forEach((name, i) => { const cx = x0 + shift + (i + 0.5) * span / per - (r % 2 ? span / per / 4 : 0), fs = Math.max(12 * u, Math.min(sh * 0.6 / Math.max(2, [...name].length) * 0.95, sw * 0.32));   // 이름은 세로로
+      if (r === 0 && i === 0) crow = { x: cx - sw * 0.45, y: y - sw * 0.95, w: sw * 0.9 };
+      h += '<div style="position:absolute;left:' + (cx - sw / 2) + 'px;top:' + y + 'px;width:' + sw + 'px;height:' + sh + 'px;filter:brightness(' + dim + ') drop-shadow(0 ' + 6 * u + 'px ' + 6 * u + 'px rgba(0,0,0,.55));-webkit-mask-image:linear-gradient(#000 88%,transparent);mask-image:linear-gradient(#000 88%,transparent)"><img src="wait/stone_only.webp" alt="" style="width:100%;height:100%;display:block">'
+        + '<div style="position:absolute;left:10%;width:80%;top:16%;height:66%;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;text-orientation:upright;font-weight:700;font-size:' + fs + 'px;line-height:1;letter-spacing:.02em;color:#f6eee4;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 1px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden">' + esc(name) + '</div></div>'; });
+  }
+  if (crow) h += img('crow.webp', 'left:' + crow.x + 'px;top:' + crow.y + 'px;width:' + crow.w + 'px;z-index:2');
+  else h += img('crow.webp', 'left:' + (W * 0.12) + 'px;top:' + (TH * 0.62 - top) + 'px;width:' + 110 * u + 'px');   // 아직 아무도 없으면 흙 위에
+  // 흙 위 뼈·해골(앞)
+  h += img('bone.webp', 'left:' + (W * 0.915) + 'px;top:' + (TH * 0.70 - top) + 'px;width:' + 120 * u + 'px;transform:rotate(12deg);opacity:.9');
+  h += img('skull.webp', 'left:' + (W * 0.075) + 'px;top:' + (TH * 0.89 - top) + 'px;width:' + 80 * u + 'px;transform:rotate(-14deg);opacity:.9');
+  // 글: 심볼·이름·광장·들어온 사람(왼쪽 위) · 작은 QR(오른쪽 위)
+  h += '<div style="position:absolute;left:' + (W * 0.05 - left) + 'px;top:' + (TH * 0.07 - top) + 'px;color:' + cream + '"><div style="display:flex;align-items:center;gap:' + 20 * u + 'px">'
+    + '<img src="symbol.webp" alt="" style="width:' + 170 * u + 'px;height:' + 170 * u + 'px">'
+    + '<div><div style="font-size:' + 96 * u + 'px;font-weight:800;line-height:1.1;letter-spacing:-.01em">첫밤 사망자 <span style="color:#e8323c">클럽</span></div>'
+    + '<div style="font-size:' + 44 * u + 'px;color:' + moon + ';margin-top:' + 10 * u + 'px">' + esc(w.title) + '</div>'
+    + (w.date ? '<div style="font-size:' + 34 * u + 'px;color:' + cream + ';margin-top:' + 8 * u + 'px">' + (d => (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + '일월화수목금토'[d.getDay()] + '요일')(new Date(w.date + 'T12:00:00')) + '</div>' : '')   // 광장 연 날
+    + '<div style="font-size:' + 38 * u + 'px;color:rgba(246,238,228,.75);margin-top:' + 14 * u + 'px">들어온 사람 <b style="color:' + cream + '">' + n + '</b></div></div></div></div>';
+  const side = TH * 0.25;
+  h += '<div style="position:absolute;right:' + (W * 0.05 - left) + 'px;top:' + (TH * 0.07 - top) + 'px;display:flex;flex-direction:column;align-items:center;gap:' + 10 * u + 'px"><div style="width:' + side + 'px;height:' + side + 'px;background:#fff;border-radius:' + 14 * u + 'px;padding:' + 14 * u + 'px;box-sizing:border-box" aria-label="참가 QR">' + q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }) + '</div>'
+    + '<div style="font-size:' + 32 * u + 'px;color:' + moon + '">찍고 참가</div></div>';
+  arena.innerHTML = '<div style="position:absolute;inset:0;overflow:visible">' + h + '</div>';
+  arena.querySelector('[aria-label="참가 QR"] svg')?.setAttribute('style', 'width:100%;height:100%;display:block');
+}
 function renderEnded(p, arena, W, H) {
   const replay = p.endReplay, MW = replay ? W * .51 : W;
   const role = id => (p.endReveal || []).find(r => r.seatId === id);
@@ -332,6 +378,7 @@ function render(force) {
 }
 function draw() {
   const p = P, tv = $('tv');
+  tv.classList.remove('waiting');
   $('pair').hidden = !!p || !pairing; $('leave').hidden = !linked;
   if (!p) { tv.classList.remove('night', 'round'); $('phase').textContent = linked ? '연결됐어요' : ''; $('ribbon').innerHTML = ''; $('composition').textContent = ''; $('legend').hidden = true;
     $('arena').innerHTML = linked ? '<div class="box" style="left:50%;top:50%"><div class="centername">새 판 준비 중</div></div>' : ''; return; }
@@ -342,6 +389,7 @@ function draw() {
   const name = id => { const s = p.seats.find(s => s.id === id); return s ? s.name || s.number + '번' : ''; };
   $('ribbon').innerHTML = (p.results || []).map(r => '<div class="result ' + (r.status === 'leading' ? 'lead' : '') + '"><span>' + esc(name(r.targetId)) + '</span><strong>' + r.votes + '<small>표</small></strong>' + (r.status === 'leading' ? '<span class="stamp" aria-label="유력 — 기준을 채운 단독 최다">유력</span>' : '<small>' + ({ below: '기준 미달', qualified: '기준 충족', tied: '공동 최다' })[r.status] + '</small>') + '</div>').join('');
   const a = $('arena'), W = a.clientWidth, H = a.clientHeight, n = p.seats.length; if (!n || !W) { a.innerHTML = ''; return; }
+  if (p.scene === 'waiting' && p.waiting) { renderWaiting(p, a, W, H); return; }
   if (p.scene === 'ended' && (p.endReveal?.length || p.endReplay)) { $('ribbon').innerHTML = ''; renderEnded(p, a, W, H); return; }
   NAMES = p.seats.map(s => s.name || s.number + '번');
   const L = layout(W, H, n, p.shape === 'rect' ? 'rect' : 'circle', !!(p.scene === 'discussion' && p.timer)), t = L.timer;   // 타이머가 없으면 자리를 비워 두지 않는다(2026-10-06)

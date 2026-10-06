@@ -543,7 +543,7 @@ var NativeCore = (function () {
       return { dead: dead, ghost: dead && ((s.rem || []).indexOf('유령표') >= 0 || (!s.dead && !villageType())) }; });   // 죽은 척도 유령표를 받는다(fakeDeadMark, 유령표 쓰는 판) — 안 쓰는 판은 예전처럼 있음으로
     var seats = (state.seats || []).map(function (s, i) { var v = (P.seats && P.seats[i]) || { dead: false, ghost: false };
       return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost }; });
-    var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), waiting = !began && tvp && tvp.code && localStorage.getItem(TVW_KEY) !== '0' ? { code: tvp.code, title: (pot0 && pot0.title) || tvp.title || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: (tvp.people || []).slice(0, 20) } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
+    var tvp = tvPlaza(), waiting = !began && tvp && tvp.code && localStorage.getItem(TVW_KEY) !== '0' ? { code: tvp.code, title: tvp.title || '', people: (tvp.people || []).slice(0, 40) } : null;
     var scene = waiting ? 'waiting' : !began ? 'prep' : ended ? 'ended' : !isDay ? 'night' : !announced ? 'dawn' : 'discussion';
     var noms = D ? D.noms || [] : [], G = isDay ? execGate() : null, nom = null, exec = null;
     var vo = typeof wz.voteOpen === 'number' && noms[wz.voteOpen] && !noms[wz.voteOpen].done ? wz.voteOpen : -1;
@@ -957,11 +957,7 @@ var NativeCore = (function () {
       var cur = potNow(); if (cur && cur.practice && !p.practice) { try { potClose('practice'); } catch (e) {} cur = null; }
       if (!cur) potOpen(p.practice ? { practice: true } : undefined);
       return null; },
-    'pot.open': function (p) { try { potAutoCloseCheck(); } catch (e) {} if (potNow()) return rejected('notAllowedInPhase', '이미 열린 ' + PKO('그릇') + '이 있어요.'); var o = potOpen();
-      var t = String((p && p.title) || '').trim().slice(0, 40); if (t && o) potUpdate(o.id, function (x) { x.title = t; x.titleEdited = true; });   // 열 때 이름을 정한다(2026-10-06 햇살님 «광장 열면 이름 정하게»)
-      try { localStorage.removeItem(TVW_KEY); } catch (e) {}   // 광장을 열면 큰 화면은 바로 대기
-      return null; },
-    'pot.rename': function (p) { var o = potNow(), t = String((p && p.title) || '').trim().slice(0, 40); if (!o) return rejected('notAllowedInPhase', '열린 ' + PKO('그릇') + '이 없어요.'); if (!t) return rejected('invalidSelection', '이름을 적어 주세요.'); potUpdate(o.id, function (x) { x.title = t; x.titleEdited = true; }); return null; },
+    'pot.open': function () { try { potAutoCloseCheck(); } catch (e) {} if (potNow()) return rejected('notAllowedInPhase', '이미 열린 ' + PKO('그릇') + '이 있어요.'); potOpen(); return null; },
     'pot.close': function () { if (!potNow()) return null; if (inGame() && !gameEnded()) return rejected('notAllowedInPhase', '진행 중인 판이 있어 닫을 수 없어요.'); potClose('hand'); return null; },
     'board.setLayout': function (p) { var g = guardSetup(); if (g) return g; setLayout(p.layout === 'rect' ? 'rect' : 'circle'); save(); return null; },
     /* 사각 빈자리 — 웹 자리 잡기의 «빈자리 없애기»(sbCloseGaps, 인원에 맞게 칸을 다시 고름)·«빈자리 고르게»(gapsSpread) */
@@ -1084,7 +1080,7 @@ var NativeCore = (function () {
     'display.plaza': function (p) {   // 진행자 화면이 광장 체크인 코드·이름·들어온 사람 닉네임을 넣는다(null 이면 걷는다)
       if (!p || !p.code) { localStorage.removeItem(TVP_KEY); return null; }
       if (!/^[A-Z]{8}$/.test(String(p.code))) return rejected('invalidSelection', '체크인 코드가 아니에요.');
-      localStorage.setItem(TVP_KEY, J({ code: String(p.code), title: String(p.title || '').slice(0, 40), people: (Array.isArray(p.people) ? p.people : []).map(function (x) { return String(x || '').slice(0, 30); }).slice(0, 20) }));   // 한 판 최대 20명
+      localStorage.setItem(TVP_KEY, J({ code: String(p.code), title: String(p.title || '').slice(0, 40), people: (Array.isArray(p.people) ? p.people : []).map(function (x) { return String(x || '').slice(0, 30); }).slice(0, 40) }));
       return null; },
     'display.setTimer': function (p) { var P = pubState(pubEpoch()), s = p && p.state;
       if (!p || s === null || s === undefined) P.timer = null;
