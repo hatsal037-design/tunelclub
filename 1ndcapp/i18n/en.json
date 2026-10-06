@@ -31,7 +31,7 @@
   "edit.left": "{n} changes left",
   "signup.title": "Sign up",
   "signup.agree": "I'm 14 or older and agree to the terms",
-  "signup.easy": "We don't ask for your name, email, or phone number. You can delete your account anytime, and your account info is erased after 30 days.",
+  "signup.easy": "We don't ask for your name, email, or phone number when you sign up. You can delete your account anytime, and your account info is erased after 30 days.",
   "signup.terms": "Terms",
   "signup.privacy": "Privacy",
   "signup.go": "Sign up",
@@ -104,7 +104,7 @@
   "empty.search": "No one found",
   "empty.requests": "No requests",
   "leave.do": "Delete account",
-  "leave.ask": "Delete your 1ND Club account?",
+  "leave.ask": "Delete your account?",
   "plaza.people": "Checked in",
   "ui.cancel": "Cancel",
   "leave.ok": "Delete",
@@ -117,7 +117,7 @@
   "profile.edit": "Edit profile",
   "lang.ko": "한국어",
   "ui.ok": "OK",
-  "leave.note": "Log in again within 30 days to cancel. Your Tunel membership stays.",
+  "leave.note": "Your account is shared with Tunel, so it's deleted there too. You can cancel within 30 days.",
   "people.search": "@username or nickname",
   "login.apple": "Sign in with Apple",
   "login.google": "Sign in with Google",
@@ -153,5 +153,6 @@
   "lang.en": "English",
   "data.mt": "Machine translation",
   "data.ko": "Korean text",
-  "lib.players": "{r} players"
+  "lib.players": "{r} players",
+  "err.admin": "Admin accounts can't be deleted"
 }
