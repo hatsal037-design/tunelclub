@@ -1,5 +1,5 @@
 // 오프라인 — 한 번 연 뒤엔 네트워크 없이도 판을 진행할 수 있게. 버전은 묶기 스크립트가 바꾼다
-const CACHE = '1ndcapp-05e3f90f8d', MEDIA = '1ndcapp-media';   // 그림·아이콘은 판 번호와 따로 — 배포마다 버리지 않고, 받아 둔 걸 쓰며 뒤에서 새로 받는다
+const CACHE = '1ndcapp-0069b7b785', MEDIA = '1ndcapp-media';   // 그림·아이콘은 판 번호와 따로 — 배포마다 버리지 않고, 받아 둔 걸 쓰며 뒤에서 새로 받는다
 // 첫 화면까지 필요한 것 전부(2026-10-05). js/·js/screens/ 에 파일을 더하면 여기도 — tests/웹저장.test.js 가 빠진 걸 잡는다
 const SHELL = ['./', 'index.html', 'app.css', 'manifest.json',
   'core/dom_stub.js', 'core/core_ver.js', 'core/app.js', 'core/native_core.js', 'core/engine.js', 'core/reasoner.js', 'core/replay.js',
