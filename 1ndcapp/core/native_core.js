@@ -521,6 +521,14 @@ var NativeCore = (function () {
     if (!P || !P.last) return null;
     try { var body = JSON.parse(P.last); body.revision = P.rev; return body; } catch (e) { return null; }
   }
+  /* 사각 실제 칸(2026-10-06 코덱스 요청 «사각 전수 — 공개 실제 칸») — 진행자 판 board() 와 같은 칸 계산, 공개 자리 번호(s1…)만. 빈자리는 seatId null. 직업·표식은 안 싣는다 */
+  function pubBoard() {
+    if (state.layout !== 'rect') return null;
+    var P = rectPositions(), c = state.cols, r = state.rows, gaps = new Set(normGaps()), order = seatCells(), n = (state.seats || []).length;
+    return { rows: r || 0, cols: c || 0, cells: P.map(function (p, cell) {
+      var col = c < 2 ? 0 : Math.round((p.x - 13) / 74 * (c - 1)), row = r < 2 ? 0 : Math.round((p.y - 15) / 70 * (r - 1)), si = gaps.has(cell) ? -1 : order.indexOf(cell);
+      return { id: cell, row: row, col: col, seatId: si >= 0 && si < n ? 's' + (si + 1) : null }; }) };
+  }
   function prepareDisplayPublic() {
     var n = state.nights || 1, began = firstNightBegun(), ended = began && gameEnded(), isDay = began && !ended && state.phase === 'day';
     var D = isDay ? dayRec() : null, announced = !!(D && D.announced), P = pubState(pubEpoch());
@@ -568,10 +576,10 @@ var NativeCore = (function () {
       usage = { dayNumber: dayNo(n), nominatedBy: by, nominatedTargets: tg }; }
     var ending = null; if (ended) { var R = result(); ending = { kind: state.practice ? 'practice' : (R.winner && R.winner !== 'void') ? 'completed' : 'aborted', winnerLabel: R.winner && R.winner !== 'void' ? (WINKO[R.winner] || R.winner) : null }; }   // 7 승리 진영 — 확정 공개 승리만, 선악 둘로 가두지 않음
     var body = { schema: 1, gameEpoch: P.epoch, handoff: turn, dayNumber: isDay ? dayNo(n) : null, nightNumber: began && !ended && !isDay ? n : null,
-      scene: scene, shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, initialComposition: P.comp || null, timer: timer, nomination: nom,
+      scene: scene, shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, board: pubBoard(), initialComposition: P.comp || null, timer: timer, nomination: nom,
       neededVotes: nom ? G.need : null, results: results, execution: exec,
       morningAnnouncement: morning, pastExecutions: past, nominationUsage: usage, ending: ending,
-      endReveal: ended && state.tvReveal ? endReveal() : null, endReplay: ended && typeof state.tvReplay === 'number' ? endReplay(state.tvReplay) : null };   // 7 — 끝난 뒤 진행자가 연 것만
+      endReveal: ended && state.tvReveal !== false ? endReveal() : null, endReplay: ended && typeof state.tvReplay === 'number' ? endReplay(state.tvReplay) : null };   // 7 — 끝나면 직업 공개가 먼저 크게(2026-10-06 햇살님 «처음에 직업 공개를 공통으로 크게»), 진행자가 끄거나 복기를 열면 그쪽
     var key = J(body); if (key !== P.last) { P.last = key; P.rev = (P.rev || 0) + 1; }   // 공개 내용이 같으면 revision 그대로
     pubSave(P); body.revision = P.rev; return body;
   }
@@ -660,7 +668,7 @@ var NativeCore = (function () {
     return { winner: win, title: win ? WINKO[win] || win : (state.practice ? '연습판 마감' : '판 마감'), why: ends.length ? ends.join(' → ') : (L && L.note ? L.note : (win ? '진행자가 승자를 정해 끝냄' : '승자 없이 마감')),
       recorded: !!(L && L.winner), practice: !!state.practice, politician: htmlItems(state.practice ? '' : polHtml()),
       players: ((L && L.players) || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: p.side || '', won: p.won === true, dead: !!p.dead }; }),
-      tvReveal: !!state.tvReveal, tvReplay: typeof state.tvReplay === 'number' ? state.tvReplay : null, replayDays: endReplayDays() };   // 7 큰 화면 공개·복기 조작용
+      tvReveal: state.tvReveal !== false, tvReplay: typeof state.tvReplay === 'number' ? state.tvReplay : null, replayDays: endReplayDays() };   // 7 큰 화면 공개·복기 조작용
   }
 
   /* R01 기록 · L01 자료실 · S01 백업 — 기록·통계 수식은 기존 함수(logsAll·statsOf·buildExport) 그대로 */
@@ -1161,7 +1169,7 @@ var NativeCore = (function () {
       wzFinish(); if (wz.mode === 'done') return null;
       if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0) return rejected('invalidSelection', '승자를 골라 주세요.');
       wzFinishDo(p.winner, true); return wz.mode === 'done' ? null : rejected('coreFailure', '마감하지 못했어요.'); },
-    'game.again': function (p) { if (!gameEnded()) return rejected('notAllowedInPhase', '끝난 판이 아니에요.'); delete state.tvReveal; delete state.tvReplay;   /* 한 판 더 — 지난 판 직업 공개·복기를 TV 에서 걷는다 */ if (state.practice) localStorage.setItem(PRACTICE_KEY, '1');   /* 연습판에서 «한 판 더»는 계속 연습(웹 연습 마당과 같게) */ wz.again = {}; wzAgainGo(); try { prepClose(); } catch (e) {}
+    'game.again': function (p) { if (!gameEnded()) return rejected('notAllowedInPhase', '끝난 판이 아니에요.'); state.tvReveal = false; delete state.tvReplay;   /* 끈 채로 — 새 판이 시작되면 아래 걷기에서 지워져 다음 종료 때 다시 먼저 뜬다 */   /* 한 판 더 — 지난 판 직업 공개·복기를 TV 에서 걷는다 */ if (state.practice) localStorage.setItem(PRACTICE_KEY, '1');   /* 연습판에서 «한 판 더»는 계속 연습(웹 연습 마당과 같게) */ wz.again = {}; wzAgainGo(); try { prepClose(); } catch (e) {}
       if (p && p.shuffle) state.seatShuffle = true;   // «자리 섞어서 다시»
       if (p && p.fresh) { switchEdition(state.edition, { quiet: true, force: true }); state.seats.forEach(function (x) { x.dead = false; delete x.cause; delete x.causeN; }); }   // «바꿔서 한 판 더» — 인원·자리부터 다시 볼 땐 지난 판 흔적(사망·역할)을 걷는다(명단 확정의 끝난 판 갈래와 같게)
       return null; },

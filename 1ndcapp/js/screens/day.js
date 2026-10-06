@@ -174,7 +174,7 @@ export function ResultView({ m, call }) {
     <div class="ltitle"><h1>${m.title}</h1><p class="sec" style="white-space:pre-line">${m.why}</p></div>
     ${!m.practice && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${ReplayView} />`)}>복기<//><//>`}
     <${Section} header="큰 화면">
-      <${Toggle} checked=${!!m.tvReveal} onChange=${v => store.dispatch('display.endReveal', { on: v })}>직업 공개<//>
+      <${Toggle} checked=${m.tvReveal !== false} onChange=${v => store.dispatch('display.endReveal', { on: v })}>직업 공개<//>
       ${m.replayDays != null && html`<div class="row"><span class="grow">복기</span>
         <button class="btn-s rp-arrow" aria-label="앞 날" disabled=${m.tvReplay == null} onClick=${() => store.dispatch('display.endReplay', m.tvReplay > 0 ? { day: m.tvReplay - 1 } : {})}><${Icon} name="chevronLeft" size=${28} stroke=${2.4} /></button>
         <span class="num" style="min-width:86px;text-align:center">${m.tvReplay != null ? (m.tvReplay === 0 ? '정보의 밤' : `${m.tvReplay}일차 / ${m.replayDays}`) : '끔'}</span>

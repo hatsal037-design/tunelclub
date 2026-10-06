@@ -19,6 +19,13 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .st .vt{position:absolute;left:50%;top:-8%;transform:translate(-50%,-100%);background:#ff9f0a;color:#fff;font-weight:700;border-radius:6px;padding:0 .4em;white-space:nowrap}
 .nm{position:absolute;white-space:nowrap;font-weight:500;line-height:1}
 .nm.dead{opacity:.4;text-decoration:line-through}
+.mv-draw{stroke-dasharray:1;stroke-dashoffset:1;animation:mvDraw .55s ease-out forwards}
+.mv-glow{stroke-dasharray:.07 .93;stroke-dashoffset:1;opacity:0;animation:mvGlow 1.8s linear .55s infinite}
+.mv-head{opacity:0;animation:mvHead .2s ease-out .45s forwards}
+@keyframes mvDraw{to{stroke-dashoffset:0}}
+@keyframes mvGlow{0%{stroke-dashoffset:1;opacity:.75}100%{stroke-dashoffset:0;opacity:.75}}
+@keyframes mvHead{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.mv-draw{stroke-dashoffset:0;animation:none}.mv-glow{display:none}.mv-head{opacity:1;animation:none}}
 .tablerect{position:absolute;border-radius:22px;border:1.5px solid var(--line);background:rgba(120,120,128,.05)}
 .ring{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center}
 .ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
@@ -121,6 +128,13 @@ const RECT = { 6: [3, 2, []], 8: [3, 3, []], 10: [4, 3, []], 12: [5, 3, [7]], 14
 const RECTV = VERT(RECT);
 /* 3 사각 칸 — 빈자리를 빼도 인원이 다 앉게 */
 function grid(n, shape) {
+  // 공개 칸은 번호 순서가 아니라 seatId로 연결한다. 빈칸 때문에 배열을 압축하지 않는다.
+  if (shape === 'rect' && P?.board && Array.isArray(P.board.cells) && P.seats?.length === n) {
+    const b = P.board, mapped = P.seats.map(s => b.cells.find(cell => cell.seatId === s.id));
+    if (Number.isInteger(b.cols) && b.cols >= 1 && b.cols <= 10 && Number.isInteger(b.rows) && b.rows >= 1 && b.rows <= 10 && mapped.every(cell => cell && Number.isInteger(cell.col) && Number.isInteger(cell.row) && cell.col >= 0 && cell.col < b.cols && cell.row >= 0 && cell.row < b.rows)) {
+      return { c: b.cols, r: b.rows, cells: mapped.map(cell => [cell.col, cell.row]) };
+    }
+  }
   const rr = n <= 8 ? 2 : n <= 14 ? 3 : 4;
   let [c, r, gaps] = shape === 'rect' ? (RECT[n] || [Math.max(rr, Math.ceil((n + 4) / 2) - rr), rr, []]) : shape === 'rectV' ? (RECTV[n] || [rr, Math.max(rr, Math.ceil((n + 4) / 2) - rr), []]) : shape === 'long' ? [Math.ceil(n / 2), 2, []] : [2, Math.ceil(n / 2), []];
   const perim = [];
@@ -156,31 +170,31 @@ function circleLay(W, H, n, S) {
   const free = D - d * 2 - lead * 0.2;   // 안쪽 빈 원(이름은 바깥이라 안 뺌)
   return { kind: 'circle', seats, labels, d, fs, cx, cy, free, R };
 }
-/* 사각 — 가로·세로 간격 따로 */
+/* 사각 — 가로·세로 간격 따로. 이름은 판 바깥쪽(윗줄 위·아랫줄 아래·왼쪽 열 왼쪽·오른쪽 열 오른쪽) — 판은 남는 곳을 꽉 쓴다(2026-10-06 클로드, 코덱스 7차 불합격 뒤) */
 function rectLay(W, H, n, S, shape, band) {
   const { c, r, cells } = grid(n, shape), vert = r > c; let { d, fs } = S;
-  const nameMax = Math.max(...NAMES.slice(0, n).map(t => textW(t, fs)));
   const box = { x: 0, y: 0, w: W, h: H }; if (band && band.top) { box.y = band.top; box.h = H - band.top; } if (band && band.side) box.w = W - band.side;
-  const mx = W * 0.04 + d * 0.95, my = H * 0.04 + d * 0.95;   // 테이블 테두리(자리 바깥 d×0.95)까지 화면 안
-  let sx, sy;
-  if (vert) {   // 세로 — 이름은 옆으로 지시선, 위아래 간격은 자리+여유, 두 줄 사이 폭은 따로(이름 읽히게)
-    const tb = c > 2 ? fs * 1.4 : 0;
-    sy = (box.h - 2 * my - d - 2 * tb) / Math.max(r - 1, 1);
-    const nameSide = d * 0.5 + d * 0.7 + fs * 0.3 + nameMax;
-    sx = (box.w - 2 * mx - 2 * nameSide) / Math.max(c - 1, 1);
-    sx = clamp(sx, Math.max(d * 1.4, c > 2 ? nameMax + fs : 0), H * 0.55);
-  } else {
-    sy = (box.h - 2 * my - d - fs * 1.6) / Math.max(r - 1, 1);
-    sx = Math.min((box.w - 2 * mx - Math.max(d, nameMax)) / Math.max(c - 1, 1), sy * 2.4);
+  const side = (i, j) => j === 0 ? 'above' : j === r - 1 ? 'below' : i === 0 ? 'left' : i === c - 1 ? 'right' : 'below';
+  const nm = cells.map(([i, j]) => side(i, j)), wOf = k => textW(NAMES[k] || '', fs);
+  let sx, sy, pad, g;
+  for (let it = 0; it < 3; it++) {   // 크기·여백이 서로 기대니 두세 번 맞춘다
+    pad = d * 0.7; g = pad + fs * 0.3;
+    const sideW = Math.max(0, ...cells.map((_, k) => nm[k] === 'left' || nm[k] === 'right' ? wOf(k) : 0)), topW = Math.max(0, ...cells.map((_, k) => nm[k] === 'above' || nm[k] === 'below' ? wOf(k) : 0));
+    const mxL = Math.max(pad, topW / 2, sideW ? g + sideW : 0), myT = g + fs * 1.1;
+    sx = (box.w - 2 * W * 0.03 - 2 * mxL) / Math.max(c - 1, 1);
+    sy = (box.h - 2 * H * 0.03 - 2 * myT) / Math.max(r - 1, 1);
+    sx = Math.min(sx, sy * 2.6); sy = Math.min(sy, sx * 2.6);   // 너무 길쭉한 판은 막는다
+    const dMax = Math.min(Math.max(S.d, Math.min(sx, sy) * 0.72), H * 0.15, sx * 0.78, sy * 0.78);   // 판이 넉넉하면 자리도 키운다(최대 지름 화면 높이 12%)
+    if (topW > sx * 0.86) fs = Math.max(H * 0.022, fs * sx * 0.86 / topW);   // 윗줄·아랫줄 이름이 옆 자리를 넘으면 글자만 줄인다
+    if (fs * 1.2 > sy * 0.8) fs = Math.max(H * 0.022, sy * 0.8 / 1.2);
+    if (it === 0 && dMax > S.d) fs = Math.min(H * 0.07, fs * dMax / S.d);   // 자리를 키운 만큼 이름도(한 번만)
+    d = Math.max(H * 0.035, dMax);
   }
-  const need = Math.min(sy / 1.12, vert ? sy / 1.08 : sx / 1.12);   // 자리는 간격이 정말 모자랄 때만 줄인다
-  if (d > need) { const k = need / d; d *= k; fs *= k; }
-  if (!vert && nameMax + fs * 0.6 > sx) fs = Math.max(H * 0.026, fs * sx / (nameMax + fs * 0.6));   // 긴 이름은 글자만 줄인다(자리 크기는 그대로)
-  const w = sx * (c - 1), h = sy * (r - 1), x0 = box.x + (box.w - w) / 2, y0 = box.y + (box.h - h) / 2 - (vert ? 0 : fs * 0.5);
-  const seats = cells.map(([i, j]) => ({ x: x0 + i * sx, y: y0 + j * sy, nm: !vert ? (j === 0 && r > 1 ? 'below' : 'below') : i === 0 ? 'left' : i === c - 1 ? 'right' : j === 0 ? 'above' : 'below' }));
-  const ix = x0 + d * 0.6, iy = y0 + d * 0.6 + (vert ? 0 : fs * 1.4), iw = w - d * 1.2, ih = h - d * 1.2 - (vert ? 0 : fs * 1.4);   // 안쪽 빈 곳 — 자리·아래 이름까지 뺀 곳
-  return { kind: 'rect', vert, seats, d, fs, inner: { x: ix, y: iy, w: iw, h: ih }, cx: x0 + w / 2, cy: y0 + h / 2,
-    table: { x: x0 - d * 0.95, y: y0 - d * 0.95, w: w + d * 1.9, h: h + d * 1.9 + (vert ? 0 : fs * 1.3) } };
+  const w = sx * (c - 1), h = sy * (r - 1), x0 = box.x + (box.w - w) / 2, y0 = box.y + (box.h - h) / 2;
+  const seats = cells.map(([i, j], k) => ({ x: x0 + i * sx, y: y0 + j * sy, nm: nm[k] }));
+  const ix = x0 + d * 0.6, iy = y0 + d * 0.6, iw = w - d * 1.2, ih = h - d * 1.2;   // 안쪽 빈 곳(이름은 바깥이라 자리만 뺀다)
+  return { kind: 'rect', vert, lead: false, gap: g, seats, d, fs, inner: { x: ix, y: iy, w: iw, h: ih }, cx: x0 + w / 2, cy: y0 + h / 2,
+    table: { x: x0 - pad, y: y0 - pad, w: w + pad * 2, h: h + pad * 2 } };
 }
 /* 5 타이머 묶음 크기 */
 const ringNeed = H => H * 0.3;   // 고리 최소 지름
@@ -204,6 +218,11 @@ function layout(W, H, n, shape, timerOn) {
 }
 
 /* ── 그리기 — 받은 공개 정보(p)만으로. 화면은 판정하지 않는다 ── */
+function rectEndLayout(W,H,p) {   // 복기 자리판 — 낮 판과 같은 칸 계산(이름은 판 바깥), 아이콘+이름만(2026-10-06 햇살님 «복기는 자리표를 심플하게»)
+  NAMES=p.seats.map(s=>s.name||s.number+'번');
+  const L=rectLay(W,H,p.seats.length,SIZE(H,p.seats.length),'rect');
+  return {seats:L.seats.map(s=>({...s,d:L.d,fs:L.fs,gap:L.gap})),u:H/810,table:L.table,d:L.d};
+}
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let P = null;   // 지금 그리는 공개 정보
@@ -215,6 +234,11 @@ function renderEnded(p, arena, W, H) {
   const seat = id => p.seats.find(s => s.id === id);
   const name = id => { const s = seat(id); return s ? s.name || s.number + '번' : ''; };
   const art = r => r?.icon && /^[\w-]+$/.test(r.icon) ? '<img src="../art/' + encodeURIComponent(r.icon) + '.webp" alt="' + esc(r.role) + '">' : '';
+  if(!replay && p.endReveal?.length){
+    const u=H/810,cols=Math.min(5,Math.ceil(p.seats.length/4));
+    arena.innerHTML='<div class="role-reveal" style="position:absolute;inset:0 3%;display:grid;grid-template-columns:repeat('+cols+',minmax(0,1fr));grid-auto-rows:1fr;gap:'+16*u+'px">'+p.seats.map(s=>{const r=role(s.id);return '<div style="min-width:0;overflow:hidden;display:flex;align-items:center;gap:'+12*u+'px;padding:'+12*u+'px;background:var(--card,#fff);border-radius:'+12*u+'px"><div style="width:'+56*u+'px;flex-shrink:0">'+(art(r)||s.number)+'</div><div style="min-width:0;overflow-wrap:anywhere;font-size:'+22*u+'px">'+esc(s.name)+'<div style="font-size:'+24*u+'px;font-weight:600">'+esc(r?.role||'—')+'</div><div style="font-size:'+18*u+'px;color:var(--mute)">'+esc(r?.team||'')+'</div></div></div>';}).join('')+'</div>';
+    arena.querySelectorAll('.role-reveal img').forEach(im=>{im.style.width='100%';im.style.display='block';});return;
+  }
   const colors = { attack:'#ff3b30', execute:'#ff3b30', death:'#ff3b30', poison:'#34c759', change:'#af52de', protect:'#007aff', revive:'#34c759', false:'#ff9500' };
   const paths = {
     attack:'M14 2 5 14h6l-1 8 9-13h-6z', execute:'M8 8l8 8M16 8l-8 8M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
@@ -227,17 +251,17 @@ function renderEnded(p, arena, W, H) {
     block:'M4 4l16 16M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0'
   };
   const icon = (act, why) => '<svg class="action-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="' + (act === 'false' && why === 'poison' ? '#34c759' : colors[act] || '#8e8e93') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (paths[act] || paths.info) + '"/></svg>';
-  const points = [], n=p.seats.length, d = Math.min(MW*.105,H*(n<=8?.125:n<=12?.10:.075)), k=d/44, cx = MW / 2, cy = H / 2;
+  const bounded=p.shape==='rect'?rectEndLayout(MW,H,p):null;
+  const points = [], n=p.seats.length, d = bounded?bounded.d:Math.min(MW*.105,H*(n<=8?.125:n<=12?.10:.075)), k=d/44, cx = MW / 2, cy = H / 2;
   // 원 중심 방향의 지시선 → 꺾이는 점 → 같은 높이의 글자 끝.
   p.seats.forEach((s,i) => { const angle = -Math.PI/2 + i * Math.PI*2/n; points.push({x:cx+Math.cos(angle)*MW*.23,y:cy+Math.sin(angle)*H*.27,mid:Math.abs(Math.cos(angle))<.1?(Math.sin(angle)<0?-1:1):0}); });
   if (p.shape === 'rect') {
     NAMES = p.seats.map(s => s.name || s.number + '번');
-    const rectangular = layout(MW, H, p.seats.length, 'rect', false);
-    rectangular.seats.forEach((pt,i) => { points[i] = pt; });
+    bounded.seats.forEach((pt,i) => { points[i] = pt; });
   }
   let svg = '', html = '', defs = '';
-  const lines = replay ? [...(replay.day || []), ...(replay.night || [])].filter(row=>row.arrow!==false) : [];   // 수신형 정보는 타일에만
-  const edgeCounts = new Map();
+  const lines = replay ? [...(replay.day || []), ...(replay.night || [])].filter(row=>row.arrow!==false) : [];   // 사각도 화살표(이름이 판 바깥이라 안 겹친다, 2026-10-06)
+  const edgeCounts = new Map(), bx0 = bounded ? bounded.table.x + bounded.table.w / 2 : cx, by0 = bounded ? bounded.table.y + bounded.table.h / 2 : cy;
   lines.forEach((line,i) => (line.targets || []).forEach(id => {
     const from = points[p.seats.findIndex(s=>s.id===line.actor)], to = points[p.seats.findIndex(s=>s.id===id)];
     if (!from || !to || line.actor === id) return;
@@ -245,14 +269,15 @@ function renderEnded(p, arena, W, H) {
     edgeCounts.set(key,repeat+1);
     const color=colors[line.act]||'#8e8e93', mx=(from.x+to.x)/2,my=(from.y+to.y)/2;
     let nx=-uy,ny=ux;
-    if ((len<170*k&&p.shape==='rect')?ny>0:(cx-mx)*nx+(cy-my)*ny<0) {nx=-nx;ny=-ny;}
+    if ((bx0-mx)*nx+(by0-my)*ny<0) {nx=-nx;ny=-ny;}   // 화살표는 늘 판 가운데 쪽으로 볼록(이름이 있는 판 바깥으로 안 나간다, 2026-10-06 햇살님 «위치별 화살표 점»)
     const bend=len*.22+150*k*(.4+repeat*.8)*Math.exp(-len/(140*k)), c={x:mx+nx*bend,y:my+ny*bend};
     const point=t=>({x:(1-t)**2*from.x+2*(1-t)*t*c.x+t*t*to.x,y:(1-t)**2*from.y+2*(1-t)*t*c.y+t*t*to.y});
     const edge=(r,end)=>{let lo=0,hi=1;const o=end?to:from;for(let j=0;j<20;j++){const t=(lo+hi)/2,q=point(t),far=Math.hypot(q.x-o.x,q.y-o.y)>r;if(end===far)lo=t;else hi=t;}return end?lo:hi;};
     const t0=edge(24*k,false),t1=edge(36*k,true),th=edge(28*k,true),a=point(t0),b=point(t1),head=point(th),prev=point(Math.max(0,th-.02));
     const control={x:a.x+(t1-t0)*((1-t0)*(c.x-from.x)+t0*(to.x-c.x)),y:a.y+(t1-t0)*((1-t0)*(c.y-from.y)+t0*(to.y-c.y))};
     const hl=Math.hypot(head.x-prev.x,head.y-prev.y)||1,hx=(head.x-prev.x)/hl,hy=(head.y-prev.y)/hl,bx=head.x-hx*13*k,by=head.y-hy*13*k;
-    svg+='<g opacity=".85"><path class="replay-arrow" d="M'+a.x+','+a.y+' Q'+control.x+','+control.y+' '+b.x+','+b.y+'" fill="none" stroke="'+color+'" stroke-width="'+3.5*k+'" stroke-linecap="round"/><path d="M'+head.x+','+head.y+' L'+(bx-hy*7.5*k)+','+(by+hx*7.5*k)+' '+(bx+hy*7.5*k)+','+(by-hx*7.5*k)+'Z" fill="'+color+'"/></g>';
+    const dq='M'+a.x+','+a.y+' Q'+control.x+','+control.y+' '+b.x+','+b.y, dl=(i*.12).toFixed(2)+'s', dg=(i*.12+.55).toFixed(2)+'s', dh=(i*.12+.45).toFixed(2)+'s';   // 하나씩 차례로 그어진다
+    svg+='<g opacity=".85"><path class="replay-arrow mv-draw" pathLength="1" style="animation-delay:'+dl+'" d="'+dq+'" fill="none" stroke="'+color+'" stroke-width="'+3.5*k+'" stroke-linecap="round"/><path class="mv-glow" pathLength="1" style="animation-delay:'+dg+'" d="'+dq+'" fill="none" stroke="#fff" stroke-width="'+2*k+'" stroke-linecap="round"/><path class="mv-head" style="animation-delay:'+dh+'" d="M'+head.x+','+head.y+' L'+(bx-hy*7.5*k)+','+(by+hx*7.5*k)+' '+(bx+hy*7.5*k)+','+(by-hx*7.5*k)+'Z" fill="'+color+'"/></g>';
   }));
   const fs = 12*k, labels = points.map((pt,i)=>({pt,i,right:pt.x>=cx,y:pt.y}));
   for (const right of [false,true]) {
@@ -262,17 +287,22 @@ function renderEnded(p, arena, W, H) {
     side.forEach((l,i)=>{l.y=cy+(i-(side.length-1)/2)*gap;});
   }
   labels.forEach(({pt,i,right,y})=>{
+    if(bounded){
+      const s=p.seats[i],r=role(s.id),g=pt.gap,pos=pt.nm==='left'?'right:'+(MW-pt.x+g)+'px;top:'+pt.y+'px;transform:translateY(-50%)':pt.nm==='right'?'left:'+(pt.x+g)+'px;top:'+pt.y+'px;transform:translateY(-50%)':pt.nm==='above'?'left:'+pt.x+'px;top:'+(pt.y-g)+'px;transform:translate(-50%,-100%)':'left:'+pt.x+'px;top:'+(pt.y+g)+'px;transform:translateX(-50%)';
+      html+='<div data-k="s'+s.id+'" class="end-seat '+(s.dead?'dead':'')+'" style="left:'+pt.x+'px;top:'+pt.y+'px;width:'+pt.d+'px;height:'+pt.d+'px">'+(art(r)||s.number)+(s.dead?'<span class="seat-badge death">×</span>':'')+(s.dead&&s.ghost?'<span class="seat-badge ghost">●</span>':'')+'</div>';
+      html+='<div data-k="n'+s.id+'" class="nm '+(s.dead?'dead':'')+'" style="font-size:'+pt.fs+'px;'+pos+'">'+esc(s.name||s.number+'번')+'</div>';return;
+    }
     const s=p.seats[i],r=role(s.id),tx=pt.x+(right?1:-1)*d*.78,kx=pt.x+(right?1:-1)*d*.7,ky=y;
     const vx=kx-pt.x,vy=ky-pt.y,len=Math.hypot(vx,vy)||1;
     if(p.shape!=='rect'&&!pt.mid)svg+='<path class="ld" style="stroke:#737373;stroke-width:1.3" d="M'+(pt.x+vx/len*d*.5)+','+(pt.y+vy/len*d*.5)+' L'+kx+','+ky+' H'+tx+'"/>';
-    html+='<div class="end-seat '+(s.dead?'dead':'')+'" style="left:'+pt.x+'px;top:'+pt.y+'px;width:'+d+'px;height:'+d+'px;font-size:'+fs*.65+'px">'+(art(r)||s.number)+'<span class="seat-badge number">'+s.number+'</span>'+(s.dead?'<span class="seat-badge death">×</span>':'')+(s.dead&&s.ghost?'<span class="seat-badge ghost">●</span>':'')+'</div>';
+    html+='<div data-k="s'+s.id+'" class="end-seat '+(s.dead?'dead':'')+'" style="left:'+pt.x+'px;top:'+pt.y+'px;width:'+d+'px;height:'+d+'px;font-size:'+fs*.65+'px">'+(art(r)||s.number)+'<span class="seat-badge number">'+s.number+'</span>'+(s.dead?'<span class="seat-badge death">×</span>':'')+(s.dead&&s.ghost?'<span class="seat-badge ghost">●</span>':'')+'</div>';
     const pos=p.shape==='rect'?'left:'+pt.x+'px;top:'+(pt.y+d*.5+5*k)+'px;transform:translateX(-50%)':pt.mid?'left:'+pt.x+'px;top:'+(pt.y+pt.mid*(d*.5+5*k))+'px;transform:translate(-50%,'+(pt.mid<0?'-100%':'0')+')': 'top:'+y+'px;transform:translateY(-50%);'+(right?'left:'+(tx+4*k):'right:'+(MW-tx+4*k))+'px';
     const sideColor={good:'#007aff',evil:'#ff3b30',neutral:'#ff9500'}[r?.side]||'#737379';
     html+='<div class="end-label" style="width:'+MW*.20+'px;white-space:normal;font-size:'+13*k+'px;'+pos+';text-align:'+(p.shape==='rect'||pt.mid?'center':right?'left':'right')+'">'+s.number+' · '+esc(name(s.id))+(r?'<div class="role" style="font-size:'+16*k+'px;color:'+sideColor+'">'+esc(r.role)+'</div><div style="font-size:'+13*k+'px;color:'+sideColor+'">'+esc(r.team)+'</div><small style="font-size:'+8*k+'px">'+esc((r.changes||[]).join(' · '))+'</small>':'')+'</div>';
   });
   const winner = p.ending?.winnerLabel;
   const flag='<svg aria-hidden="true" viewBox="0 0 32 32" style="display:block;margin:0 auto '+H*.0168+'px;width:'+H*.06+'px;height:'+H*.06+'px;color:var(--mute)" fill="currentColor"><path d="M6 4h2v25H6zM8 5h6v5H8zm12 0h6v5h-6zm-6 5h6v5h-6zm-6 5h6v5H8zm12 0h6v5h-6z"/><path d="M8 5h18v15H8" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
-  arena.innerHTML='<div class="end-map '+(replay?'split':'')+'"><svg class="ov"><defs>'+defs+'</defs>'+svg+'</svg>'+html+(winner?'<div class="box end-winner" style="left:50%;top:50%;font-size:'+24*k+'px;font-weight:600">'+flag+esc(winner)+'</div>':'')+'</div>';
+  arena.innerHTML='<div class="end-map '+(replay?'split':'')+'">'+'<svg class="ov"><defs>'+defs+'</defs>'+svg+'</svg>'+html+(winner&&!bounded?'<div class="box end-winner" style="left:50%;top:50%;font-size:'+24*k+'px;font-weight:600">'+flag+esc(winner)+'</div>':'')+'</div>';
   if (!replay) return;
   const face=(id,evil,executed,dead)=>{const s=seat(id);if(!s)return '';const wasDead=dead?.includes(id)??s.dead;return '<span class="replay-face '+(wasDead?'dead ':'')+(executed?'executed':'')+'">'+(art(role(id))||s.number)+(evil?'<span class="evil-dot" aria-label="악으로 셈"></span>':'')+'</span>';};
   const nm=(id,target,dead)=>'<span class="'+(target?'target ':'')+((dead?.includes(id)??seat(id)?.dead)?'dead-name':'')+'">'+esc(name(id))+'</span>';
@@ -293,37 +323,45 @@ function renderEnded(p, arena, W, H) {
   const panel=arena.querySelector('.replay-panel'), base=Math.min(MW*.09,H*(n<=8?.115:n<=12?.085:.06))/44; // 자리 확대가 타일을 키우지 않게 기존 배율 유지
   let scale=1; do {panel.style.setProperty('--u',base*scale+'px'); if(panel.scrollHeight<=panel.clientHeight+1)break;scale-=.02;}while(scale>=13/17);
 }
-function render() {
+/* 바뀐 것만 그린다 — 움직임 없이 바로(2026-10-06 햇살님 «모션은 폰에서만 보이면 충분» — 큰 화면 웹은 TV 브라우저가 약해도 바로 뜨게) */
+let drawn = '';
+function render(force) {
+  const key = JSON.stringify([P && P.gameEpoch, P && P.revision, linked, pairing, innerWidth, innerHeight]);
+  if (!force && key === drawn) return; drawn = key;
+  draw();
+}
+function draw() {
   const p = P, tv = $('tv');
   $('pair').hidden = !!p || !pairing; $('leave').hidden = !linked;
   if (!p) { tv.classList.remove('night', 'round'); $('phase').textContent = linked ? '연결됐어요' : ''; $('ribbon').innerHTML = ''; $('composition').textContent = ''; $('legend').hidden = true;
     $('arena').innerHTML = linked ? '<div class="box" style="left:50%;top:50%"><div class="centername">새 판 준비 중</div></div>' : ''; return; }
   const night = p.scene === 'night'; tv.classList.toggle('night', night); tv.classList.toggle('round', p.shape !== 'rect'); $('legend').hidden = !p.seats.some(s => s.dead && s.ghost);
-  $('phase').textContent = p.scene === 'prep' ? '준비' : p.scene === 'ended' ? '게임 종료' : night ? (p.nightNumber === 1 ? '첫밤' : '밤 ' + p.nightNumber) : '낮 ' + p.dayNumber + (p.scene === 'dawn' ? ' · 아침 발표' : ' · ' + SCENE[p.scene]);
+  $('phase').textContent = p.scene === 'prep' ? '준비' : p.scene === 'ended' ? '게임 종료' : night ? (p.nightNumber === 1 ? '첫밤' : '밤 ' + p.nightNumber) : (p.dayNumber == null ? '낮' : '낮 ' + p.dayNumber) + (p.scene === 'dawn' ? ' · 아침 발표' : ' · ' + SCENE[p.scene]);
+  if(p.scene==='ended' && p.shape==='rect' && p.ending?.winnerLabel) $('phase').textContent+=' · '+p.ending.winnerLabel;
   $('composition').textContent = p.initialComposition && !night ? '처음 구성  선 ' + p.initialComposition.good + ' · 악 ' + p.initialComposition.evil : '';
   const name = id => { const s = p.seats.find(s => s.id === id); return s ? s.name || s.number + '번' : ''; };
   $('ribbon').innerHTML = (p.results || []).map(r => '<div class="result ' + (r.status === 'leading' ? 'lead' : '') + '"><span>' + esc(name(r.targetId)) + '</span><strong>' + r.votes + '<small>표</small></strong>' + (r.status === 'leading' ? '<span class="stamp" aria-label="유력 — 기준을 채운 단독 최다">유력</span>' : '<small>' + ({ below: '기준 미달', qualified: '기준 충족', tied: '공동 최다' })[r.status] + '</small>') + '</div>').join('');
   const a = $('arena'), W = a.clientWidth, H = a.clientHeight, n = p.seats.length; if (!n || !W) { a.innerHTML = ''; return; }
   if (p.scene === 'ended' && (p.endReveal?.length || p.endReplay)) { $('ribbon').innerHTML = ''; renderEnded(p, a, W, H); return; }
   NAMES = p.seats.map(s => s.name || s.number + '번');
-  const L = layout(W, H, n, p.shape === 'rect' ? 'rect' : 'circle', true), t = L.timer;   // ponytail: 사각은 인원으로 칸을 잡는다 — 진행자 판의 실제 빈칸 배치(cells)는 공개 정보에 실릴 때 맞춘다
-  let h = L.table ? '<div class="tablerect" style="left:' + L.table.x + 'px;top:' + L.table.y + 'px;width:' + L.table.w + 'px;height:' + L.table.h + 'px"></div>' : '', svg = '';
+  const L = layout(W, H, n, p.shape === 'rect' ? 'rect' : 'circle', !!(p.scene === 'discussion' && p.timer)), t = L.timer;   // 타이머가 없으면 자리를 비워 두지 않는다(2026-10-06)
+  let h = '', svg = '';   // 회색 판 상자 없앰(2026-10-06 햇살님 «회색 상자는 없어도 되지 않나»)
   if (L.labels) L.labels.forEach(l => { if (!l.mid) svg += '<path class="ld" d="M' + l.ex + ',' + l.ey + ' L' + l.kx + ',' + l.ky + ' L' + l.tx + ',' + l.ky + '"/>'; });
   const at = id => L.seats[p.seats.findIndex(s => s.id === id)];
   if (p.nomination && p.nomination.byId && at(p.nomination.byId) && at(p.nomination.targetId)) {
     const from = at(p.nomination.byId), to = at(p.nomination.targetId), dx = to.x - from.x, dy = to.y - from.y, len = Math.hypot(dx, dy) || 1, off = L.d * .6;
-    if (len > 1) svg += '<line x1="' + (from.x + dx / len * off) + '" y1="' + (from.y + dy / len * off) + '" x2="' + (to.x - dx / len * off) + '" y2="' + (to.y - dy / len * off) + '" stroke="#ff9f0a" stroke-opacity=".45" stroke-width="2" marker-end="url(#arrow)"/>'; }
+    if (len > 1) svg += '<line x1="' + (from.x + dx / len * off) + '" y1="' + (from.y + dy / len * off) + '" x2="' + (to.x - dx / len * off) + '" y2="' + (to.y - dy / len * off) + '" class="mv-draw" pathLength="1" stroke="#ff9f0a" stroke-opacity=".45" stroke-width="2" marker-end="url(#arrow)"/>'; }
   L.seats.forEach((pt, i) => {
     const s = p.seats[i], nom = p.nomination && p.nomination.targetId === s.id, turn = p.handoff && p.handoff.seatId === s.id;
-    h += '<div class="st ' + (s.dead ? 'dead ' : '') + (nom ? 'nom' : turn ? 'turn' : '') + '" style="left:' + pt.x + 'px;top:' + pt.y + 'px;width:' + L.d + 'px;height:' + L.d + 'px"><i style="font-size:' + L.d * .44 + 'px">' + s.number + '</i>' + (s.dead && s.ghost ? '<span class="ghost"></span>' : '') + '</div>';
+    h += '<div data-k="s' + s.id + '" class="st ' + (s.dead ? 'dead ' : '') + (nom ? 'nom' : turn ? 'turn' : '') + '" style="left:' + pt.x + 'px;top:' + pt.y + 'px;width:' + L.d + 'px;height:' + L.d + 'px"><i style="font-size:' + L.d * .44 + 'px">' + s.number + '</i>' + (s.dead && s.ghost ? '<span class="ghost"></span>' : '') + '</div>';
     let pos;
     if (L.labels) { const l = L.labels[i], g = L.d * .5 + L.fs * .3;
       pos = l.mid ? 'left:' + l.sx + 'px;top:' + (l.sy + l.mid * g) + 'px;transform:translate(-50%,' + (l.mid < 0 ? '-100%' : '0') + ')'
         : 'top:' + (l.ky - L.fs * .5) + 'px;' + (l.side > 0 ? 'left:' + (l.tx + 6) : 'right:' + (W - l.tx + 6)) + 'px'; }
-    else { const e = L.d * .5, ln = L.d * .7, side = L.vert && (pt.nm === 'left' || pt.nm === 'right'), g = side ? e + ln + L.fs * .3 : e + L.fs * .35;
+    else { const e = L.d * .5, ln = L.d * .7, side = L.lead && (pt.nm === 'left' || pt.nm === 'right'), g = L.gap != null ? L.gap : side ? e + ln + L.fs * .3 : e + L.fs * .35;
       if (side) { const sg = pt.nm === 'left' ? -1 : 1; svg += '<path class="ld" d="M' + (pt.x + sg * e) + ',' + pt.y + ' L' + (pt.x + sg * (e + ln)) + ',' + pt.y + '"/>'; }
       pos = pt.nm === 'left' ? 'right:' + (W - pt.x + g) + 'px;top:' + pt.y + 'px;transform:translateY(-50%)' : pt.nm === 'right' ? 'left:' + (pt.x + g) + 'px;top:' + pt.y + 'px;transform:translateY(-50%)' : pt.nm === 'above' ? 'left:' + pt.x + 'px;top:' + (pt.y - g) + 'px;transform:translate(-50%,-100%)' : 'left:' + pt.x + 'px;top:' + (pt.y + g) + 'px;transform:translateX(-50%)'; }
-    h += '<div class="nm ' + (s.dead ? 'dead' : '') + '" style="font-size:' + L.fs + 'px;' + pos + '">' + esc(s.name || '') + '</div>';
+    h += '<div data-k="n' + s.id + '" class="nm ' + (s.dead ? 'dead' : '') + '" style="font-size:' + L.fs + 'px;' + pos + '">' + esc(s.name || '') + '</div>';
   });
   let mid = '';
   if (p.scene === 'discussion') mid = p.timer ? '<div class="centerlabel">자유롭게 이야기하세요</div><div class="centerbig" id="time"></div><div class="centersub" id="timesub">토론 시간</div>' : '<div class="centername">토론</div>';
@@ -348,7 +386,7 @@ function tick() {
 
 /* ── 연결 — 요청 열기(QR·코드) → 승인 기다리기 → 2초마다 새 판본 묻기. 끊김·만료면 이름을 지우고 새 코드 ── */
 let link = null, linked = false, pairing = false, gen = 0, known = { epoch: null, rev: null }, deadline = 0, deadTimer = 0, pollTimer = 0, fails = 0;
-function wipe() { P = null; linked = false; known = { epoch: null, rev: null }; clearTimeout(deadTimer); }
+function wipe() { P = null; linked = false; known = { epoch: null, rev: null }; clearTimeout(deadTimer); listen(); }   // 연결이 끝나면 듣기도 닫는다
 async function openRequest() {
   const g = ++gen; wipe(); pairing = true; link = null; store.set('screen_link', null); render();
   try {
@@ -361,8 +399,23 @@ async function openRequest() {
 }
 function net(bad) { $('net').hidden = !bad || !linked; }
 function schedule(g, ms) { clearTimeout(pollTimer); pollTimer = setTimeout(() => poll(g), ms * (0.9 + Math.random() * 0.2)); }
+/* 즉시 알림(서버 0280) — 연결 채널 screen:<id> 를 웹소켓으로 듣다가 «새 판본» 신호가 오면 바로 묻는다. 신호엔 번호만, 내용은 늘 비밀값으로 확인해 가져온다 */
+let ws = null, wsFor = '', wsBeat = 0, wsTry = 0, inflight = false, again = false;
+function listen() {
+  const id = linked && link && link.id; if (wsFor === id) return; try { ws && ws.close(); } catch (e) {} ws = null; wsFor = id || ''; clearInterval(wsBeat); if (!id) return;
+  const sock = ws = new WebSocket(API.replace('https://', 'wss://').replace('/rest/v1/rpc/', '/realtime/v1/websocket') + '?apikey=' + KEY + '&vsn=1.0.0');
+  sock.onopen = () => { wsTry = 0; sock.send(JSON.stringify({ topic: 'realtime:screen:' + id, event: 'phx_join', payload: { config: { broadcast: { self: false }, presence: { key: '' }, private: false } }, ref: '1' }));
+    wsBeat = setInterval(() => { try { sock.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: 'h' })); } catch (e) {} }, 25000); };
+  sock.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.event === 'broadcast') poll(gen); };
+  sock.onclose = () => { clearInterval(wsBeat); if (ws !== sock) return; ws = null; wsFor = ''; setTimeout(listen, Math.min(30000, 1000 * 2 ** wsTry++)); };
+}
+const wsOk = () => ws && ws.readyState === 1;
 async function poll(g) {
   if (g !== gen || !link) return;
+  if (inflight) { again = true; return; } inflight = true;
+  try { await poll1(g); } finally { inflight = false; if (again) { again = false; poll(gen); } }
+}
+async function poll1(g) {
   if (!linked && Date.now() > link.until) return openRequest();   // 10분 지난 코드는 새로
   let r; try { r = await rpc('screen_poll', { p_id: link.id, p_secret: secret(), p_epoch: known.epoch, p_rev: known.rev }); }
   catch (e) { if (g !== gen) return; fails++; net(true); return schedule(g, Math.min(30000, 2000 * 2 ** Math.min(fails, 4))); }
@@ -372,8 +425,8 @@ async function poll(g) {
     if (!linked) { linked = true; pairing = false; }
     deadline = Date.now() + (Date.parse(r.expires_at) - Date.parse(r.server_at));   // 서버 시각과의 차이를 빼고 TV 시계로 — 인터넷이 끊겨도 12시간이면 지운다
     clearTimeout(deadTimer); deadTimer = setTimeout(() => { if (g === gen) openRequest(); }, Math.max(0, deadline - Date.now()));
-    if (r.state && r.state.schema === 1 && (r.epoch !== known.epoch || known.rev === null || r.revision > known.rev)) { known = { epoch: r.epoch, rev: r.revision }; P = r.state; }
-    render(); return schedule(g, document.hidden ? 10000 : 2000);
+    if (r.state && r.state.schema === 1 && (r.epoch !== known.epoch || known.rev === null || r.revision > known.rev)) { known = { epoch: r.epoch, rev: r.revision }; P = r.state; window.__at = Date.now(); }
+    render(); listen(); return schedule(g, document.hidden ? 10000 : wsOk() ? 5000 : 2000);   // 신호를 듣는 동안은 5초에 한 번만 확인
   }
   if (r.status === 'waiting') return schedule(g, document.hidden ? 10000 : 2000);
   openRequest();   // revoked · expired · gone — 이름·자리를 지우고 새 코드
