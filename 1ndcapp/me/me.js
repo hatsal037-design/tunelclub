@@ -36,7 +36,7 @@ function Avatar({ r = {}, size = 40 }) {
   return html`<span class="avatar sec" style=${st}><${Icon} name="personCircle" size=${size} /></span>`;
 }
 const PersonRow = ({ r, onClick }) => html`<${Row} onClick=${onClick} chevron><${Avatar} r=${r} size=${36} /><${RowLabel} title=${r.nick} text=${r.handle && '@' + r.handle} /><//>`;
-const Ad = () => html`<div class="ad" aria-label=${T('ad.label')}>${T('ad.label')}</div>`;
+const Ad = () => null;   // 광고 당분간 없음(정함 6, 2026-10-06) — 붙일 때 옛 칸: html`<div class="ad" aria-label=${T('ad.label')}>${T('ad.label')}</div>`
 function Stats({ s }) {
   const w = s.wins || 0, l = s.losses || 0;
   return html`<div class="stats"><div><span>${T('profile.games')}</span><b>${s.games || 0}</b></div>
