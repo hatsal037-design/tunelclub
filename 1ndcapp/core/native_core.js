@@ -533,9 +533,11 @@ var NativeCore = (function () {
      판을 시작하기 전, 진행자가 자리 잡기(준비 명령)를 하기 전까지 대기. «한 판 더»를 누르면 다시 대기 */
   var TVP_KEY = 'dangsan_tv_plaza', TVW_KEY = 'dangsan_tv_wait';
   function tvPlaza() { try { return JSON.parse(localStorage.getItem(TVP_KEY) || 'null'); } catch (e) { return null; } }
-  var PREP_CMD = /^(preparation|board|handoff)\.|^roles\.(?!setFamily$)/;   // 계열 고르기(오늘 화면)는 자리 잡기가 아니다
+  var PREP_CMD = /^board\.|^preparation\.commitPeople$|^handoff\.|^roles\.assign$/;   // 자리 배치를 실제로 시작할 때만 대기 끝(2026-10-06 햇살님 «자리 배치 하기 전까진 대기로») — «새 판 준비»(preparation.enter)·계열·모드 고르기는 아직 대기
   function prepareDisplayPublic() {
-    var n = state.nights || 1, began = firstNightBegun(), ended = began && gameEnded(), isDay = began && !ended && state.phase === 'day';
+    var tvw0 = localStorage.getItem(TVW_KEY), began0 = firstNightBegun(), old = began0 && gameEnded() && tvw0 === '2';   // '2' = 지난 판이 끝난 채로 새 판 자리 배치를 시작 — 지난 판 종료·복기 대신 새 준비 화면
+    if (tvw0 === '2' && !(began0 && gameEnded())) { localStorage.setItem(TVW_KEY, '0'); tvw0 = '0'; }   // 새 판이 시작되면 보통으로
+    var n = state.nights || 1, began = began0 && !old, ended = began && gameEnded(), isDay = began && !ended && state.phase === 'day';
     var D = isDay ? dayRec() : null, announced = !!(D && D.announced), P = pubState(pubEpoch());
     var sid = function (i) { return 's' + (i + 1); };
     if (began && (ended || announced)) P.announcedThrough = Math.max(P.announcedThrough || 0, n);
@@ -543,7 +545,7 @@ var NativeCore = (function () {
       return { dead: dead, ghost: dead && ((s.rem || []).indexOf('유령표') >= 0 || (!s.dead && !villageType())) }; });   // 죽은 척도 유령표를 받는다(fakeDeadMark, 유령표 쓰는 판) — 안 쓰는 판은 예전처럼 있음으로
     var seats = (state.seats || []).map(function (s, i) { var v = (P.seats && P.seats[i]) || { dead: false, ghost: false };
       return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost }; });
-    var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), tvw = localStorage.getItem(TVW_KEY), waiting = tvp && tvp.code && (tvw === '1' ? (!began || ended) : tvw !== '0' && !began) ? { code: tvp.code, title: (pot0 && pot0.title) || tvp.title || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: (tvp.people || []).slice(0, 20) } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
+    var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), tvw = localStorage.getItem(TVW_KEY), waiting = tvp && tvp.code && (tvw === '1' ? (!began || ended) : tvw !== '0' && tvw !== '2' && !began) ? { code: tvp.code, title: (pot0 && pot0.title) || tvp.title || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: (tvp.people || []).slice(0, 20) } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
     var scene = waiting ? 'waiting' : !began ? 'prep' : ended ? 'ended' : !isDay ? 'night' : !announced ? 'dawn' : 'discussion';
     var noms = D ? D.noms || [] : [], G = isDay ? execGate() : null, nom = null, exec = null;
     var vo = typeof wz.voteOpen === 'number' && noms[wz.voteOpen] && !noms[wz.voteOpen].done ? wz.voteOpen : -1;
@@ -1339,7 +1341,7 @@ var NativeCore = (function () {
           r = rejected('persistenceFailed', '저장할 수 없는 값이 있어 이 조작을 취소했어요.'); } }
       if (!r) { undoTgt = tgt0; }   // 대상 확정이면 직전 상태를 들고, 다른 명령이 성공하면 버린다
       if (!r) { try { announceEnd(); } catch (e) {} try { if (!(firstNightBegun() && gameEnded())) { delete state.tvReveal; delete state.tvReplay; } } catch (e) {} }   // 새 판이면 지난 판 공개를 걷는다   // 판 끝 자동 발표 — 저장 뒤, 효과로만(판 상태는 안 바꾼다)
-      if (!r) { try { if (PREP_CMD.test(cmd.type)) localStorage.setItem(TVW_KEY, '0'); else if (cmd.type === 'game.again') localStorage.setItem(TVW_KEY, '1'); } catch (e) {} }   // 자리 잡기를 시작하면 대기 끝 · 한 판 더면 다시 대기
+      if (!r) { try { if (PREP_CMD.test(cmd.type)) localStorage.setItem(TVW_KEY, firstNightBegun() && gameEnded() ? '2' : '0'); else if (cmd.type === 'game.again') localStorage.setItem(TVW_KEY, '1'); } catch (e) {} }   // 자리 잡기를 시작하면 대기 끝 · 한 판 더면 다시 대기
       if (!r) { try { prepareDisplayPublic(); } catch (e) {
         try { undoStorage(); if (snap) restoreState(snap); var w2 = JSON.parse(wzSnap); Object.keys(wz).forEach(function (k) { delete wz[k]; }); Object.assign(wz, w2); } catch (e4) {}
         r = rejected('persistenceFailed', '공개 화면 정보를 저장하지 못해 이 조작을 취소했어요.');
