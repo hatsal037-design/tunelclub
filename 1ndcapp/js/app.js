@@ -5,6 +5,7 @@ import { applyAppearance } from './settings.js';
 import { stopSpeaking } from './narrator.js';
 import { Icon } from './icons.js';
 import { NavStack } from './nav.js';
+import { startDomI18n } from './i18n_dom.js';
 import { TodayView } from './screens/today.js';
 import { RecordsView } from './screens/records.js';
 import { LibraryView } from './screens/library.js';
@@ -50,6 +51,6 @@ function App() {
 }
 
 applyAppearance();
-bootStore().then(() => { account.init(); account.autoClose(); }).then(() => render(html`<${App} />`, document.getElementById('app')))
+bootStore().then(() => { account.init(); account.autoClose(); }).then(() => render(html`<${App} />`, document.getElementById('app'))).then(() => startDomI18n(document.getElementById('app')))   /* 영어 기기면 그려진 글자를 영어로(2026-10-06) */
   .catch(e => { document.getElementById('app').innerHTML = '<div class="boot">불러오지 못했어요. 새로고침해 주세요.</div>'; console.error(e); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});

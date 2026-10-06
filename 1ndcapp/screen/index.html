@@ -392,4 +392,5 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && li
 setInterval(() => { tick(); if (linked && deadline && Date.now() > deadline) openRequest(); }, 250);
 try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}   // TV 가 꺼지지 않게(되는 브라우저에서만)
 start();
-</script></body></html>
+</script><script type="module">import { startDomI18n } from '../js/i18n_dom.js'; startDomI18n(document.body);   /* 큰 화면도 TV 브라우저 언어가 영어면 영어로(2026-10-06) */</script>
+</body></html>

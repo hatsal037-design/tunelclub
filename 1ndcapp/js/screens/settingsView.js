@@ -1,4 +1,5 @@
 // S01 · 설정 — 진행·화면·백업 / 계정(AccountView) 은 따로
+import { LANG_NAMES } from '../i18n_dom.js';
 import { html, useState, useRef } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { settings } from '../settings.js';
@@ -7,7 +8,6 @@ import { bgmSync, bgmStop, bgmVolume } from '../bgm.js';
 import { Page, Section, Row, Toggle, Segmented, Labeled, useRun } from '../ui.js';
 import { Back, useNav } from '../nav.js';
 import { Icon } from '../icons.js';
-import { FriendsView } from './friends.js';
 import { account } from '../account.js';
 import { useEffect } from '../../lib/preact-htm.js';
 import { Alert } from '../ui.js';
@@ -22,6 +22,7 @@ function AccountSection() {
   const i = account.info || {}, bits = [i.title && '🏅 ' + i.title, i.founder_no && '초기 참여자 No.' + i.founder_no].filter(Boolean).join(' · ');
   return html`<${Section} footer=${`올라간 판 ${i.games ?? '?'} · 안 올라간 판 ${account.pending}`}>
     <div class="row"><div class="grow"><div>${account.nick() || '이름 없음'}</div><div class="sub">${bits || '투넬 계정으로 로그인됨'}</div></div><span class="sub">로그인</span></div>
+    ${(account.needs || []).length > 0 && html`<${Row} tint chevron onClick=${() => { location.href = 'me/'; }}>계정 정보 채우기<//>`}
     ${account.pending > 0 && html`<${Row} tint disabled=${account.busy} onClick=${async () => { const r = await account.sync(); setMsg('올림 ' + r.ok + '판' + (r.bad ? ' · 실패 ' + r.bad + '판' : '')); }}>${account.busy ? '올리는 중…' : '밀린 기록 올리기'}<//>`}
     <${Row} tint onClick=${async () => { const n = await account.pull(); setMsg(n === null ? '내려받지 못했어요. 로그인·연결을 확인해 주세요.' : n ? n + '판을 내려받았어요.' : '새로 내려받을 판이 없어요.'); }}>서버에서 내려받기<//>
     <${Row} danger onClick=${() => account.logout()}>로그아웃<//>
@@ -59,6 +60,9 @@ export function SettingsView() {
     <${Section} header="화면">
       <div class="row"><div class="rc">외관</div><div style="width:200px"><${Segmented} value=${settings.get('appearance')} onChange=${v => set('appearance', v)}
         options=${[['system', '시스템'], ['light', '라이트'], ['dark', '다크']]} /></div></div>
+      <div class="row"><div class="rc">언어</div><select class="textin" id="set-lang" style="max-width:200px" value=${(() => { try { return localStorage.getItem('1ndc_lang') || ''; } catch { return ''; } })()}
+        onChange=${e => { try { e.currentTarget.value ? localStorage.setItem('1ndc_lang', e.currentTarget.value) : localStorage.removeItem('1ndc_lang'); } catch {} location.reload(); }}>
+        <option value="">기기 언어</option>${Object.entries(LANG_NAMES).map(([c, n]) => html`<option value=${c}>${n}</option>`)}</select></div>
     <//>
     <${Section} header="백업" footer=${imported ? '가져왔어요 — 없던 기록만 더했어요.' : null}>
       <${Row} tint onClick=${exportBackup}>백업 내보내기<//>
@@ -76,7 +80,6 @@ export function AccountView() {
   return html`<${Page} title="계정" left=${html`<${Back} />`}>
     <${AccountSection} />
     ${account.user && html`<${ProfileCard} />`}
-    ${account.user && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${FriendsView} />`)}><${Icon} name="person2" size=${20} /><span class="grow">친구 · 내 전적</span><//><//>`}
     ${account.user && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${SeatedView} />`)}><${Icon} name="listBullet" size=${20} /><span class="grow">내가 들어간 판</span><//><//>`}
   <//>`;
 }

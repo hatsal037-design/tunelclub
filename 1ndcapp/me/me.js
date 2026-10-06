@@ -16,6 +16,7 @@ const tr = t => !!(DATA && t && DATA[t]);
 const rows = r => (r && (r.rows || r.value)) || [];
 const msgOf = r => r && !r.ok ? (r.code === 'legacy' ? r.legacy : T('err.' + r.code)) : null;
 const photoURL = p => URL_ + '/storage/v1/object/public/' + p;
+const LANGS = [['ko', '한국어'], ['en', 'English'], ['ja', '日本語'], ['es', 'Español'], ['zh-Hans', '简体中文'], ['zh-Hant', '繁體中文'], ['th', 'ไทย'], ['vi', 'Tiếng Việt'], ['id', 'Bahasa Indonesia'], ['pt-BR', 'Português (Brasil)']];
 const DEMO = /[?&]demo=1/.test(location.search);   /* 시안 확인용 — 로그인 없이 화면만 */
 
 const auth = { user: null, subs: new Set(),
@@ -205,7 +206,7 @@ function Profile({ handle }) {
 function AccountTab() {
   const on = useAuth(), nav = useNav();
   const [me, setMe] = useState({}), [st, setSt] = useState({});
-  const load = async () => { if (!on || DEMO) return; const m = await P.me(); const v = m.value || m; setMe(v); setSt(await P.status()); setLang(v.lang); if (!v.handle) nav.push(html`<${Signup} me=${v} done=${load} />`); };
+  const load = async () => { if (!on || DEMO) return; const m = await P.me(); const v = m.value || m; setMe(v); setSt(await P.status()); setLang(v.lang); if ((v.needs || []).length) { nav.push(html`<${Signup} me=${v} done=${load} />`); window.dispatchEvent(new Event('me-fill')); } };   // 빠진 칸(0250) — 계정 탭으로 넘겨 채우게
   useEffect(() => { load(); }, [on]);
   return html`<${Page}>
     <${LargeTitle}>${T('tab.account')}<//>
@@ -237,15 +238,16 @@ function useNameCheck(kind, value, orig) {
 }
 const Note = ({ n }) => n && html`<div class=${n[0] ? 'green' : 'red'} style="font-size:13px;padding:0 16px 8px">${n[1]}</div>`;
 function Signup({ me, done }) {
-  const nav = useNav(); const [nick, setNick] = useState(me.nick || ''), [handle, setHandle] = useState(''), [agree, setAgree] = useState(false), [busy, setBusy] = useState(false), [fail, setFail] = useState({});
-  const nn = useNameCheck('nick', nick, me.nick), hn = useNameCheck('handle', handle, '');
-  const ok = agree && handle && nick && !(nn && !nn[0]) && !(hn && !hn[0]);
-  const save = async () => { setBusy(true); const ch = { handle, agreed: true }; if (nick !== me.nick) ch.nick = nick; const r = await P.setProfile(ch); setBusy(false); if (r.ok) { nav.pop(); done(); } else setFail(r.failed || {}); };
+  const need = k => (me.needs || ['nick', 'handle', 'agree']).includes(k);
+  const nav = useNav(); const [nick, setNick] = useState(me.nick || ''), [handle, setHandle] = useState(me.handle || ''), [agree, setAgree] = useState(false), [busy, setBusy] = useState(false), [fail, setFail] = useState({});
+  const nn = useNameCheck('nick', nick, me.nick), hn = useNameCheck('handle', handle, me.handle || '');
+  const ok = (agree || !need('agree')) && handle && nick && !(nn && !nn[0]) && !(hn && !hn[0]);
+  const save = async () => { setBusy(true); const ch = {}; if (need('agree')) ch.agreed = true; if (handle !== (me.handle || '')) ch.handle = handle; if (nick !== me.nick) ch.nick = nick; const r = await P.setProfile(ch); setBusy(false); if (r.ok) { nav.pop(); done(); } else setFail(r.failed || {}); };
   return html`<${Page} title=${T('signup.title')} right=${html`<${NavButton} label=${T('signup.go')} bold disabled=${!ok || busy} onClick=${save} />`}>
-    <${Section} header=${T('profile.nick')}><div class="row"><input class="textin grow" id="su-nick" value=${nick} onInput=${e => setNick(e.currentTarget.value)} /></div><//><${Note} n=${fail.nick ? [false, T('err.' + fail.nick)] : nn} />
-    <${Section} header=${T('profile.handle')}><div class="row"><span class="sec">@</span><input class="textin grow" id="su-handle" value=${handle} autocapitalize="off" autocomplete="off" spellcheck="false" onInput=${e => setHandle(e.currentTarget.value)} /></div><//><${Note} n=${fail.handle ? [false, T('err.' + fail.handle)] : hn} />
-    <${Section}><${Toggle} checked=${agree} onChange=${setAgree}>${T('signup.agree')}<//>
-      <${Row} chevron onClick=${() => open('terms.html')}>${T('signup.terms')}<//><${Row} chevron onClick=${() => open('privacy.html')}>${T('signup.privacy')}<//><//>
+    ${need('nick') && html`<${Section} header=${T('profile.nick')}><div class="row"><input class="textin grow" id="su-nick" value=${nick} onInput=${e => setNick(e.currentTarget.value)} /></div><//><${Note} n=${fail.nick ? [false, T('err.' + fail.nick)] : nn} />`}
+    ${need('handle') && html`<${Section} header=${T('profile.handle')}><div class="row"><span class="sec">@</span><input class="textin grow" id="su-handle" value=${handle} autocapitalize="off" autocomplete="off" spellcheck="false" onInput=${e => setHandle(e.currentTarget.value)} /></div><//><${Note} n=${fail.handle ? [false, T('err.' + fail.handle)] : hn} />`}
+    ${need('agree') && html`<${Section} footer=${T('signup.easy')}><${Toggle} checked=${agree} onChange=${setAgree}>${T('signup.agree')}<//>
+      <${Row} chevron onClick=${() => open('terms.html')}>${T('signup.terms')}<//><${Row} chevron onClick=${() => open('privacy.html')}>${T('signup.privacy')}<//><//>`}
   <//>`;
 }
 function EditProfile({ me, done }) {
@@ -273,7 +275,8 @@ function Settings({ me, done }) {
   const nav = useNav(); const [priv, setPriv] = useState(me.private !== false), [lang, setL] = useState(me.lang || ''), [ask, setAsk] = useState(false);
   return html`<${Page} title=${T('account.settings')} left=${html`<${Back} />`}>
     <${Section}><${Toggle} checked=${priv} onChange=${async v => { setPriv(v); await P.setProfile({ private: v }); done(); }}>${T('profile.private')}<//><//>
-    <${Section} header=${T('lang.title')}><${Segmented} options=${[['', T('lang.device')], ['ko', T('lang.ko')], ['en', 'English']]} value=${lang} onChange=${async v => { setL(v); setLang(v); await P.setProfile({ lang: v || null }); draw(); }} /><//>
+    <${Section} header=${T('lang.title')}><div class="row"><select class="textin grow" id="me-lang" value=${lang} onChange=${async e => { const v = e.currentTarget.value; setL(v); await setLang(v || null); await P.setProfile({ lang: v || null }); draw(); }}>
+      <option value="">${T('lang.device')}</option>${LANGS.map(([c, n]) => html`<option value=${c}>${n}</option>`)}</select></div><//>
     <${Section}><${Row} chevron onClick=${() => nav.push(html`<${PeopleList} title=${T('block.list')} load=${async () => rows(await P.blocked())} />`)}>${T('block.list')}<//><//>
     <${Section}><${Row} danger onClick=${() => auth.logout()}>${T('account.logout')}<//><//>
     <${Section} footer=${T('leave.note')}><${Row} danger onClick=${() => setAsk(true)}>${T('leave.do')}<//><//>
@@ -291,6 +294,7 @@ async function setLang(account) {
 function App() {
   const [tab, setTab] = useState(() => { const q = location.search; if (/[?&]u=/.test(q)) return 'people'; if (/[?&]j=/.test(q)) return 'plaza'; try { return localStorage.getItem('me.tab') || 'plaza'; } catch { return 'plaza'; } });
   const go = t => { setTab(t); try { localStorage.setItem('me.tab', t); } catch {} };
+  useEffect(() => { const f = () => setTab('account'); window.addEventListener('me-fill', f); return () => window.removeEventListener('me-fill', f); }, []);
   const tabs = [['plaza', 'tab.plaza', 'house', PlazaTab], ['library', 'tab.library', 'books', LibraryTab], ['people', 'tab.people', 'person', PeopleTab], ['account', 'tab.account', 'personCircle', AccountTab]];
   return html`<div class="shell">
     ${tabs.map(([id, , , C]) => html`<div class="tabpage" key=${id} style=${tab === id ? '' : 'display:none'}><${NavStack} root=${html`<${C} />`} /></div>`)}

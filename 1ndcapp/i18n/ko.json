@@ -31,6 +31,7 @@
   "edit.left": "변경 {n}회 남음",
   "signup.title": "첫 가입",
   "signup.agree": "만 14세 이상·약관 동의",
+  "signup.easy": "이름·이메일·전화번호는 받지 않아요. 탈퇴는 언제든 바로 되고, 30일 뒤 계정 정보가 모두 지워져요.",
   "signup.terms": "약관",
   "signup.privacy": "개인정보",
   "signup.go": "가입",
