@@ -225,6 +225,8 @@ main{flex:1;width:100%;max-width:560px;margin:0 auto;padding:8px 16px 30px}
 .acct .hint2{font-size:10.5px}
 .acct .out{border:0;border-bottom:1px dashed currentColor;border-radius:0;width:auto;display:block;margin:4px auto 0;padding:8px 2px 2px;color:#C98A8E;font-weight:600;font-size:12.5px}
 .acct .fld2 input[readonly]{color:#A79E8F;box-shadow:none;background:#201E23;cursor:default}   /* 잠금 — 바꾸기를 눌러야 열린다 */
+.acct .leaving{border:1px solid #B3161E;color:#B3161E;padding:10px 12px;margin:0 0 14px;font-size:13px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.acct .leaving button{margin-left:auto;background:none;border:1px dashed #B3161E;color:#B3161E;padding:6px 10px;font:inherit;cursor:pointer;min-height:36px}
 .acct .bye{display:block;margin:18px auto 0;background:none;border:0;color:#77716A;font-size:11.5px;text-decoration:underline dotted;cursor:pointer;font-family:inherit}
 /* 확인 팝업 (2026-09-29) — 닉네임·실명 바꾸기 확인 · 탈퇴(끝까지 읽어야 버튼이 보인다, 바깥을 누르면 닫힌다) */
 .cfm{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -1144,22 +1146,31 @@ document.getElementById('pastMore').onclick = () => keepView(() => {
       payIn.dataset.was = v; return true;
     });
 
-    /* 탈퇴 — 확인 사항을 끝까지 읽어야 버튼이 나온다. 서버 withdraw_me 가 본인만 지운다(운영자는 막힘) */
+    /* 탈퇴 — 확인 사항을 끝까지 읽어야 버튼이 나온다. 서버 withdraw_me 는 계정 하나(투넬·첫밤)를 탈퇴 중으로 두고 30일 뒤 지운다(운영자는 막힘, 2026-10-06 0260) */
     const bye = document.getElementById('aBye');
     if(bye) bye.onclick = async () => {
       const no = 'NO.' + String(m.no||0).padStart(4,'0');
       const yes = await ask({ title:'정말 탈퇴할까요?', ok:'탈퇴하기', danger:true, items:[
-        '닉네임·사진·입금자 실명이 지워져요.',
-        '참석 기록·도장·신청 내역·쪽지·좋알람이 모두 지워져요.',
+        '계정이 하나라 첫밤사망자클럽에서도 같이 탈퇴돼요.',
+        '30일 안에는 탈퇴를 취소할 수 있어요. 30일이 지나면 지워져요.',
+        '닉네임·사진·입금자 실명, 참석 기록·도장·신청 내역·쪽지·좋알람이 지워져요.',
         '지난 모임 기록에는 이름 없이 «탈퇴 회원»으로만 남아요.',
         `회원번호 ${no}는 다시 쓰지 않아요. 다시 가입하면 새 번호를 받아요.`,
         '신청해 둔 모임이 있으면 참가비 환불은 탈퇴 전에 운영자에게 먼저 알려 주세요.',
-        '지운 기록은 되살릴 수 없어요.' ] });
+        '30일이 지나 지운 기록은 되살릴 수 없어요.' ] });
       if(!yes) return;
       const { error } = await sb.rpc('withdraw_me');
       if(error){ alert('탈퇴하지 못했어요: ' + error.message); return; }
       await signOutAll();
     };
+    /* 탈퇴 중이면 맨 위에 지워지는 날과 «탈퇴 취소» (0260) */
+    sb.rpc('my_leave').then(({ data: until }) => {
+      if(!until) return;
+      const d = new Date(until), box = document.createElement('div'); box.className = 'leaving';
+      box.innerHTML = `<b>탈퇴 중이에요</b> · ${d.getMonth()+1}월 ${d.getDate()}일에 지워져요 <button type="button">탈퇴 취소</button>`;
+      box.querySelector('button').onclick = async () => { const { data: r } = await sb.rpc('withdraw_cancel'); if(r?.ok) box.remove(); else alert('취소하지 못했어요'); };
+      abody.prepend(box);
+    });
   }
 
   try{
