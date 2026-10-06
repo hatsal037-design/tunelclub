@@ -247,7 +247,7 @@ function Signup({ me, done }) {
     ${need('nick') && html`<${Section} header=${T('profile.nick')}><div class="row"><input class="textin grow" id="su-nick" value=${nick} onInput=${e => setNick(e.currentTarget.value)} /></div><//><${Note} n=${fail.nick ? [false, T('err.' + fail.nick)] : nn} />`}
     ${need('handle') && html`<${Section} header=${T('profile.handle')}><div class="row"><span class="sec">@</span><input class="textin grow" id="su-handle" value=${handle} autocapitalize="off" autocomplete="off" spellcheck="false" onInput=${e => setHandle(e.currentTarget.value)} /></div><//><${Note} n=${fail.handle ? [false, T('err.' + fail.handle)] : hn} />`}
     ${need('agree') && html`<${Section} footer=${T('signup.easy')}><${Toggle} checked=${agree} onChange=${setAgree}>${T('signup.agree')}<//>
-      <${Row} chevron onClick=${() => open('terms.html')}>${T('signup.terms')}<//><${Row} chevron onClick=${() => open('privacy.html')}>${T('signup.privacy')}<//><//>`}
+      <${Row} chevron onClick=${() => open('../terms.html')}>${T('signup.terms')}<//><${Row} chevron onClick=${() => open('../privacy.html')}>${T('signup.privacy')}<//><//>`}
   <//>`;
 }
 function EditProfile({ me, done }) {

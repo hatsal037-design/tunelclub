@@ -31,7 +31,7 @@
   "edit.left": "변경 {n}회 남음",
   "signup.title": "첫 가입",
   "signup.agree": "만 14세 이상·약관 동의",
-  "signup.easy": "이름·이메일·전화번호는 받지 않아요. 탈퇴는 언제든 바로 되고, 30일 뒤 계정 정보가 모두 지워져요.",
+  "signup.easy": "가입할 때는 이름·이메일·전화번호를 받지 않아요. 탈퇴는 언제든 바로 되고, 30일 뒤 계정 정보가 모두 지워져요.",
   "signup.terms": "약관",
   "signup.privacy": "개인정보",
   "signup.go": "가입",
@@ -103,8 +103,8 @@
   "empty.plaza": "참가 중인 광장이 없어요",
   "empty.search": "찾은 사람이 없어요",
   "empty.requests": "처리할 요청이 없어요",
-  "leave.do": "첫밤 탈퇴",
-  "leave.ask": "첫밤에서 탈퇴할까요?",
+  "leave.do": "탈퇴",
+  "leave.ask": "탈퇴할까요?",
   "plaza.people": "체크인한 사람",
   "ui.cancel": "취소",
   "leave.ok": "탈퇴",
@@ -117,7 +117,7 @@
   "profile.edit": "프로필 수정",
   "lang.ko": "한국어",
   "ui.ok": "확인",
-  "leave.note": "30일 안에 다시 로그인하면 취소할 수 있어요. 투넬 회원은 그대로예요.",
+  "leave.note": "계정이 하나라 투넬에서도 같이 탈퇴돼요. 30일 안에는 취소할 수 있어요.",
   "people.search": "@아이디·닉네임",
   "login.apple": "Apple로 로그인",
   "login.google": "Google로 로그인",
@@ -153,5 +153,6 @@
   "lang.en": "English",
   "data.mt": "기계 번역",
   "data.ko": "한국어 자료",
-  "lib.players": "{r}명"
+  "lib.players": "{r}명",
+  "err.admin": "운영자 계정은 탈퇴할 수 없어요"
 }
