@@ -131,6 +131,26 @@
       playedWith: function () { return call('people_played_with', {}); },
       plazaPeople: function (plazaId) { return call('plaza_people', { p_plaza: plazaId }); },
 
+      // ── 소셜 피드·좋아요(0294) — 한 장 = 사람 한 명 × 광장 하나 ──
+      feed: function (before, key) { return call('feed', { p_before: before || null, p_before_key: key || null }); },   // 커서 = 시각 + 아이디|장(0307)
+      posts: function (handle, before, key) { return call('profile_posts', { p_handle: handle, p_before: before || null, p_before_key: key || null }); },
+      like: function (handle, post, on) { return call('feed_like', { p_handle: handle, p_post: post, p_on: on !== false }); },
+      likers: function (handle, post) { return call('feed_likers', { p_handle: handle, p_post: post }); },
+      mine: function (before) { return call('feed_mine', { p_before: before || null }); },   // 올릴 수 있는 내 광장(0295)
+      publish: function (post, pages, bg, caption, font) { return call('feed_publish', { p_post: post, p_pages: pages, p_bg: bg || null, p_caption: caption || null, p_font: font || null }); },   // font(0311)
+      story: function (game) { return call('game_story', { p_game: game }); },
+      note: function (text) { return call('feed_note', { p_text: text }); },   // 글 올리기(0303)   // 판 넘겨 보기·태그(0301)
+      tag: function (t, before, key) { return call('feed_tag', { p_tag: t, p_before: before || null, p_before_key: key || null }); },
+      one: function (handle, post) { return call('feed_one', { p_handle: handle, p_post: post }); },   // 꾸미기(0300): pages = 순서대로 [{k:'people'|'titles'|'game', id}], bg = 색 이름
+      unpublish: function (post) { return call('feed_unpublish', { p_post: post }); },
+      comments: function (handle, post) { return call('feed_comment_list', { p_handle: handle, p_post: post }); },   // 댓글·요약(0296)
+      comment: function (handle, post, body) { return call('feed_comment_add', { p_handle: handle, p_post: post, p_body: body }); },
+      uncomment: function (id) { return call('feed_comment_delete', { p_id: id }); },
+      summary: function (handle) { return call('play_summary', { p_handle: handle }); },
+      titles: function (handle) { return call('titles', { p_handle: handle }); },   // 칭호·직업 도감(0298)
+      equip: function (id) { return call('title_equip', { p_id: id || null }); },
+      codex: function (handle) { return call('role_codex', { p_handle: handle }); },
+
       // ── 요청함·알림함·푸시 ──
       inbox: function () { return call('inbox_list', {}).then(function (r) { return r.ok ? set('inbox', r.value || []) : r; }); },
       notices: function () { return call('notices_list', {}).then(function (r) { return r.ok ? set('notices', r.value || []) : r; }); },

@@ -4,7 +4,7 @@
 import { html, render, useState, useEffect } from '../lib/preact-htm.js';
 import { Icon } from '../js/icons.js';
 import { NavStack, useNav, Back } from '../js/nav.js';
-import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton } from '../js/ui.js';
+import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton, Sheet } from '../js/ui.js';
 
 const URL_ = 'https://yguvfogtzazoawtclqvf.supabase.co', KEY = 'sb_publishable_KeezD9hmEnxSTEWA_w8x-A_Tgk3roUf';
 const sb = window.supabase.createClient(URL_, KEY);
@@ -144,6 +144,163 @@ async function sheets(m) {
   return out;
 }
 
+/* ── 피드(0294) — 한 장 = 사람 한 명 × 광장 하나: 판마다 직업·승패, 좋아요. 앱 소셜 공간 SocialSpace.swift 와 같다(2026-10-07) ── */
+const day = s => { const d = new Date(s || ''); return isNaN(d) ? (s || '').slice(0, 10) : d.toLocaleDateString(document.documentElement.lang || 'ko', { month: 'long', day: 'numeric', weekday: 'short' }); };
+let ART = null; const artMap = async () => ART || (ART = await fetch('library/art.json').then(r => r.json()).catch(() => ({})));   // 직업 그림 이름표(자료_빌드.cjs)
+const plazaLine = p => T('plaza.host_place', { host: p.host || '', place: T('place.plaza') }) + (p.title ? ' · ' + p.title : '');
+/* 장 그리기 — 공용 엔진(core/postcard.js)이 준 그리기 목록을 비율대로 그리기만 한다(2026-10-07 «어느 시스템에 심어도 같은 결과»).
+   좌표는 1000×1250 기준 → 1 = 0.1cqw. 배치·색·크기·효과를 여기서 정하지 않는다 — 바꾸려면 엔진을 고친다(앱 CardView.swift 와 같은 짝) */
+const PC = window.Postcard;
+PC.setMetrics(await fetch('core/postcard_metrics.json').then(r => r.json()).catch(() => ({})));   // 글꼴 폭 표 — 엔진이 줄을 나눈다(D)
+fetch('library/role_names.json').then(r => r.json()).then(m => PC.setRoles(m)).catch(() => {});   // 직업 코드 → 지금 이름(0308)
+const ordOf = n => PC.ord(n);
+const FX = PC.FX;
+const rgba = c => c ? `rgba(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)},${c[3] == null ? 1 : c[3]})` : 'transparent';
+const u = n => (n / 10) + 'cqw';
+function Layers({ list }) {
+  const g = list.filter(x => x.t !== 'tex'), tex = list.find(x => x.t === 'tex');
+  return html`${g.length > 0 && html`<svg class="cl" viewBox="0 0 1000 1250" preserveAspectRatio="none" aria-hidden="true">
+    ${g.map((x, k) => x.t === 'grad' ? html`<defs><linearGradient id=${'g' + k} x1="0" y1="0" x2="0" y2="1">${x.stops.map(s => html`<stop offset=${s[0]} stop-color=${rgba([s[1][0], s[1][1], s[1][2], 1])} stop-opacity=${s[1][3]} />`)}</linearGradient></defs><rect width="1000" height="1250" fill=${`url(#g${k})`} />`
+      : x.t === 'line' ? html`<line x1=${x.x1} y1=${x.y1} x2=${x.x2} y2=${x.y2} stroke=${rgba(x.c)} stroke-width=${x.w} />`
+      : x.t === 'poly' ? html`<polyline points=${x.pts.map(p => p.join(',')).join(' ')} fill="none" stroke=${rgba(x.c)} stroke-width=${x.w} />`
+      : x.t === 'circle' ? html`<circle cx=${x.x} cy=${x.y} r=${x.r} fill=${rgba(x.c)} />` : null)}</svg>`}
+    ${tex && html`<div class="cl tex" style=${`background:url(me/tex/${tex.name}.webp) 0 0 / ${u(tex.tile)} auto;opacity:${tex.a}`}></div>`}`;
+}
+/* 줄 찍기(D) — 엔진이 나눈 줄을 그대로. 줄마다 기준선(by)에 맞춰 놓고 다시 줄바꿈·줄이기를 하지 않는다(앱 CardView laidText 와 같은 짝) */
+function CardLines({ it, interactive }) {
+  const nav = useNav(), fam = 'pc-' + it.face.key, top = ln => ln.by - it.asc - (it.size - it.asc - it.dsc) / 2;   // line-height 1em 일 때 기준선 = 위 + 반여백 + asc
+  const go = l => e => { e.preventDefault(); e.stopPropagation(); nav.push(l.kind === 'tag' ? html`<${TagFeed} tag=${l.v} />` : l.kind === 'more' ? html`<${Page} title=${T('feed.more')} left=${html`<${Back} />`}><div style="padding:20px;white-space:pre-wrap;font-size:16px;line-height:1.6"><${Cap} text=${l.v} /></div><//>` : html`<${Profile} handle=${l.v} />`); };
+  return html`${it.bg && html`<div class="cbg" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.w)};height:${u(it.h)};background:${rgba(it.bg)};border-radius:${u(it.radius)}`}></div>`}
+    ${it.L.map((ln, n) => html`<div key=${n} class="cl2" style=${`left:${u(ln.x)};top:${u(top(ln))};font-family:'${fam}';font-size:${u(it.size)};color:${rgba(it.color)}`}>${ln.runs.map(r => r.link && interactive
+      ? html`<a class="mention" href="#" style=${r.color ? 'color:' + rgba(r.color) : ''} onClick=${go(r.link)}>${r.s}</a>` : html`<span style=${r.color ? 'color:' + rgba(r.color) : ''}>${r.s}</span>`)}</div>`)}`;
+}
+function CardText({ it, interactive }) {
+  if (it.L) return html`<${CardLines} it=${it} interactive=${interactive} />`;
+  const nav = useNav(), clamp = it.lines > 1 ? `-webkit-line-clamp:${it.lines};display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;` : 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+  const box = it.bg ? `background:${rgba(it.bg)};border-radius:${u(it.radius)};padding:${u(it.pad * 0.5)} ${u(it.pad)};width:fit-content;max-width:${u(it.w)};margin:0 auto;` : '';
+  return html`<div class="ct" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.w)};font-size:${u(it.size)};font-weight:${it.weight};color:${rgba(it.color)};text-align:${it.align}`}>
+    <div style=${clamp + box}>${it.runs.map(r => r.link && interactive ? html`<a class="mention" href="#" style=${r.color ? 'color:' + rgba(r.color) : ''} onClick=${e => { e.preventDefault(); e.stopPropagation(); nav.push(r.link.kind === 'tag' ? html`<${TagFeed} tag=${r.link.v} />` : html`<${Profile} handle=${r.link.v} />`); }}>${r.s}</a>`
+      : html`<span style=${r.color ? 'color:' + rgba(r.color) : ''}>${r.s}</span>`)}</div></div>`;
+}
+/* 얼굴 — 한 번 누르면 @말풍선, 말풍선을 누르면 프로필(인스타 태그) */
+function CardFace({ it, tag, setTag, interactive }) {
+  const nav = useNav(), on = interactive && it.handle && tag === it.handle;
+  return html`<div class="cf" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.d)};height:${u(it.d)};border:${u(it.ring)} solid ${rgba([it.color[0], it.color[1], it.color[2], 0.9])}`} onClick=${() => interactive && it.handle && setTag(on ? null : it.handle)}>
+    ${it.photo || (it.avatar || '').startsWith('icon:') ? html`<${Avatar} r=${it} size=${100} />` : html`<span class="noface"><${Icon} name="person" size=${40} /></span>`}
+    ${it.host && html`<span class="mask"><${Icon} name="theater" size=${14} /></span>`}
+    ${on && html`<button class="bubble" onClick=${e => { e.stopPropagation(); nav.push(html`<${Profile} handle=${it.handle} />`); }}>@${it.handle}</button>`}</div>`;
+}
+function CardPage({ page, interactive = true }) {
+  const [art, setArt] = useState(ART), [tag, setTag] = useState(null); useEffect(() => { artMap().then(setArt); }, []);
+  const b = page.bg.base;
+  return html`<div class="card">
+    <div class="cl" style=${b.kind === 'image' ? 'background:#221a40 url(screen/night.jpg) center / cover' : 'background:' + rgba(b.rgb)}></div>
+    <${Layers} list=${page.bg.layers} />
+    ${page.items.map((it, k) => it.t === 'text' ? html`<${CardText} key=${k} it=${it} interactive=${interactive} />`
+      : it.t === 'grad' ? html`<${Layers} key=${k} list=${[it]} />`
+      : it.t === 'rect' ? html`<div key=${k} class="cr" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.w)};height:${u(it.h)};background:${rgba(it.c)}`}></div>`
+      : it.t === 'art' ? html`<div key=${k} class="ca" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.size)};height:${u(it.size)};color:${rgba(it.color)}`}>${(() => { const a = (art || {})[it.role]; return a && a.icon ? html`<${RoleArt} r=${a} size=${200} />` : html`<span>${(a && a.e) || ''}</span>`; })()}</div>`
+      : it.t === 'icon' && it.name === 'theater' ? html`<div key=${k} class="ca" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.size)};height:${u(it.size)};color:${rgba(it.color)}`}><${Icon} name="theater" size=${200} stroke=${1.2} /></div>`
+      : it.t === 'face' ? html`<${CardFace} key=${k} it=${it} tag=${tag} setTag=${setTag} interactive=${interactive} />`
+      : it.t === 'sub' ? html`<div key=${k} class="cs" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.w)};height:${u(it.h)};border-radius:${u(it.radius)}`}><${CardPage} page=${it.page} interactive=${interactive} /></div>` : null)}
+  </div>`;
+}
+const Swatch = ({ bg }) => html`<${CardPage} page=${PC.swatch(bg)} interactive=${false} />`;
+function Slides({ p, setPage }) {
+  const specs = PC.specs(p);
+  return html`<div class="slides" onScroll=${e => { const el = e.currentTarget; setPage && setPage(Math.round(el.scrollLeft / el.clientWidth)); }}>
+    ${specs.map((sp, i) => html`<div class="pg" key=${i}><${CardPage} page=${PC.page(p, sp, i, specs.length)} /></div>`)}</div>`;
+}
+/* 설명 글 — #태그는 태그 모아 보기, @아이디는 프로필로 */
+function Cap({ text }) {
+  const nav = useNav(), out = [], re = /#([\p{L}\p{N}_]{1,30})|@([A-Za-z0-9_.]{2,30})/gu; let last = 0, m;   // 엔진 tokens() 와 같은 규칙(0307)
+  const s = String(text || '');
+  while ((m = re.exec(s))) { if (m.index > last) out.push(s.slice(last, m.index)); const all = m[0], mk = m[1] ? '#' : '@', w = m[1] || m[2];
+    out.push(html`<a class="mention" href="#" onClick=${e => { e.preventDefault(); e.stopPropagation(); nav.push(mk === '#' ? html`<${TagFeed} tag=${w} />` : html`<${Profile} handle=${w} />`); }}>${all}</a>`); last = m.index + all.length; }
+  out.push(s.slice(last)); return html`<span>${out}</span>`;
+}
+function useLike(p0) {
+  const [p, setP] = useState(p0), [busy, setBusy] = useState(false);
+  useEffect(() => setP(p0), [p0]);
+  const like = async () => { const was = !!p.liked, n = p.likes || 0; setP({ ...p, liked: !was, likes: n + (was ? -1 : 1) }); setBusy(true);   /* 바로 바꾸고, 서버가 거절하면 되돌린다 */
+    const r = DEMO ? { ok: true, likes: n + (was ? -1 : 1) } : await P.like(p.handle, p.post, !was); setBusy(false); setP(q => r && r.ok ? { ...q, likes: r.likes } : { ...q, liked: was, likes: n }); };
+  return [p, busy, like];
+}
+const Who = ({ p, nav }) => html`<button class="who" onClick=${() => nav.push(html`<${Profile} handle=${p.handle} />`)}><${Avatar} r=${p} size=${34} /><span>${p.ptitle && html`<small class=${'tc' + (p.tc || 0)} style="font-weight:600">${p.ptitle}</small>`}<b>${p.nick}</b><small>@${p.handle}</small></span></button>`;
+function PostCard({ p: p0, removed }) {
+  const nav = useNav(), [p, busy, like] = useLike(p0), [page, setPage] = useState(0), [menu, setMenu] = useState(false), n = PC.specs(p).length;
+  return html`<article class="post">
+    <div class="post-head"><${Who} p=${p} nav=${nav} /></div>
+    <${Slides} p=${p} setPage=${setPage} />
+    <div class="post-bar"><button class="icon" aria-label=${T('likes.title')} aria-pressed=${!!p.liked} disabled=${busy} onClick=${like} style=${p.liked ? 'color:var(--red)' : ''}><${Icon} name="heart" fill=${!!p.liked} size=${26} /></button>
+      <span class="dots" aria-hidden="true">${n > 1 && Array.from({ length: n }, (_, i) => html`<i class=${i === page ? 'on' : ''}></i>`)}</span>
+      <span class="sec tally">${T('feed.tally', { n: p.n || 0, w: p.won || 0 })}</span></div>
+    ${p.likes > 0 && html`<button class="likes" onClick=${() => nav.push(html`<${PeopleList} title=${T('likes.title')} load=${async () => rows(await P.likers(p.handle, p.post))} />`)}>${T('feed.likes_n', { n: p.likes })}</button>`}
+    ${p.caption && html`<div class="caption"><b>${p.nick}</b> <${Cap} text=${p.caption} /></div>`}
+    <button class="likes sec" style="font-weight:400" onClick=${() => nav.push(html`<${Comments} handle=${p.handle} post=${p.post} />`)}>${p.comments > 0 ? T('comments.n', { n: p.comments }) : T('comments.ph')}</button>
+  </article>`;
+}
+/* 글 한 장(0303) — X·스레드처럼 */
+function NoteCard({ p: p0, removed }) {
+  const nav = useNav(), [p, busy, like] = useLike(p0), [menu, setMenu] = useState(false);
+  return html`<article class="note">
+    <button class="av" onClick=${() => nav.push(html`<${Profile} handle=${p.handle} />`)}><${Avatar} r=${p} size=${38} /></button>
+    <div class="grow"><div class="nh">${p.ptitle && html`<small class=${'tc' + (p.tc || 0)} style="font-weight:600">${p.ptitle}</small>`}<b>${p.nick}</b><small class="sec">@${p.handle} · ${day(p.at)}</small>
+</div>
+      <div class="nt"><${Cap} text=${p.caption} /></div>
+      <div class="nb"><button class="icon" aria-pressed=${!!p.liked} disabled=${busy} onClick=${like} style=${p.liked ? 'color:var(--red)' : ''}><${Icon} name="heart" fill=${!!p.liked} size=${18} /> ${p.likes || 0}</button>
+        <button class="icon" onClick=${() => nav.push(html`<${Comments} handle=${p.handle} post=${p.post} />`)}><${Icon} name="compose" size=${18} /> ${p.comments || 0}</button></div></div>
+  </article>`;
+}
+const FeedItem = ({ p, removed }) => p.kind === 'note' ? html`<${NoteCard} p=${p} removed=${removed} />` : html`<${PostCard} p=${p} removed=${removed} />`;
+/* 댓글(0296) — 지우기는 쓴 사람·장 주인 */
+function Comments({ handle, post }) {
+  const [l, setL] = useState(), [t, setT] = useState(''), [busy, setBusy] = useState(false), [msg, setMsg] = useState(null);
+  const load = async () => setL(DEMO ? [] : rows(await P.comments(handle, post)));
+  useEffect(() => { load(); }, []);
+  const send = async () => { setBusy(true); const r = await P.comment(handle, post, t); setBusy(false); if (r && r.ok) { setT(''); load(); } else setMsg(msgOf(r)); };
+  return html`<${Page} title=${T('comments.title')} left=${html`<${Back} />`} bottom=${html`<div class="cbar"><textarea id="cm" rows="1" maxlength="300" placeholder=${T('comments.ph')} value=${t} onInput=${e => setT(e.currentTarget.value)}></textarea>
+      <button class="bprim" disabled=${busy || !t.trim()} onClick=${send}>${T('feed.post')}</button></div>`}>
+    <${Loading} v=${l}>${l && html`<${Section}>${l.length ? l.map(c => html`<${Row}><${Avatar} r=${c} size=${32} /><div class="grow"><b>${c.nick}</b> <small class="sec">${day(c.at)}</small><div><${Cap} text=${c.body} /></div></div>
+      ${c.can_delete && html`<button class="sec" style="background:none;border:0;font:inherit;min-height:44px" onClick=${async () => { await P.uncomment(c.id); load(); }}>${T('ui.delete')}</button>`}<//>`) : html`<${Row}><span class="sec">${T('comments.title')}</span><//>`}<//>`}<//>
+    <${Alert} open=${!!msg} title=${msg} onClose=${() => setMsg(null)} />
+  <//>`;
+}
+/* 요약 — 이번 달·분기·해(0297) */
+function Summary({ handle }) {
+  const [s, setS] = useState(null); useEffect(() => { if (!DEMO) P.summary(handle).then(setS); }, [handle]);
+  if (!s || s.ok === false) return null;
+  return html`<${Section}><div class="sum">${[['month', 'sum.month'], ['quarter', 'sum.quarter'], ['year', 'sum.year']].map(([k, t]) => { const x = s[k] || {};
+      return html`<div><span>${T(t)}</span><b>${T('sum.games', { n: x.games || 0, w: x.won || 0 })}</b>${x.role && html`<small>${D(x.role)}</small>`}</div>`; })}</div>
+    ${s.streak > 0 && html`<div class="row orange" style="font-weight:600">${T('sum.streak', { n: s.streak })}</div>`}<//>`;
+}
+const DEMO_FEED = [   /* 시안 확인용(?demo=1) — 실제 사람 아님 */
+  { handle: 'sample_a', nick: '보기1', post: 'x:1', at: '2026-10-10T05:00:00Z', host: '햇살', title: '8회', n: 2, won: 1, likes: 4, liked: true, mine: true, ptitle: '양심에 털이 난', tc: 2, bg: 'p161.focus',
+    caption: '오늘 최고의 판 #레전드 @sample_b', earned: [{ name: '흐름을 탄', tier: 1 }, { name: '노련한 무당', tier: 2 }],
+    people: ['햇살', '치즈', '에이치', '지수', '준', '하루', '망고', '커피', '리단'].map((nick, k) => ({ nick, handle: k ? 'p' + k : 'hatsal', host: !k })),
+    pages: [{ k: 'people', em: '9명이 모인 밤' }, { k: 'text', tx: '세 번 지목 끝에 드디어 잡았다 #레전드', em: '오늘의 한 줄' }, { k: 'game', id: 'g1' }, { k: 'story', id: 'g1', ph: 'd1', em: '산군 잡았다', cap: '세 번 지목 끝에 #첫승', lines: ['새우 → 채채 지명', '채채 10표', '⚖ 채채(부정한 여자) 처형'] }, { k: 'titles' }, { k: 'group', em: '오늘 요약', parts: [{ k: 'game', id: 'g1' }, { k: 'people' }, { k: 'text', tx: '세 번 지목 끝에 #레전드' }] }],
+    games: [{ game: 'g1', mode: '당산나무 마을', role: '무당', won: true, nights: 3 }, { game: 'g2', mode: '클래식', host: true }] },
+  { kind: 'note', handle: 'sample_b', nick: '보기2', post: 'note:1', at: '2026-10-09T05:00:00Z', caption: '오늘 처음 산군 해 봤는데 첫밤부터 손이 떨렸어요 #마피아 @sample_a', likes: 2, comments: 1 },
+  { handle: 'sample_b', nick: '보기2', post: 'x:2', at: '2026-10-03T05:00:00Z', host: '햇살', title: '7회', n: 1, won: 1, likes: 0, bg: 'p30.linen', games: [{ game: 'g3', mode: '오리지널 마피아', role: '대부', won: true, nights: 4 }] }];
+function FeedTab() {
+  const on = useAuth(), nav = useNav();
+  const [l, setL] = useState(), [more, setMore] = useState(false);
+  const load = async () => { if (DEMO) { setL(DEMO_FEED); return; } if (!on) { setL([]); return; } const r = rows(await P.feed()); setL(r); setMore(r.length >= 20); };
+  const next = async () => { const z = l[l.length - 1], r = rows(await P.feed(z.at, z.handle + '|' + z.post)); setL([...l, ...r]); setMore(r.length >= 20); };   // 같은 시각도 안 겹치게(0307)
+  useEffect(() => { load(); }, [on]);
+  /* 웹은 보기만 — 올리기·글 쓰기는 앱에서만(2026-10-07 햇살님) */
+  return html`<${Page} right=${html`<${NavButton} icon="bell" label=${T('notice.title')} onClick=${() => nav.push(html`<${Notices} />`)} />`}>
+    <${LargeTitle}>${T('tab.feed')}<//>
+    ${!on ? html`<${LoginRows} />` : html`<${Loading} v=${l}>${l && html`
+      ${!l.length && html`<${Section}><${Row}><span class="sec">${T('feed.empty')}</span><//><//>`}
+      <div class="feed">${l.map(p => html`<${FeedItem} key=${p.handle + '|' + p.post} p=${p} removed=${load} />`)}</div>
+      ${more && html`<${Section}><${Row} tint onClick=${next}>${T('ui.more')}<//><//>`}`}<//>`}
+  <//>`;
+}
+function TagFeed({ tag }) {
+  const [l, setL] = useState(); useEffect(() => { DEMO ? setL(DEMO_FEED) : P.tag(tag).then(r => setL(rows(r))); }, [tag]);
+  return html`<${Page} title=${'#' + tag} left=${html`<${Back} />`}><${Loading} v=${l}>${l && html`<div class="feed">${l.length ? l.map(p => html`<${FeedItem} key=${p.handle + '|' + p.post} p=${p} />`) : html`<${Section}><${Row}><span class="sec">${T('feed.empty')}</span><//><//>`}</div>`}<//><//>`;
+}
 /* ── 사람 ── */
 function PeopleTab() {
   const on = useAuth(), nav = useNav();
@@ -176,23 +333,30 @@ function Requests() {
     <button class="bsec" style="min-height:32px;padding:0 12px" onClick=${async () => { await P.answer(i.from.handle, false); load(); }}>${T('ui.delete')}</button><//>`) : html`<${Row}><span class="sec">${T('empty.requests')}</span><//>`}<//>`}<//><//>`;
 }
 function Notices() {
-  const W = { followed: T('notice.followed'), follow_accepted: T('notice.follow_accepted'), fix_accepted: T('notice.fix_accepted'), fix_rejected: T('notice.fix_rejected'), amend: T('notice.amend'), photo_hidden: T('notice.photo_hidden') };
+  const W = { followed: T('notice.followed'), follow_accepted: T('notice.follow_accepted'), fix_accepted: T('notice.fix_accepted'), fix_rejected: T('notice.fix_rejected'), amend: T('notice.amend'), photo_hidden: T('notice.photo_hidden'), liked: T('notice.liked'), commented: T('notice.commented'), title: T('notice.title_new'), tagged: T('notice.tagged') };
   const [l, setL] = useState(); useEffect(() => { P.notices().then(r => { setL(rows(r)); P.readNotices(); }); }, []);
   return html`<${Page} title=${T('notice.title')} left=${html`<${Back} />`}><${Loading} v=${l}>${l && html`<${Section}>${l.length ? l.map(n => html`<${Row}><${Avatar} r=${n.from || {}} size=${32} /><${RowLabel} title=${(n.from?.nick || '') + (W[n.kind] || '')} text=${(n.at || '').slice(0, 10)} /><//>`) : html`<${Row}><span class="sec">${T('empty.notices')}</span><//>`}<//>`}<//><//>`;
 }
 function Profile({ handle }) {
-  const nav = useNav(); const [p, setP] = useState(), [menu, setMenu] = useState(false), [msg, setMsg] = useState(null);
-  const load = async () => setP(await P.profile(handle));
+  const nav = useNav(); const [p, setP] = useState(), [menu, setMenu] = useState(false), [msg, setMsg] = useState(null), [posts, setPosts] = useState([]), [tl, setTl] = useState({}), [codex, setCodex] = useState([]);
+  const load = async () => { const v = await P.profile(handle); setP(v); if (v && v.open) { setPosts(rows(await P.posts(handle))); setTl(await P.titles(handle)); setCodex(rows(await P.codex(handle))); } else { setPosts([]); setTl({}); setCodex([]); } };   // 장·칭호·직업 도감(0294·0298)
+  const tname = ((tl.owned || []).find(o => o.id === tl.equipped) || {}).name;
   useEffect(() => { load(); }, [handle]);
   const act = async f => { await f(); load(); };
   const follow = !p ? null : p.follow === 'accepted' ? [T('follow.following'), () => act(() => P.unfollow(handle)), 'bsec'] : p.follow === 'requested' ? [T('requests.title'), () => act(() => P.unfollow(handle)), 'bsec'] : [p.private && !p.open ? T('follow.request') : T('follow.do'), () => act(() => P.follow(handle)), 'bprim'];
   return html`<${Page} title=${T('profile.title')} left=${html`<${Back} />`} right=${p && p.ok && !p.me && html`<${NavButton} icon="ellipsisCircle" label=${T('ui.more')} onClick=${() => setMenu(true)} />`}>
     <${Loading} v=${p}>${p && (!p.ok ? html`<${Empty} icon="person" title=${msgOf(p)} />` : html`
-      <${Section}><div class="head"><${Avatar} r=${p} size=${60} /><div><div style="font-size:20px;font-weight:600">${p.nick}</div><div class="sec">@${handle}</div>${p.name && html`<div>${p.name}</div>`}</div></div>
+      <${Section}><div class="head"><${Avatar} r=${p} size=${60} /><div>${tname && html`<div class=${'tc' + (tl.tc || 0)} style="font-size:13px;font-weight:600">${tname}</div>`}<div style="font-size:20px;font-weight:600">${p.nick}</div><div class="sec">@${handle}</div>${p.name && html`<div>${p.name}</div>`}</div></div>
         ${p.bio && html`<${Row}><span>${p.bio}</span><//>`}
         <${Row}><span>${T('profile.followers')} <b>${p.followers}</b></span><span style="margin-left:16px">${T('profile.following')} <b>${p.following}</b></span><//>
         ${!p.me && html`<div style="padding:8px 16px 12px"><button class=${follow[2] + ' grow'} style="width:100%" onClick=${follow[1]}>${follow[0]}</button></div>`}<//>
-      ${p.open && p.stats ? html`<${Section}><${Stats} s=${p.stats} /><//>${p.stats.hosted > 0 && html`<${Section}><${Labeled} label=${T('space.host')} value=${T('profile.hosted', { n: p.stats.hosted })} /><//>`}<${Ad} />`
+      ${p.open && p.stats ? html`<${Summary} handle=${handle} /><${Section}><${Stats} s=${p.stats} /><//>${p.stats.hosted > 0 && html`<${Section}><${Labeled} label=${T('space.host')} value=${T('profile.hosted', { n: p.stats.hosted })} /><//>`}<${Ad} />
+        ${(tl.owned || []).length > 0 && html`<${Section} header=${T('title.shelf')}><div class="tts">${tl.owned.slice(0, 6).map(o => html`<span class=${'tt t' + o.tier}>${o.name}</span>`)}</div>
+          <${Row} chevron onClick=${() => nav.push(html`<${Titles} handle=${handle} mine=${!!p.me} reload=${load} />`)}>${T('title.all', { n: tl.owned.length })}<//><//>`}
+        ${codex.length > 0 && html`<${Codex} rows=${codex} />`}
+        ${posts.some(x => x.kind === 'note') && html`<${Section} header=${T('note.list')}><div class="feed">${posts.filter(x => x.kind === 'note').map(x => html`<${NoteCard} key=${x.post} p=${x} removed=${load} />`)}</div><//>`}
+        ${posts.some(x => x.kind !== 'note') && html`<${Section} header=${T('posts.title')}><div class="pgrid">${posts.filter(x => x.kind !== 'note').map(x => html`<button key=${x.post} onClick=${() => nav.push(html`<${Page} title="" left=${html`<${Back} />`}><div class="feed"><${PostCard} p=${x} removed=${load} /></div><//>`)}>
+          <${CardPage} page=${PC.page(x, PC.specs(x)[0] || {}, 0, 1)} interactive=${false} /></button>`)}</div><//>`}`
         : html`<${Section}><div style="text-align:center;padding:20px"><${Icon} name="eyeSlash" size=${26} /><div style="font-weight:600;margin-top:6px">${T('profile.private')}</div></div><//>`}`)}<//>
     <${ActionSheet} open=${menu} title=${'@' + handle} onClose=${() => setMenu(false)} actions=${[
       ...(p && p.follows_me ? [{ label: T('follow.remove'), onClick: () => act(() => P.removeFollower(handle)) }] : []),
@@ -200,6 +364,23 @@ function Profile({ handle }) {
       { label: T('block.do'), role: 'destructive', onClick: () => act(() => P.block(handle)) }]} />
     <${Alert} open=${!!msg} title=${msg} onClose=${() => setMsg(null)} />
   <//>`;
+}
+
+/* 칭호 모두 보기 — 내 것이면 이름 위에 달기·다음 문턱(0298) */
+function Titles({ handle, mine, reload }) {
+  const [t, setT] = useState(); const load = async () => setT(await P.titles(handle));
+  useEffect(() => { load(); }, []);
+  const equip = async id => { await P.equip(id); await load(); reload && reload(); };
+  return html`<${Page} title=${T('title.shelf')} left=${html`<${Back} />`}><${Loading} v=${t}>${t && html`
+    <${Section}>${(t.owned || []).map(o => html`<${Row}><span class=${'tt t' + o.tier}>${o.name}</span><span class="grow"></span>
+      ${mine && html`<button class="sec" style="background:none;border:0;font:inherit;min-height:44px" onClick=${() => equip(t.equipped === o.id ? null : o.id)}>${t.equipped === o.id ? T('title.unequip') : T('title.equip')}</button>`}<//>`)}<//>
+    ${mine && (t.next || []).length > 0 && html`<${Section} header=${T('title.next')}>${t.next.map(x => html`<${Row}><div class="grow"><div class=${'t' + x.tier}>${x.name}</div><progress max=${x.at} value=${Math.min(x.n, x.at)} style="width:100%"></progress></div><span class="sec" style="font-variant-numeric:tabular-nums">${x.n} / ${x.at}</span><//>`)}<//>`}`}<//><//>`;
+}
+/* 직업 도감 — 해 본 직업 그림, 이긴 직업은 진하게 */
+function Codex({ rows: l }) {
+  const [art, setArt] = useState(ART); useEffect(() => { artMap().then(setArt); }, []);
+  return html`<${Section} header=${T('codex.title') + ' · ' + l.length}><div class="codex">${l.map(r => { const a = (art || {})[r.role];
+    return html`<div class=${r.won > 0 ? '' : 'dim'}>${a && a.icon ? html`<${RoleArt} r=${a} size=${40} />` : html`<span style="font-size:30px;height:40px;display:block">${(a && a.e) || '·'}</span>`}<small>${D(r.role)}</small></div>`; })}</div><//>`;
 }
 
 /* ── 계정 ── */
@@ -293,12 +474,13 @@ async function setLang(account) {
   dict = l === 'ko' ? ko : await (await fetch(`i18n/${l}.json`)).json().catch(() => ko);
   DATA = l === 'ko' ? null : await fetch(`i18n/data/${l}.json`).then(r => r.ok ? r.json() : null).catch(() => null);
   document.documentElement.lang = l;
+  window.Postcard.setText(dict, ko, DATA || {}, l);   // 장 그리기 엔진도 같은 말로
 }
 function App() {
-  const [tab, setTab] = useState(() => { const q = location.search; if (/[?&]u=/.test(q)) return 'people'; if (/[?&]j=/.test(q)) return 'plaza'; try { return localStorage.getItem('me.tab') || 'plaza'; } catch { return 'plaza'; } });
+  const [tab, setTab] = useState(() => { const q = location.search; if (/[?&]u=/.test(q)) return 'people'; if (/[?&]j=/.test(q)) return 'plaza'; try { return localStorage.getItem('me.tab') || 'feed'; } catch { return 'feed'; } });
   const go = t => { setTab(t); try { localStorage.setItem('me.tab', t); } catch {} };
   useEffect(() => { const f = () => setTab('account'); window.addEventListener('me-fill', f); return () => window.removeEventListener('me-fill', f); }, []);
-  const tabs = [['plaza', 'tab.plaza', 'house', PlazaTab], ['library', 'tab.library', 'books', LibraryTab], ['people', 'tab.people', 'person', PeopleTab], ['account', 'tab.account', 'personCircle', AccountTab]];
+  const tabs = [['feed', 'tab.feed', 'stack', FeedTab], ['plaza', 'tab.plaza', 'house', PlazaTab], ['library', 'tab.library', 'books', LibraryTab], ['people', 'tab.people', 'person', PeopleTab], ['account', 'tab.account', 'personCircle', AccountTab]];
   return html`<div class="shell">
     ${tabs.map(([id, , , C]) => html`<div class="tabpage" key=${id} style=${tab === id ? '' : 'display:none'}><${NavStack} root=${html`<${C} />`} /></div>`)}
     <nav class="tabs">${tabs.map(([id, k, ic]) => html`<button class=${tab === id ? 'on' : ''} aria-current=${tab === id ? 'page' : undefined} onClick=${() => go(id)}><${Icon} name=${ic} size=${24} />${T(k)}</button>`)}</nav>
