@@ -64,6 +64,9 @@ export const account = {
     this.plazaJoin = ''; try { sessionStorage.removeItem('plaza_join'); } catch {}
     return await this.plaza('plaza_checkin', { p_code: c }) || { ok: false, error: '참가하지 못했어요. 연결을 확인해 주세요.' }; },
   async members() { if (!this.user) return null; try { return (await rpc('list_members')) || []; } catch { return null; } },
+  /** 내가 팔로우하는 사람의 아이디 목록(회원 고르기 «팔로잉» 묶음, 2026-10-07) */
+  async following() { if (!this.user) return null; try { const me = await rpc('my_profile'); const h = me && (me.handle || (me.value && me.value.handle)); if (!h) return [];
+    const r = await rpc('follow_list', { p_handle: h, p_which: 'following', p_after: null }); return ((r && r.rows) || []).map(x => x.handle); } catch { return null; } },
   /** 친구 — 서로 수락. 목록(friend·received·sent)·요청·수락·끊기, 전적은 서로 친구이거나 나일 때만 서버가 준다 */
   async friends() { if (!this.user) return null; try { return (await rpc('friends_list')) || []; } catch { return null; } },
   async friendDo(fn, id) { try { return await rpc(fn, { p_member: id }); } catch { return null; } },

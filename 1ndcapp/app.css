@@ -474,3 +474,87 @@ h1, h2, p { margin: 0; }
 
 /* 복기 날 넘기기 화살표 — 44px 누르기 칸(2026-10-05 햇살님 «화살표 크게») */
 .btn-s.rp-arrow { min-width: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+
+/* 소셜 피드 — 4:5 한 장씩 넘겨 보기(2026-10-07, 앱 SocialSpace.swift GameSlide 와 같다) */
+.feed { display: flex; flex-direction: column; gap: 28px; padding-bottom: 24px; }
+.post-head { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 8px; }
+.post-head .who { display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; min-height: 44px; }
+.post-head .who span { display: flex; flex-direction: column; } .post-head .who small { color: var(--sec); font-size: 12px; }
+.post .icon { background: none; border: 0; color: inherit; min-width: 44px; min-height: 44px; display: grid; place-items: center; padding: 0; }
+.slides { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.slides::-webkit-scrollbar { display: none; }
+.slide { aspect-ratio: 4 / 5; position: relative; display: flex; flex-direction: column; padding: 6%; box-sizing: border-box; color: var(--ink, #f5ede3); overflow: hidden; container-type: inline-size; }
+.slide > * { position: relative; } .slide > .bg { position: absolute; inset: 0; } .slide > .tex { mix-blend-mode: overlay; opacity: .75; }
+.slide > .fx-focus { -webkit-mask: radial-gradient(circle, transparent 30%, #000 62%); mask: radial-gradient(circle, transparent 30%, #000 62%); }
+.slides .pg { flex: 0 0 100%; scroll-snap-align: start; position: relative; }
+.sl-top { display: flex; justify-content: space-between; align-items: flex-start; font-size: 15px; font-weight: 600; opacity: .9; }
+.sl-top b { font-size: 13px; background: rgba(0,0,0,.35); padding: 2px 8px; border-radius: 10px; font-variant-numeric: tabular-nums; }
+.sl-mid { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.sl-mid .art.mask { background: #f5ede3; }
+.sl-role { font-size: 34px; font-weight: 700; margin-top: 12px; }
+.sl-res { font-size: 24px; font-weight: 800; opacity: .6; } .sl-res.won { color: #f0d79a; opacity: 1; }
+.sl-foot { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; } .sl-foot span { opacity: .7; }
+.sl-foot i { font-style: normal; font-weight: 800; font-size: 11px; opacity: .6; margin-top: 10px; } .sl-foot em { font-style: normal; color: #e8323c; }
+.post-bar { display: flex; align-items: center; gap: 8px; padding: 2px 12px 0; }
+.post-bar .dots { flex: 1; display: flex; justify-content: center; gap: 5px; } .post-bar .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--sec); opacity: .35; } .post-bar .dots i.on { background: var(--blue); opacity: 1; }
+.post-bar .tally { font-size: 13px; font-variant-numeric: tabular-nums; }
+.post .likes { display: block; background: none; border: 0; font: inherit; font-weight: 600; color: inherit; padding: 0 16px; min-height: 32px; }
+.sum { display: grid; grid-template-columns: repeat(3, 1fr); padding: 12px 16px; gap: 12px; } .sum div { display: flex; flex-direction: column; gap: 2px; } .sum span, .sum small { color: var(--sec); font-size: 12px; } .sum b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.cbar { display: flex; gap: 8px; align-items: flex-end; } .cbar textarea { flex: 1; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line, rgba(60,60,67,.3)); background: var(--bg2, transparent); color: inherit; resize: none; min-height: 44px; } .cbar button { min-height: 44px; padding: 0 16px; }
+/* 칭호(0298) — 단계 색 t1~t4 · 모은 수 색 tc0~tc3(마영전 수집 색) */
+.t1, .tc0 { color: var(--sec); } .t2, .tc1 { color: #9ea8b8; } .t3, .tc2 { color: #d6a83d; } .t4, .tc3 { color: #e8323c; }
+.tt { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 8px; border: 1px solid currentColor; border-radius: 4px; }
+.slide .t1 { color: #f5ede3; }
+.tts { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 16px; }
+.codex { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px 8px; padding: 12px 16px; text-align: center; } .codex small { display: block; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .codex .dim { opacity: .35; }
+.pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; } .pgrid button { padding: 0; border: 0; background: none; overflow: hidden; } .pgrid .slide { padding: 6%; pointer-events: none; }
+.pgrid .sl-top, .pgrid .sl-foot { font-size: 8px; } .pgrid .sl-role { font-size: 13px; margin-top: 4px; } .pgrid .sl-res { font-size: 10px; } .pgrid .art { width: 46px !important; height: 46px !important; } .pgrid .sl-foot i { display: none; }
+/* 꾸미기(0300~0303) — 글자 색(--ink)·사람 장·이야기 장·장마다 글·글 카드·배색표 */
+.sl-mid .art.mask { background: var(--ink, #f5ede3); } .slide.light .sl-res.won { color: var(--gold); } .slide .brand { font-style: normal; font-weight: 800; font-size: 11px; opacity: .6; margin-top: 10px; } .slide .brand em { font-style: normal; color: #e8323c; }
+.slide.people .sl-head { text-align: center; font-size: 7cqw; font-weight: 700; margin-top: 4%; } .prow { display: flex; justify-content: center; gap: 1cqw; margin: .6cqw 0; }
+.pface { position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; } .pface .fring { position: relative; width: 80%; aspect-ratio: 1; border-radius: 50%; border: .6cqw solid var(--ink, #f5ede3); overflow: hidden; display: block; }
+.pface .fring .avatar { width: 100% !important; height: 100% !important; } .pface .mask { position: absolute; right: 0; bottom: 0; background: rgba(0,0,0,.6); color: #f5ede3; border-radius: 50%; padding: 2px; display: grid; }
+.pface small { font-size: 3cqw; font-weight: 600; white-space: nowrap; overflow: hidden; max-width: 100%; }
+.bubble { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.85); color: #fff; border: 0; border-radius: 6px; padding: 3px 8px; font: 600 12px/1.3 inherit; white-space: nowrap; z-index: 2; }
+.bubble::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -5px; border: 5px solid transparent; border-top-color: rgba(0,0,0,.85); }
+.slide.story .sl-ph { font-size: 6cqw; font-weight: 700; opacity: 1; } .sl-em-in { font-size: 7.5cqw; font-weight: 800; color: var(--gold, #f0d79a); margin: 3% 0 1%; }
+.slide.story .lines { flex: 1; display: flex; flex-direction: column; gap: 2.4cqw; font-size: 4.5cqw; margin-top: 3%; } .slide.story .lines .hot { font-weight: 700; color: var(--gold, #f0d79a); } .slide.story .sl-foot { align-items: center; }
+.pg .sl-em { position: absolute; top: 14%; left: 50%; transform: translateX(-50%); font-size: 7.5cqw; font-weight: 800; color: #f0d79a; background: rgba(0,0,0,.55); padding: 1% 4%; border-radius: 4px; white-space: nowrap; container-type: normal; }
+.slides .pg { container-type: inline-size; } .pg .sl-cap { position: absolute; left: 0; right: 0; bottom: 0; background: #0d0d12; color: #fff; padding: 4% 4% 5%; font-size: 3.8cqw; }
+a.mention { color: var(--blue); text-decoration: none; background: none; padding: 0; } .caption { padding: 0 16px; font-size: 15px; }
+.note { display: flex; gap: 10px; padding: 4px 16px 12px; border-bottom: 1px solid var(--line, rgba(60,60,67,.2)); } .note .av { background: none; border: 0; padding: 0; align-self: flex-start; }
+.note .nh { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; } .note .nt { margin: 4px 0 6px; font-size: 16px; white-space: pre-wrap; } .note .nb { display: flex; gap: 22px; } .note .nb .icon { display: flex; gap: 4px; align-items: center; color: var(--sec); min-height: 32px; min-width: 0; }
+.notebox { width: 100%; box-sizing: border-box; font: inherit; font-size: 16px; padding: 10px 12px; border: 0; background: transparent; color: inherit; resize: vertical; }
+.swatches { display: flex; gap: 12px; align-items: center; padding: 10px 16px; } .sw { position: relative; width: 36px; height: 36px; border-radius: 50%; overflow: hidden; border: 1px solid var(--line, rgba(60,60,67,.3)); padding: 0; display: block; flex: none; }
+.sw.on { outline: 3px solid var(--blue); outline-offset: 1px; } .sw .bg { position: absolute; inset: 0; } .sw .tex { mix-blend-mode: overlay; opacity: .75; }
+.fxs { display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 12px; } .fxb { background: none; border: 0; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--sec); }
+.fxb .sw { width: 44px; height: 55px; border-radius: 4px; } .fxb.on { color: inherit; } .fxb.on .sw { outline: 3px solid var(--blue); }
+.row.ord { gap: 2px; } .row.ord .lbl { background: none; border: 0; text-align: left; font: inherit; color: inherit; padding: 0; min-height: 44px; } .row.ord .icon { background: none; border: 0; min-width: 40px; min-height: 44px; color: inherit; } .row.ord .icon:disabled { opacity: .3; } .row.ord .red { color: var(--red); }
+.palette { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; padding: 16px; } .palette button { aspect-ratio: 1; border: 0; border-radius: 3px; padding: 0; } .palette button.on { outline: 3px solid var(--blue); }
+.pface .noface { width: 100%; height: 100%; display: grid; place-items: center; background: rgba(255,255,255,.14); color: var(--ink, #f5ede3); } .pface .noface svg { width: 62%; height: 62%; }
+.slide.text .tx { font-weight: 700; text-align: center; white-space: pre-wrap; padding: 0 4%; line-height: 1.35; }
+.prow, .pface, .pface .fring { flex-shrink: 0; }
+/* 장 그리기(엔진 목록) — 1 = 0.1cqw */
+.card { position: relative; aspect-ratio: 4 / 5; overflow: hidden; container-type: inline-size; } .card > .cl { position: absolute; inset: 0; width: 100%; height: 100%; } .card > .tex { mix-blend-mode: overlay; }
+.card .ct, .card .cr, .card .ca, .card .cf { position: absolute; } .card .ct { line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere; } .card .ca { display: grid; place-items: center; } .card .ca .art { width: 100% !important; height: 100% !important; } .card .ca .art.mask { background: currentColor; } .card .ca svg { width: 100%; height: 100%; } .card .ca span { font-size: 30cqw; line-height: 1; }
+.card .cf { border-radius: 50%; box-sizing: border-box; cursor: pointer; } .card .cf > .avatar, .card .cf > .noface { width: 100% !important; height: 100% !important; border-radius: 50%; overflow: hidden; display: grid; place-items: center; }
+.card .cf .noface { background: rgba(255,255,255,.14); color: #f5ede3; } .card .cf .noface svg { width: 62%; height: 62%; } .card .cf .mask { position: absolute; right: -4%; bottom: -4%; background: rgba(0,0,0,.6); color: #fff; border-radius: 50%; padding: 2px; display: grid; }
+.sw .card { width: 100%; height: auto; }
+.card .cs { position: absolute; overflow: hidden; } .card .cs > .card { width: 100%; }
+
+/* 장 글꼴(D, 2026-10-07) — 엔진 폭 표와 같은 파일. 글꼴마다 굵기 하나씩 따로 이름(pc-<글꼴>-<굵기>)이라 브라우저가 가짜 굵게를 만들지 않는다 */
+@font-face { font-family: 'pc-gowun-400'; src: url(fonts/gowun-400.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-gowun-700'; src: url(fonts/gowun-700.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-noto-400'; src: url(fonts/noto-400.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-noto-600'; src: url(fonts/noto-600.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-noto-700'; src: url(fonts/noto-700.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-noto-800'; src: url(fonts/noto-800.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-pre-400'; src: url(fonts/pre-400.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-pre-600'; src: url(fonts/pre-600.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-pre-700'; src: url(fonts/pre-700.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-pre-800'; src: url(fonts/pre-800.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-suit-400'; src: url(fonts/suit-400.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-suit-600'; src: url(fonts/suit-600.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-suit-700'; src: url(fonts/suit-700.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: 'pc-suit-800'; src: url(fonts/suit-800.woff2) format('woff2'); font-weight: normal; font-style: normal; font-display: block; }
+.card .cl2 { position: absolute; white-space: pre; line-height: 1; font-weight: normal; } .card .cbg { position: absolute; }
