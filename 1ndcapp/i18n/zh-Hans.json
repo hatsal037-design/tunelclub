@@ -156,5 +156,6 @@
   "signup.easy": "注册时不收集姓名、邮箱或电话号码。随时可以立即注销，30天后账号信息将全部删除。",
   "err.admin": "管理员账号无法注销",
   "ui.later": "稍后",
-  "games.hosted": "主持"
+  "games.hosted": "主持",
+  "title.hidden": "隐藏称号"
 }

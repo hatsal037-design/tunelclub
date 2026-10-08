@@ -245,5 +245,6 @@
   "font.pre": "Pretendard",
   "font.noto": "Noto Sans",
   "font.suit": "SUIT",
-  "font.gowun": "Gowun Batang"
+  "font.gowun": "Gowun Batang",
+  "title.hidden": "Hidden titles"
 }

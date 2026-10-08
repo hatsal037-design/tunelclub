@@ -156,5 +156,6 @@
   "signup.easy": "Ao se cadastrar, não pedimos seu nome, e-mail nem telefone. Você pode excluir a conta quando quiser, e os dados da conta são apagados após 30 dias.",
   "err.admin": "Contas de administrador não podem ser excluídas",
   "ui.later": "Depois",
-  "games.hosted": "Narrador"
+  "games.hosted": "Narrador",
+  "title.hidden": "Títulos ocultos"
 }

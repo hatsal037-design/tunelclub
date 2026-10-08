@@ -14,16 +14,16 @@ export function LibraryView() {
   const nav = useNav();
   const [m] = useState(() => store.get('library'));
   const [q, setQ] = useState(''), [theme, setTheme] = useState(currentTheme), [open, setOpen] = useState({});
-  const hub = (m ? m.hubs : []).find(h => h.name === theme.hub), all = hub ? hub.modes : [];
+  const hub = (m ? m.hubs : []).find(h => h.name === (theme.hub || theme.shelf)), all = hub ? hub.modes : [];
   const kids = id => all.filter(x => x.parent === id);
   const shown = q ? all.filter(x => matches(x, q)) : all.filter(x => !x.parent).flatMap(x => [x, ...(open[x.id] ? kids(x.id) : [])]);
   const row = mode => { const n = !q && !mode.parent ? kids(mode.id).length : 0, sub = !q && mode.parent;
     const hit = q && !mode.name.includes(q) ? (mode.roleNames || []).find(x => x.includes(q)) : null;
-    return html`<${Row} chevron cls=${sub ? 'kid' : ''} onClick=${() => nav.push(html`<${LibraryMode} id=${mode.id} />`)}><div class="grow"><div>${sub ? mode.short : mode.name}</div>
+    return html`<${Row} chevron cls=${sub ? 'kid' : ''} onClick=${() => nav.push(html`<${LibraryMode} id=${mode.id} shelf=${theme.hub || theme.shelf} />`)}><div class="grow"><div>${sub ? mode.short : mode.name}</div>
       <div class="sub">${[mode.players, '직업 ' + mode.roles].filter(Boolean).join(' · ')}</div>${hit && html`<div class="sub blue">${hit} 나옴</div>`}</div>
       ${n > 0 && html`<span class="more blue" role="button" tabindex="0" aria-expanded=${!!open[mode.id]} onClick=${e => { e.stopPropagation(); setOpen(o => ({ ...o, [mode.id]: !o[mode.id] })); }}
         onKeyDown=${e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setOpen(o => ({ ...o, [mode.id]: !o[mode.id] })); } }}>${open[mode.id] ? '접기' : '변형 ' + n}</span>`}<//>`; };
-  return html`<${Page} title=${html`<${ThemeMenu} theme=${theme} onPick=${t => { setTheme(t); setQ(''); }} />`}>
+  return html`<${Page} title=${html`<${ThemeMenu} browse theme=${theme} onPick=${t => { setTheme(t); setQ(''); }} />`}>
     <${LargeTitle}>자료실<//>
     <${Search} value=${q} onInput=${setQ} placeholder=${theme.id + ' 모드·직업 검색'} />
     ${shown.length > 0 && html`<${Section} header=${theme.hub}>${shown.map(row)}<//>`}
@@ -38,8 +38,8 @@ export function RoleList({ roles, q }) {
       <div class="ab3">${r.ab}</div></div></div></div>`);   // holders — 지금 판에서 누가 그 직업인지, 죽은 사람은 회색·취소선(2026-10-01 햇살님)
 }
 
-function LibraryMode({ id }) {
-  const [m] = useState(() => store.get('library.mode', id));
+function LibraryMode({ id, shelf }) {
+  const [m] = useState(() => store.get('library.mode', shelf ? id + '|' + shelf : id));   // 어느 테마 목록에서 열었나 — 그 테마 이름으로(2026-10-08)
   const [q, setQ] = useState('');
   return html`<${Page} title=${m ? m.name : '모드'} left=${html`<${Back} />`}>
     <${Search} value=${q} onInput=${setQ} placeholder="직업·능력 검색" />

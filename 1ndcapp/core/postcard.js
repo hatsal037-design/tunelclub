@@ -20,6 +20,13 @@
   // ── 글 사전 ──
   var TXT = { dict: {}, fallback: {}, data: {}, lang: 'ko' };
   function setText(dict, fallback, data, lang) { TXT = { dict: dict || {}, fallback: fallback || {}, data: data || {}, lang: lang || 'ko' }; }
+  /* 칭호 이름(2026-10-07) — 서버는 한국어 이름을 준다. 보는 사람 언어 사전(i18n/titles/<언어>.json)으로 바꾸고, {r}(모드·직업 이름)이 낀 틀은 틀로 찾는다 */
+  var TT = { d: {}, re: [] };
+  function setTitles(d) { TT = { d: d || {}, re: Object.keys(d || {}).filter(function (k) { return k.indexOf('{r}') >= 0; }).sort(function (a, b) { return b.length - a.length; })
+    .map(function (k) { return [new RegExp('^' + k.split('{r}').map(function (x) { return x.replace(/[.*+?^$()|[\]\\]/g, '\\$&'); }).join('(.+)') + '$'), d[k]]; }) }; }
+  function titleName(s) { s = s || ''; if (TT.d[s]) return TT.d[s];
+    for (var i = 0; i < TT.re.length; i++) { var m = TT.re[i][0].exec(s); if (m) return TT.re[i][1].replace('{r}', (TXT.data && TXT.data[m[1]]) || m[1]); }
+    return s; }
   function t(k, v) { var s = TXT.dict[k] || TXT.fallback[k] || k; return s.replace(/\{(\w+)\}/g, function (m, x) { return v && v[x] != null ? String(v[x]) : m; }); }
   function d(s) { return (s && TXT.data[s]) || s || ''; }
   // 직업 코드 → 지금 이름(자료 묶음 role_names.json). 판 넘겨 보기 사건이 코드로 저장돼, 이름이 바뀌면 옛 장도 따라간다(0308)
@@ -199,7 +206,8 @@
              full: o.full ? rr.map(function (r) { return r.s; }).join('') : null }; }
   function linked(runs, link) { return runs.map(function (r) { return r.link ? { s: r.s, link: r.link, color: link } : r; }); }
   function counter(i, n, c) { return n > 1 ? [text(W - 60 - 120, 52, 120, 34, (i + 1) + '/' + n, { weight: 600, align: 'center', color: c, bg: [0, 0, 0, 0.35], pad: 10, radius: 28 })] : []; }
-  function brand(y, c) { return text(0, y, W, 34, [{ s: '1', color: RED }, { s: 'ndc', color: withA(c, 0.6) }], { weight: 800, align: 'center' }); }   // 하단 표시 «1ndc»(2026-10-07 햇살님)
+  function brand(y, c) { var egg = { kind: 'egg', v: 'tap_1ndc' };   // 일곱 번 누르면 숨은 칭호 «문을 두드린»
+    return text(0, y, W, 34, [{ s: '1', color: RED, link: egg }, { s: 'ndc', color: withA(c, 0.6), link: egg }], { weight: 800, align: 'center' }); }   // 하단 표시 «1ndc»(2026-10-07 햇살님)
   function plazaLine(p) { return t('plaza.host_place', { host: p.host || '', place: t('place.plaza') }) + (p.title ? ' · ' + p.title : ''); }
   function estLines(s, size, w, weight) { return lineCount(s, size, weight || 400, w); }
 
@@ -265,7 +273,7 @@
       shade(0.45, 0.45);
       items.push(text(0, 250, W, 150, '🎖', { align: 'center' }));
       items.push(text(0, 450, W, 60, t('title.earned'), { weight: 700, align: 'center', color: c }));
-      (p.earned || []).slice(0, 6).forEach(function (e, j) { items.push(text(60, 560 + j * 82, W - 120, 50, e.name || '', { weight: 600, align: 'center', color: TIER[e.tier || 1] || c, fit: true })); });
+      (p.earned || []).slice(0, 6).forEach(function (e, j) { items.push(text(60, 560 + j * 82, W - 120, 50, titleName(e.name), { weight: 600, align: 'center', color: TIER[e.tier || 1] || c, fit: true })); });
     } else if (k === 'story') {
       var ph = String(sp.ph || 'n1'), night = ph[0] === 'n', nn = +ph.slice(1) || 1, y = 175;
       shade(0.3, 0.3);
@@ -363,7 +371,7 @@
     }
     if (q.k === 'titles') {
       it.push(text(60, 0, W - 120, 40, '🎖 ' + t('title.earned'), { weight: 700, align: 'center', color: c })); y = 60;
-      (p.earned || []).slice(0, 6).forEach(function (e) { it.push(text(60, y, W - 120, 36, e.name || '', { weight: 600, align: 'center', color: TIER[e.tier || 1] || c, fit: true })); y += 48; });
+      (p.earned || []).slice(0, 6).forEach(function (e) { it.push(text(60, y, W - 120, 36, titleName(e.name), { weight: 600, align: 'center', color: TIER[e.tier || 1] || c, fit: true })); y += 48; });
       return { h: y, items: it };
     }
     var tx = String(q.tx || ''), lines = Math.min(8, estLines(tx, 52, 820, 600));
@@ -398,7 +406,7 @@
   /** 배경만(배색표·효과 고르는 작은 칸) */
   function swatch(key) { return { w: W, h: H, bg: bg(key), items: [] }; }
 
-  var api = { V: V, W: W, H: H, FX: FX, MERGE: MERGE, FONTS: FONTS, normalize: normalize, setRoles: setRoles, storyLines: storyLines, setMetrics: setMetrics, wrap: wrap, setText: setText, specs: specs, tokens: tokens, page: page, swatch: swatch, bg: bg, day: day, ord: ord,
+  var api = { V: V, setTitles: setTitles, titleName: titleName, W: W, H: H, FX: FX, MERGE: MERGE, FONTS: FONTS, normalize: normalize, setRoles: setRoles, storyLines: storyLines, setMetrics: setMetrics, wrap: wrap, setText: setText, specs: specs, tokens: tokens, page: page, swatch: swatch, bg: bg, day: day, ord: ord,
               palette: { count: 300, steps: 12, rgb: rgb, hsl: hsl, all: function () { var o = []; for (var i = 0; i < 300; i++) o.push(rgb(i)); return o; }, light: function (i) { return hsl(i)[2] > 0.58; } }, light: light, ink: ink };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Postcard = api;
