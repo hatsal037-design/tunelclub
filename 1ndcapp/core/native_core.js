@@ -440,6 +440,7 @@ var NativeCore = (function () {
   /* 직업 그림 — 웹 CE() 와 같은 규칙: 목판화(ICON_BY_ID) → 코인 아트 → 이모지. 테마 스킨 직업은 이모지만 */
   function roleArt(c, mid) {
     var skin = typeof SKINS !== 'undefined' && (SKINS[mid] || []).indexOf(c.id) >= 0;
+    if (!skin && typeof SKINS !== 'undefined') { var om = Object.keys(SKINS).find(function (k) { return (SKINS[k] || []).indexOf(c.id) >= 0; }); if (om) { mid = om; skin = true; } }   // 같은 직업(같은 열쇠)이면 다른 판의 그림도(2026-10-08 — 임프가 트러블 브루잉 밖에선 이모지로 나오던 것)
     var ic = !skin && typeof ICON_BY_ID !== 'undefined' ? ICON_BY_ID[c.id] : null;
     var coin = !skin && !ic && typeof coinArt === 'function' ? coinArt(c) : '';
     var art = !skin && !ic && !coin && typeof JOB_ART !== 'undefined' && JOB_ART.has(c.id) ? 'art_' + c.id : null;   // 평면 직업 그림(2026-10-08)
