@@ -336,8 +336,24 @@ function Requests() {
 }
 function Notices() {
   const W = { followed: T('notice.followed'), follow_accepted: T('notice.follow_accepted'), fix_accepted: T('notice.fix_accepted'), fix_rejected: T('notice.fix_rejected'), amend: T('notice.amend'), photo_hidden: T('notice.photo_hidden'), liked: T('notice.liked'), commented: T('notice.commented'), title: T('notice.title_new'), tagged: T('notice.tagged') };
+  const nav = useNav();
+  /* 누르면 그 글로(0318, 2026-10-08) — 좋아요·댓글·태그는 그 장(owner 의 post), 칭호는 내 칭호 목록, 팔로우는 그 사람 */
+  const go = n => ['liked', 'commented', 'tagged'].includes(n.kind) && n.post && n.owner ? () => nav.push(html`<${PostOne} handle=${n.owner} post=${n.post} />`)
+    : n.kind === 'title' ? () => nav.push(html`<${MyTitles} />`) : ['followed', 'follow_accepted'].includes(n.kind) && n.from && n.from.handle ? () => nav.push(html`<${Profile} handle=${n.from.handle} />`) : null;
   const [l, setL] = useState(); useEffect(() => { P.notices().then(r => { setL(rows(r)); P.readNotices(); }); }, []);
-  return html`<${Page} title=${T('notice.title')} left=${html`<${Back} />`}><${Loading} v=${l}>${l && html`<${Section}>${l.length ? l.map(n => html`<${Row}><${Avatar} r=${n.from || {}} size=${32} /><${RowLabel} title=${(n.from?.nick || '') + (W[n.kind] || '')} text=${(n.at || '').slice(0, 10)} /><//>`) : html`<${Row}><span class="sec">${T('empty.notices')}</span><//>`}<//>`}<//><//>`;
+  return html`<${Page} title=${T('notice.title')} left=${html`<${Back} />`}><${Loading} v=${l}>${l && html`<${Section}>${l.length ? l.map(n => html`<${Row} chevron=${!!go(n)} onClick=${go(n)}><${Avatar} r=${n.from || {}} size=${32} /><${RowLabel} title=${(n.from?.nick || '') + (W[n.kind] || '')} text=${(n.at || '').slice(0, 10)} /><//>`) : html`<${Row}><span class="sec">${T('empty.notices')}</span><//>`}<//>`}<//><//>`;
+}
+/* 장 하나 — 알림에서 열 때(feed_one) */
+function PostOne({ handle, post }) {
+  const [p, setP] = useState(), [gone, setGone] = useState(false);
+  useEffect(() => { P.one(handle, post).then(r => { const x = rows(r)[0]; if (x) setP(x); else setGone(true); }); }, [handle, post]);
+  return html`<${Page} title="" left=${html`<${Back} />`}>${p ? html`<div class="feed"><${FeedItem} p=${p} removed=${() => { setP(null); setGone(true); }} /></div>` : gone ? html`<${Empty} icon="eyeSlash" title=${T('feed.empty')} />` : html`<${Loading} v=${null} />`}<//>`;
+}
+/* 내 칭호 목록 — 알림(칭호 얻음)에서 */
+function MyTitles() {
+  const [h, setH] = useState();
+  useEffect(() => { P.me().then(m => { const me = (m && m.value) || m || {}; setH(me.handle || null); }); }, []);
+  return h ? html`<${Titles} handle=${h} mine=${true} />` : html`<${Page} title="" left=${html`<${Back} />`}><${Loading} v=${null} /><//>`;
 }
 function Profile({ handle }) {
   const nav = useNav(); const [p, setP] = useState(), [menu, setMenu] = useState(false), [msg, setMsg] = useState(null), [posts, setPosts] = useState([]), [tl, setTl] = useState({}), [codex, setCodex] = useState([]);
