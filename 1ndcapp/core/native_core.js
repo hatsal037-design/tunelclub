@@ -40,6 +40,7 @@ var NativeCore = (function () {
     if (dressMemo[m.id]) return dressMemo[m.id];
     var cl = {}; Object.keys(allMods()).forEach(function (k) { var x = allMods()[k]; if (hubRepOf(x) !== 'classic') return; (x.chars || []).forEach(function (c) { var u = uidOf(c.id); if (u && !cl[u]) cl[u] = c; }); });
     var pairs = [], ab = {};
+    if (MODE_CLASSIC_NAME[m.id]) pairs.push([m.name, MODE_CLASSIC_NAME[m.id]]);   // 판 이름도
     (m.chars || []).forEach(function (c) { var t = cl[uidOf(c.id)], nm = t ? t.ko : CLASSIC_NEW[c.id]; if (nm && nm !== c.ko) pairs.push([c.ko, nm]); if (t && c.ab && t.ab && c.ab !== t.ab) ab[c.ab] = t.ab; });
     pairs.sort(function (a, b) { return b[0].length - a[0].length; });   // 긴 이름부터(겹치는 이름 보호)
     return (dressMemo[m.id] = { pairs: pairs, ab: ab });
@@ -337,8 +338,8 @@ var NativeCore = (function () {
     Object.keys(M).forEach(function (id) { if (id === 'compendium') return; modeShelves(M[id]).forEach(function (h) { if (SHELF_SOON.indexOf(h) < 0 && hubs.indexOf(h) < 0) hubs.push(h); }); });
     var modes = Object.keys(M).filter(function (id) { return id !== 'compendium' && shelfPlayable(M[id], fam); }).map(function (id) {
       var P = edPlayable(M[id]); var ok = !P.set || P.set.indexOf(n) >= 0;
-      return { id: id, name: M[id].name, playable: ok, note: ok ? null : n + '명으로는 할 수 없어요' };
-    });
+      return { id: id, name: shelfName(M[id], fam), playable: ok, note: ok ? null : n + '명으로는 할 수 없어요' };
+    }).sort(function (a, b) { return ((M[a.id].hub || '당산나무') === fam ? 0 : 1) - ((M[b.id].hub || '당산나무') === fam ? 0 : 1); });   // 본래 판 먼저
     var list = CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) {
       return { id: c.id, ko: c.ko, team: c.team, teamKo: TKO(c.team), count: ngCounts[c.id] || 0, many: !!ngMany(c),
         pinned: pinsResolved().filter(function (p) { return p.id === c.id; }).map(function (p) { return p.i; }) };   // 이 직업을 정해 둔 자리
@@ -734,14 +735,15 @@ var NativeCore = (function () {
   function library() {
     var M = allMods(), hubs = {};
     Object.keys(M).forEach(function (id) { if (id === 'compendium') return; var m = M[id], P = edPlayable(m);
-      modeShelves(m).forEach(function (h) { (hubs[h] = hubs[h] || []).push({ id: id, name: m.name, players: P.set && P.set.length ? P.set[0] + '~' + P.set[P.set.length - 1] + '명' : '', roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).length,
+      modeShelves(m).forEach(function (h) { (hubs[h] = hubs[h] || []).push({ id: id, name: shelfName(m, h), players: P.set && P.set.length ? P.set[0] + '~' + P.set[P.set.length - 1] + '명' : '', roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).length,
         roleNames: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { return c.ko; }) }); }); });   // 직업 이름으로도 찾게(«무당» → 무당이 나오는 모드) · 모드는 보이는 테마 목록마다(둘 다면 두 곳)
     /* 같은 제목의 확장판은 원래 모드 아래로 묶는다(2026-10-02 햇살님 «확장개념은 묶기 같은장르 같은제목 끼리») — «우물가 — 두레박» → parent=우물가, short=두레박.
        당산나무 계열만: 클래식은 «클래식 — …»이 제목이 아니라 계열 이름이라 묶지 않는다. 화면은 parent 가 있는 모드를 그 모드 밑에 접어 둔다 */
     (hubs['당산나무'] || []).forEach(function (m, _, L) { var cut = m.name.indexOf(' — '); if (cut < 0) return; var key = m.name.slice(0, cut);
       var base = L.find(function (b) { return b.name.indexOf(' — ') < 0 && (b.name.indexOf(key) === 0 || b.name.replace(/^당산나무 /, '').indexOf(key) === 0); });
       if (base) { m.parent = base.id; m.short = m.name.slice(cut + 3); } });
-    return { hubs: Object.keys(hubs).map(function (h) { return { name: h, modes: hubs[h], soon: SHELF_SOON.indexOf(h) >= 0 }; }) };   // soon — 게임이 아직 없는 테마, 열어 보기만
+    var own = function (h) { return function (a, b) { var x = (allMods()[a.id] || {}).hub === h ? 0 : 1, y = (allMods()[b.id] || {}).hub === h ? 0 : 1; return x - y; }; };   // 그 계열 본래 판이 먼저, 옮겨 온 판은 뒤
+    return { hubs: Object.keys(hubs).map(function (h) { return { name: h, modes: hubs[h].slice().sort(own(h)), soon: SHELF_SOON.indexOf(h) >= 0 }; }) };   // soon — 게임이 아직 없는 테마, 열어 보기만
   }
   function libraryMode(id) {
     var sh = String(id || '').split('|'); id = sh[0];   // «모드|목록» — 자료실이 어느 테마 목록에서 열었나(2026-10-08 테마 옷)

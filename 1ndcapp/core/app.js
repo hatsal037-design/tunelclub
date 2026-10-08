@@ -2755,6 +2755,13 @@ const MODE_SHELF={
   bangak_eutteumpae:['클래식'], bangak_yeonjangseon:['클래식'], bangak_paigupgi:['클래식'], bangak_doegapeum:['클래식'], bangak_hoeori:['클래식'],
   umulga_noinjang:['판타지'], geumeum_sewol:['판타지'], hyeonhok_migung:['판타지'], hyeonhok_wolsik:['판타지'], saengsaram_bineul:['판타지'],
   aegun_taeyeop:['우주'] };
+/* 클래식 목록에서 보이는 판 이름(2026-10-08 햇살님 «3번부터» — 직업은 클래식 이름인데 판 이름만 당산나무식이라 어색) — 원작 대본 이름. 클래식에 원작이 이미 있는 셋은 «(재현판)»(햇살님 «둘 다 두고 이름 가르기») */
+const MODE_CLASSIC_NAME={ umulga_kkomjjak:'클래식 소형 — Nobody F. Move', umulga_byeorak:'클래식 소형 — Race to the Bottom (재현판)', village_oegil:'클래식 — Unholier Than Thou',
+  geumeum_mareunchim:'클래식 — A Grimm Chorus (재현판)', geumeum_bulsa:'클래식 — Immortal Dance Party', hyeonhok_heotsomun:'클래식 — Catfishing', hyeonhok_uisim:'클래식 — Trust',
+  hyeonhok_kkeulneunmul:'클래식 — Turbulence Boiling', jaepan_ilgopjjae:'클래식 — The Ballad of Seat 7', aegun_aekttaem:'클래식 — Oops! All Outsiders',
+  bangak_eutteumpae:"클래식 — No Roll's Barred (재현판)", bangak_yeonjangseon:'클래식 — Extension Cord', bangak_paigupgi:'클래식 — Pies Baking', bangak_doegapeum:"클래식 — Harold Holt's",
+  bangak_julnoreum:'클래식 — Strings Pulling', bangak_hoeori:'클래식 — Ride the Cyclone' };
+function shelfName(m, shelf){ return (shelf==='클래식'&&m&&MODE_CLASSIC_NAME[m.id])||(m&&m.name)||''; }
 function modeShelves(m){ return (m&&MODE_SHELF[m.id])||[(m&&m.hub)||'당산나무']; }
 function shelfPlayable(m, name){ return modeShelves(m).some(x=>x===name&&!SHELF_SOON.includes(x)); }
 function themeRep(){ return state.theme ? hubRepOf({hub:state.theme}) : hubRepOf(ED()); }   // state.theme 는 모드의 hub 와 같은 꼴(«클래식» 등) — 저장은 kid, 그릇 hub 와 같은 길
