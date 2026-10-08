@@ -28,8 +28,29 @@ var NativeCore = (function () {
      ponytail: 닉네임에 «흉수»가 들어 있으면 그것도 바뀐다 — 문제 되면 name 열쇠를 건너뛴다. 조사 도구 tools/테마말/전수조사.cjs */
   var outHub = null;   // 조회가 «다른 계열 것을 보는 중»이면 그 계열(자료실 모드 등) — 없으면 지금 고른 계열
   var JOSA = { '가': '이', '를': '을', '는': '은', '와': '과', '로': '으로', '라': '이라', '면': '이면', '다': '이다', '예': '이에', '였': '이었' };
+  /* 테마 옷(2026-10-08 햇살님 «각자 테마에 맞는 이름으로») — 다른 계열 목록(클래식)에서 고른 당산나무 판은 화면에 나가는 직업 이름·능력 글·계열 말을 그 테마 것으로.
+     같은 직업(고정값)이 클래식 판에 나오면 그 이름·능력 글, 짝이 없는 당산나무 직업은 원형(시계탑 공식 직업)의 한국어 이름(CLASSIC_NEW, 망나니·종손은 새로 지음).
+     규칙·열쇠(id)는 그대로 — 글자 값만. 근거 docs/보고서/모드_테마배치_20261008.md */
+  var CLASSIC_NEW = { banggakbon: '밀주업자', bangsangsi: '알사히르', chalgeomeori: '거거머리', daeyeokkun: '마술사', dongtikkun: '잔', doryeong: '헌츠맨', gokbi: '밴시',
+    gwietmalkkun: '메제펠레스', jangmulabi: '과학자', jongson: '상속자', mangnani: '사형집행인', mangseokjung: '꼭두각시', mireuk: '사이비교주', ongju: '공주',
+    pungsujaengi: '슈겐자', saejeom: '고위여사제', satdaejil: '하피', yabawikkun: '퍼즐마스터', yeombulkkun: '설교자' };
+  var dressMemo = {}, outDress;
+  function dressFor(m, rep) {
+    if (!m || rep !== 'classic' || hubRepOf(m) === 'classic') return null;
+    if (dressMemo[m.id]) return dressMemo[m.id];
+    var cl = {}; Object.keys(allMods()).forEach(function (k) { var x = allMods()[k]; if (hubRepOf(x) !== 'classic') return; (x.chars || []).forEach(function (c) { var u = uidOf(c.id); if (u && !cl[u]) cl[u] = c; }); });
+    var pairs = [], ab = {};
+    (m.chars || []).forEach(function (c) { var t = cl[uidOf(c.id)], nm = t ? t.ko : CLASSIC_NEW[c.id]; if (nm && nm !== c.ko) pairs.push([c.ko, nm]); if (t && c.ab && t.ab && c.ab !== t.ab) ab[c.ab] = t.ab; });
+    pairs.sort(function (a, b) { return b[0].length - a[0].length; });   // 긴 이름부터(겹치는 이름 보호)
+    return (dressMemo[m.id] = { pairs: pairs, ab: ab });
+  }
+  function shelfRep() { try { return hubRepOf({ hub: curShelf() }); } catch (e) { return null; } }
   function themeWords(o) {
-    var hub = outHub; outHub = null; if (!hub) { try { hub = hubRep(); } catch (e) { hub = 'dangsan'; } }
+    var hub = outHub, dress = outDress; outHub = null; outDress = undefined;
+    if (!hub) { try { hub = hubRep(); var sr = shelfRep(), d = dressFor(ED(), sr); if (d) { hub = sr; dress = d; } } catch (e) { hub = hub || 'dangsan'; } }
+    if (dress) { var dr = function (v) { if (typeof v === 'string') { if (dress.ab[v]) return dress.ab[v]; for (var i = 0; i < dress.pairs.length; i++) if (v.indexOf(dress.pairs[i][0]) >= 0) v = v.split(dress.pairs[i][0]).join(dress.pairs[i][1]); return v; }
+        if (Array.isArray(v)) return v.map(dr); if (v && typeof v === 'object') { var r = {}; Object.keys(v).forEach(function (k) { r[k] = dr(v[k]); }); return r; } return v; };
+      o = dr(o); }
     if (hub === 'dangsan') {   // 당산나무 — 글에 섞인 클래식 말을 걷는다(2026-10-02 햇살님 «응 흉수로 바꾸고»)
       var DS = [['흉수(악마)', '흉수'], ['객귀(악마)', '객귀'], ['악마가 죽으면 주민 승', '흉수가 죽으면 마을 승']];
       var fixD = function (s) { if (s.indexOf('악마') < 0) return s; DS.forEach(function (p) { s = s.split(p[0]).join(p[1]); }); return s; };
@@ -62,7 +83,7 @@ var NativeCore = (function () {
     var n = (state.seats || []).filter(function (s) { return s && (s.name || s.char); }).length;
     var summary = h === 'play' ? ((state.nights || 1) === 1 ? '첫밤' : (state.phase === 'day' ? '낮 ' : '밤 ') + (state.nights || 1)) + ' · ' + n + '명'
       : h === 'draft' ? n + '명 준비 중' : null;
-    return { destination: dest, ruleFamily: ed.hub || '당산나무', modeName: ed.name || null, demonKo: KO('team', 'demon', hubRep()), potKo: PKO('그릇'), pot: potView(),   /* 그날 모임·낮 다 같이 이야기 자리의 계열 말 — 당산나무 마당·클래식 광장·오리지널 구역(2026-10-05 햇살님 «테마 따라 이름, 낮에도») */ skillOff: hubRep() === 'mafia',   // 숙련도 안 쓰는 계열(오리지널 마피아) — 준비 화면이 경험 단계를 숨긴다   // 화면 글이 쓰는 계열 말(흉수·악마·범죄 조직)
+    return { destination: dest, ruleFamily: curShelf(), modeName: ed.name || null, demonKo: KO('team', 'demon', hubRep()), potKo: PKO('그릇'), pot: potView(),   /* 그날 모임·낮 다 같이 이야기 자리의 계열 말 — 당산나무 마당·클래식 광장·오리지널 구역(2026-10-05 햇살님 «테마 따라 이름, 낮에도») */ skillOff: hubRep() === 'mafia',   // 숙련도 안 쓰는 계열(오리지널 마피아) — 준비 화면이 경험 단계를 숨긴다   // 화면 글이 쓰는 계열 말(흉수·악마·범죄 조직)
       summary: summary, hasRecords: (localStorage.getItem('botc_logs') || '[]').length > 2,   // 원문 길이로 — 홈을 그릴 때마다 기록 전체를 펴던 것(앱구조점검, 2026-10-05)
       practice: h === 'play' ? !!state.practice : localStorage.getItem(PRACTICE_KEY) === '1',
       prepStep: h !== 'draft' ? null : hasRoles() ? 'handoff' : n >= 5 ? 'seats' : 'people' };   // 준비 이어 하기 — 역할을 나눴으면 넘기기부터(앱을 껐다 켜도 하던 자리로)
@@ -308,11 +329,13 @@ var NativeCore = (function () {
 
   /* P03 역할 — 구성 초안은 웹과 같은 ngCounts(메모리). 인원·모드가 바뀌면 자동 구성으로 다시 시작(openNewGame 과 같은 규칙) */
   function ensureNg() { var n = (state.seats || []).length || 8; if (typeof ngFor === 'undefined' || ngFor !== ngKey() || ngTarget !== n) { ngTarget = Math.max(5, Math.min(20, n)); ngCounts = autoCompose(ngTarget); ngFor = ngKey(); } }
+  /* 지금 고른 테마 목록 — 모드가 그 목록에 있으면 state.theme, 아니면 모드의 첫 목록(2026-10-08 모드를 테마 목록으로 나눔) */
+  function curShelf() { var ed = ED(), t = state.theme; return t && shelfPlayable(ed, t) ? t : modeShelves(ed).filter(function (x) { return SHELF_SOON.indexOf(x) < 0; })[0] || ed.hub || '당산나무'; }
   function roles() {
     ensureNg(); renderNewGame();
-    var n = ngTarget, ed = ED(), M = allMods(), hubs = [];
-    Object.keys(M).forEach(function (id) { var h = M[id].hub || '당산나무'; if (id !== 'compendium' && hubs.indexOf(h) < 0) hubs.push(h); });
-    var modes = Object.keys(M).filter(function (id) { return id !== 'compendium' && (M[id].hub || '당산나무') === (ed.hub || '당산나무'); }).map(function (id) {
+    var n = ngTarget, ed = ED(), M = allMods(), hubs = [], fam = curShelf();
+    Object.keys(M).forEach(function (id) { if (id === 'compendium') return; modeShelves(M[id]).forEach(function (h) { if (SHELF_SOON.indexOf(h) < 0 && hubs.indexOf(h) < 0) hubs.push(h); }); });
+    var modes = Object.keys(M).filter(function (id) { return id !== 'compendium' && shelfPlayable(M[id], fam); }).map(function (id) {
       var P = edPlayable(M[id]); var ok = !P.set || P.set.indexOf(n) >= 0;
       return { id: id, name: M[id].name, playable: ok, note: ok ? null : n + '명으로는 할 수 없어요' };
     });
@@ -324,7 +347,7 @@ var NativeCore = (function () {
     /* 모드가 받는 인원 밖이면 배정을 막는다 — 베이직(6~13)에 14명 이상을 넣으면 표가 없어 표준 편성으로 빠지며 수사관·대부를 여러 장 채웠다(2026-10-05 햇살님 «수사관이랑 대부가 3명씩») */
     var P = edPlayable(ed), out = P.set && P.set.indexOf(n) < 0 ? '이 모드는 ' + P.min + '~' + P.max + '명이에요 — 인원에 맞는 모드를 골라 주세요.' : null;
     var reason = out ? out : total !== n ? '직업 ' + total + '개 · 자리 ' + n + '명 — 수를 맞춰 주세요.' : (need && tv.length !== need ? '여행자 ' + need + '명을 선택해주세요.' : null);
-    return { family: ed.hub || '당산나무', families: hubs, modeID: state.edition, modes: modes, count: n, total: total,
+    return { family: fam, families: hubs, modeID: state.edition, modes: modes, count: n, total: total,
       setups: (ed.setups || []).map(function (su, i) { return { index: i, name: su.name, diff: su.diff || '' }; }),
       /* 승리 조건 — 웹 새 판 «승리 조건» 고르기와 같은 목록. 판정은 바꾸지 않고 «이번 판 공지»에 읽어 줄 문장 */
       win: (function () { var w = winPick(); return { mode: w.mode, text: w.text, options: WINPRESETS.map(function (x) { return { id: x.id, label: x.id === 'custom' ? '직접 입력' : winLabel(x) }; }) }; })(),
@@ -418,7 +441,8 @@ var NativeCore = (function () {
     var skin = typeof SKINS !== 'undefined' && (SKINS[mid] || []).indexOf(c.id) >= 0;
     var ic = !skin && typeof ICON_BY_ID !== 'undefined' ? ICON_BY_ID[c.id] : null;
     var coin = !skin && !ic && typeof coinArt === 'function' ? coinArt(c) : '';
-    return { icon: skin ? 'skin_' + mid + '_' + c.id : ic || (coin ? coin.replace(/^.*\//, '').replace(/\.webp$/, '') : null), e: String(c.e || '') };   // 시계탑 세 판은 스킨/<모드>/<직업>.webp
+    var art = !skin && !ic && !coin && typeof JOB_ART !== 'undefined' && JOB_ART.has(c.id) ? 'art_' + c.id : null;   // 평면 직업 그림(2026-10-08)
+    return { icon: skin ? 'skin_' + mid + '_' + c.id : ic || (coin ? coin.replace(/^.*\//, '').replace(/\.webp$/, '') : art), e: String(c.e || '') };   // 시계탑 세 판은 스킨/<모드>/<직업>.webp
   }
   function reference() {
     var ed = ED(), card = null; try { card = nightCard(); } catch (e) {}
@@ -709,18 +733,20 @@ var NativeCore = (function () {
   }
   function library() {
     var M = allMods(), hubs = {};
-    Object.keys(M).forEach(function (id) { if (id === 'compendium') return; var m = M[id], h = m.hub || '당산나무', P = edPlayable(m);
-      (hubs[h] = hubs[h] || []).push({ id: id, name: m.name, players: P.set && P.set.length ? P.set[0] + '~' + P.set[P.set.length - 1] + '명' : '', roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).length,
-        roleNames: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { return c.ko; }) }); });   // 직업 이름으로도 찾게(«무당» → 무당이 나오는 모드)
+    Object.keys(M).forEach(function (id) { if (id === 'compendium') return; var m = M[id], P = edPlayable(m);
+      modeShelves(m).forEach(function (h) { (hubs[h] = hubs[h] || []).push({ id: id, name: m.name, players: P.set && P.set.length ? P.set[0] + '~' + P.set[P.set.length - 1] + '명' : '', roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).length,
+        roleNames: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { return c.ko; }) }); }); });   // 직업 이름으로도 찾게(«무당» → 무당이 나오는 모드) · 모드는 보이는 테마 목록마다(둘 다면 두 곳)
     /* 같은 제목의 확장판은 원래 모드 아래로 묶는다(2026-10-02 햇살님 «확장개념은 묶기 같은장르 같은제목 끼리») — «우물가 — 두레박» → parent=우물가, short=두레박.
        당산나무 계열만: 클래식은 «클래식 — …»이 제목이 아니라 계열 이름이라 묶지 않는다. 화면은 parent 가 있는 모드를 그 모드 밑에 접어 둔다 */
     (hubs['당산나무'] || []).forEach(function (m, _, L) { var cut = m.name.indexOf(' — '); if (cut < 0) return; var key = m.name.slice(0, cut);
       var base = L.find(function (b) { return b.name.indexOf(' — ') < 0 && (b.name.indexOf(key) === 0 || b.name.replace(/^당산나무 /, '').indexOf(key) === 0); });
       if (base) { m.parent = base.id; m.short = m.name.slice(cut + 3); } });
-    return { hubs: Object.keys(hubs).map(function (h) { return { name: h, modes: hubs[h] }; }) };
+    return { hubs: Object.keys(hubs).map(function (h) { return { name: h, modes: hubs[h], soon: SHELF_SOON.indexOf(h) >= 0 }; }) };   // soon — 게임이 아직 없는 테마, 열어 보기만
   }
   function libraryMode(id) {
+    var sh = String(id || '').split('|'); id = sh[0];   // «모드|목록» — 자료실이 어느 테마 목록에서 열었나(2026-10-08 테마 옷)
     var m = allMods()[id]; if (!m) return null; outHub = hubRepOf(m);   // 보고 있는 모드의 계열 말로(지금 고른 계열이 아니라)
+    if (sh[1]) { var sr = hubRepOf({ hub: sh[1] }), d = dressFor(m, sr); if (d) { outHub = sr; outDress = d; } }
     return { id: id, name: m.name, guide: textOf(m.guide || ''), rules: (m.guideBlocks || []).map(function (b) { return { ph: b.ph, steps: b.steps || [] }; }), tips: m.guideTips || [], roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, id); return { id: c.id, ko: c.ko, team: c.team, teamKo: TKOof(m, c.team), ab: c.ab || '', icon: r.icon, e: r.e }; }) };
   }
 
@@ -1022,12 +1048,13 @@ var NativeCore = (function () {
       state.rvSeen = seen; state.rvPos = pos; save(); return null; },
     'roles.setFamily': function (p) { if (inGame()) return rejected('notAllowedInPhase', '첫밤 뒤에는 바꿀 수 없어요.');
       var t = THEMES.find(function (x) { return themeName(x.rep) === p.family; });
-      var M = allMods(), id = Object.keys(M).find(function (k) { return k !== 'compendium' && (M[k].hub || '당산나무') === p.family; });
+      var M = allMods(), id = Object.keys(M).find(function (k) { return k !== 'compendium' && shelfPlayable(M[k], p.family); });
       if (!id) return rejected('invalidSelection', '그 계열의 모드가 없어요.');
       if (hasRoles() && !p.force) return clearAsk();   // 웹 테마 시트의 «역할 비우고 변경» — 한 번만 묻는다
       if (t) setTheme(t.rep, { sure: true }); else switchEdition(id, { quiet: true, force: true }); ensureNg(); return null; },
     'roles.setMode': function (p) { if (inGame()) return rejected('notAllowedInPhase', '첫밤 뒤에는 바꿀 수 없어요.');
       if (!allMods()[p.id]) return rejected('invalidSelection', '모드를 찾지 못했어요.');
+      if (!modeShelves(allMods()[p.id]).some(function (x) { return SHELF_SOON.indexOf(x) < 0; })) return rejected('invalidSelection', '아직 준비 중인 테마의 모드예요.');   // 판타지·우주 목록만 있는 모드는 열어 보기만
       if (hasRoles() && !p.force) return clearAsk();
       switchEdition(p.id, { quiet: true, force: true }); ensureNg(); return null; },
     'roles.auto': function () { ensureNg(); ngCounts = autoCompose(ngTarget); return null; },

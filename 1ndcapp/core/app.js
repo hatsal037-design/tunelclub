@@ -2616,6 +2616,9 @@ const SKINS={"botc-bmr": ["apprentice", "assassin", "bishop", "chambermaid", "co
    직업 수만큼 404 가 났다 — 화면은 이모지로 폴백돼 안 보였을 뿐 (2026-08-29) */
 /* 상징 아이템(2026-09-12, docs/보고서/상징_아이템_기획_2026-09-12.md) — 직업 id → img/icons 마스크. 스킨이 있는 모드(시계탑)는 스킨이 먼저, 없으면 아이템, 그다음 이모지 */
 const ICON_BY_ID={baemjabi:'job_baemjabi',drunk:'job_jujeong',fortuneteller:'job_jeomsul',gakseori:'job_gakseori',gangtaegong:'job_gangtaegong',geumjul:'job_geumjul',haemongga:'job_haemongga',hunjang:'job_hunjang',imugi:'job_imugi',mangnani:'job_mangnani',mudang:'job_mudang',nageune:'job_nageune',poisoner:'job_doksal',ravenkeeper:'job_kkamagwi',sangun:'job_sangun',sapsal:'job_sapsal',sejak:'job_sejak',uiwon:'job_uiwon',undertaker:'job_janguisa',yeotjangsu:'job_yeotjangsu'};
+/* 직업 그림(2026-10-08 햇살님 «시계탑 직업 아이콘처럼 당산나무 아이콘 · 오리지널 마피아 빈 직업도») — 시계탑 «시계공 2차» 결의 평면 아이콘, 그림 파일 RoleArt/art_<직업>.webp.
+   자기 그림(스킨·목판화·코인)이 없는 직업만. 원본 작업중_당산나무_평면아이콘_20261008/ */
+const JOB_ART=new Set(["amhaeng", "amugae", "anak", "angaegogae", "baekjeong", "baemgaksi", "baennaet", "banggakbon", "bangja", "bangsangsi", "banpungsu", "beopsa", "bobusang", "bolmo", "bongsa", "bulgasari", "chaekryeok", "chakho", "chalgeomeori", "cheonggaeguri", "cheosa", "chilpuni", "chwigaek", "daejangjangi", "daeyeokkun", "dalgyal", "dangsanhalmae", "dolpari", "dongtikkun", "dopyeonsu", "doryeong", "dueoksini", "dungapjaengi", "eoduksini", "eolteugi", "eopgwi", "gaekgwi", "gaekju", "gaettongi", "geumbudosa", "geuseundae", "gokbi", "gokgwi", "goktu", "gumiho", "gwietmalkkun", "gyusu", "hallyang", "hobang", "hwajeok", "hwanjaengi", "hwapokkun", "hyangbul", "ibang", "ijang", "imae", "iyagikkun", "jagaek", "jangmulabi", "jangsanbeom", "jangseung", "jeombachi", "jeongin", "jeoseungsaja", "jeungjaengi", "jigwan", "jinsa", "jongson", "jumo", "kkamagwi", "maeulsaram", "mangseokjung", "mareum", "meoseum", "mihokgwi", "mireuk", "mohamkkun", "momju", "mongdari", "mongyubyeongja", "moribae", "morikkun", "mosakkun", "myeongdu", "namsadang", "noinjang", "nojang", "ongju", "pasukkun", "pogyo", "pojol", "posu", "pungsujaengi", "saejeom", "samjae", "samsin", "sanjeok", "sansinryeong", "sanyangkkun", "satdaejil", "seunim", "sigwi", "simmani", "sindeullini", "songsakkun", "sonnimmama", "sorikkun", "sp_congress", "sp_coroner", "sp_eye", "sp_reporter", "sp_sniper", "sp_soulmate", "sp_spy", "suldoga", "taljangsu", "ttakttagi", "tujeonkkun", "yabawikkun", "yakcho", "yakjangsu", "yeogwi", "yeolnyeo", "yeombulkkun", "yeomjangi", "yeommae", "yeongmae", "yoseung", "yumo"]);
 const TEAM_ICON={town:'team_town',outsider:'team_outsider',minion:'team_minion',demon:'team_demon',neutral:'team_neutral',traveler:'team_traveler'};
 function icoHtml(name, cls){ return `<i class="ico${cls?' '+cls:''}" style="--m:url(img/icons/${name}.webp)"></i>`; }
 function teamIco(team){ const n=TEAM_ICON[team]; return n?icoHtml(n,'team'):''; }
@@ -2741,8 +2744,21 @@ function renderLookRow(){ const el=document.getElementById('lookRow'); if(!el) r
    비어 있으면(옛 판) 지금 모드의 계열로 읽는다. 테마만 정하고 모드는 아직 안 고른 상태가 있다(state.modePicked=false) —
    그동안 모드는 그 테마의 자리표시 모드로 둔다(ED() 가 늘 모드를 돌려주게). 역할 걸음에서 사람이 모드를 고르면 modePicked=true.
    바꿀 수 있는 건 첫밤을 시작하기 전까지. 그 뒤엔 «새 판» 하나 */
+/* 모드가 보이는 테마 목록(2026-10-08 햇살님 «이렇게 나누자, 아직 없는 건 리스트까지만 열어 볼 수 있게») — 규칙 계열(m.hub)은 그대로, 목록만 나눈다.
+   표에 없는 모드는 자기 계열 하나. 근거·나눈 이유 docs/보고서/모드_테마배치_20261008.md. SHELF_SOON 은 게임이 아직 없는 테마 — 자료실에서 열어 보기만 */
+const SHELF_SOON=['판타지','우주'];
+const MODE_SHELF={
+  village_oegil:['당산나무','클래식'], hyeonhok_uisim:['당산나무','클래식'], hyeonhok_kkeulneunmul:['당산나무','클래식'],
+  jaepan_ilgopjjae:['당산나무','클래식'], aegun_aekttaem:['당산나무','클래식'], bangak_julnoreum:['당산나무','클래식'],
+  // 찰거머리가 나오는 판(밝은달·후회·골방)은 당산나무에 둔다 — 2026-10-08 햇살님 «거거머리가 뭐야, 그 테마는 옮기지 말자»
+  umulga_kkomjjak:['클래식'], umulga_byeorak:['클래식'], geumeum_mareunchim:['클래식'], geumeum_bulsa:['클래식'], hyeonhok_heotsomun:['클래식'], 
+  bangak_eutteumpae:['클래식'], bangak_yeonjangseon:['클래식'], bangak_paigupgi:['클래식'], bangak_doegapeum:['클래식'], bangak_hoeori:['클래식'],
+  umulga_noinjang:['판타지'], geumeum_sewol:['판타지'], hyeonhok_migung:['판타지'], hyeonhok_wolsik:['판타지'], saengsaram_bineul:['판타지'],
+  aegun_taeyeop:['우주'] };
+function modeShelves(m){ return (m&&MODE_SHELF[m.id])||[(m&&m.hub)||'당산나무']; }
+function shelfPlayable(m, name){ return modeShelves(m).some(x=>x===name&&!SHELF_SOON.includes(x)); }
 function themeRep(){ return state.theme ? hubRepOf({hub:state.theme}) : hubRepOf(ED()); }   // state.theme 는 모드의 hub 와 같은 꼴(«클래식» 등) — 저장은 kid, 그릇 hub 와 같은 길
-function themeModes(rep){ return Object.values(allMods()).filter(m=>hubRepOf(m)===rep); }
+function themeModes(rep){ const nm=themeName(rep); return Object.values(allMods()).filter(m=>m.id!=='compendium'&&shelfPlayable(m, nm)); }   // 그 테마 목록에서 할 수 있는 모드
 function themeDefaultMode(rep){ const ms=themeModes(rep); if(!ms.length) return null;
   const recent=(()=>{ try{ const L=logsAll().slice().reverse().find(x=>x&&x.mode&&ms.some(m=>m.id===x.mode)); return L?L.mode:null; }catch(e){ return null; } })();
   const st=(THEMES.find(t=>t.rep===rep)||{}).start;   // 계열 입문 모드(2026-10-01 햇살님 «바꿔» — 클래식이 A Grimm Chorus 로 잡히던 것)
@@ -2758,7 +2774,7 @@ function setTheme(rep, o){
   const hasChars=(state.seats||[]).some(x=>x&&x.char);
   if(hasChars&&!(o&&o.sure)&&!confirm('역할을 이미 나눴어요. 테마를 바꾸면 역할을 다시 나눠요. 바꿀까요?')) return 'cancel';   // 테마 시트는 «역할 비우고 변경»으로 이미 물었다
   const id=themeDefaultMode(rep); if(!id) return 'cancel';
-  state.theme=allMods()[id].hub; state.modePicked=false;
+  state.theme=themeName(rep); state.modePicked=false;
   if(id!==state.edition) switchEdition(id, {quiet:true}); else if(hasChars){ switchEdition(id, {quiet:true, force:true}); }
   save(); try{ localStorage.setItem('dangsan_theme_seen','1'); }catch(e){} try{ render(); }catch(e){} return 'ok'; }
 /* ══ 테마 표 (시공 3단계 · 화면-096·102, 2026-09-28) — 테마마다 다른 건 여기 한 곳. 이름은 등록부 hub 표기.
@@ -4777,7 +4793,7 @@ function closeEdPick(){ document.getElementById('edPickOverlay').classList.remov
 function edPickTab(h){ edPick.hub=h; renderEdPick(); }
 function edPickSeries(k){ edPick.open[k]=!edPick.open[k]; renderEdPick(); }
 function edPickChoose(id){ const mods=allMods(), m=mods[id]; if(!m) return;
-  const pick=()=>{ state.theme=m.hub; state.modePicked=true; };   // 사람이 모드를 고르면 테마도 그 계열 (화면-095)
+  const pick=()=>{ state.theme=shelfPlayable(m, state.theme)?state.theme:modeShelves(m).find(x=>!SHELF_SOON.includes(x)); state.modePicked=true; };   // 사람이 모드를 고르면 테마도 그 목록 (화면-095) — 지금 목록에 있으면 그대로
   if(typeof prep!=='undefined'&&prep.on){ if(!edFits(m,prepCount()||8)) return; switchEdition(id); pick(); save(); prepRender(); return; }
   if(!edFits(m,state.count||8)) return;
   switchEdition(id); pick(); save(); closeEdPick();
@@ -7259,12 +7275,13 @@ function pickKill(owner, force, ignoreVoid){ const t=pickGet(owner); if(!t.lengt
        의원이 지켜 준 시귀가 애꿎게 한 목숨을 잃던 자리다 (전수감사 2026-09-13 #18, 2026-09-15 고침).
        가사 상태도 guardSet('life')에 들어 있으므로 여기서는 빼고 본다 — 아래에서 따로 소진한다 */
     const guard=(s.rem||[]).filter(r=>{ if(!guardSet.has(r)||목숨.has(r)) return false; const o=placerOf(r,i); if(o!==null&&pickVoidReasons(o).length){ voidNotes.push(`${r}(${pickLabel(o)}이(가) ${pickVoidReasons(o).join('·')} 상태라 무효)`); return false; } return true; }); const imm=force?null:(dayKill?absImmune(i):nightImmune(i,byDemon));
+    if(!force&&guard.length&&!dayKill&&state.log){ const o=placerOf(guard[0],i); state.log.saves=(state.log.saves||[]).concat([{n:state.nights||1, seat:i+1, by:o===null?null:o+1, k:byDemon?owner+1:null}]); }   // 막음 — 행위 수(actFacts)가 읽는다
     if(!force&&(guard.length||imm)){ blocked.push({i,guard:guard.concat(imm?[imm]:[])}); return; }           // 확인창 대신 카드 안에서 알려주고 '그래도 처리' 버튼. 1회 버팀은 소모 표시
     /* 여기까지 왔으면 이번 밤엔 정말 죽는다 — 그때 2목숨을 쓴다 */
     const 쓸목숨=(s.rem||[]).find(r=>목숨.has(r));
     if(쓸목숨&&!force){ s.rem=s.rem.filter(r=>r!==쓸목숨); tokAtDel(i,쓸목숨); fakeDeadMark(i); blocked.push({i,guard:[쓸목숨+' — 죽은 척하고 살아남음(소진)']}); return; }   // 시귀: 처음 죽을 때는 죽은 척
     s.dead=true; s.cause=dayKill?'day':(byDemon?'demon':'night'); s.causeN=state.nights||1; if(villageType()){ s.rem=s.rem||[]; if(!s.rem.includes('유령표')) s.rem.push('유령표'); }
-    logEvent('사망', Object.assign(logSeat(i),{by:force?'pick|force':'pick', cause:s.cause})); names.push(pickLabel(i));
+    logEvent('사망', Object.assign(logSeat(i),{by:force?'pick|force':'pick', cause:s.cause, k:owner+1})); names.push(pickLabel(i));
     // 유모의 아이가 흉수에게 죽으면 유모도 함께 죽는다
     companionDeaths(i, byDemon).forEach(yi=>names.push(pickLabel(yi)+'(유모 — 아이와 함께 사망)')); });
   pickCommit(owner, t, force?'kill|force':'kill');
@@ -12586,6 +12603,133 @@ function skillFacts(L){
     el.forEach((s,i)=>{ add(s,'vs', c[i]-(sum-c[i])/(el.length-1)); add(s,'vn',1); }); });
   Object.values(out).forEach(o=>{ o.vs=Math.round(o.vs*1e4)/1e4; o.ns=Math.round(o.ns*1e4)/1e4; });
   return out; }
+/* 행위 수(2026-10-07 햇살님 «막음·악 지명·악 처형 찬성·흉수 처치, 그 외 많은 항목으로 계속 카운팅») — 칭호·도감의 재료.
+   판 기록(사건·막음)만 읽는다. 자리별 {열쇠:횟수}. 열쇠를 늘리면 서버는 그대로 따라 센다(act:<열쇠>) — 칭호는 서버 칭호 목록이 고른다 */
+function actFacts(L){
+  const out={}; if(!L||!Array.isArray(L.players)) return out;
+  const M=allMods()[L.mode], cm={}; ((M&&M.chars)||[]).forEach(c=>{ cm[c.id]=c; }); const cOf=id=>cm[id]||CMAP()[id]||null;
+  const team={}, role={}, alive={}, names={};
+  L.players.forEach(p=>{ if(typeof p.seat!=='number'||p.seat<1) return; team[p.seat]=p.team; role[p.seat]=p.roleId; alive[p.seat]=true; const k=(p.name||'').trim(); if(k) names[k]=(k in names)?0:p.seat; });
+  const seatOf=(s,name)=>{ if(typeof s==='number') return s; const k=(name||'').trim(), m=/^좌석 (\d+)$/.exec(k); return m?+m[1]:(names[k]||null); };
+  const evil=s=>['minion','demon','mafia'].includes(team[s]), boss=s=>team[s]==='demon'||role[s]==='om_godfather';   // 우두머리 — 오리지널 마피아는 대부(2026-10-07 «다 넣어»)
+  const add=(s,k,v)=>{ if(!s) return; const o=out[s]=out[s]||{}; o[k]=(o[k]||0)+(v||1); };
+  const tk=(cls)=>{ try{ return new Set(fxTokens(cls)); }catch(e){ return new Set(); } };
+  const GUARD=new Set(['보호됨','부적','치마폭','보호됨(여관)', ...tk(['protect','life'])]), POISON=tk('poison');
+  const noms={}, forced={}, deaths={}, execN={}, picksN={}, nomDays={}, savedBy={};
+  let first=true, execs=0, goodExecs=0;
+  const died=(t,cause)=>{ if(!t||!alive[t]) return false; alive[t]=false; deaths[t]=(deaths[t]||0)+1; add(t,'died_'+(cause||'other')); if(first){ add(t,'dead_first'); first=false; } return true; };
+  (L.events||[]).forEach(e=>{ const n=e.n||0;
+    if(e.type==='역할 변경'&&Array.isArray(e.swapSeats)) e.swapSeats.forEach((s,k)=>{ const id=(e.roleIds||[])[k], c=cOf(id); if(c){ team[s]=c.team; role[s]=id; } add(s,'role_changed'); });
+    else if(e.type==='역할 변경'||e.type==='계승'){ const s=seatOf(e.seat,e.type==='계승'?e.대상:e.name), c=e.roleId?cOf(e.roleId):null; if(s&&c){ team[s]=c.team; role[s]=e.roleId; }
+      if(e.type==='계승'){ add(s,'succ'); if(s) alive[s]=true; } else add(s,'role_changed'); }
+    else if(e.type==='지명'){ const t=e.취소?seatOf(e.bySeat,e.대상):seatOf(e.seat,e.name); if(!t) return;
+      if(e.취소){ delete noms[n+'|'+t]; return; }
+      noms[n+'|'+t]={n, t, by:typeof e.bySeat==='number'?e.bySeat:null, voters:[], evil:evil(t), boss:boss(t), byEvil:typeof e.bySeat==='number'&&evil(e.bySeat),
+        live:Object.keys(alive).map(Number).filter(s=>alive[s]), x:false}; }
+    else if(e.type==='투표'){ const x=noms[n+'|'+seatOf(e.대상seat,e.대상)]; if(x&&Array.isArray(e.투표자seats)) x.voters=e.투표자seats.slice(); }
+    else if(e.type==='처형'){ const t=seatOf(e.seat,e.name), x=noms[n+'|'+t];
+      if(e.무효){ if(x) x.saved=true; return; }
+      if(!died(t,'exec')) return; add(t,'exec_d'); if(n===1) add(t,'exec_d1'); execs++; execN[n]=(execN[n]||0)+1; if(!evil(t)) goodExecs++;
+      if(n===1&&boss(t)) add(t,'boss_day1');
+      if(x){ x.x=true; x.voters.forEach(v=>{ add(v, x.evil?'vote_evil_x':'vote_good_x'); if(x.evil&&evil(v)) add(v,'cut_tail'); if(v===t) add(v,'self_exec'); });
+        if(x.boss){ add(x.by,'nom_boss_x'); if(x.byEvil) add(x.by,'treason'); if(n===1) add(x.by,'boss_day1_nom'); if(x.by===t) add(t,'self_confess'); } } }
+    else if(e.type==='사망'){ const t=seatOf(e.seat,e.name); const c=e.cause||(e.by==='yumo'?'yumo':e.by==='succession'?'succession':'other');
+      if(!died(t,c)) return; if(e.by==='pick|force') forced[n+'|'+t]=1; if(e.cause==='demon'&&e.k&&e.k!==t) add(e.k,'kill'); }
+    else if(e.type==='부활'){ const t=seatOf(e.seat,e.name); if(t){ alive[t]=true; add(t,'revived'); } }
+    else if(e.type==='1회 능력 사용') add(seatOf(e.seat,e.name),'once');
+    else if(e.type==='밤 지목'&&Array.isArray(e.대상ref)){ const s=seatOf(e.seat,e.name); if(!s) return; add(s,'pick'); (picksN[s]=picksN[s]||new Set()).add(n);
+      const what=String(e.처리||''), tok=(what.match(/^token:([^|]+)/)||[])[1];
+      if(!evil(s)&&e.대상ref.some(r=>evil(r.seat))) add(s,'pick_evil');
+      if(!evil(s)&&n===1&&e.대상ref.some(r=>boss(r.seat))) add(s,'night1_boss');
+      if(/^info/.test(what)) add(s,'pick_info');
+      if(tok){ if(GUARD.has(tok)) add(s,'pick_guard'); else if(POISON.has(tok)) add(s,'pick_poison'); else add(s,'pick_mark'); } } });
+  /* 지명·투표 — 끝난 뒤 한꺼번에(취소된 지명은 빠졌다) */
+  const D={}; (L.days||[]).forEach(d=>(d.noms||[]).forEach(y=>{ D[d.n+'|'+y.t]=y; }));
+  const firstNom={}, nomdDay={};
+  Object.values(noms).sort((a,b)=>a.n-b.n).forEach(x=>{ const y=D[x.n+'|'+x.t]||{};
+    add(x.by,'nom'); add(x.t,'nomd'); (nomDays[x.by+'>'+x.t]=nomDays[x.by+'>'+x.t]||new Set()).add(x.n);
+    nomdDay[x.n+'|'+x.t]=(nomdDay[x.n+'|'+x.t]||0)+1;
+    if(x.by){ if(x.evil) add(x.by,'nom_evil'); else if(!evil(x.by)) add(x.by,'nom_good'); if(x.evil&&x.byEvil) add(x.by,'nom_ally'); if(x.by===x.t) add(x.by,'nom_self');
+      if(!firstNom[x.n]){ firstNom[x.n]=1; add(x.by,'nom_first'); } if(x.voters.length===0) add(x.by,'nom_zero'); }
+    if(!x.x) add(x.t,'nom_survive');
+    const elig=x.live.filter(s=>s!==x.t);
+    elig.forEach(s=>{ if(!x.voters.includes(s)){ add(s, x.evil?'vote_no_evil':'vote_no_good'); } else add(s,'vote'); });
+    if(x.x&&typeof y.need==='number'&&y.v===y.need) x.voters.forEach(v=>{ add(v,'vote_decisive'); if((team[v]||'')==='traveler') add(v,'traveler_judge'); });
+    if(x.x&&Array.isArray(y.ghost)) y.ghost.forEach(g=>{ add(g,'vote_ghost_x'); if(x.boss) add(g,'ghost_judge'); });
+    if(elig.length>=3&&elig.every(s=>x.voters.includes(s))){ if(x.x) x.voters.forEach(v=>add(v,'vote_unan')); else if(x.saved) add(x.t,'unan_survive'); }
+    if(!x.x&&typeof y.need==='number'&&y.v===y.need-1) add(x.t,'one_vote');
+    if(x.x&&!x.evil&&elig.length>=3){ const no=elig.filter(s=>!x.voters.includes(s)); if(no.length===1) add(no[0],'lone_no'); } });
+  const endN=L.nights||0, lastEx=Object.values(noms).filter(x=>x.x).sort((a,b)=>b.n-a.n)[0];
+  if(lastEx&&lastEx.n===endN&&(L.winner==='good'||L.winner==='evil')) lastEx.voters.forEach(v=>add(v,'vote_final'));
+  Object.keys(nomdDay).forEach(k=>{ if(nomdDay[k]>=3){ const t=+k.split('|')[1]; add(t,'three_noms'); } });
+  Object.keys(nomDays).forEach(k=>{ if(nomDays[k].size>=3) add(+k.split('>')[0],'same_target_daily'); });
+  /* 막음 */
+  const savesN={};
+  (L.saves||[]).forEach(x=>{ if(forced[x.n+'|'+x.seat]) return; add(x.seat,'saved'); if(x.k) { add(x.k,'kill_blocked'); (savesN['k'+x.k]=savesN['k'+x.k]||new Set()).add(x.n); }
+    if(x.by&&x.by!==x.seat){ add(x.by,'save'); (savedBy[x.seat]=savedBy[x.seat]||[]).push(x.by); (savesN[x.by+'>'+x.seat]=savesN[x.by+'>'+x.seat]||new Set()).add(x.n); } });
+  Object.keys(savesN).forEach(k=>{ const ns=[...savesN[k]].sort((a,b)=>a-b);
+    if(k[0]==='k'){ let run=1; for(let i=1;i<ns.length;i++){ run=ns[i]===ns[i-1]+1?run+1:1; if(run===3){ add(+k.slice(1),'blocked3'); break; } } return; }
+    const by=+k.split('>')[0]; if(ns.some((v,i)=>i&&v===ns[i-1]+1)) add(by,'save_chain'); });
+  // «은혜 갚은»은 막음을 다 본 뒤에야 안다 — 처형 쪽을 다시 훑는다
+  Object.values(noms).forEach(x=>{ if(x.x&&x.boss&&savedBy[x.by]) savedBy[x.by].forEach(s=>add(s,'repaid')); });
+  /* 끝 상태 */
+  const seats=L.players.filter(p=>p.seat>0&&!p.left).map(p=>p.seat).sort((a,b)=>a-b);
+  const endAlive=L.players.filter(p=>p.seat>0&&!p.left&&!p.dead), evils=L.players.filter(p=>p.seat>0&&!p.left&&p.sideCode==='evil');
+  const stamp=s=>{ const m=/^(\d+)-(\d+)-(\d+) (\d+):(\d+)/.exec(s||''); return m?new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5]):null; };
+  const t0=stamp(L.at), t1=stamp(L.endedAt), mins=(t0&&t1)?Math.round((t1.getTime()-t0.getTime())/60000):null;
+  const moon=t0?((t0.getTime()/864e5-10962.76)%29.530588853+29.530588853)%29.530588853:null;   // 2000-01-06 18:14 UTC 그믐 기준 달 나이(일)
+  const ymd=t0?`${t0.getFullYear()}${String(t0.getMonth()+1).padStart(2,'0')}${String(t0.getDate()).padStart(2,'0')}`:'';
+  const nb=s=>{ const i=seats.indexOf(s), k=seats.length; return k<3||i<0?[]:[seats[(i+k-1)%k], seats[(i+1)%k]]; };
+  const P={}; L.players.forEach(p=>{ if(p.seat>0) P[p.seat]=p; });
+  L.players.forEach(p=>{ const s=p.seat; if(!(s>0)||p.left) return; const o=out[s]||{}, won=p.won===true, isEvil=p.sideCode==='evil', ft=p.finalTeam||p.team;
+    if(!p.dead) add(s,'survive'); if(won&&p.dead) add(s,'win_dead');
+    if(won&&ft) add(s,'won_'+ft); if(ft==='traveler') add(s,'play_traveler');
+    if(isEvil&&fxSide(ft)==='good'){ add(s,'conv'); if(won) add(s,'turncoat_win'); }
+    if((o.role_changed||0)>=2) add(s,'two_changes');
+    if((deaths[s]||0)>=2) add(s,'double_dead'); if((o.revived||0)>=2) add(s,'revive2');
+    if(!p.dead&&endN>=5) add(s,'long_survive'); if(won&&endN<=2) add(s,'short_win');
+    if(won&&seats.length>=12) add(s,'big_win'); if(won&&seats.length<=6) add(s,'small_win');
+    if(!p.dead&&endAlive.length<=3) add(s,'final3'); if(p.won===false&&!p.dead) add(s,'lost_alive');
+    if(won&&isEvil&&!p.dead) add(s,'evil_alive_win');
+    if(won&&isEvil&&evils.length>=2&&evils.every(q=>q.seat===s||q.dead)) add(s,'evil_last_win');
+    if(won&&endAlive.length===1&&!p.dead) add(s,'last_one');
+    if(won&&s===1) add(s,'seat1_win');
+    const N=nb(s); if(N.length===2){ if(won&&!isEvil&&N.every(q=>P[q]&&P[q].sideCode==='evil')) add(s,'wolves'); if(!p.dead&&N.every(q=>P[q]&&P[q].dead)) add(s,'island'); }
+    if(mins!==null){ if(won&&mins<=30) add(s,'fast_win'); if(mins>=120) add(s,'marathon'); if(mins===60) add(s,'exact_hour'); }
+    if(t0){ const h=t0.getHours(), mi=t0.getMinutes(), dw=t0.getDay(), mo=t0.getMonth()+1, dd=t0.getDate();
+      if(h===12&&mi===34) add(s,'start_1234'); if(h===0&&mi===0) add(s,'start_midnight'); if(dw===0&&h<9) add(s,'sunday_morning');
+      if(dw===5&&dd===13&&s===13) add(s,'friday13');
+      if(moon<1||moon>28.5){ if(/그믐/.test(L.modeName||'')) add(s,'new_moon_geumeum'); }
+      if(Math.abs(moon-14.77)<1&&won&&boss(s)) add(s,'full_moon_boss');
+      if(mo===12&&(dd===21||dd===22)&&!p.dead) add(s,'winter_solstice'); if(mo===6&&(dd===21||dd===22)&&mins!==null&&mins<=30) add(s,'summer_solstice');
+      if(ymd===ymd.split('').reverse().join('')) add(s,'palindrome_day');
+      if(t1&&t1.getFullYear()!==t0.getFullYear()) add(s,'cross_year'); }
+    if((picksN[s]||new Set()).size>=Math.max(3,endN)) add(s,'all_nights_pick');
+    const allN=Object.values(noms).filter(x=>x.live.includes(s)&&x.t!==s);
+    if(allN.length>=3&&allN.every(x=>x.voters.includes(s))) add(s,'vote_all'); if(allN.length>=2&&allN.every(x=>!x.voters.includes(s))) add(s,'vote_none');
+    if(won&&!o.nom&&!o.vote&&allN.length>=2) add(s,'silent_win');
+    if(o.nom&&o.vote&&o.pick&&o.save&&o.exec_d) add(s,'full_set');
+    if((o.save||0)>=2) add(s,'save2');
+    if(o.dead_first&&won) add(s,'first_dead_win');
+    if(won&&isEvil&&!o.nomd) add(s,'evil_unnamed_win');
+    if(won&&isEvil&&!Object.values(noms).some(x=>x.t===s&&x.voters.length)) add(s,'evil_clean_win');
+    if(boss(s)&&won&&!o.kill&&endN>=3) add(s,'bloodless_boss');
+    if((o.nom||0)>=2&&o.nom===o.nom_evil) add(s,'perfect_accuser');
+    if(won&&!isEvil&&evils.length&&evils.every(q=>(out[q.seat]||{}).exec_d)) add(s,'all_evil_exec_win');
+    if(won&&execs===0) add(s,'no_exec_win');
+    if(goodExecs>=3) add(s,'disaster');
+    if(won&&(savedBy?Object.keys(savedBy).some(t=>savedBy[t].includes(s)&&P[t]&&!P[t].dead):false)) add(s,'guarded_survivor');
+    if(!isEvil&&(o.vote_good_x||0)>=3) add(s,'friendly_fire3');
+    if(o.self_confess&&!won) delete o.self_confess;   // 자수 — 악 편이 이겼을 때만
+    const rn=(p.finalRole||p.role||'').trim(); if(rn&&(p.name||'').trim()===rn) add(s,'nick_job');
+    if(s===endN&&endN===endAlive.length) add(s,'three_numbers');
+    if(won&&s===7&&seats.length===7) add(s,'lucky7');
+    if(L.winner&&L.winner!=='good'&&L.winner!=='evil') add(s,'void_game');
+    if((out[s]||{}).succ&&won&&boss(s)) add(s,'usurper');
+    const bosses=L.players.filter(q=>q.seat>0&&(q.finalTeam||q.team)==='demon');
+    if(bosses.length>=2&&bosses.every(q=>Object.values(noms).some(x=>x.x&&x.t===q.seat&&x.voters.includes(s)))) add(s,'twin_hunter');
+  });
+  return out; }
 function logPlayersOf(){ const cm=CMAP();
   return state.seats.map((s,i)=>(s.char&&cm[s.char]&&!['host','fabled'].includes(cm[s.char].team))?{seat:i+1, name:s.name||'', pid:s.pid||null, role:cm[s.char]?.ko||s.char,
       roleId:s.char, uid:uidOf(s.char)||null, team:cm[s.char]?.team||'', teamKo:TKO(cm[s.char]?.team), sideCode:seatSide(s), exp:s.manualExperience||null}:null).filter(Boolean); }   // exp — 판 시작 때 손 숙련(1~5, 숙련 등급의 출발점 m)
@@ -12672,6 +12816,7 @@ function logFinish(winner, note){
          voters 는 «누른 순서» 그대로다(로그_스키마.md 계약) */
       ghost:(x.ghostUsed||[]).map(v=>v+1), adj:x.adj||0,
       need:(x.need===undefined?null:x.need), alive:(x.alive===undefined?null:x.alive) }))}; }).filter(x=>x.noms.length);
+  try{ const AF=actFacts(L); L.players.forEach(p=>{ if(AF[p.seat]) p.acts=AF[p.seat]; }); }catch(e){}   // 행위 수 — 사건 기록을 빼고 올려도(slim) 남는다
   const logs=logsAll(); logs.push(L); logsSave(logs);
   try{ SRV.autoUpload(L); }catch(e){}   // 로그인돼 있으면 조용히 서버에도 (2026-09-20 회원 통합). 실패해도 기록은 이미 기기에 있다
   state.log=null; save();

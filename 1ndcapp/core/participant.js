@@ -61,7 +61,7 @@
     var net = opts && opts.net;
     if (typeof net !== 'function') throw new Error('participant: net 이 필요해요');
     var state = { me: null, joined: [], inbox: null, notices: null };
-    var listeners = [];
+    var listeners = [], EGG = {};   // EGG — 숨은 장치 누른 수(이번 실행 안)
     function emit() { listeners.forEach(function (f) { try { f(state); } catch (e) {} }); }
     function call(fn, args) {
       return Promise.resolve().then(function () { return net(fn, args || {}); }).then(answer, function (e) {
@@ -150,6 +150,10 @@
       titles: function (handle) { return call('titles', { p_handle: handle }); },   // 칭호·직업 도감(0298)
       equip: function (id) { return call('title_equip', { p_id: id || null }); },
       codex: function (handle) { return call('role_codex', { p_handle: handle }); },
+      /* 숨은 장치(이스터 에그, 0314) — 화면에서 찾으면 부른다. eggTap = 같은 곳을 need 번 누르면 · eggLang = 언어를 10개 다 바꿔 보면(이번 실행 안에서) */
+      egg: function (key) { return call('title_egg', { p_key: key }); },
+      eggTap: function (key, need) { EGG[key] = (EGG[key] || 0) + 1; return EGG[key] === need ? call('title_egg', { p_key: key }) : Promise.resolve(null); },
+      eggLang: function (l) { EGG.langs = EGG.langs || {}; EGG.langs[l] = 1; return Object.keys(EGG.langs).length === 10 && !EGG.babel ? (EGG.babel = 1, call('title_egg', { p_key: 'babel' })) : Promise.resolve(null); },
 
       // ── 요청함·알림함·푸시 ──
       inbox: function () { return call('inbox_list', {}).then(function (r) { return r.ok ? set('inbox', r.value || []) : r; }); },

@@ -150,7 +150,7 @@ let ART = null; const artMap = async () => ART || (ART = await fetch('library/ar
 const plazaLine = p => T('plaza.host_place', { host: p.host || '', place: T('place.plaza') }) + (p.title ? ' · ' + p.title : '');
 /* 장 그리기 — 공용 엔진(core/postcard.js)이 준 그리기 목록을 비율대로 그리기만 한다(2026-10-07 «어느 시스템에 심어도 같은 결과»).
    좌표는 1000×1250 기준 → 1 = 0.1cqw. 배치·색·크기·효과를 여기서 정하지 않는다 — 바꾸려면 엔진을 고친다(앱 CardView.swift 와 같은 짝) */
-const PC = window.Postcard;
+const PC = window.Postcard, TN = s => PC.titleName(s);   // TN — 칭호 이름을 보는 사람 언어로
 PC.setMetrics(await fetch('core/postcard_metrics.json').then(r => r.json()).catch(() => ({})));   // 글꼴 폭 표 — 엔진이 줄을 나눈다(D)
 fetch('library/role_names.json').then(r => r.json()).then(m => PC.setRoles(m)).catch(() => {});   // 직업 코드 → 지금 이름(0308)
 const ordOf = n => PC.ord(n);
@@ -169,7 +169,7 @@ function Layers({ list }) {
 /* 줄 찍기(D) — 엔진이 나눈 줄을 그대로. 줄마다 기준선(by)에 맞춰 놓고 다시 줄바꿈·줄이기를 하지 않는다(앱 CardView laidText 와 같은 짝) */
 function CardLines({ it, interactive }) {
   const nav = useNav(), fam = 'pc-' + it.face.key, top = ln => ln.by - it.asc - (it.size - it.asc - it.dsc) / 2;   // line-height 1em 일 때 기준선 = 위 + 반여백 + asc
-  const go = l => e => { e.preventDefault(); e.stopPropagation(); nav.push(l.kind === 'tag' ? html`<${TagFeed} tag=${l.v} />` : l.kind === 'more' ? html`<${Page} title=${T('feed.more')} left=${html`<${Back} />`}><div style="padding:20px;white-space:pre-wrap;font-size:16px;line-height:1.6"><${Cap} text=${l.v} /></div><//>` : html`<${Profile} handle=${l.v} />`); };
+  const go = l => e => { e.preventDefault(); e.stopPropagation(); if (l.kind === 'egg') { P.eggTap(l.v, 7).catch(() => {}); return; } nav.push(l.kind === 'tag' ? html`<${TagFeed} tag=${l.v} />` : l.kind === 'more' ? html`<${Page} title=${T('feed.more')} left=${html`<${Back} />`}><div style="padding:20px;white-space:pre-wrap;font-size:16px;line-height:1.6"><${Cap} text=${l.v} /></div><//>` : html`<${Profile} handle=${l.v} />`); };
   return html`${it.bg && html`<div class="cbg" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.w)};height:${u(it.h)};background:${rgba(it.bg)};border-radius:${u(it.radius)}`}></div>`}
     ${it.L.map((ln, n) => html`<div key=${n} class="cl2" style=${`left:${u(ln.x)};top:${u(top(ln))};font-family:'${fam}';font-size:${u(it.size)};color:${rgba(it.color)}`}>${ln.runs.map(r => r.link && interactive
       ? html`<a class="mention" href="#" style=${r.color ? 'color:' + rgba(r.color) : ''} onClick=${go(r.link)}>${r.s}</a>` : html`<span style=${r.color ? 'color:' + rgba(r.color) : ''}>${r.s}</span>`)}</div>`)}`;
@@ -208,7 +208,9 @@ function CardPage({ page, interactive = true }) {
 const Swatch = ({ bg }) => html`<${CardPage} page=${PC.swatch(bg)} interactive=${false} />`;
 function Slides({ p, setPage }) {
   const specs = PC.specs(p);
-  return html`<div class="slides" onScroll=${e => { const el = e.currentTarget; setPage && setPage(Math.round(el.scrollLeft / el.clientWidth)); }}>
+  const story = specs.some(sp => sp.k === 'story') && specs.length >= 3;   // 숨은 장치 «끝까지 넘긴» — 판 넘겨 보기를 끝까지 갔다가 처음으로
+  return html`<div class="slides" onScroll=${e => { const el = e.currentTarget, i = Math.round(el.scrollLeft / el.clientWidth); setPage && setPage(i);
+      if (story) { if (i === specs.length - 1) el._end = 1; else if (i === 0 && el._end) { el._end = 0; P.egg('story_back').catch(() => {}); } } }}>
     ${specs.map((sp, i) => html`<div class="pg" key=${i}><${CardPage} page=${PC.page(p, sp, i, specs.length)} /></div>`)}</div>`;
 }
 /* 설명 글 — #태그는 태그 모아 보기, @아이디는 프로필로 */
@@ -226,7 +228,7 @@ function useLike(p0) {
     const r = DEMO ? { ok: true, likes: n + (was ? -1 : 1) } : await P.like(p.handle, p.post, !was); setBusy(false); setP(q => r && r.ok ? { ...q, likes: r.likes } : { ...q, liked: was, likes: n }); };
   return [p, busy, like];
 }
-const Who = ({ p, nav }) => html`<button class="who" onClick=${() => nav.push(html`<${Profile} handle=${p.handle} />`)}><${Avatar} r=${p} size=${34} /><span>${p.ptitle && html`<small class=${'tc' + (p.tc || 0)} style="font-weight:600">${p.ptitle}</small>`}<b>${p.nick}</b><small>@${p.handle}</small></span></button>`;
+const Who = ({ p, nav }) => html`<button class="who" onClick=${() => nav.push(html`<${Profile} handle=${p.handle} />`)}><${Avatar} r=${p} size=${34} /><span>${p.ptitle && html`<small class=${'tc' + (p.tc || 0)} style="font-weight:600">${TN(p.ptitle)}</small>`}<b>${p.nick}</b><small>@${p.handle}</small></span></button>`;
 function PostCard({ p: p0, removed }) {
   const nav = useNav(), [p, busy, like] = useLike(p0), [page, setPage] = useState(0), [menu, setMenu] = useState(false), n = PC.specs(p).length;
   return html`<article class="post">
@@ -245,7 +247,7 @@ function NoteCard({ p: p0, removed }) {
   const nav = useNav(), [p, busy, like] = useLike(p0), [menu, setMenu] = useState(false);
   return html`<article class="note">
     <button class="av" onClick=${() => nav.push(html`<${Profile} handle=${p.handle} />`)}><${Avatar} r=${p} size=${38} /></button>
-    <div class="grow"><div class="nh">${p.ptitle && html`<small class=${'tc' + (p.tc || 0)} style="font-weight:600">${p.ptitle}</small>`}<b>${p.nick}</b><small class="sec">@${p.handle} · ${day(p.at)}</small>
+    <div class="grow"><div class="nh">${p.ptitle && html`<small class=${'tc' + (p.tc || 0)} style="font-weight:600">${TN(p.ptitle)}</small>`}<b>${p.nick}</b><small class="sec">@${p.handle} · ${day(p.at)}</small>
 </div>
       <div class="nt"><${Cap} text=${p.caption} /></div>
       <div class="nb"><button class="icon" aria-pressed=${!!p.liked} disabled=${busy} onClick=${like} style=${p.liked ? 'color:var(--red)' : ''}><${Icon} name="heart" fill=${!!p.liked} size=${18} /> ${p.likes || 0}</button>
@@ -312,7 +314,7 @@ function PeopleTab() {
   return html`<${Page}>
     <${LargeTitle}>${T('tab.people')}<//>
     ${!on ? html`<${LoginRows} />` : html`
-      <div style="padding:0 16px 12px"><${Search} value=${q} onInput=${setQ} placeholder=${T('people.search')} /></div>
+      <div style="padding:0 16px 12px"><${Search} value=${q} onInput=${v => { setQ(v); if (String(v).trim().toLowerCase() === '1ndc') P.egg('search_1ndc').catch(() => {}); }} placeholder=${T('people.search')} /></div>
       ${q ? html`<${Section}>${found.length ? found.map(r => html`<${PersonRow} r=${r} onClick=${() => open(r)} />`) : html`<${Row}><span class="sec">${T('empty.search')}</span><//>`}<//>` : html`
         <div style="padding:0 16px 12px"><${Segmented} options=${[['following', `${T('profile.following')} ${me.following || 0}`], ['followers', `${T('profile.followers')} ${me.followers || 0}`]]} value=${which} onChange=${setWhich} /></div>
         <${Section}><${Row} chevron onClick=${() => nav.push(html`<${Requests} />`)}><${Labeled} label=${T('requests.title')} value=${me.requests || 0} /><//><//>
@@ -340,7 +342,7 @@ function Notices() {
 function Profile({ handle }) {
   const nav = useNav(); const [p, setP] = useState(), [menu, setMenu] = useState(false), [msg, setMsg] = useState(null), [posts, setPosts] = useState([]), [tl, setTl] = useState({}), [codex, setCodex] = useState([]);
   const load = async () => { const v = await P.profile(handle); setP(v); if (v && v.open) { setPosts(rows(await P.posts(handle))); setTl(await P.titles(handle)); setCodex(rows(await P.codex(handle))); } else { setPosts([]); setTl({}); setCodex([]); } };   // 장·칭호·직업 도감(0294·0298)
-  const tname = ((tl.owned || []).find(o => o.id === tl.equipped) || {}).name;
+  const tname = ((tl.owned || []).find(o => o.id === tl.equipped) || {}).name && TN(((tl.owned || []).find(o => o.id === tl.equipped) || {}).name);
   useEffect(() => { load(); }, [handle]);
   const act = async f => { await f(); load(); };
   const follow = !p ? null : p.follow === 'accepted' ? [T('follow.following'), () => act(() => P.unfollow(handle)), 'bsec'] : p.follow === 'requested' ? [T('requests.title'), () => act(() => P.unfollow(handle)), 'bsec'] : [p.private && !p.open ? T('follow.request') : T('follow.do'), () => act(() => P.follow(handle)), 'bprim'];
@@ -351,7 +353,7 @@ function Profile({ handle }) {
         <${Row}><span>${T('profile.followers')} <b>${p.followers}</b></span><span style="margin-left:16px">${T('profile.following')} <b>${p.following}</b></span><//>
         ${!p.me && html`<div style="padding:8px 16px 12px"><button class=${follow[2] + ' grow'} style="width:100%" onClick=${follow[1]}>${follow[0]}</button></div>`}<//>
       ${p.open && p.stats ? html`<${Summary} handle=${handle} /><${Section}><${Stats} s=${p.stats} /><//>${p.stats.hosted > 0 && html`<${Section}><${Labeled} label=${T('space.host')} value=${T('profile.hosted', { n: p.stats.hosted })} /><//>`}<${Ad} />
-        ${(tl.owned || []).length > 0 && html`<${Section} header=${T('title.shelf')}><div class="tts">${tl.owned.slice(0, 6).map(o => html`<span class=${'tt t' + o.tier}>${o.name}</span>`)}</div>
+        ${(tl.owned || []).length > 0 && html`<${Section} header=${T('title.shelf')}><div class="tts">${tl.owned.slice(0, 6).map(o => html`<span class=${'tt t' + o.tier}>${TN(o.name)}</span>`)}</div>
           <${Row} chevron onClick=${() => nav.push(html`<${Titles} handle=${handle} mine=${!!p.me} reload=${load} />`)}>${T('title.all', { n: tl.owned.length })}<//><//>`}
         ${codex.length > 0 && html`<${Codex} rows=${codex} />`}
         ${posts.some(x => x.kind === 'note') && html`<${Section} header=${T('note.list')}><div class="feed">${posts.filter(x => x.kind === 'note').map(x => html`<${NoteCard} key=${x.post} p=${x} removed=${load} />`)}</div><//>`}
@@ -372,9 +374,11 @@ function Titles({ handle, mine, reload }) {
   useEffect(() => { load(); }, []);
   const equip = async id => { await P.equip(id); await load(); reload && reload(); };
   return html`<${Page} title=${T('title.shelf')} left=${html`<${Back} />`}><${Loading} v=${t}>${t && html`
-    <${Section}>${(t.owned || []).map(o => html`<${Row}><span class=${'tt t' + o.tier}>${o.name}</span><span class="grow"></span>
+    <${Section}>${(t.owned || []).map(o => html`<${Row}><span class=${'tt t' + o.tier}>${TN(o.name)}</span><span class="grow"></span>
       ${mine && html`<button class="sec" style="background:none;border:0;font:inherit;min-height:44px" onClick=${() => equip(t.equipped === o.id ? null : o.id)}>${t.equipped === o.id ? T('title.unequip') : T('title.equip')}</button>`}<//>`)}<//>
-    ${mine && (t.next || []).length > 0 && html`<${Section} header=${T('title.next')}>${t.next.map(x => html`<${Row}><div class="grow"><div class=${'t' + x.tier}>${x.name}</div><progress max=${x.at} value=${Math.min(x.n, x.at)} style="width:100%"></progress></div><span class="sec" style="font-variant-numeric:tabular-nums">${x.n} / ${x.at}</span><//>`)}<//>`}`}<//><//>`;
+    ${mine && (t.next || []).length > 0 && html`<${Section} header=${T('title.next')}>${t.next.map(x => html`<${Row}><div class="grow"><div class=${'t' + x.tier}>${TN(x.name)}</div><progress max=${x.at} value=${Math.min(x.n, x.at)} style="width:100%"></progress></div><span class="sec" style="font-variant-numeric:tabular-nums">${x.n} / ${x.at}</span><//>`)}<//>`}
+    ${mine && t.hidden_left > 0 && html`<${Section} header=${T('title.hidden')}><button class="row" style="width:100%;background:none;border:0;font:inherit;min-height:44px;justify-content:space-between" onClick=${() => P.eggTap('qqq100', 100).catch(() => {})}><span class="sec">???</span><span class="sec" style="font-variant-numeric:tabular-nums">× ${t.hidden_left}</span></button><//>`}
+    ${mine && html`<div style="height:160px" onPointerDown=${e => { e.currentTarget._t = setTimeout(() => P.egg('long_blank').catch(() => {}), 1500); }} onPointerUp=${e => clearTimeout(e.currentTarget._t)} onPointerLeave=${e => clearTimeout(e.currentTarget._t)}></div>`}`}<//><//>`;
 }
 /* 직업 도감 — 해 본 직업 그림, 이긴 직업은 진하게 */
 function Codex({ rows: l }) {
@@ -472,9 +476,11 @@ function Settings({ me, done }) {
 async function setLang(account) {
   const l = window.Participant.lang(account, navigator.language);
   dict = l === 'ko' ? ko : await (await fetch(`i18n/${l}.json`)).json().catch(() => ko);
+  P.eggLang(l).catch(() => {});   // 숨은 장치 «바벨탑» — 언어를 10개 다 바꿔 보면
   DATA = l === 'ko' ? null : await fetch(`i18n/data/${l}.json`).then(r => r.ok ? r.json() : null).catch(() => null);
   document.documentElement.lang = l;
   window.Postcard.setText(dict, ko, DATA || {}, l);   // 장 그리기 엔진도 같은 말로
+  window.Postcard.setTitles(l === 'ko' ? {} : await fetch(`i18n/titles/${l}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})));   // 칭호 이름(2026-10-07)
 }
 function App() {
   const [tab, setTab] = useState(() => { const q = location.search; if (/[?&]u=/.test(q)) return 'people'; if (/[?&]j=/.test(q)) return 'plaza'; try { return localStorage.getItem('me.tab') || 'feed'; } catch { return 'feed'; } });

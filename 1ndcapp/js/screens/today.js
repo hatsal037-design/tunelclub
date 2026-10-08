@@ -17,8 +17,8 @@ export const THEMES = [
   { id: '클래식', hub: '클래식', color: '#5a1f1f', art: '임프', photos: [] },
   { id: '당산나무', hub: '당산나무', color: '#6b4a24', art: '객귀', photos: [] },
   { id: '파티', soon: true, color: '#1f5a4a' },   // 말판·주사위 — 큰 화면이 말판(2026-10-05)
-  { id: '판타지', soon: true, color: '#3d2f6b' },
-  { id: '우주', soon: true, color: '#1f3a5a' },
+  { id: '판타지', soon: true, shelf: '판타지', color: '#3d2f6b' },   // shelf — 게임은 아직이지만 자료실 목록은 있다(2026-10-08 원작 재현판 나눔)
+  { id: '우주', soon: true, shelf: '우주', color: '#1f3a5a' },
   { id: '스팀펑크', soon: true, color: '#6b5326' },
   { id: '사이버펑크', soon: true, color: '#5a1f4f' },
 ];
@@ -71,13 +71,14 @@ export function TodayView({ openSpace }) {
   <//>`;
 }
 /* 가운데 테마 버튼 — 누르면 버튼 밑 작은 창(아래서 올라오는 시트 아님). 오늘 화면과 자료실이 같이 쓴다: 고르면 onPick(테마), locked 면 흐리게(못 바꿈) */
-export function ThemeMenu({ theme, onPick, locked }) {
+export function ThemeMenu({ theme, onPick, locked, browse }) {   // browse — 자료실: 목록이 있는 준비 중 테마도 열어 볼 수 있다
+  const off = t => (t.soon && !(browse && t.shelf)) || locked;
   const [open, setOpen] = useState(false), box = useRef(null);
   useEffect(() => { if (!open) return; const h = e => { if (!box.current || !box.current.contains(e.target)) setOpen(false); }; document.addEventListener('pointerdown', h); return () => document.removeEventListener('pointerdown', h); }, [open]);
   return html`<div class="tpill-wrap" ref=${box}>
     <button class="tpill" aria-haspopup="menu" aria-expanded=${open} onClick=${() => setOpen(o => !o)}><i style=${`background:${theme.color}`}></i>${theme.id}<${Icon} name="chevronDown" size=${12} stroke=${2.4} /></button>
-    ${open && html`<div class="tpop" role="menu">${THEMES.map((t, k) => html`${k > 0 && t.soon && !THEMES[k - 1].soon && html`<div class="tsep"></div>`}<button class=${cx('tpi', t.id === theme.id && 'on', (t.soon || locked) && 'off')} role="menuitemradio" aria-checked=${t.id === theme.id} aria-disabled=${!!(t.soon || locked)}
-      onClick=${() => { setOpen(false); if (!t.soon && !locked && t.id !== theme.id) onPick(t); }}>
+    ${open && html`<div class="tpop" role="menu">${THEMES.map((t, k) => html`${k > 0 && t.soon && !THEMES[k - 1].soon && html`<div class="tsep"></div>`}<button class=${cx('tpi', t.id === theme.id && 'on', off(t) && 'off')} role="menuitemradio" aria-checked=${t.id === theme.id} aria-disabled=${off(t)}
+      onClick=${() => { setOpen(false); if (!off(t) && t.id !== theme.id) onPick(t); }}>
       <i style=${`background:${t.color}`}></i><span>${t.id}</span>${t.soon ? html`<span class="soon">준비 중</span>` : t.id === theme.id && html`<span class="blue"><${Icon} name="check" size=${18} stroke=${2.4} /></span>`}</button>`)}</div>`}
   </div>`;
 }
