@@ -1,4 +1,4 @@
-// 세 층: 앱 탭(오늘·기록·자료실·화면 연결) · 준비/진행 전면 · 시트. 전면 공간이 탭을 덮는다(폰 앱 AppRoot 와 같다)
+// 세 층: 앱 탭(오늘·자료실·화면 연결) · 준비/진행 전면 · 시트. 전면 공간이 탭을 덮는다(폰 앱 AppRoot 와 같다)
 import { html, render, useState, useEffect } from '../lib/preact-htm.js';
 import { store, bootStore } from './store.js';
 import { applyAppearance } from './settings.js';
@@ -40,7 +40,7 @@ function App() {
       ? html`<${NavStack} key="game" root=${html`<${GameFlow} close=${close} toRoles=${() => go({ prep: 'roles' })} toPrep=${step => go({ prep: step })} />`} />`
       : html`<${PreparationFlow} key=${'prep-' + space.prep} step=${space.prep} go=${go} close=${close} />`}</div>`;
   }
-  const tabs = [['today', '오늘', 'house'], ['records', '기록', 'clock'], ['library', '자료실', 'books'], ['display', '화면 연결', 'display']];   // 네 탭(2026-10-02 햇살님 확정)
+  const tabs = [['today', '오늘', 'house'], ['library', '자료실', 'books'], ['display', '화면 연결', 'display']];   // 오늘·자료실·화면 연결(2026-10-10 햇살님 «자료실을 넣고 기록을 빼자») — 기록은 오늘의 «최근 기록»으로
   return html`<div class="shell">
     ${tabs.map(([id]) => html`<div class="tabpage" key=${id} style=${tab === id ? '' : 'display:none'}>
       ${id === 'today' ? html`<${NavStack} root=${html`<${TodayView} openSpace=${setSpace} />`} />`

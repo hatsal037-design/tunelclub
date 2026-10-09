@@ -12569,7 +12569,10 @@ function nowStamp(){ const d=new Date(), p=n=>String(n).padStart(2,'0');
    서버가 판들을 합쳐 점수 S 를 만든다(지명 중심 μN 은 서버가). 순수 계산 — 판을 바꾸지 않는다.
    기록 정리(코덱스): 편·생사는 «그 순간»(시작 팀 + 계승·역할 변경·사망·부활) · 투표는 (낮, 대상)마다 마지막 하나 · 취소된 지명은 뺀다 ·
    사람은 자리 번호로(옛 기록은 겹치지 않는 이름일 때만) · 투표 사건이 없거나 지명자 미기록이면 «안 봄»(0점이 아니다) · 악일 때 행동은 안 센다 */
-const SKILL_VOID=['drunk','drunkard','lunatic','chwigaek','mangseokjung','sindeullini'], SKILL_NOVOTE=['butler'], SKILL_NOTARGET=['recluse','virgin'];
+/* 숙련 판단에서 빼는 직업 — 직업 고정값(kid)으로. 원본은 docs/숙련_직업색인.json(테마 이름은 등록부가 채운다, tests/skill.test.js 가 맞춰 본다).
+   void: 판단이 오염된 판(주정뱅이/취객·미치광이/신들린이·망석중) · noVote: 표가 자기 판단이 아님(집사/머슴) · noTarget: 그 사람이 대상인 지명을 뺌(은둔자/나그네·처녀/열녀) (2026-10-10) */
+const SKILL_KID={ void:['jbqqxkmk','jb5tv6cz','jbhqcpth'], noVote:['jb3bz10h'], noTarget:['jb7wd1tz','jbwf886y'] };
+function skillKid(c, k){ return !!c && SKILL_KID[k].indexOf(c.uid||uidOf(c.id))>=0; }
 function skillFacts(L){
   const out={}; if(!L||!Array.isArray(L.players)) return out;
   const M=allMods()[L.mode], cm={}; if(M&&hubRepOf(M)==='mafia') return out;   // 오리지널 마피아는 숙련도 적용 안 함
@@ -12577,7 +12580,7 @@ function skillFacts(L){
   const evilT=t=>['minion','demon','mafia'].includes(t), goodT=t=>t==='town'||t==='outsider';
   const team={}, role={}, alive={}, voidGame={}, names={};
   L.players.forEach(p=>{ if(typeof p.seat!=='number'||p.seat<1||p.left||p.team==='traveler') return; team[p.seat]=p.team; role[p.seat]=p.roleId; alive[p.seat]=true;
-    if(isRoleAny(cOf(p.roleId), SKILL_VOID)) voidGame[p.seat]=1; const k=(p.name||'').trim(); if(k) names[k]=(k in names)?0:p.seat; });
+    if(skillKid(cOf(p.roleId), 'void')) voidGame[p.seat]=1; const k=(p.name||'').trim(); if(k) names[k]=(k in names)?0:p.seat; });
   const seatOf=(s,name)=>{ if(typeof s==='number') return s; const k=(name||'').trim(), m=/^좌석 (\d+)$/.exec(k); return m?+m[1]:(names[k]||null); };   // 이름이 비면 «좌석 N»으로 남는다
   const noms=[], byKey={};
   (L.events||[]).forEach(e=>{ const n=e.n||0;
@@ -12585,7 +12588,7 @@ function skillFacts(L){
     else if(e.type==='처형'&&!e.무효) { const s=seatOf(e.seat,e.name); if(s) alive[s]=false; }
     else if(e.type==='부활') { const s=seatOf(e.seat,e.name); if(s) alive[s]=true; }
     else if(e.type==='역할 변경'&&Array.isArray(e.swapSeats)) { e.swapSeats.forEach((s,k)=>{ const c=cOf((e.roleIds||[])[k]); if(c){ role[s]=(e.roleIds||[])[k]; team[s]=c.team; } }); }
-    else if(e.type==='역할 변경') { const s=seatOf(e.seat,e.name); if(s&&e.roleId){ role[s]=e.roleId; const c=cOf(e.roleId); if(c) team[s]=c.team; if(isRoleAny(c, SKILL_VOID)) voidGame[s]=1; } }
+    else if(e.type==='역할 변경') { const s=seatOf(e.seat,e.name); if(s&&e.roleId){ role[s]=e.roleId; const c=cOf(e.roleId); if(c) team[s]=c.team; if(skillKid(c, 'void')) voidGame[s]=1; } }
     else if(e.type==='계승') { const s=seatOf(e.seat,e.대상); if(!s) return; const c=e.roleId?cOf(e.roleId):null;
       if(c){ role[s]=e.roleId; team[s]=c.team; } else if(!/대잇기/.test(e.종류||'')) team[s]='demon'; alive[s]=true; }   // 새 직업으로(옛 기록은 종류로) — 계승·옮겨붙기는 되살아남
     else if(e.type==='지명') { const tgt=e.취소?seatOf(e.bySeat,e.대상):seatOf(e.seat,e.name), key=n+'|'+tgt;
@@ -12596,7 +12599,7 @@ function skillFacts(L){
   const add=(s,k,v)=>{ const o=out[s]=out[s]||{vs:0,vn:0,ns:0,nn:0}; o[k]+=v; };
   const seen={};
   noms.forEach(x=>{ if(x.cancel) return;
-    if(isRoleAny(cOf(x.role[x.target]), SKILL_NOTARGET)) return;   // 은둔자(오등록)·처녀(시험 지명)는 통째로 뺀다
+    if(skillKid(cOf(x.role[x.target]), 'noTarget')) return;   // 은둔자(오등록)·처녀(시험 지명)는 통째로 뺀다
     const T=evilT(x.team[x.target])?1:0;
     /* 지명 판단 — 지명자가 그 순간 선·살아 있음, 같은 대상 반복은 한 번만, 기대 = 산 악 ÷ (산 사람 − 1) */
     if(x.by&&x.by!==x.target&&goodT(x.team[x.by])&&x.alive[x.by]&&!voidGame[x.by]&&!seen[x.by+'>'+x.target]){ seen[x.by+'>'+x.target]=1;
@@ -12604,7 +12607,7 @@ function skillFacts(L){
       if(live.length>1){ add(x.by,'ns', T-ev/(live.length-1)); add(x.by,'nn',1); } }
     /* 표 판단 — 명단이 기록된 지명만. 자격: 그 순간 선·살아 있음(유령표 빼고), 지명자·대상 아님, 능력이 안 듣는 직업·집사 아님 */
     if(!x.voters) return;
-    const el=Object.keys(x.alive).map(Number).filter(s=>x.alive[s]&&goodT(x.team[s])&&s!==x.target&&s!==x.by&&!voidGame[s]&&!isRoleAny(cOf(x.role[s]), SKILL_NOVOTE));
+    const el=Object.keys(x.alive).map(Number).filter(s=>x.alive[s]&&goodT(x.team[s])&&s!==x.target&&s!==x.by&&!voidGame[s]&&!skillKid(cOf(x.role[s]), 'noVote'));
     if(el.length<3) return;   // 자기 빼고 둘 이상이 있어야 «같은 표결의 다른 사람 평균»이 선다
     const c=el.map(s=>{ const up=x.voters.includes(s)?1:0; return T?up:1-up; }), sum=c.reduce((a,b)=>a+b,0);
     el.forEach((s,i)=>{ add(s,'vs', c[i]-(sum-c[i])/(el.length-1)); add(s,'vn',1); }); });
