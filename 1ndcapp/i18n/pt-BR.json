@@ -171,5 +171,6 @@
   "ui.close": "Fechar",
   "space.current": "Atividade atual",
   "plaza.live_on": "Mostrar na tela bloqueada",
-  "plaza.live_off": "Remover da tela bloqueada"
+  "plaza.live_off": "Remover da tela bloqueada",
+  "plaza.game_info": "Info desta partida"
 }
