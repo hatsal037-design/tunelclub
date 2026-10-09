@@ -3954,7 +3954,7 @@ function deathCauseMatters(i){
   return false;
 }
 /* 첫밤이고 이 판의 흉수가 전부 «첫밤 제외» 규칙이면 흉수 습격 사망은 있을 수 없다 (규칙 기준선 ①) */
-function firstNightNoDemonKill(){ try{ if((state.nights||1)!==1||state.phase==='day') return false; const cm=CMAP();
+function firstNightNoDemonKill(){ try{ if((state.nights||1)!==1) return false;   /* 첫째 낮도 — 지난밤이 첫밤이라 흉수 습격이 없다(게임룰-040, 2026-10-09 햇살님) */ const cm=CMAP();
   const demons=state.seats.filter(x=>x.char&&cm[x.char]&&['demon','mafia'].includes(cm[x.char].team));
   return !!demons.length&&demons.every(x=>{ const R=pickRuleOf(cm[x.char]); const W=(R&&R.when)||[]; return W.includes('later')&&!W.includes('first'); }); }catch(e){ return false; } }
 /* 처형이 성립했는데 사망만 안 한 경우 — 그 낮에 «처형이 있었다»를 남긴다.
@@ -4002,7 +4002,7 @@ function toggleDead(cause){ const s=state.seats[editing]; cause=cause||'night';
      사인이 실제로 갈리는 좌석에서만 한 번 묻는다 (2026-08-26). */
   if(!s.dead && cause==='night' && deathCauseMatters(editing) && !firstNightNoDemonKill())   // 첫밤 킬이 없는 판(흉수 규칙이 전부 later)에서는 흉수 습격을 묻지 않는다 — 기준선 ①, 깊은 몽키 2026-09-13
     cause = confirm(`${s.name||('좌석 '+(editing+1))} — 흉수의 습격인가요?\n\n확인: 흉수의 습격 (사후 능력·계승이 열립니다)\n취소: 그 밖의 밤 사망`) ? 'demon' : 'night';
-  s.dead=!s.dead; if(s.dead){ s.cause=cause; s.causeN=state.nights||1; } else { s.rvN=(s.rvN||0)+1; delete s.cause; delete s.causeN; if((s.rem||[]).includes('죽은 척')) s.rem=s.rem.filter(r=>r!=='죽은 척'); }   // 사인 기록(exec/demon/night) — 계승 트리거·사후 능력 판정용
+  s.dead=!s.dead; if(s.dead){ s.cause=cause; s.causeN=state.nights||1; } else { s.rvN=(s.rvN||0)+1; delete s.cause; delete s.causeN; if((s.rem||[]).includes('죽은 척')){ s.rem=s.rem.filter(r=>r!=='죽은 척'); tokAtDel(editing,'죽은 척'); } }   // 사인 기록(exec/demon/night) — 계승 트리거·사후 능력 판정용
   logEvent(s.dead?(cause==='exec'?'처형':'사망'):'부활', Object.assign(logSeat(editing),{cause:s.dead?cause:undefined}));
   /* 흉수 습격으로 죽었으면 밤 지목 경로와 같은 동반 사망을 여기서도 처리한다 (감사 7, 2026-09-14) */
   if(s.dead&&cause==='demon'){ const yl=companionDeaths(editing, true);
@@ -5081,7 +5081,7 @@ function bodilessId(c){ return c?(Object.keys(BODILESS).find(id=>c.id===id)||Obj
 function blTok(){ const id=bodilessId(state.bodiless&&CMAP()[state.bodiless]); return id?BODILESS[id]:null; }
 function blHolder(){ const t=blTok(); return t?state.seats.findIndex(x=>(x.rem||[]).includes(t)):-1; }
 function blSetHolder(i){ const t=blTok(), s=state.seats[i]; if(!t||!s) return;
-  state.seats.forEach((x,k)=>{ if(k!==i&&!x.dead) x.rem=(x.rem||[]).filter(r=>r!==t); });
+  state.seats.forEach((x,k)=>{ if(k!==i&&!x.dead&&(x.rem||[]).includes(t)){ x.rem=x.rem.filter(r=>r!==t); tokAtDel(k,t); } });   // 옮기면 앞 사람 표식 기록도(깊은 몽키 2026-10-09)
   s.rem=s.rem||[]; if(!s.rem.includes(t)){ s.rem.push(t); tokAtSet(i,t); } save(); wzRender(); }
 function blStep(list,key){ const cm=CMAP(), c0=state.bodiless&&cm[state.bodiless]; if(!c0||!(c0[key]>0)) return list;
   const mins=state.seats.map((s,i)=>({s,i})).filter(o=>o.s.char&&!o.s.dead&&cm[o.s.char].team==='minion'); if(!mins.length) return list;
