@@ -48,8 +48,9 @@ function Loading({ v, children }) { return v === undefined ? html`<div class="bo
 /* ── 광장 ── */
 function PlazaTab() {
   const on = useAuth(), nav = useNav();
-  const [joined, setJoined] = useState([]), [people, setPeople] = useState([]), [code, setCode] = useState(''), [msg, setMsg] = useState(null);
-  const load = async () => { if (!on || DEMO) return; const j = rows(await P.joined()); setJoined(j); setPeople(j[0] ? rows(await P.plazaPeople(j[0].plaza)) : []); };
+  const [joined, setJoined] = useState([]), [people, setPeople] = useState([]), [code, setCode] = useState(''), [msg, setMsg] = useState(null), [status, setStatus] = useState({});
+  const load = async () => { if (!on || DEMO) return; const j = rows(await P.joined()); setJoined(j); setPeople(j[0] ? rows(await P.plazaPeople(j[0].plaza)) : []);
+    const st = {}; for (const x of j) { const r = await P.plazaStatus(x.plaza); if (r && r.ok && r.state) st[x.plaza] = r.state; } setStatus(st); };   // 광장 공개 현황 — «이번 판 자료»(장부 4, 2026-10-10)
   const checkin = async c => { const r = await P.checkin(c); setMsg(msgOf(r) || T('plaza.entered', { host: r.host || '', place: T('place.plaza') })); await load(); };
   useEffect(() => { load(); }, [on]);
   useEffect(() => { const c = window.Participant.codeFrom(location.href); if (c && on && !DEMO) { history.replaceState(null, '', location.pathname); checkin(c); } }, [on]);
@@ -61,6 +62,7 @@ function PlazaTab() {
         <${Row}><${Icon} name="house" size=${22} /><${RowLabel} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} text=${T('plaza.until', { t: (j.ends_at || '').slice(0, 16).replace('T', ' ') })} /><//>
         ${people.length > 0 && html`<${Row} chevron onClick=${() => nav.push(html`<${PeopleList} title=${T('plaza.people')} load=${async () => rows(await P.plazaPeople(j.plaza))} />`)}>
           <span style="display:flex;gap:4px">${people.slice(0, 5).map(r => html`<${Avatar} r=${r} size=${28} />`)}</span><span class="sec">${T('plaza.count', { n: people.length })}</span><//>`}
+        ${status[j.plaza] && status[j.plaza].modeId && html`<${Row} chevron onClick=${() => nav.push(html`<${ModeView} id=${status[j.plaza].modeId} />`)}><${RowLabel} title=${T('plaza.game_info')} /><span class="sec">${status[j.plaza].mode || ''}</span><//>`}
         <${Row} danger onClick=${async () => { await P.leave(j.plaza); load(); }}>${T('plaza.leave')}<//><//>`)}
       <${Section} header=${T('plaza.code')}>
         <div class="row"><input class="textin grow" id="me-code" value=${code} placeholder=${T('plaza.code_ph')} autocapitalize="characters" onInput=${e => setCode(e.currentTarget.value.trim())} />

@@ -1,5 +1,5 @@
 // 준비 전면 — 인원 → 자리 → 역할 → 넘기기(01 P01~P04). 닫기는 초안을 버리지 않는다
-import { html, useState, useEffect, useRef, useLayoutEffect } from '../../lib/preact-htm.js';
+import { html, useState, useEffect, useRef, useLayoutEffect, useMemo } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { Icon } from '../icons.js';
 import { Page, Section, Row, RowLabel, CheckRow, Labeled, Primary, Stepper, Segmented, Toggle, Sheet, Cover, ActionSheet, Menu, NavButton, RoleArt, HoldButton, Disclosure, useRun, LargeTitle, Empty, cx } from '../ui.js';
@@ -58,8 +58,18 @@ const EXPERIENCE = [
 ];
 
 /** P01 · 인원 — 인원 스테퍼 + 닉네임 입력 + 투넬 회원에서 고르기. «자리 정하기»가 명단을 코어에 확정한다 */
+/* 준비 «사람» 걸음의 확정 전 입력 — 닫았다 다시 열어도 남게(장부 2, 2026-10-10, 앱 PrepDraft 와 같은 규칙).
+   «자리 정하기»로 확정하면 지운다. 같은 광장·같은 연습/실전이고 하루 안일 때만. 이 기기에만(localStorage) — 코어에는 확정 때만 보낸다. */
+const DRAFT = 'prep.draft';
+const draftLoad = () => { try { const d = JSON.parse(localStorage.getItem(DRAFT) || 'null'); const h = store.home || {};
+  return d && d.pot === ((h.pot && h.pot.id) || null) && d.practice === !!h.practice && Date.now() - d.at < 864e5 ? d : null; } catch (e) { return null; } };
+const draftSave = (names, members, levels) => { try { const h = store.home || {};
+  if (!names.some(n => (n || '').trim())) { localStorage.removeItem(DRAFT); return; }
+  localStorage.setItem(DRAFT, JSON.stringify({ names, members, levels, pot: (h.pot && h.pot.id) || null, practice: !!h.practice, at: Date.now() })); } catch (e) {} };
+const draftClear = () => { try { localStorage.removeItem(DRAFT); } catch (e) {} };
 function PeopleView({ c, next }) {
-  const [levels, setLevels] = useState(() => { const l = store.board.seats.map(s => s.manualExperience || 2); while (l.length < 5) l.push(2); return l; });   // 기본 2단계 — «적당히 몇 번 해본 사람»(2026-10-01 햇살님)
+  const draft = useMemo(draftLoad, []);
+  const [levels, setLevels] = useState(() => { if (draft) return draft.levels; const l = store.board.seats.map(s => s.manualExperience || 2); while (l.length < 5) l.push(2); return l; });   // 기본 2단계 — «적당히 몇 번 해본 사람»(2026-10-01 햇살님)
   const [experiencePick, setExperiencePick] = useState(null), [sources, setSources] = useState({});
   /* 조작 위치 고정(2026-10-01 햇살님 «다음 슬라이드 위치는 유지») — 손 댄 띠의 화면 Y를 기준점으로 잡고, 위 행이 접히고 이 행이 펼쳐진 뒤 그만큼 스크롤을 보정한다 */
   const anchorRef = useRef(null);
@@ -70,8 +80,9 @@ function PeopleView({ c, next }) {
     let sc = a.el.parentElement; while (sc && !(sc.scrollHeight > sc.clientHeight && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
     if (sc) sc.scrollTop += d;
   }, [experiencePick, levels.join('|')]);
-  const [names, setNames] = useState(() => { const n = store.board.seats.map(s => s.name); while (n.length < 5) n.push(''); return n; });
-  const [members, setMembers] = useState(() => { const m = store.board.seats.map(s => s.member || null); while (m.length < 5) m.push(null); return m; });   // 칸마다 투넬 회원 번호(없으면 이름만)
+  const [names, setNames] = useState(() => { if (draft) return draft.names; const n = store.board.seats.map(s => s.name); while (n.length < 5) n.push(''); return n; });
+  const [members, setMembers] = useState(() => { if (draft) return draft.members; const m = store.board.seats.map(s => s.member || null); while (m.length < 5) m.push(null); return m; });
+  useEffect(() => { draftSave(names, members, levels); }, [names, members, levels]);   // 칸마다 투넬 회원 번호(없으면 이름만)
   const [picking, setPicking] = useState(false), [clearAsk, setClearAsk] = useState(false);
   const pad = (n, m) => { while (n.length < 5) { n.push(''); m.push(null); } setNames(n); setMembers(m); };
   const removeAt = i => { setLevels(a => { const l = a.filter((_, j) => j !== i); while (l.length < 5) l.push(2); return l; }); pad(names.filter((_, j) => j !== i), members.filter((_, j) => j !== i)); };
@@ -110,7 +121,7 @@ function PeopleView({ c, next }) {
   const commit = async force => {
     const p = { people: names.map((n, i) => ({ name: n.trim(), member: members[i] || null, manualExperience: source(members[i]) === 'manual' ? levels[i] || null : null })) }; if (force) p.force = true;
     const r = await R.run('preparation.commitPeople', p);
-    if (r.ok) next(); else if (r.confirm) setAsk(r.choices[0] || '역할을 다시 나눠요.');
+    if (r.ok) { draftClear(); next(); } else if (r.confirm) setAsk(r.choices[0] || '역할을 다시 나눠요.');
   };
   const inputs = useRef([]);
   return html`<${PrepPage} c=${c} bottom=${html`<${Primary} title="자리 정하기" enabled=${valid} loading=${R.busy} onClick=${() => commit(false)} />`}>

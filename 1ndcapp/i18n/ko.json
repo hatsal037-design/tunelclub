@@ -259,5 +259,6 @@
   "ui.close": "닫기",
   "space.current": "현재 활동",
   "plaza.live_on": "잠금화면에 띄우기",
-  "plaza.live_off": "잠금화면에서 내리기"
+  "plaza.live_off": "잠금화면에서 내리기",
+  "plaza.game_info": "이번 판 자료"
 }

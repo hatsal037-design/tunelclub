@@ -10,6 +10,8 @@ import { useNav } from '../nav.js';
 import { SettingsView, AccountView } from './settingsView.js';
 import { RecordsView } from './records.js';
 
+/* 확정 전 준비 초안(prep.js DRAFT)이 이 광장 것이면 큰 단추를 «준비 계속»으로(장부 2, 2026-10-10) */
+const hasDraft = pot => { try { const d = JSON.parse(localStorage.getItem('prep.draft') || 'null'); return !!d && d.pot === pot && !d.practice && Date.now() - d.at < 864e5; } catch (e) { return false; } };
 /* 테마 = 계열(2026-10-01 햇살님 «버튼으로 계열 고르기», 29차 시안) — 고르면 사진·색과 새 판 준비의 «게임 계열»(roles.setFamily)이 같이 바뀐다.
    hub 는 모드 데이터의 계열 이름. soon 은 아직 게임이 없는 빈깡통 계열(«준비 중», 고를 수 없음). 사진은 web/theme/<테마>/ 에 두고 photos 에 적는다 */
 export const THEMES = [
@@ -29,7 +31,7 @@ export function TodayView({ openSpace }) {
   const step = h.prepStep === 'handoff' ? 'handoff' : h.prepStep === 'people' ? 'people' : 'seats';
   const hero = {
     /* 마당(광장)을 먼저 열고 그 안에서 새 판(2026-10-06 햇살님 «일단 마당을 열고 거기서 새 판을 할 수 있어야») */
-    newPreparation: h.pot && !h.pot.practice ? ['plus', h.pot.title || '오늘 ' + (h.potKo || '광장'), h.pot.games ? '판 ' + h.pot.games + '개 · 다음 판을 준비해요' : '사람을 모으고 자리를 정하면 차근차근 안내할게요', '새 판 준비', { prep: 'people' }]
+    newPreparation: h.pot && !h.pot.practice ? ['plus', h.pot.title || '오늘 ' + (h.potKo || '광장'), h.pot.games ? '판 ' + h.pot.games + '개 · 다음 판을 준비해요' : '사람을 모으고 자리를 정하면 차근차근 안내할게요', (hasDraft(h.pot.id) ? '준비 계속' : '새 판 준비'), { prep: 'people' }]
       : ['house', '오늘 ' + (h.potKo || '광장') + '을 열어 볼까요?', '모인 사람들이 QR로 들어오고 여기서 판을 이어 가요', (h.potKo || '광장') + ' 열기', null],
     resumePreparation: ['listNumber', '준비하던 판이 있어요', h.summary || '', '준비 계속', { prep: step }],
     resumeGame: ['moon', '진행 중인 판이 있어요', h.summary || '', '이어 하기', { game: true }],

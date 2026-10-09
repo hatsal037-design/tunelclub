@@ -259,5 +259,6 @@
   "ui.close": "Close",
   "space.current": "Current activity",
   "plaza.live_on": "Show on Lock Screen",
-  "plaza.live_off": "Remove from Lock Screen"
+  "plaza.live_off": "Remove from Lock Screen",
+  "plaza.game_info": "This game’s info"
 }
