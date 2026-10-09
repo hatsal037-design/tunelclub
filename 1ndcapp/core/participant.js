@@ -173,6 +173,7 @@
       checkin: function (code) { return call('plaza_checkin', { p_code: code }); },
       joined: function () { return call('plaza_joined').then(function (r) { return r.ok ? set('joined', r.value || []) : r; }); },
       leave: function (plazaId) { return call('plaza_leave', { p_id: plazaId }); },
+      plazaStatus: function (plazaId) { return call('plaza_status_get', { p_plaza: plazaId }); },   // 광장 현황(0320) — 잠금화면 라이브 액티비티
 
       // ── 전적·정정 ──
       stats: function () { return call('my_stats'); },
