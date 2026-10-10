@@ -172,5 +172,7 @@
   "space.current": "目前活動",
   "plaza.live_on": "在鎖定畫面顯示",
   "plaza.live_off": "從鎖定畫面移除",
-  "plaza.game_info": "本局資料"
+  "plaza.game_info": "本局資料",
+  "profile.mine": "我的個人檔案",
+  "account.sync": "同步主持紀錄"
 }

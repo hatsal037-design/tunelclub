@@ -172,5 +172,7 @@
   "space.current": "現在のアクティビティ",
   "plaza.live_on": "ロック画面に表示",
   "plaza.live_off": "ロック画面から外す",
-  "plaza.game_info": "今回のゲーム資料"
+  "plaza.game_info": "今回のゲーム資料",
+  "profile.mine": "マイプロフィール",
+  "account.sync": "進行記録の同期"
 }

@@ -172,5 +172,7 @@
   "space.current": "Aktivitas saat ini",
   "plaza.live_on": "Tampilkan di layar kunci",
   "plaza.live_off": "Hapus dari layar kunci",
-  "plaza.game_info": "Info permainan ini"
+  "plaza.game_info": "Info permainan ini",
+  "profile.mine": "Profil saya",
+  "account.sync": "Sinkronkan permainan yang dipandu"
 }

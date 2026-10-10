@@ -172,5 +172,7 @@
   "space.current": "กิจกรรมปัจจุบัน",
   "plaza.live_on": "แสดงบนหน้าจอล็อก",
   "plaza.live_off": "นำออกจากหน้าจอล็อก",
-  "plaza.game_info": "ข้อมูลเกมนี้"
+  "plaza.game_info": "ข้อมูลเกมนี้",
+  "profile.mine": "โปรไฟล์ของฉัน",
+  "account.sync": "ซิงก์บันทึกการดำเนินเกม"
 }

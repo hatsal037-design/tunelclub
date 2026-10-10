@@ -172,5 +172,7 @@
   "space.current": "Atividade atual",
   "plaza.live_on": "Mostrar na tela bloqueada",
   "plaza.live_off": "Remover da tela bloqueada",
-  "plaza.game_info": "Info desta partida"
+  "plaza.game_info": "Info desta partida",
+  "profile.mine": "Meu perfil",
+  "account.sync": "Sincronizar partidas conduzidas"
 }

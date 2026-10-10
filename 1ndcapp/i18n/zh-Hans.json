@@ -172,5 +172,7 @@
   "space.current": "当前活动",
   "plaza.live_on": "在锁定屏幕显示",
   "plaza.live_off": "从锁定屏幕移除",
-  "plaza.game_info": "本局资料"
+  "plaza.game_info": "本局资料",
+  "profile.mine": "我的主页",
+  "account.sync": "同步主持记录"
 }
