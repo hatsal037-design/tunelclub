@@ -8,29 +8,27 @@ import { SeatBoard, boardLayout } from '../seatboard.js';
 import { account } from '../account.js';
 import { Search } from '../ui.js';
 
-/** 투넬 회원 고르기 — 오늘 참석 → 최근 → 모든 회원. 이미 넣은 회원은 체크된 채 */
+/** 사람에서 찾기 — 체크인 → 팔로잉 → 팔로워(2026-10-10 햇살님 «내가 팔로우한 사람이랑 나를 팔로우하는 사람 중에»). 열쇠는 회원 번호, 없으면 «a:계정번호». 이미 넣은 사람은 체크된 채 */
 function MemberPicker({ taken, close, done }) {
   const [rows, setRows] = useState(undefined), [sel, setSel] = useState(() => new Set()), [q, setQ] = useState('');
-  const [friends, setFriends] = useState([]), [checked, setChecked] = useState([]);   // checked — 지금 열린 내 광장에 체크인한 회원(이 사람들만 전적에, 2026-10-05)
-  useEffect(() => { Promise.all([account.members(), account.following().catch(() => null), account.plaza('plaza_mine')]).then(([m, l, pz]) => {   // l — 내가 팔로우하는 아이디(9/29 친구는 2026-10-07 팔로우로 합침)
-    const roster = ((pz && pz.roster) || []).filter(x => !x.left);
-    /* 투넬 회원이 아닌 첫밤 계정도 체크인했으면 앉힐 수 있다 — 열쇠는 «a:계정번호»(코어가 계정으로 잇는다, 2026-10-06) */
-    const extra = roster.filter(x => !x.member_id && x.account).map(x => ({ member_id: 'a:' + x.account, nick: x.nick || ('@' + (x.handle || '')), handle: x.handle, today: false, recent: false }));
-    setFriends([...extra, ...(m || [])].filter(x => x.handle && (l || []).includes(x.handle)).map(x => x.member_id));
-    setChecked(roster.map(x => x.member_id || ('a:' + x.account)));
-    setRows(m || extra.length ? [...extra, ...(m || [])] : m); }); }, []);   // 친구 분류가 준비된 뒤 목록을 보인다 — 늦게 온 친구 응답이 고르던 행을 옮기지 않게(2026-10-01)
-  const k = q.replace(/^@/, '').toLowerCase();   // 이름·닉네임·아이디 중 하나라도(2026-10-06 햇살님)
-  const list = (rows || []).filter(r => !k || [r.nick, r.handle, r.name].some(v => String(v || '').toLowerCase().includes(k)));
+  useEffect(() => { Promise.all([account.plaza('plaza_mine'), account.followRows('following'), account.followRows('followers')]).then(([pz, fo, fr]) => {
+    const roster = ((pz && pz.roster) || []).filter(x => !x.left), inRoom = new Set(roster.map(x => x.account).filter(Boolean));
+    const person = (x, g) => ({ member_id: x.member_id || ('a:' + x.account), nick: x.nick || ('@' + (x.handle || '')), handle: x.handle, g });
+    const seen = new Set(), out = [];
+    for (const [l, g] of [[roster, '체크인'], [(fo || []).filter(x => !inRoom.has(x.account)), '팔로잉'], [(fr || []).filter(x => !inRoom.has(x.account)), '팔로워']])
+      for (const x of l) { if (!x.member_id && !x.account) continue; const p = person(x, g); if (!seen.has(p.member_id)) { seen.add(p.member_id); out.push(p); } }
+    setRows(out); }); }, []);   // ponytail: 팔로우 목록은 서버 한 번(50명), 더 많아지면 이어 받기
+  const k = q.replace(/^@/, '').toLowerCase();
+  const list = (rows || []).filter(r => !k || [r.nick, r.handle].some(v => String(v || '').toLowerCase().includes(k)));
   const row = r => { const on = sel.has(r.member_id) || taken.includes(r.member_id);
     return html`<${Row} disabled=${taken.includes(r.member_id)} sel=${on} onClick=${() => setSel(s => { const n = new Set(s); n.has(r.member_id) ? n.delete(r.member_id) : n.add(r.member_id); return n; })}>
-      <span class="avatar" aria-hidden="true"><${Icon} name="personCircle" size=${28} stroke=${1.5} /></span><span class="grow">${r.nick}${r.handle && html`<br/><span class="sub">@${r.handle}</span>`}</span>${on && html`<span class="blue"><${Icon} name="check" size=${20} stroke=${2.4} /></span>`}<//>`; };   // 썸네일 — 공개 사진 필드가 아직 없어 기본 아바타(크기 고정)
-  const grp = (t, l) => l.length ? html`<${Section} header=${t}>${l.map(row)}<//>` : null;
-  return html`<${Page} title="회원에서 찾기" left=${html`<${NavButton} label="취소" onClick=${close} />`}
+      <span class="avatar" aria-hidden="true"><${Icon} name="personCircle" size=${28} stroke=${1.5} /></span><span class="grow">${r.nick}${r.handle && html`<br/><span class="sub">@${r.handle}</span>`}</span>${on && html`<span class="blue"><${Icon} name="check" size=${20} stroke=${2.4} /></span>`}<//>`; };
+  const grp = t => { const l = list.filter(r => r.g === t); return l.length ? html`<${Section} header=${t}>${l.map(row)}<//>` : null; };
+  return html`<${Page} title="사람에서 찾기" left=${html`<${NavButton} label="취소" onClick=${close} />`}
     right=${html`<${NavButton} label=${sel.size ? sel.size + '명 넣기' : '넣기'} bold disabled=${!sel.size} onClick=${() => { done((rows || []).filter(r => sel.has(r.member_id))); close(); }} />`}>
     <${Search} value=${q} onInput=${setQ} placeholder="@아이디 또는 닉네임" />
-    ${rows === undefined ? html`<${Empty} title="명단 받는 중…" />` : rows === null ? html`<${Empty} icon="warn" title="명단을 못 받았어요" text="로그인·연결을 확인해 주세요." />`
-      : html`${grp('체크인', list.filter(r => checked.includes(r.member_id)))}${grp('팔로잉', list.filter(r => friends.includes(r.member_id) && !checked.includes(r.member_id)))}${grp('오늘 참석', list.filter(r => r.today && !friends.includes(r.member_id) && !checked.includes(r.member_id)))}${grp('최근', list.filter(r => !r.today && r.recent && !friends.includes(r.member_id) && !checked.includes(r.member_id)))}${grp(q ? '찾은 회원' : '모든 회원', list.filter(r => !r.today && !r.recent && !friends.includes(r.member_id) && !checked.includes(r.member_id)))}
-        ${!list.length && html`<${Empty} title="해당하는 회원이 없어요" />`}`}
+    ${rows === undefined ? html`<${Empty} title="명단 받는 중…" />`
+      : html`${grp('체크인')}${grp('팔로잉')}${grp('팔로워')}${!list.length && html`<${Empty} title="아직 사람이 없어요" text="체크인하거나 팔로우한 사람이 여기 모여요." />`}`}
   <//>`;
 }
 
@@ -127,7 +125,7 @@ function PeopleView({ c, next }) {
   return html`<${PrepPage} c=${c} bottom=${html`<${Primary} title="자리 정하기" enabled=${valid} loading=${R.busy} onClick=${() => commit(false)} />`}>
     <${LargeTitle}>인원<//>
     <${Section}><${Stepper} value=${names.length} min=${5} max=${20} onChange=${setCount}>참가 인원 ${names.length}명<//><//>
-    <${Section}><${Row} tint onClick=${() => account.user ? setPicking(true) : account.login()}><${Icon} name="person2" size=${20} />${account.user ? '회원에서 찾기' : '회원에서 찾기 · 로그인'}<//>
+    <${Section}><${Row} tint onClick=${() => account.user ? setPicking(true) : account.login()}><${Icon} name="person2" size=${20} />${account.user ? '사람에서 찾기' : '사람에서 찾기 · 로그인'}<//>
       <${Row} danger disabled=${!names.some(n => n.trim())} onClick=${() => setClearAsk(true)}><${Icon} name="xmark" size=${20} />모두 비우기<//><//>
     <${Section} cls="experience-list" header="닉네임 · 오른쪽 띠를 끌어 경험 단계">${names.map((n, i) => html`<div class=${cx('row experience-row', experiencePick === i && 'open')} key=${i}>
       <div class="experience-main">

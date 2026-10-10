@@ -30,5 +30,11 @@
  "당산나무": "Dangsan Tree",
  "오리지널 마피아": "Original Mafia",
  "낮 %lld": "Day %lld",
- "밤 %lld": "Night %lld"
+ "밤 %lld": "Night %lld",
+ "사람에서 찾기": "Find people",
+ "사람에서 찾기 · 로그인": "Find people · Sign in",
+ "팔로잉": "Following",
+ "팔로워": "Followers",
+ "아직 사람이 없어요": "No one here yet",
+ "체크인하거나 팔로우한 사람이 여기 모여요.": "People who check in or follow each other show up here."
 }
