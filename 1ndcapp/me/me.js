@@ -1,7 +1,7 @@
 /* 참가자 웹 tunel.kr/1ndcapp/me/ — 참가만 하는 가벼운 사람용(2026-10-06 단계 8). 앱 참가 공간(ios/1NDCAPP/Screens/Play)을 떼어 온 판.
    서버는 공통 참가자 모듈(core/participant.js)로만 부른다. 진행 코어(1.5MB)는 올리지 않는다 — 자료는 library/(빌드 때 뽑은 JSON).
    결은 시안 v2(iOS 기본 부품) — 웹 진행 화면과 같은 app.css·ui.js 부품. 광고 칸은 자리만(애드센스 연결 뒤 채움). */
-import { html, render, useState, useEffect } from '../lib/preact-htm.js';
+import { html, render, useState, useEffect, useContext, createContext } from '../lib/preact-htm.js';
 import { Icon } from '../js/icons.js';
 import { NavStack, useNav, Back } from '../js/nav.js';
 import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton, Sheet } from '../js/ui.js';
@@ -54,7 +54,7 @@ function PlazaTab() {
   const checkin = async c => { const r = await P.checkin(c); setMsg(msgOf(r) || T('plaza.entered', { host: r.host || '', place: T('place.plaza') })); await load(); };
   useEffect(() => { load(); }, [on]);
   useEffect(() => { const c = window.Participant.codeFrom(location.href); if (c && on && !DEMO) { history.replaceState(null, '', location.pathname); checkin(c); } }, [on]);
-  return html`<${Page} right=${html`<${NavButton} icon="bell" label=${T('notice.title')} onClick=${() => nav.push(html`<${Notices} />`)} />`}>
+  return html`<${Page} ...${useShell()}>
     <${LargeTitle}>${T('tab.plaza')}<//>
     ${!on ? html`<${LoginRows} />` : html`
       ${!joined.length && html`<${Section}><${Row}><span class="sec">${T('empty.plaza')}</span><//><//>`}
@@ -80,7 +80,7 @@ function LibraryTab() {
   useEffect(() => { lib().then(setL); }, []);
   const H = L && L.hubs.find(h => h.name === hub), modes = H ? H.modes.filter(m => !q || (m.name + D(m.name)).toLowerCase().includes(q.toLowerCase()) || (m.roleNames || []).some(n => (n + D(n)).toLowerCase().includes(q.toLowerCase()))) : [];
   const hubKo = { '당산나무': 'family.dangsan', '클래식': 'family.classic', '오리지널 마피아': 'family.mafia' };
-  return html`<${Page}>
+  return html`<${Page} ...${useShell()}>
     <${LargeTitle}>${T('tab.library')}<//>
     <${Loading} v=${L}>${L && html`
       <div style="padding:0 16px 12px"><${Segmented} options=${L.hubs.map(h => [h.name, T(hubKo[h.name] || h.name)])} value=${hub} onChange=${v => { setHub(v); setQ(''); }} /></div>
@@ -293,7 +293,7 @@ function FeedTab() {
   const next = async () => { const z = l[l.length - 1], r = rows(await P.feed(z.at, z.handle + '|' + z.post)); setL([...l, ...r]); setMore(r.length >= 20); };   // 같은 시각도 안 겹치게(0307)
   useEffect(() => { load(); }, [on]);
   /* 웹은 보기만 — 올리기·글 쓰기는 앱에서만(2026-10-07 햇살님) */
-  return html`<${Page} right=${html`<${NavButton} icon="bell" label=${T('notice.title')} onClick=${() => nav.push(html`<${Notices} />`)} />`}>
+  return html`<${Page} ...${useShell()}>
     <${LargeTitle}>${T('tab.feed')}<//>
     ${!on ? html`<${LoginRows} />` : html`<${Loading} v=${l}>${l && html`
       ${!l.length && html`<${Section}><${Row}><span class="sec">${T('feed.empty')}</span><//><//>`}
@@ -313,13 +313,12 @@ function PeopleTab() {
   useEffect(() => { const t = setTimeout(async () => setFound(rows(await P.search(q))), 300); return () => clearTimeout(t); }, [q]);
   const open = r => nav.push(html`<${Profile} handle=${r.handle} />`);
   useEffect(() => { const u = new URLSearchParams(location.search).get('u'); if (u && on) { history.replaceState(null, '', location.pathname); open({ handle: u }); } }, [on]);   /* 프로필 QR(…/me/?u=아이디) */
-  return html`<${Page}>
+  return html`<${Page} ...${useShell()}>
     <${LargeTitle}>${T('tab.people')}<//>
     ${!on ? html`<${LoginRows} />` : html`
       <div style="padding:0 16px 12px"><${Search} value=${q} onInput=${v => { setQ(v); if (String(v).trim().toLowerCase() === '1ndc') P.egg('search_1ndc').catch(() => {}); }} placeholder=${T('people.search')} /></div>
       ${q ? html`<${Section}>${found.length ? found.map(r => html`<${PersonRow} r=${r} onClick=${() => open(r)} />`) : html`<${Row}><span class="sec">${T('empty.search')}</span><//>`}<//>` : html`
         <div style="padding:0 16px 12px"><${Segmented} options=${[['following', `${T('profile.following')} ${me.following || 0}`], ['followers', `${T('profile.followers')} ${me.followers || 0}`]]} value=${which} onChange=${setWhich} /></div>
-        <${Section}><${Row} chevron onClick=${() => nav.push(html`<${Requests} />`)}><${Labeled} label=${T('requests.title')} value=${me.requests || 0} /><//><//>
         <${Section}>${list.length ? list.map(r => html`<${PersonRow} r=${r} onClick=${() => open(r)} />`) : html`<${Row}><span class="sec">${which === 'following' ? T('empty.following') : T('empty.followers')}</span><//>`}<//>
         <${Section} header=${T('people.find')}><${Row} chevron onClick=${() => nav.push(html`<${PeopleList} title=${T('people.played')} load=${async () => rows(await P.playedWith())} />`)}>${T('people.played')}<//><//>`}`}
   <//>`;
@@ -342,8 +341,9 @@ function Notices() {
   /* 누르면 그 글로(0318, 2026-10-08) — 좋아요·댓글·태그는 그 장(owner 의 post), 칭호는 내 칭호 목록, 팔로우는 그 사람 */
   const go = n => ['liked', 'commented', 'tagged'].includes(n.kind) && n.post && n.owner ? () => nav.push(html`<${PostOne} handle=${n.owner} post=${n.post} />`)
     : n.kind === 'title' ? () => nav.push(html`<${MyTitles} />`) : ['followed', 'follow_accepted'].includes(n.kind) && n.from && n.from.handle ? () => nav.push(html`<${Profile} handle=${n.from.handle} />`) : null;
-  const [l, setL] = useState(); useEffect(() => { P.notices().then(r => { setL(rows(r)); P.readNotices(); }); }, []);
-  return html`<${Page} title=${T('notice.title')} left=${html`<${Back} />`}><${Loading} v=${l}>${l && html`<${Section}>${l.length ? l.map(n => html`<${Row} chevron=${!!go(n)} onClick=${go(n)}><${Avatar} r=${n.from || {}} size=${32} /><${RowLabel} title=${(n.from?.nick || '') + (W[n.kind] || '')} text=${(n.at || '').slice(0, 10)} /><//>`) : html`<${Row}><span class="sec">${T('empty.notices')}</span><//>`}<//>`}<//><//>`;
+  const on = useAuth(), [reqs, setReqs] = useState(0);
+  const [l, setL] = useState(); useEffect(() => { if (!on || DEMO) { setL([]); return; } P.notices().then(r => { setL(rows(r)); P.readNotices(); }); P.me().then(m => setReqs((m.value || m).requests || 0)); }, [on]);
+  return html`<${Page} ...${useShell()}><${LargeTitle}>${T('notice.title')}<//>${!on ? html`<${LoginRows} />` : html`<${Loading} v=${l}>${l && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${Requests} />`)}><${Labeled} label=${T('requests.title')} value=${reqs} /><//><//><${Section}>${l.length ? l.map(n => html`<${Row} chevron=${!!go(n)} onClick=${go(n)}><${Avatar} r=${n.from || {}} size=${32} /><${RowLabel} title=${(n.from?.nick || '') + (W[n.kind] || '')} text=${(n.at || '').slice(0, 10)} /><//>`) : html`<${Row}><span class="sec">${T('empty.notices')}</span><//>`}<//>`}<//>`}<//>`;
 }
 /* 장 하나 — 알림에서 열 때(feed_one) */
 function PostOne({ handle, post }) {
@@ -406,12 +406,12 @@ function Codex({ rows: l }) {
 }
 
 /* ── 계정 ── */
-function AccountTab() {
+function AccountTab({ close }) {
   const on = useAuth(), nav = useNav();
   const [me, setMe] = useState({}), [st, setSt] = useState({});
   const load = async () => { if (!on || DEMO) return; const m = await P.me(); const v = m.value || m; setMe(v); setSt(await P.status()); setLang(v.lang); if ((v.needs || []).length && !seen()) { seen(true); nav.push(html`<${Signup} me=${v} done=${load} />`); window.dispatchEvent(new Event('me-fill')); } };   // 처음 한 번·로그인했을 때만(2026-10-06 «나중에»)   // 빠진 칸(0250) — 계정 탭으로 넘겨 채우게
   useEffect(() => { load(); }, [on]);
-  return html`<${Page}>
+  return html`<${Page} left=${close && html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}>
     <${LargeTitle}>${T('tab.account')}<//>
     ${!on ? html`<${LoginRows} />` : html`
       ${st.status === 'leaving' && html`<${Section} footer=${T('leave.until', { t: (st.leave_until || '').slice(0, 10) })}><${Row} tint onClick=${async () => { await P.accountReturn(); load(); }}>${T('leave.undo')}<//><//>`}
@@ -477,9 +477,9 @@ function EditProfile({ me, done }) {
     <${ActionSheet} open=${ask === 'discard'} title=${T('edit.discard')} onClose=${() => setAsk(null)} actions=${[{ label: T('ui.discard'), role: 'destructive', onClick: () => nav.pop() }]} />
   <//>`;
 }
-function Settings({ me, done }) {
+function Settings({ me, done, close }) {
   const nav = useNav(); const [priv, setPriv] = useState(me.private !== false), [lang, setL] = useState(me.lang || ''), [ask, setAsk] = useState(false);
-  return html`<${Page} title=${T('account.settings')} left=${html`<${Back} />`}>
+  return html`<${Page} title=${T('account.settings')} left=${close ? html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />` : html`<${Back} />`}>
     <${Section}><${Toggle} checked=${priv} onChange=${async v => { setPriv(v); await P.setProfile({ private: v }); done(); }}>${T('profile.private')}<//><//>
     <${Section} header=${T('lang.title')}><div class="row"><select class="textin grow" id="me-lang" value=${lang} onChange=${async e => { const v = e.currentTarget.value; setL(v); await setLang(v || null); await P.setProfile({ lang: v || null }); draw(); }}>
       <option value="">${T('lang.device')}</option>${LANGS.map(([c, n]) => html`<option value=${c}>${n}</option>`)}</select></div><//>
@@ -500,15 +500,48 @@ async function setLang(account) {
   window.Postcard.setText(dict, ko, DATA || {}, l);   // 장 그리기 엔진도 같은 말로
   window.Postcard.setTitles(l === 'ko' ? {} : await fetch(`i18n/titles/${l}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})));   // 칭호 이름(2026-10-07)
 }
+/* 활동 둘(2026-10-10 햇살님 «참가/피드/응») — 위쪽 «설정 · 참가⌄/피드⌄ · 계정», 아래는 활동 안 기능만(참가: 광장·자료실 / 피드: 피드·사람).
+   첫 진입: ?j= 면 참가 › 광장, ?u= 면 피드 › 사람, 그 밖엔 마지막 활동(처음이면 참가). 활동마다 마지막 탭을 기억한다. 계정·설정은 닫으면 보던 탭으로. */
+const SPACES = { play: [['plaza', 'tab.plaza', 'house', PlazaTab], ['library', 'tab.library', 'books', LibraryTab], ['notices', 'notice.title', 'bell', Notices]],
+                 feed: [['feed', 'tab.feed', 'stack', FeedTab], ['people', 'tab.people', 'person', PeopleTab], ['notices', 'notice.title', 'bell', Notices]] };
+const ls = (k, v) => { try { if (v !== undefined) localStorage.setItem(k, v); return localStorage.getItem(k); } catch { return null; } };
+const ShellCtx = createContext(null);
+export function useShell(extra) {   // 활동 첫 화면 머리 — Page 에 펼쳐 넣는다
+  const sh = useContext(ShellCtx);
+  if (!sh) return {};
+  return { left: html`<${NavButton} icon="gear" label=${T('account.settings')} onClick=${() => sh.open('settings')} />`,
+    title: html`<button class="nbtn bold" aria-label=${T('space.current')} onClick=${() => sh.pick(true)}>${T(sh.space === 'feed' ? 'space.social' : 'space.play')} ⌄</button>`,
+    right: html`<span style="display:flex;gap:4px">${extra}<${NavButton} icon="personCircle" label=${T('tab.account')} onClick=${() => sh.open('account')} /></span>` };
+}
 function App() {
-  const [tab, setTab] = useState(() => { const q = location.search; if (/[?&]u=/.test(q)) return 'people'; if (/[?&]j=/.test(q)) return 'plaza'; try { return localStorage.getItem('me.tab') || 'feed'; } catch { return 'feed'; } });
-  const go = t => { setTab(t); try { localStorage.setItem('me.tab', t); } catch {} };
-  useEffect(() => { const f = () => setTab('account'); window.addEventListener('me-fill', f); return () => window.removeEventListener('me-fill', f); }, []);
-  const tabs = [['feed', 'tab.feed', 'stack', FeedTab], ['plaza', 'tab.plaza', 'house', PlazaTab], ['library', 'tab.library', 'books', LibraryTab], ['people', 'tab.people', 'person', PeopleTab], ['account', 'tab.account', 'personCircle', AccountTab]];
-  return html`<div class="shell">
-    ${tabs.map(([id, , , C]) => html`<div class="tabpage" key=${id} style=${tab === id ? '' : 'display:none'}><${NavStack} root=${html`<${C} />`} /></div>`)}
-    <nav class="tabs">${tabs.map(([id, k, ic]) => html`<button class=${tab === id ? 'on' : ''} aria-current=${tab === id ? 'page' : undefined} onClick=${() => go(id)}><${Icon} name=${ic} size=${24} />${T(k)}</button>`)}</nav>
-  </div>`;
+  const q = location.search;
+  const [space, setSpace] = useState(() => /[?&]j=/.test(q) ? 'play' : /[?&]u=/.test(q) ? 'feed' : (ls('me.space') === 'feed' ? 'feed' : 'play'));
+  const [tabs, setTabs] = useState(() => ({ play: /[?&]j=/.test(q) ? 'plaza' : (ls('me.tab.play') || 'plaza'), feed: /[?&]u=/.test(q) ? 'people' : (ls('me.tab.feed') || 'feed') }));
+  const [over, setOver] = useState(null);   // 'account' | 'settings' — 닫으면 보던 탭
+  const [picking, setPicking] = useState(false);
+  const go = (sp, t) => { setSpace(sp); ls('me.space', sp); if (t) { setTabs(x => ({ ...x, [sp]: t })); ls('me.tab.' + sp, t); } setOver(null); };
+  useEffect(() => { const f = () => setOver('account'); window.addEventListener('me-fill', f); return () => window.removeEventListener('me-fill', f); }, []);
+  const sh = { space, open: setOver, pick: setPicking };
+  const cur = tabs[space];
+  const all = [...SPACES.play.map(t => ['play', ...t]), ...SPACES.feed.map(t => ['feed', ...t])];
+  return html`<${ShellCtx.Provider} value=${sh}><div class="shell">
+    ${all.map(([sp, id, , , C]) => html`<div class="tabpage" key=${sp + '.' + id} style=${!over && space === sp && cur === id ? '' : 'display:none'}><${NavStack} root=${html`<${C} />`} /></div>`)}
+    <div class="tabpage" key="account" style=${over === 'account' ? '' : 'display:none'}><${NavStack} root=${html`<${AccountTab} close=${() => setOver(null)} />`} /></div>
+    ${over === 'settings' && html`<div class="tabpage" key="settings"><${NavStack} root=${html`<${WebSettings} close=${() => setOver(null)} />`} /></div>`}
+    ${!over && html`<nav class="tabs">${SPACES[space].map(([id, k, ic]) => html`<button class=${cur === id ? 'on' : ''} aria-current=${cur === id ? 'page' : undefined} onClick=${() => go(space, id)}><${Icon} name=${ic} size=${24} />${T(k)}</button>`)}</nav>`}
+    <${ActionSheet} open=${picking} title=${T('space.pick')} onClose=${() => setPicking(false)}
+      actions=${[{ label: (space === 'play' ? '✓ ' : '') + T('space.play.long'), onClick: () => go('play') }, { label: (space === 'feed' ? '✓ ' : '') + T('space.social.long'), onClick: () => go('feed') }]} />
+  </div><//>`;
+}
+/* 왼쪽 위 설정 — 로그인했으면 계정 설정 전부, 아니면 언어만 */
+function WebSettings({ close }) {
+  const on = useAuth(); const [me, setMe] = useState(null);
+  useEffect(() => { if (on && !DEMO) P.me().then(m => setMe(m.value || m)); }, [on]);
+  if (on && me) return html`<${Settings} me=${me} done=${() => P.me().then(m => setMe(m.value || m))} close=${close} />`;
+  return html`<${Page} title=${T('account.settings')} left=${html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}>
+    <${Section} header=${T('lang.title')}><div class="row"><select class="textin grow" id="me-lang-guest" onChange=${async e => { await setLang(e.currentTarget.value || null); draw(); }}>
+      <option value="">${T('lang.device')}</option>${LANGS.map(([c, n]) => html`<option value=${c}>${n}</option>`)}</select></div><//>
+  <//>`;
 }
 function draw() { render(html`<${App} key=${document.documentElement.lang} />`, document.getElementById('app')); }
 (async () => {

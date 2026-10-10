@@ -69,6 +69,9 @@ export function TodayView({ openSpace }) {
       <${Row} chevron onClick=${() => nav.push(html`<${RecordsView} embedded />`)}>
         <${Shortcut} icon="clock" title="최근 기록" text=${h.hasRecords ? '지난 판을 다시 살펴봐요' : '아직 완료한 판이 없어요'} />
       <//>
+      <${Row} onClick=${invite}>
+        <${Shortcut} icon="share" title="참가자 초대" text="참가 주소 보내고 미리 가입받기" />
+      <//>
     <//>
   <//>`;
 }
@@ -92,6 +95,9 @@ function ThemePill({ theme }) {
   return html`<${ThemeMenu} theme=${theme} locked=${locked} onPick=${t => pick(t, false)} />
     <${ActionSheet} open=${!!ask} title=${ask ? `준비하던 판의 역할을 비우고 ${ask.id}로 바꿀까요?` : ''} onClose=${() => setAsk(null)} actions=${[{ label: '역할 비우고 변경', role: 'destructive', onClick: () => { const t = ask; setAsk(null); pick(t, true); } }]} />`;
 }
+/* 참가자 초대 — 참가용 웹 주소 + 미리 가입 한마디(2026-10-10). 공유 창이 없는 브라우저는 복사 */
+const INVITE_URL = 'https://tunel.kr/1ndcapp/me/', INVITE_TEXT = '첫밤사망자클럽 참가 주소예요. 미리 가입해 두세요.';
+const invite = async () => { try { if (navigator.share) await navigator.share({ text: INVITE_TEXT, url: INVITE_URL }); else { await navigator.clipboard.writeText(INVITE_TEXT + '\n' + INVITE_URL); alert('참가 주소를 복사했어요'); } } catch (e) {} };
 const Shortcut = ({ icon, title, text }) => html`<div class="hstack shortcut" style="gap:12px;padding:4px 0">
   <span class="sym"><${Icon} name=${icon} size=${18} /></span><div><div class="shortcut-t">${title}</div><div class="sub">${text}</div></div></div>`;
 
