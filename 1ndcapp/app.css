@@ -574,3 +574,10 @@ a.mention { color: var(--blue); text-decoration: none; background: none; padding
 .page.bg-felt { background: url(tex/tex-suede.png) center/360px, #1a1a1d; background-blend-mode: soft-light; color: #eeeae2; }
 .page.bg-felt .navbar { background: rgba(26,26,29,.92); color: #eeeae2; border-bottom: 1px solid rgba(184,154,98,.32); box-shadow: none; }
 .page.bg-felt .nbtn, .page.bg-felt .back { color: #d9ba7e; }
+/* 참가 웹 실시간 자리판·내 직업(2026-10-25) — 상자 없이 번호·이름 줄, 죽은 사람은 흐리게 긋고 처형 공개만 작은 글자 */
+.lseats-row { display: block; padding-top: 6px; padding-bottom: 10px; }
+.lseats { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 4px 12px; font-size: 15px; }
+.lseats > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 24px; }
+.lseats > div.dead .lsn { color: var(--sec, #8a8a8e); text-decoration: line-through; }
+.lseats small { font-size: 12px; }
+.hold-sm .hold { width: auto; min-height: 44px; padding: 0 14px; font-size: 15px; border-radius: 10px; }

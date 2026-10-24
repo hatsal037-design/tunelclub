@@ -5,7 +5,8 @@ import { html, render, useState, useEffect, useRef, useContext, createContext } 
 import { mountCards, setBriefTr } from '../js/briefing.js';
 import { Icon } from '../js/icons.js';
 import { NavStack, useNav, Back } from '../js/nav.js';
-import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton, Sheet } from '../js/ui.js';
+import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton, Sheet, HoldButton } from '../js/ui.js';
+import { QrScanner } from '../js/qrscan.js';
 
 const URL_ = 'https://yguvfogtzazoawtclqvf.supabase.co', KEY = 'sb_publishable_KeezD9hmEnxSTEWA_w8x-A_Tgk3roUf';
 const sb = window.supabase.createClient(URL_, KEY);
@@ -47,28 +48,91 @@ function Stats({ s }) {
 function Loading({ v, children }) { return v === undefined ? html`<div class="boot">…</div>` : children; }
 
 /* ── 광장 ── */
+/* 실시간 판 정보(2026-10-25 햇살님 «참가한 광장에 내가 하고 있는 게임 정보를 실시간으로» → «+ 내 역할까지»)
+   진행자가 올린 광장 현황(0320·0327)을 보고 있는 동안 5초마다 다시 읽는다. 자리판은 큰 화면과 같은 공개 값, 내 직업은 넘길 때 본 카드(본인만 읽음) */
+const LIVE_MS = 5000;
+const liveText = (st, left) => { if (!st) return '';
+  const ph = st.night ? T('live.night', { n: st.night }) : st.day ? T('live.day', { n: st.day }) : st.scene === 'ended' ? T('live.ended') : st.scene ? T('live.prep') : '';
+  return [ph, left].filter(Boolean).join(' · '); };
+const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function timerLeft(tm, skew) { if (!tm) return null; if (tm.state === 'running' && tm.endsAt) return tm.endsAt - (Date.now() + skew); if (tm.state === 'paused' && tm.leftMs != null) return tm.leftMs; return null; }
+function SeatGrid({ seats }) {
+  return html`<div class="lseats">${seats.map(s => html`<div class=${s.dead ? 'dead' : ''} aria-label=${s.n + ' ' + s.name + (s.dead ? ' · ' + T('live.dead') : '') + (s.rv ? ' · ' + T('rv.' + s.rv) : '')}>
+    <span class="sec">${s.n}</span> <span class="lsn">${s.name}</span>${s.rv && html` <small class=${s.rv === 'criminal' ? 'red' : 'blue'}>${T('rv.' + s.rv)}</small>`}</div>`)}</div>`;
+}
+/* 시안 확인용(?demo=1) — 로그인 없이 진행 중인 판 하나를 보여 준다 */
+function demoPlaza(setJ, setS) {
+  const names = ['햇살', '지수', '민수', '영희', '철수', '수아', '도윤', '하린', '서준', '유나', '태오', '나래'];
+  setJ([{ plaza: 'demo', host: '햇살', ends_at: '2026-10-25T21:00' }]);
+  setS({ demo: { scene: 'discussion', mode: '베이직 확장 No.1', modeId: 'om_ext', brief: window.__demoBrief || undefined, day: 2, timer: { state: 'running', endsAt: Date.now() + 83000 },
+    seats: names.map((n, i) => ({ n: i + 1, name: n, dead: i === 2 || i === 6, rv: i === 2 ? 'criminal' : undefined })),
+    mine: { id: 'om_detective', role: '수사관', team: '시민 편 (선)', side: 'good', ab: '매밤: 한 명을 조사해 범죄자 그룹인지 확인한다. 브로커가 있으면 브로커는 시민으로 보인다.', rule: '처형되면 «시민»으로 공개' } } });
+}
 function PlazaTab() {
   const on = useAuth(), nav = useNav();
-  const [joined, setJoined] = useState([]), [people, setPeople] = useState([]), [code, setCode] = useState(''), [msg, setMsg] = useState(null), [status, setStatus] = useState({});
-  const load = async () => { if (!on || DEMO) return; const j = rows(await P.joined()); setJoined(j); setPeople(j[0] ? rows(await P.plazaPeople(j[0].plaza)) : []);
-    const st = {}; for (const x of j) { const r = await P.plazaStatus(x.plaza); if (r && r.ok && r.state) st[x.plaza] = r.state; } setStatus(st); };   // 광장 공개 현황 — «이번 판 자료»(장부 4, 2026-10-10)
-  const checkin = async c => { const r = await P.checkin(c); setMsg(msgOf(r) || T('plaza.entered', { host: r.host || '', place: T('place.plaza') })); await load(); };
+  const [joined, setJoined] = useState([]), [people, setPeople] = useState([]), [code, setCode] = useState(''), [msg, setMsg] = useState(null), [status, setStatus] = useState({}), [scan, setScan] = useState(false), [peek, setPeek] = useState(null), [, tick] = useState(0);
+  const skew = useRef(0), jr = useRef([]);
+  const readStatus = async j => { const st = {}; for (const x of j) { const r = await P.plazaStatus(x.plaza); if (r && r.ok) { st[x.plaza] = { ...(r.state || {}), mine: r.mine || null }; if (r.now) skew.current = r.now - Date.now(); } } setStatus(st); };   // 광장 공개 현황 — «이번 판 자료»(장부 4) · 실시간(0327)
+  const load = async () => { if (DEMO) { demoPlaza(setJoined, setStatus); return; } if (!on) return; const j = rows(await P.joined()); jr.current = j; setJoined(j); setPeople(j[0] ? rows(await P.plazaPeople(j[0].plaza)) : []); await readStatus(j); };
+  const checkin = async c => { const r = await P.checkin(c); setMsg(msgOf(r) || T('plaza.entered', { host: r.host || '', place: T('place.plaza') })); if (r && r.ok !== false) window.dispatchEvent(new Event('me-reload')); await load(); };   // 처음 온 사람은 체크인 때 계정이 생긴다(0323) — 그때 다시 읽어야 빈 칸 채우기가 뜬다(2026-10-25 햇살님 «가입하면 바로 아이디 닉네임 입력이 아니고»)
   useEffect(() => { load(); }, [on]);
   useEffect(() => { const c = window.Participant.codeFrom(location.href); if (c && on && !DEMO) { history.replaceState(null, '', location.pathname); checkin(c); } }, [on]);
+  useEffect(() => { if (!on || DEMO) return;   // 보고 있는 동안만 — 다른 탭·화면 꺼짐이면 쉰다
+    const a = setInterval(() => { if (!document.hidden && jr.current.length) readStatus(jr.current); }, LIVE_MS), b = setInterval(() => tick(x => x + 1), 1000);
+    const v = () => { if (!document.hidden && jr.current.length) readStatus(jr.current); }; document.addEventListener('visibilitychange', v);
+    return () => { clearInterval(a); clearInterval(b); document.removeEventListener('visibilitychange', v); }; }, [on]);
   return html`<${Page} ...${useShell()}>
     <${LargeTitle}>${T('tab.plaza')}<//>
     ${!on ? html`<${LoginRows} />` : html`
       ${!joined.length && html`<${Section}><${Row}><span class="sec">${T('empty.plaza')}</span><//><//>`}
-      ${joined.map(j => html`<${Section} header=${T('plaza.joined')}>
+      ${joined.map(j => { const st = status[j.plaza], left = st && timerLeft(st.timer, skew.current), live = st && st.scene ? liveText(st, left != null ? mmss(left) : '') : '';
+        return html`<${Section} header=${T('plaza.joined')}>
         <${Row}><${Icon} name="house" size=${22} /><${RowLabel} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} text=${T('plaza.until', { t: (j.ends_at || '').slice(0, 16).replace('T', ' ') })} /><//>
         ${people.length > 0 && html`<${Row} chevron onClick=${() => nav.push(html`<${PeopleList} title=${T('plaza.people')} load=${async () => rows(await P.plazaPeople(j.plaza))} />`)}>
           <span style="display:flex;gap:4px">${people.slice(0, 5).map(r => html`<${Avatar} r=${r} size=${28} />`)}</span><span class="sec">${T('plaza.count', { n: people.length })}</span><//>`}
-        ${status[j.plaza] && (status[j.plaza].brief || status[j.plaza].modeId) && (st => html`<${Row} chevron onClick=${() => nav.push(st.brief ? html`<${BriefView} b=${st.brief} modeId=${st.modeId} />` : html`<${ModeView} id=${st.modeId} />`)}><${RowLabel} title=${T('plaza.game_info')} /><span class="sec">${st.brief ? `${st.brief.title} · ${st.brief.n}명` : st.mode || ''}</span><//>`)(status[j.plaza])}
-        <${Row} danger onClick=${async () => { await P.leave(j.plaza); load(); }}>${T('plaza.leave')}<//><//>`)}
+        ${st && (st.brief || st.modeId) && html`<${Row} chevron onClick=${() => nav.push(st.brief ? html`<${BriefView} b=${st.brief} modeId=${st.modeId} />` : html`<${ModeView} id=${st.modeId} />`)}><${RowLabel} title=${T('plaza.game_info')} /><span class="sec">${live || (st.brief ? `${st.brief.title} · ${st.brief.n}명` : st.mode || '')}</span><//>`}
+        ${st && st.seats && st.seats.length > 0 && html`<div class="row lseats-row"><${SeatGrid} seats=${st.seats} /></div>`}
+        ${st && st.mine && html`<${Row}><span class="grow">${T('plaza.my_role')} <b class=${peek === j.plaza ? (st.mine.side === 'evil' ? 'red' : 'blue') : 'sec'}>${peek === j.plaza ? D(st.mine.role) : '•••'}</b></span>
+          <span class="hold-sm"><${HoldButton} label=${T('plaza.hold')} onChange=${v => setPeek(v ? j.plaza : null)} /></span>
+          <button class="blink" onClick=${() => nav.push(html`<${RoleDetail} card=${st.mine} brief=${st.brief} modeId=${st.modeId} mine=${true} />`)}>${T('role.more')}</button><//>`}
+        <${Row} danger onClick=${async () => { await P.leave(j.plaza); load(); }}>${T('plaza.leave')}<//><//>`; })}
       <${Section} header=${T('plaza.code')}>
         <div class="row"><input class="textin grow" id="me-code" value=${code} placeholder=${T('plaza.code_ph')} autocapitalize="characters" onInput=${e => setCode(e.currentTarget.value.trim())} />
+        <button class="blink" aria-label=${T('plaza.qr')} onClick=${() => setScan(true)}><${Icon} name="qrcode" size=${22} /></button>
         <button class="blink" disabled=${!window.Participant.codeFrom(code)} onClick=${() => checkin(window.Participant.codeFrom(code))}>${T('plaza.join')}</button></div><//>`}
+    ${scan && html`<${QrScanner} title=${T('plaza.scan')} noCam=${T('plaza.no_cam')} closeLabel=${T('ui.close')} parse=${t => window.Participant.codeFrom(t)} onClose=${() => setScan(false)} onCode=${c => { setScan(false); checkin(c); }} />`}
     <${Alert} open=${!!msg} title=${msg} onClose=${() => setMsg(null)} />
+  <//>`;
+}
+
+/* 직업 자세히(2026-10-25 햇살님 «내 직업에 대한 자세한 설명 — 팁이나 특징») — 능력 글 + 특징·팁(library/tips.json, 오리지널부터).
+   내 직업이면 사망 공개 줄과 «이번 판 직업»(오리지널은 원작 인원표가 공개라 판에 있는 직업만, 다른 계열은 모드 전체 자료실) */
+let TIPS = null; const tipsMap = async () => TIPS || (TIPS = await fetch('library/tips.json').then(r => r.ok ? r.json() : {}).catch(() => ({})));
+function useTips() { const [m, setM] = useState(TIPS || {}); useEffect(() => { tipsMap().then(setM); }, []); return m; }
+const gSide = g => g.key === 'good' ? 'good' : g.key === 'solo' ? null : 'evil';   // 안내 묶음 key(good·mafia·triad·crook·solo) → 글자 색
+const briefRoles = b => b && b.groups ? b.groups.flatMap(g => (g.roles || []).map(r => ({ ...r, group: g.name, side: gSide(g) }))) : [];
+function useArt() { const [a, setA] = useState(ART || {}); useEffect(() => { artMap().then(setA); }, []); return a; }
+function RoleDetail({ card, brief, modeId, mine }) {
+  const nav = useNav(), art = useArt(), tips = useTips(), tp = (document.documentElement.lang || 'ko') === 'ko' && card.id ? tips[card.id] : null;   // 팁은 한국어부터(번역은 검토 뒤)
+  const others = briefRoles(brief);
+  return html`<${Page} title=${mine ? T('plaza.my_role') : D(card.role)} left=${html`<${Back} />`}>
+    <${Section}><div class="row" style="flex-direction:column;align-items:center;gap:6px;padding:20px 16px;text-align:center">
+      <${RoleArt} r=${art[card.role] || {}} size=${72} /><div style="font-size:22px;font-weight:700">${D(card.role)}</div>
+      ${card.team && html`<div class=${card.side === 'evil' ? 'red' : card.side === 'good' ? 'blue' : 'sec'}>${D(card.team)}</div>`}
+      <div>${D(card.ab)}</div>${card.rule && html`<div class="sec" style="font-size:14px">${card.rule}</div>`}</div><//>
+    ${tp && tp.feat && html`<${Section} header=${T('role.feat')}>${tp.feat.map(s => html`<${Row}><span>${s}</span><//>`)}<//>`}
+    ${tp && tp.tip && html`<${Section} header=${T('role.tip')}>${tp.tip.map(s => html`<${Row}><span>${s}</span><//>`)}<//>`}
+    ${mine && (others.length ? html`<${Section} header=${T('role.inplay')}>${others.map(r => html`<${Row} chevron onClick=${() => nav.push(html`<${RoleDetail} card=${{ id: r.id, role: r.name, team: r.group, side: r.side, ab: r.ability }} />`)}>
+        <${RoleArt} r=${art[r.name] || {}} size=${32} /><${RowLabel} title=${D(r.name) + (r.count > 1 ? ' ×' + r.count : '')} text=${D(r.group || '')} /><//>`)}<//>`
+      : modeId && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${ModeView} id=${modeId} />`)}>${T('role.mode_all')}<//><//>`)}
+  <//>`;
+}
+/* 이번 판 직업 설명서 — 오리지널(안내가 있는 판)은 판에 있는 직업만, 누르면 자세히 */
+function RoleGuide({ b }) {
+  const nav = useNav(), art = useArt();
+  return html`<${Page} title=${T('role.inplay')} left=${html`<${Back} />`}>
+    ${(b.groups || []).filter(g => (g.roles || []).length).map(g => html`<${Section} header=${D(g.name)}>${g.roles.map(r => html`<${Row} chevron onClick=${() => nav.push(html`<${RoleDetail} card=${{ id: r.id, role: r.name, team: g.name, side: gSide(g), ab: r.ability }} />`)}>
+      <${RoleArt} r=${art[r.name] || {}} size=${36} /><div class="rl"><div><b>${D(r.name)}</b>${r.count > 1 ? html` <span class="sec">×${r.count}</span>` : null}</div><div class="sub">${D(r.ability)}</div></div><//>`)}<//>`)}
   <//>`;
 }
 
@@ -78,7 +142,7 @@ function BriefView({ b, modeId }) {
   useEffect(() => { if (ref.current) mountCards(ref.current, b, { seam: true }); }, [b]);
   /* 큰 화면과 같은 무드 — 페이지 전체가 먹색 천, 장은 틈 없이 이어 붙인다(2026-10-24 햇살님). 모드 자료 단추는 머리줄 오른쪽에 끼운다(새 줄 안 만듦) */
   return html`<${Page} bg="felt" title=${T('plaza.game_info')} left=${html`<${Back} />`}
-      right=${modeId && html`<button class="nbtn" onClick=${() => nav.push(html`<${ModeView} id=${modeId} />`)}>${T('tab.library')}</button>`}>
+      right=${(b.groups || []).length ? html`<button class="nbtn" onClick=${() => nav.push(html`<${RoleGuide} b=${b} />`)}>${T('role.inplay')}</button>` : modeId && html`<button class="nbtn" onClick=${() => nav.push(html`<${ModeView} id=${modeId} />`)}>${T('tab.library')}</button>`}>
     <div ref=${ref} style="padding:0 0 24px"></div>
   <//>`;
 }
@@ -423,6 +487,7 @@ function AccountTab({ close }) {
   const [me, setMe] = useState({}), [st, setSt] = useState({}), [ask, setAsk] = useState(false), [fail, setFail] = useState(null);   // 탈퇴는 계정 화면에서 바로(2026-10-24 햇살님 «탈퇴 한 번에 가능한 버튼») — 설정 안 줄도 그대로 둔다
   const load = async () => { if (!on || DEMO) return; const m = await P.me(); const v = m.value || m; setMe(v); setSt(await P.status()); setLang(v.lang); if ((v.needs || []).length && !seen()) { seen(true); nav.push(html`<${Signup} me=${v} done=${load} />`); window.dispatchEvent(new Event('me-fill')); } };   // 처음 한 번·로그인했을 때만(2026-10-06 «나중에»)   // 빠진 칸(0250) — 계정 탭으로 넘겨 채우게
   useEffect(() => { load(); }, [on]);
+  useEffect(() => { const f = () => load(); window.addEventListener('me-reload', f); return () => window.removeEventListener('me-reload', f); }, [on]);
   return html`<${Page} left=${close && html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}>
     <${LargeTitle}>${T('tab.account')}<//>
     ${!on ? html`<${LoginRows} />` : html`

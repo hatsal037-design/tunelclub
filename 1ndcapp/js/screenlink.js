@@ -60,7 +60,7 @@ export const screens = {
 /* 판이 바뀔 때마다(명령 성공 뒤) 최신 공개 정보를 올린다. 코어가 같은 내용엔 판본을 안 올리므로 중복 전송은 없다 */
 /* 광장 현황(0320·0321) — 참가자 폰 잠금화면·«이번 판 자료»용 공개 한 줄. 앱 Bridge/PlazaStatus.swift 와 같은 규칙(2026-10-10 웹 구성 W2).
    열린 실전 광장이 있고 로그인했으면, 허용 칸(광장 이름·모드·모드 번호·테마·장면·몇째 날/밤·타이머)만, 바뀌었을 때만 올린다. 실패해도 진행은 안 막는다 */
-const plaza = { sent: '', busy: false, dirty: false };
+const plaza = { sent: '', cards: '', busy: false, dirty: false };
 async function plazaPush() {
   const pot = store.home && store.home.pot;
   if (!account.user || !pot || pot.practice) return;
@@ -75,8 +75,12 @@ async function plazaPush() {
       if (typeof p.dayNumber === 'number') st.day = p.dayNumber;
       if (typeof p.nightNumber === 'number') st.night = p.nightNumber;
       if (p.briefing) st.brief = p.briefing;   // 이번 판 안내(0326 — 참가 웹 광장 탭이 그린다. 0326 이 없는 서버는 이 칸을 버린다)
+      if (Array.isArray(p.seats)) st.seats = p.seats.map(s => Object.assign({ n: s.number, name: s.name || '', dead: !!s.dead }, s.reveal ? { rv: s.reveal } : {}));   // 0327 공개 자리판 — 큰 화면과 같은 값(생사는 공개 생사, 처형 공개만)
       if (p.timer) { const t = {}; ['state', 'endsAt', 'leftMs', 'durationMs'].forEach(k => { if (p.timer[k] != null) t[k] = p.timer[k]; }); st.timer = t; }
       const epoch = p.gameEpoch || 'none', rev = p.revision || 0, key = epoch + '|' + rev + '|' + JSON.stringify(st);
+      /* 0327 내 카드 — 자리별 «넘길 때 본 카드»(코어 plaza.cards)를 통째로. 서버가 체크인한 계정 것만 남기고 본인만 읽게 한다 */
+      const cards = store.get('plaza.cards') || [], ck = epoch + '|' + JSON.stringify(cards);
+      if (ck !== plaza.cards) { try { const r = await account.rpc('plaza_card_push', { p_pot: pot.id, p_epoch: epoch, p_cards: cards }); if (r && r.ok) plaza.cards = ck; } catch {} }
       if (key === plaza.sent) break;
       try { const send = () => account.rpc('plaza_status_push', { p_pot: pot.id, p_epoch: epoch, p_rev: rev, p_state: st });
         let r = await send();

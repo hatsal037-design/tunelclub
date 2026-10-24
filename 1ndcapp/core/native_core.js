@@ -389,6 +389,18 @@ var NativeCore = (function () {
     var shown = cm[(state.fakes || {})[i] || s.char];
     return { name: s.name || ('좌석 ' + (i + 1)), roleName: shown.ko, teamName: sideKoOf(shown), ability: shown.ab, revealRule: omRevealRule(s.char) || null, side: ((FIXED.TEAM || {})[shown.team] || {}).side || null };   // side — 팀 글자 색(선·악). 가짜 카드면 보이는 직업의 편
   }
+  /* 참가자 폰 «내 직업»(2026-10-25 햇살님 «넘길 때 본 카드»): 넘김·다시 보여주기·첫밤 시작 때 본 카드를 자리에 남긴다.
+     판 중에 직업·편이 바뀌어도 진행자가 다시 보여 주기 전엔 그대로 — 폰이 먼저 알려 주지 않는다 */
+  function shownCardOf(i) { var s = state.seats[i], cm = CMAP(); if (!s || !s.char) return null; var f = (state.fakes || {})[i] || s.char, sh = cm[f]; if (!sh) return null;
+    return { id: sh.id, role: sh.ko, team: sideKoOf(sh), side: ((FIXED.TEAM || {})[sh.team] || {}).side || null, ab: sh.ab || '', rule: omRevealRule(s.char) || null, char: s.char, shown: f }; }
+  function snapCard(i) { var c = shownCardOf(i); if (c) state.seats[i].shownCard = c; }
+  function cardStale(s, i) { var c = s.shownCard; return !c || c.char !== s.char || c.shown !== ((state.fakes || {})[i] || s.char); }
+  /* 광장에 올릴 카드 — 사람 열쇠(계정 또는 투넬 회원 번호)가 있는 자리만. 첫밤 전에 다시 배정한 자리의 옛 카드는 빼고 */
+  function plazaCards() { var began = firstNightBegun(), out = [];
+    (state.seats || []).forEach(function (s, i) { if (!s || !s.char || !s.shownCard || (!began && cardStale(s, i))) return;
+      var w = s.pid ? personById(s.pid) : null, k = w && (w.accountId || w.tunelId); if (!k) return; var c = s.shownCard;
+      out.push({ k: String(k), card: { id: c.id, role: c.role, team: c.team, side: c.side, ab: c.ab, rule: c.rule } }); });
+    return out; }
 
   /* 진행 단계 — 밤 시작 카드(idx 0) · 카드 · 새벽(마지막 뒤) · 낮 · 마감. 화면은 이것만 보고 무엇을 그릴지 고른다 */
   function seatLabel(i) { var x = state.seats[i]; return { index: i, number: i + 1, name: (x && x.name) || ('좌석 ' + (i + 1)) }; }
@@ -946,7 +958,7 @@ var NativeCore = (function () {
   function logHub(L) { try { var m = L && allMods()[L.mode]; if (m) outHub = hubRepOf(m); } catch (e) {} return L; }   // 지난 판은 그 판의 계열 말로
   function replayLog(a) { return logHub(replayLogRaw(a)); }
   var narrowMemo = {};
-  var QUERIES = { home: home, 'preparation.board': board, 'game.current': nightCard, 'preparation.roles': roles, 'preparation.handoff': handoff, 'handoff.public': handoffPublic, 'game.stage': stage, 'game.process': process, reference: reference, 'roles.art': function () { var mid = state.edition || 'basic'; return CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, mid); return { ko: c.ko, icon: r.icon, e: r.e }; }); }, 'game.day': day, 'display.public': displayPublic, 'game.winChoices': function () { return winChoices(state.edition); }, 'game.verdict': function () { return { items: verdict(), winner: endWinner() }; }, 'game.briefing': function () { return briefing(); }, 'game.result': result, 'game.replay': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; return GameReplay.build(L, { public: /^public:/.test(String(a || '')) }); },
+  var QUERIES = { home: home, 'preparation.board': board, 'game.current': nightCard, 'preparation.roles': roles, 'preparation.handoff': handoff, 'handoff.public': handoffPublic, 'plaza.cards': plazaCards, 'game.stage': stage, 'game.process': process, reference: reference, 'roles.art': function () { var mid = state.edition || 'basic'; return CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, mid); return { ko: c.ko, icon: r.icon, e: r.e }; }); }, 'game.day': day, 'display.public': displayPublic, 'game.winChoices': function () { return winChoices(state.edition); }, 'game.verdict': function () { return { items: verdict(), winner: endWinner() }; }, 'game.briefing': function () { return briefing(); }, 'game.result': result, 'game.replay': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; return GameReplay.build(L, { public: /^public:/.test(String(a || '')) }); },
     'game.replayNarrow': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; var k = L.uuid || L.id; if (!(k in narrowMemo)) narrowMemo[k] = GameReplay.narrow(L); return narrowMemo[k]; }, 'day.voters': function (k) { return voters(+k); }, records: records, record: record, library: library, 'library.mode': libraryMode,
     /* 엔진 내부 관측: 공개 확정본의 생사·공개한 밤만. 큰 화면 전송 형식에는 추가하지 않는다. */
     'observation.public': function () { var P = pubState(pubEpoch()); return { through: P.announcedThrough || 0, dead: (P.seats || []).map(function (s) { return !!s.dead; }) }; },
@@ -1125,13 +1137,14 @@ var NativeCore = (function () {
       if (inGame()) return rejected('notAllowedInPhase', '첫밤이 시작됐어요.');
       openReveal('resume'); try { rvClose(); } catch (e) {} if (typeof state.rvPos !== 'number') state.rvPos = -1; save(); return null;
     },
+    'handoff.reshown': function (p) { var i = +p.index; if (!state.seats[i] || !state.seats[i].char) return rejected('invalidSelection', '자리를 찾지 못했어요.'); snapCard(i); save(); return null; },   // «역할 다시 보여주기» — 그때 본 카드로 폰도 바뀐다
     'briefing.done': function (p) { state.briefDone = !(p && p.done === false); save(); return null; },   // 진행자 «룰 설명 끝 → 넘기기 시작»(2026-10-24 햇살님 «바로 넘기기 가지 말고 중간에 룰 설명 구간»)
     'handoff.seen': function (p) { var n = handoffOrder().length, k = +p.position; if (!(k >= -1 && k < n)) return rejected('invalidSelection', '순서를 찾지 못했어요.');
       /* 사람별로 본 것을 따로 센다(앱구조점검 2-10, 2026-10-05) — 위치를 덮어쓰면 6번 줄을 잘못 눌러도 1~5번이 «확인함»이 되고 첫밤이 켜졌고,
          다 돌린 뒤 2번이 다시 보면 3~10번을 다시 돌려야 했다. 위치(rvPos) = 앞에서부터 빠짐없이 본 마지막 자리 */
       if (k < 0) { state.rvPos = -1; state.rvSeen = []; save(); return null; }
       var seen = Array.isArray(state.rvSeen) ? state.rvSeen.slice() : []; for (var j = 0; j <= (typeof state.rvPos === 'number' ? state.rvPos : -1); j++) if (seen.indexOf(j) < 0) seen.push(j);
-      if (seen.indexOf(k) < 0) seen.push(k); var pos = -1; while (seen.indexOf(pos + 1) >= 0) pos++;
+      if (seen.indexOf(k) < 0) seen.push(k); snapCard(handoffOrder()[k]); var pos = -1; while (seen.indexOf(pos + 1) >= 0) pos++;
       state.rvSeen = seen; state.rvPos = pos; save(); return null; },
     'roles.setFamily': function (p) { if (inGame()) return rejected('notAllowedInPhase', '첫밤 뒤에는 바꿀 수 없어요.');
       var t = THEMES.find(function (x) { return themeName(x.rep) === p.family; });
@@ -1172,7 +1185,8 @@ var NativeCore = (function () {
     'roles.toggleTraveler': function (p) { if (!state.seats[+p.seat]) return rejected('invalidSelection', '자리를 찾지 못했어요.'); tvToggle(+p.seat); return null; },
     'game.beginFirstNight': function () {
       if (seatsUnnamedBlock()) return rejected('invalidSelection', '이름이 없는 자리가 있어요.');
-      prepStartNight(); wz.idx = 0; localStorage.removeItem(PRACTICE_KEY);   // 밤 시작 카드부터 · 연습 표시는 판(state.practice)으로 넘어갔으니 여기서 걷는다(다시 배정해도 연습이 풀리지 않게)
+      prepStartNight(); wz.idx = 0; localStorage.removeItem(PRACTICE_KEY);
+      var miss = fakesMissing(); (state.seats || []).forEach(function (s, i) { if (s && s.char && miss.indexOf(i) < 0 && cardStale(s, i)) snapCard(i); });   // 넘김 없이 시작한 판·첫밤 전에 다시 배정한 자리 — 이때 카드가 «본 카드». 가짜 카드를 아직 못 받은 자리(취한 사람 등)는 진짜가 새지 않게 건너뛴다   // 밤 시작 카드부터 · 연습 표시는 판(state.practice)으로 넘어갔으니 여기서 걷는다(다시 배정해도 연습이 풀리지 않게)
       try { if (usesBluff() && !(state.bluffIds || []).length && evilMeetSteps()) autoBluff(); } catch (e) {}   // 첫밤 블러프는 시작 카드에서 바로 보이게 — 오리지널 마피아엔 블러프가 없다(웹 usesBluff)
       save(); return null;
     },

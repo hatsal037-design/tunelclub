@@ -44,15 +44,15 @@ export function SeatDetailView({ index, title }) {
   <//>`;
 }
 
-/* 판 중 «역할 다시 보여주기» — 역할 넘기기 참가자 화면과 같은 «누르는 동안 보기». 카드는 코어 handoff.public(취한 사람은 처음 받은 가짜 카드). 판은 바꾸지 않는다 */
+/* 판 중 «역할 다시 보여주기» — 역할 넘기기 참가자 화면과 같은 «누르는 동안 보기». 카드는 코어 handoff.public(취한 사람은 처음 받은 가짜 카드). 처음 누를 때 그 카드를 «본 카드»로 남긴다(handoff.reshown — 참가자 폰 «내 직업», 2026-10-25) */
 function RoleRecheck({ index, name, close }) {
-  const [shown, setShown] = useState(null);
+  const [shown, setShown] = useState(null), [marked, setMarked] = useState(false);
   return html`<div class="reveal-page">
     <button class="blink" style="position:absolute;top:calc(4px + var(--safe-t));left:16px" onClick=${() => { setShown(null); close(); }}>닫기</button>
     <div class="who"><div class="title2">${name}님</div></div>
     <div class="mid">${shown ? html`<div class="pcard"><${RoleArt} r=${shown.roleName} size=${96} /><div class="rn">${shown.roleName}</div>
         <div class=${shown.side === 'evil' ? 'tn red' : shown.side === 'good' ? 'tn blue' : 'tn sec'}>${shown.teamName}</div><div class="ab2">${shown.ability}</div>${shown.revealRule ? html`<div class="ab2 sub">${shown.revealRule}</div>` : null}</div>`
       : html`<span class="hid" aria-label="가려져 있어요"><${Icon} name="eyeSlash" size=${44} stroke=${1.5} /></span>`}</div>
-    <div class="acts"><${HoldButton} onChange=${on => setShown(on ? store.publicCard(index) : null)} /></div>
+    <div class="acts"><${HoldButton} onChange=${on => { if (on && !marked) { setMarked(true); store.dispatch('handoff.reshown', { index }); } setShown(on ? store.publicCard(index) : null); }} /></div>
   </div>`;
 }
