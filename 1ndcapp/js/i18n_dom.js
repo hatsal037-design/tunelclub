@@ -1,6 +1,7 @@
 /* 웹 진행 화면 영어(2026-10-06) — 앱 CoreText 와 같은 생각: 화면에 «그려진 글자»만 바꾼다. 코어 값·열쇠는 그대로.
    사전: 앱 화면 말(i18n/data/앱_en_전체.json) + 코어 글 틀(코어_en.json) + 게임 자료(en.json). 영어가 아니면 아무것도 안 한다.
    언어: 이 기기에서 정한 것(localStorage 1ndc_lang) → 기기 언어 → 한국어·영어 아니면 영어. */
+import { setBriefTr } from './briefing.js';
 const BASE = new URL('../', import.meta.url).href;   /* 큰 화면(screen/)에서 불러도 같은 자리 */
 const LANGS = ['ko', 'en', 'ja', 'es', 'zh-Hans', 'zh-Hant', 'th', 'vi', 'id', 'pt-BR'];   /* participant.js LANGS 와 같게 */
 const pick = () => { let a = null; try { a = localStorage.getItem('1ndc_lang'); } catch {} if (a && LANGS.includes(a)) return a;
@@ -18,7 +19,7 @@ export async function startDomI18n(root) {
   const [app, core, data, narr] = await Promise.all([get(`앱_${lang}_전체.json`), get(`코어_${lang}.json`), get(`${lang}.json`), get(`진행_${lang}.json`)]);   // 진행_ = 진행 낭독 문장(2026-10-12)
   /* 앱 카탈로그의 %lld·%@ 열쇠도 틀로({n}·{p}) — 화면에 숫자가 끼워진 채 오므로 */
   const tm = {}; for (const k in app) tm[k.replace(/%(\d\$)?(lld|ld|d)/g, '{n}').replace(/%(\d\$)?@/g, '{p}')] = app[k].replace(/%(\d)\$(?:lld|ld|d|@)/g, '{#$1}').replace(/%(lld|ld|d)/g, '{n}').replace(/%@/g, '{p}');   // %2$lld → {#2}: 번역 어순이 바뀌어도 그 자리 값(2026-10-06 코덱스 재현 «Turn 10 of 2»)
-  const tr = window.CoreText.make(Object.assign(tm, narr, core), data); narrLang = lang; narrTr = tr;
+  const tr = window.CoreText.make(Object.assign(tm, narr, core), data); narrLang = lang; narrTr = tr;   setBriefTr(tr);   // 이번 판 안내는 섀도 루트라 따로(2026-10-24)
   const HAN = /[가-힣]/, ATTR = ['placeholder', 'aria-label', 'title'];
   const fix = n => {
     if (n.nodeType === 3) { if (HAN.test(n.nodeValue)) { const t = tr(n.nodeValue.trim()); if (t !== n.nodeValue.trim()) n.nodeValue = n.nodeValue.replace(n.nodeValue.trim(), t); } return; }
@@ -27,7 +28,7 @@ export async function startDomI18n(root) {
     if (n.tagName === 'INPUT') return;
     n.childNodes.forEach(fix);
   };
-  fix(root);
+  fix(root); window.__i18nFix = fix;   // 큰 화면이 자리를 재기 전에 먼저 바꿔 달라고 부른다(재고 나서 바뀌면 영어 폭이 겹친다, 2026-10-24)
   new MutationObserver(ms => ms.forEach(m => { if (m.type === 'characterData') fix(m.target); else m.addedNodes.forEach(fix); }))
     .observe(root, { childList: true, subtree: true, characterData: true });
 }

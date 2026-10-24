@@ -5,6 +5,7 @@
     var exact = {}, tmpls = [], memo = {};
     Object.keys(core || {}).forEach(function (ko) {
       if (ko.indexOf('{') < 0) { exact[ko] = core[ko]; return; }
+      if (!ko.replace(/\{[pnr]\}/g, '').trim()) return;   // «{r}» 처럼 빈칸뿐인 틀은 같은 길이의 진짜 틀을 가린다(2026-10-24)
       var slots = [], pat = '^' + ko.replace(/\{([pnr])\}|[.*+?^$()|[\]\\{}]/g, function (m, c) { if (c) { slots.push(c); return c === 'n' ? '(\\d+)' : '([^.!?\\n·]+?)';   /* 빈칸은 문장을 넘지 않는다 — 짧은 틀이 여러 문장 내레이션을 통째로 삼키던 것 */ } return '\\' + m; }) + '$';
       tmpls.push({ re: new RegExp(pat), en: core[ko], slots: slots, len: pat.length });
     });

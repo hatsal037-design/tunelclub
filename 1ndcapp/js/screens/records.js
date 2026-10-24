@@ -5,6 +5,7 @@ import { Icon } from '../icons.js';
 import { Page, Section, Row, Labeled, Empty, ActionSheet, Menu, useRun, LargeTitle } from '../ui.js';
 import { useNav, Back } from '../nav.js';
 import { ReplayView } from './replay.js';
+import { winChoices, winPayload } from './day.js';
 
 const day = s => String(s || '').slice(0, 16).replace('T', ' ');
 
@@ -35,7 +36,7 @@ function RecordDetail({ id, reload }) {
         <div class="sub" style="margin-top:6px">${day(r.date)} · ${r.mode} · ${r.count}명 · 밤 ${r.nights}</div>
         ${r.note && html`<div class="sub" style="margin-top:6px;color:var(--label)">${r.note}</div>`}</div>
       <div class="row"><${Menu} cls="blink" label=${html`<${Icon} name="pencil" size=${20} />승자 정정`}
-        items=${[['good', '선 승리'], ['evil', '악 승리'], ['other', '중립 승리'], ['void', '무효']].map(([w, l]) => ({ label: l, onClick: () => R.run('record.setWinner', { id, winner: w }, after) }))} /></div>
+        items=${winChoices(r.winChoices).map(c => ({ label: c.label, onClick: () => R.run('record.setWinner', { id, ...winPayload(c) }, after) }))} /></div>
     <//>
     <${Section}><${Row} chevron onClick=${() => nav.push(html`<${ReplayView} id=${id} />`)}>복기<//><//>
     ${r.events.length > 0 && html`<${Section} header="과정">${r.events.map(e => html`<div class="row sub" style="color:var(--label)">${e}</div>`)}<//>`}

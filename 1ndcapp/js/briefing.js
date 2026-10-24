@@ -52,6 +52,7 @@ svg.wire line.unk{stroke:rgba(238,234,226,.35);stroke-dasharray:4 5}
 .A .grp .gl{font-family:var(--serif);font-weight:700;font-size:1.85cqw}
 .A .grp .gs{font-size:1.3cqw;color:var(--txt2);margin-top:.15cqw}
 .A .grp .coins{flex-wrap:nowrap;font-size:4.6cqw;margin:.7cqw 0 .5cqw;justify-content:center}
+.A.xl .fl{zoom:.84}.A.xl .grp{transform:translateX(-50%) scale(.84);transform-origin:50% 0}   /* 다른 말 — 한국어보다 길어 넘친다(2026-10-24, 아이폰과 같은 0.84) */
 .A .grp .gw{font-size:1.05cqw;letter-spacing:.2em;color:var(--gold);display:flex;flex-direction:column;align-items:center;gap:.15cqw;margin-top:.2cqw}
 .A .grp .gw b{font-family:var(--serif);font-weight:700;font-size:1.8cqw;letter-spacing:0;color:var(--txt);white-space:normal;max-width:25cqw;line-height:1.25;text-align:center;word-break:keep-all}
 .A .grp .gw svg.i{color:var(--gold)}
@@ -128,11 +129,22 @@ const flow = b => b.flow.map(f => `<div class="bs"><h3>${ic(f.icon)}${esc(f.titl
   `<div class="it"><span class="pic">${it.roles && it.roles.length ? (f.key === 'first' ? `<span class="coins">${it.roles.map(i => coin(i, 1)).join('')}</span>` : it.roles.map(i => coin(i, 1)).join('')) : ic(it.icon)}</span><span>${esc(it.text)}</span></div>`).join('')}</div>`).join('');
 const roleCount = b => b.groups.reduce((a, g) => a + g.roles.length, 0);
 
+/* 다른 말 — 섀도 루트 안은 화면 번역기(i18n_dom)가 못 닿는다. 그린 직후 글자 마디만 사전으로 바꾼다(코어 값·열쇠는 그대로).
+   진행 웹은 i18n_dom, 참가 웹은 me.js 가 setBriefTr 로 넣는다. 한국어면 null (2026-10-24) */
+let TR = null;
+export function setBriefTr(f) { TR = f || null; }
+const T = s => (TR && s ? TR(s) : s);
+function trRoot(r) {
+  if (!TR) return;
+  const w = document.createTreeWalker(r, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) { const v = n.nodeValue, t = v.trim().replace(/^·\s*|\s*·$/g, ''); if (/[가-힣]/.test(t)) { const x = TR(t); if (x !== t) n.nodeValue = v.replace(t, x); } }   // 그림 사이에 낀 « · » 는 떼고 찾는다
+}
+
 /* 섀도 루트 — 앱 CSS(.card·.row·.st…)와 안 섞이게 */
 function shadow(host, tex) {
   fonts();
   const r = host.shadowRoot || host.attachShadow({ mode: 'open' });
-  return { r, set: h => { r.innerHTML = `<style>${css(tex || SRC.tex)}</style>` + h; } };
+  return { r, set: h => { r.innerHTML = `<style>${css(tex || SRC.tex)}</style>` + h; trRoot(r); } };
 }
 
 /* 관계 선 — 무리의 실제 자리를 재서 가는 선을 긋는다(시안 wire 그대로). 위아래 무리는 아래 가장자리 → 위 가장자리, 옆 무리는 코인 줄 옆끼리 */
@@ -145,7 +157,7 @@ function wire(root, links) {
     if (gb.t > ga.b || ga.t > gb.b) { const [u, d] = gb.t > ga.b ? [ga, gb] : [gb, ga]; x1 = u.cx; y1 = u.b + 6; x2 = d.cx; y2 = d.t - 6; }
     else { const ca = box(a, ' .coins'), cb = box(b, ' .coins'); const [L, Rr] = ca.cx < cb.cx ? [ca, cb] : [cb, ca]; x1 = L.r + 12; y1 = L.cy; x2 = Rr.l - 12; y2 = Rr.cy; }
     svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${cls}"/>`;
-    if (tag && type === 'enemy') tags += `<div class="wtag e" style="left:${(x1 + x2) / 2}px;top:${(y1 + y2) / 2}px">${ic('swords')}${esc(tag)}</div>`;   /* 시안대로 — 점선(같은 편·서로 모름)엔 꼬리표 없이 */
+    if (tag && type === 'enemy') tags += `<div class="wtag e" style="left:${(x1 + x2) / 2}px;top:${(y1 + y2) / 2}px">${ic('swords')}${esc(T(tag))}</div>`;   /* 시안대로 — 점선(같은 편·서로 모름)엔 꼬리표 없이 */
   }
   root.insertAdjacentHTML('beforeend', `<svg class="wire">${svg}</svg>${tags}`);
 }
@@ -156,7 +168,7 @@ export function drawA(host, b) {
   const P = { good: [solo ? 38 : 50, 0], solo: [88, 0], mafia: [22, cr3 ? 37 : 46], triad: [78, cr3 ? 37 : 46], crook: [50, 72] };
   if (!tri) { P.mafia = [27, 50]; P.crook = [73, 50]; }
   const grp = x => `<div class="grp" data-g="${x.key}" style="left:${P[x.key][0]}%;top:${P[x.key][1]}%"><div class="gl ${tone(x)}">${nameOf(x)}</div><div class="gs">${ic(x.knows.icon)} ${esc(x.knows.text)}${x.note ? '<br>' + esc(x.note) : ''}</div><div class="coins">${coins(x)}</div><div class="gw"><span>${ic('trophy')} 승리</span><b>${esc(x.win.short)}</b></div></div>`;
-  set(`<div class="felt A${roleCount(b) > 10 ? ' dense' : ''}"><div class="kick">${esc(b.hub)} · 룰 설명</div><div class="hd"><b>${esc(b.title)} · ${b.n}명</b><span>${sideLine(b)}</span></div>
+  set(`<div class="felt A${roleCount(b) > 10 ? ' dense' : ''}${TR ? ' xl' : ''}"><div class="kick">${esc(b.hub)} · 룰 설명</div><div class="hd"><b>${esc(b.title)} · ${b.n}명</b><span>${sideLine(b)}</span></div>
     <div class="body"><div class="fl">${flow(b)}</div><div class="vr"></div><div class="rel">${b.groups.filter(x => P[x.key]).map(grp).join('')}</div></div></div>`);
   wire(r.querySelector('.rel'), b.links || []);
 }

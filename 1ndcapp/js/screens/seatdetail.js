@@ -30,7 +30,7 @@ export function SeatDetailView({ index, title }) {
   return html`<${Page} title=${title} left=${html`<${Back} />`}>
     ${m && html`
       <${Section}><div class="row"><${Labeled} label="직업" value=${html`<span class="hstack" style="justify-content:flex-end">${m.role && html`<${RoleArt} r=${m.role} size=${24} />`}${m.role ? `${m.role} · ${m.teamKo}` : '없음'}</span>`} /></div>
-        ${m.ability && html`<div class="row sub" style="white-space:pre-line">${m.ability}</div>`}
+        ${m.ability && html`<div class="row sub" style="white-space:pre-line">${m.ability}${m.revealRule && html`<br/><span>${m.revealRule}</span>`}</div>`}
         ${m.role && html`<${Row} tint onClick=${() => setRecheck(true)}>역할 다시 보여주기<//>`}<//>
       <${Section}>${m.dead ? html`<div class="row"><${Labeled} label="상태" value=${`사망 · ${m.cause || ''}`} /></div><${Row} tint onClick=${() => run('seat.revive', { seat: index })}>부활<//>`
         : html`<div class="row"><${Labeled} label="상태" value="생존" /></div><${Row} danger onClick=${kill}>사망 처리<//>`}<//>
@@ -51,7 +51,7 @@ function RoleRecheck({ index, name, close }) {
     <button class="blink" style="position:absolute;top:calc(4px + var(--safe-t));left:16px" onClick=${() => { setShown(null); close(); }}>닫기</button>
     <div class="who"><div class="title2">${name}님</div></div>
     <div class="mid">${shown ? html`<div class="pcard"><${RoleArt} r=${shown.roleName} size=${96} /><div class="rn">${shown.roleName}</div>
-        <div class=${shown.side === 'evil' ? 'tn red' : shown.side === 'good' ? 'tn blue' : 'tn sec'}>${shown.teamName}</div><div class="ab2">${shown.ability}</div></div>`
+        <div class=${shown.side === 'evil' ? 'tn red' : shown.side === 'good' ? 'tn blue' : 'tn sec'}>${shown.teamName}</div><div class="ab2">${shown.ability}</div>${shown.revealRule ? html`<div class="ab2 sub">${shown.revealRule}</div>` : null}</div>`
       : html`<span class="hid" aria-label="가려져 있어요"><${Icon} name="eyeSlash" size=${44} stroke=${1.5} /></span>`}</div>
     <div class="acts"><${HoldButton} onChange=${on => setShown(on ? store.publicCard(index) : null)} /></div>
   </div>`;

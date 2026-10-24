@@ -2,7 +2,7 @@
    서버는 공통 참가자 모듈(core/participant.js)로만 부른다. 진행 코어(1.5MB)는 올리지 않는다 — 자료는 library/(빌드 때 뽑은 JSON).
    결은 시안 v2(iOS 기본 부품) — 웹 진행 화면과 같은 app.css·ui.js 부품. 광고 칸은 자리만(애드센스 연결 뒤 채움). */
 import { html, render, useState, useEffect, useRef, useContext, createContext } from '../lib/preact-htm.js';
-import { mountCards } from '../js/briefing.js';
+import { mountCards, setBriefTr } from '../js/briefing.js';
 import { Icon } from '../js/icons.js';
 import { NavStack, useNav, Back } from '../js/nav.js';
 import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton, Sheet } from '../js/ui.js';
@@ -512,6 +512,11 @@ async function setLang(account) {
   dict = l === 'ko' ? ko : await (await fetch(`i18n/${l}.json`)).json().catch(() => ko);
   P.eggLang(l).catch(() => {});   // 숨은 장치 «바벨탑» — 언어를 10개 다 바꿔 보면
   DATA = l === 'ko' ? null : await fetch(`i18n/data/${l}.json`).then(r => r.ok ? r.json() : null).catch(() => null);
+  /* 이번 판 안내(섀도 루트) — 진행 화면과 같은 사전(코어 글 틀 + 게임 자료)으로 (2026-10-24) */
+  if (l === 'ko') setBriefTr(null);
+  else { const C = await fetch(`i18n/data/코어_${l}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+    if (!window.CoreText) await new Promise(r => { const s = document.createElement('script'); s.src = 'core/coretext.js'; s.onload = r; s.onerror = r; document.head.appendChild(s); });
+    setBriefTr(window.CoreText ? window.CoreText.make(C, DATA || {}) : (t => C[t] || (DATA && DATA[t]) || t)); }
   document.documentElement.lang = l;
   window.Postcard.setText(dict, ko, DATA || {}, l);   // 장 그리기 엔진도 같은 말로
   window.Postcard.setTitles(l === 'ko' ? {} : await fetch(`i18n/titles/${l}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})));   // 칭호 이름(2026-10-07)

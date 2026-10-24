@@ -39,7 +39,7 @@ export function DayView({ m, run, finish }) {
             ${n.tag && html`<span class=${cx('tag', n.tag === '동수' && 'orange')}>${n.tag}</span>`}
             <span class=${cx('num', n.votes >= m.need ? 'blue' : 'sec')}>${n.votes}표 / ${m.need}</span></div>
           <div class="sub">${n.by ? `${n.by.number}번 ${n.by.name} 지명` : '지명자 기록 안 함'}</div>
-          ${n.done ? html`<div class="hstack sub" style="color:var(--label)"><${Icon} name="seal" size=${18} /><span class="grow">${n.blocked ? `처형됐지만 살아남음 · ${n.blocked}` : n.dead ? '처형됨' : '처형 처리됨'}</span>
+          ${n.done ? html`<div class="hstack sub" style="color:var(--label)"><${Icon} name="seal" size=${18} /><span class="grow">${n.blocked ? `처형됐지만 살아남음 · ${n.blocked}` : n.dead ? (n.reveal ? `처형됨 · ${n.reveal}` : '처형됨') : '처형 처리됨'}</span>
               <button class="blink" onClick=${() => run('day.executeUndo', { k: n.k })}>되돌리기</button></div>`
             : html`${n.preview && html`<div class="hstack sub orange"><${Icon} name="flag" size=${16} />${n.preview}</div>`}
               ${!m.ended && html`<div class="hstack" style="justify-content:flex-end"><button class="blink danger" onClick=${() => run('day.nomRemove', { k: n.k })}>지우기</button></div>`}
@@ -73,7 +73,7 @@ function MafiaDay({ m, run }) {
   const next = () => setQueue(q => q.slice(1));
   return html`<${Section} header="지목 · 처형" footer=${`생존 ${m.alive}명`}>
       ${m.noms.map(n => html`<div class="row"><div class="grow"><div class="headline">${nm(n.target)}</div>
-        <div class="sub">${n.done ? (n.blocked ? `처형됐지만 살아남음 · ${n.blocked}` : '처형됨') : n.saved ? '살림' : ''}</div></div>
+        <div class="sub">${n.done ? (n.blocked ? `처형됐지만 살아남음 · ${n.blocked}` : n.reveal ? `처형됨 · ${n.reveal}` : '처형됨') : n.saved ? '살림' : ''}</div></div>
         <button class="blink" onClick=${() => run(n.done ? 'day.executeUndo' : 'day.verdictUndo', { k: n.k })}>되돌리기</button></div>`)}
       ${m.tieVoid && html`<div class="row"><div class="grow"><div class="headline">처형 없음</div><div class="sub">동수</div></div>
         <button class="blink" onClick=${() => run('day.tieVoidUndo', {})}>되돌리기</button></div>`}
@@ -156,13 +156,18 @@ function VotePopup({ nom, need, close, done }) {
     </div></div>`;
 }
 
+/** 진행자가 고르는 승자 — 코어 목록(오리지널은 이긴 조직 wg 까지, 2026-10-24). 못 받으면 선·악·중립·무효 */
+export const winChoices = list => (list && list.length ? list : [['good', '선 승리'], ['evil', '악 승리'], ['other', '중립 승리'], ['void', '무효 · 중단']].map(([winner, label]) => ({ winner, wg: null, label })));
+export const winPayload = c => (c.wg ? { winner: c.winner, wg: c.wg } : { winner: c.winner });
+
 /** G04 수동 마감 — 판정이 없을 때만 승자를 고른다 */
 export function FinishSheet({ close, done }) {
   const [w, setW] = useState(null);
+  const opts = winChoices(store.get('game.winChoices'));
   return html`<${Page} title="판 끝내기" left=${html`<${NavButton} label="취소" onClick=${close} />`}
-    right=${html`<${NavButton} label="결과 확인하고 저장" bold disabled=${!w} onClick=${() => { done(w); close(); }} />`}>
+    right=${html`<${NavButton} label="결과 확인하고 저장" bold disabled=${!w} onClick=${() => { done(winPayload(w)); close(); }} />`}>
     <${Section} footer="판정이 나지 않은 판을 진행자가 끝낼 때 고릅니다.">
-      ${[['good', '선 승리'], ['evil', '악 승리'], ['other', '중립 승리'], ['void', '무효 · 중단']].map(([k, l]) => html`<${CheckRow} title=${l} on=${w === k} onClick=${() => setW(k)} />`)}
+      ${opts.map(c => html`<${CheckRow} title=${c.label} on=${w === c} onClick=${() => setW(c)} />`)}
     <//>
   <//>`;
 }
