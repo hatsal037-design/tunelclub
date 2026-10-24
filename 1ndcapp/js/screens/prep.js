@@ -232,7 +232,7 @@ function RolesView({ c, next }) {
     if (r.rejected) R.setReply(r); else if (r.confirm) setConfirm({ type, payload, text: r.choices[0] || '계속할까요?' });
   };
   if (!m) return html`<${PrepPage} c=${c}><${Empty} icon="warn" title="역할을 불러오지 못했어요" /><//>`;
-  const teams = []; m.roles.forEach(r => { if (!teams.includes(r.team)) teams.push(r.team); });
+  const teams = []; m.roles.forEach(r => { const k = r.group || r.team; if (!teams.includes(k)) teams.push(k); });   // 오리지널은 조직(group)으로 묶는다(2026-10-24)
   const modeName = (m.modes.find(x => x.id === m.modeID) || {}).name || '';
   const [newSeats, setNewSeats] = useState(false);   // 자리 섞기 켜고 배정 → 새 자리 시트(2026-10-01)
   const [pinFor, setPinFor] = useState(null);   // 직업 정해 주기 — 받을 사람 고르는 직업
@@ -251,8 +251,8 @@ function RolesView({ c, next }) {
       <${Row} tint onClick=${() => run('roles.auto')}>권장 구성으로 채우기<//>
       ${m.setups.map(su => html`<${Row} onClick=${() => run('roles.applySetup', { index: su.index })}><span class="grow">${su.name}</span><span class="sub">${su.diff}</span><//>`)}
     <//>
-    ${teams.map(team => html`<${Section} header=${(m.roles.find(r => r.team === team) || {}).teamKo || team}>
-      ${m.roles.filter(r => r.team === team).map(r => pinnable ? html`<${PinRow} r=${r} run=${run} open=${() => setPinFor(r)} />` : r.many || r.count > 1
+    ${teams.map(team => html`<${Section} header=${(m.roles.find(r => (r.group || r.team) === team) || {}).teamKo || team}>
+      ${m.roles.filter(r => (r.group || r.team) === team).map(r => pinnable ? html`<${PinRow} r=${r} run=${run} open=${() => setPinFor(r)} />` : r.many || r.count > 1
         ? html`<${Stepper} value=${r.count} min=${0} max=${20} onChange=${v => run('roles.step', { id: r.id, delta: v - r.count })}><${RoleArt} r=${r.ko} size=${28} /><span class="grow">${r.ko}</span><span class="sec num">${r.count}</span><//>`
         : html`<${CheckRow} title=${r.ko} art=${r.ko} on=${r.count > 0} onClick=${() => run('roles.toggle', { id: r.id })} />`)}
     <//>`)}
@@ -374,8 +374,8 @@ function Composition({ c }) {
   const L = c.labels || {}, strip = t => String(t || '').replace(/\(.*\)/, '');
   return html`<div class="comp">
     <div class="comp-total"><b>${c.total}</b>명</div>
-    <div class="comp-row good"><span class="k">선</span><b>${c.good}</b></div>
-    <div class="comp-row evil"><span class="k">악</span><b>${c.evil}</b></div>
-    ${c.other > 0 && html`<div class="comp-row"><span class="k">그 밖</span><b>${c.other}</b></div>`}
+    <div class="comp-row good"><span class="k">${L.good || '선'}</span><b>${c.good}</b></div>
+    <div class="comp-row evil"><span class="k">${L.evil || '악'}</span><b>${c.evil}</b></div>
+    ${c.other > 0 && html`<div class="comp-row"><span class="k">${L.other || '그 밖'}</span><b>${c.other}</b></div>`}
   </div>`;
 }

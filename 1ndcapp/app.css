@@ -434,7 +434,7 @@ h1, h2, p { margin: 0; }
 .comp { padding: 16px 20px 18px; display: grid; gap: 10px; }
 .comp-total { font-size: 17px; color: var(--sec); } .comp-total b { font-size: 44px; color: var(--label); font-weight: 700; letter-spacing: -1px; margin-right: 4px; }
 .comp-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.comp-row .k { font-size: 17px; font-weight: 700; width: 36px; } .comp-row b { font-size: 34px; font-weight: 700; min-width: 34px; font-variant-numeric: tabular-nums; }
+.comp-row .k { font-size: 17px; font-weight: 700; min-width: 36px; white-space: nowrap; } .comp-row b { font-size: 34px; font-weight: 700; min-width: 34px; font-variant-numeric: tabular-nums; }
 .comp-row .eq { font-size: 15px; color: var(--sec); }
 .comp-row.good .k, .comp-row.good b { color: var(--blue); } .comp-row.evil .k, .comp-row.evil b { color: var(--red); }
 
@@ -535,7 +535,7 @@ a.mention { color: var(--blue); text-decoration: none; background: none; padding
 .slide.text .tx { font-weight: 700; text-align: center; white-space: pre-wrap; padding: 0 4%; line-height: 1.35; }
 .prow, .pface, .pface .fring { flex-shrink: 0; }
 /* 장 그리기(엔진 목록) — 1 = 0.1cqw */
-.card { position: relative; aspect-ratio: 4 / 5; overflow: hidden; container-type: inline-size; } .card > .cl { position: absolute; inset: 0; width: 100%; height: 100%; } .card > .tex { mix-blend-mode: overlay; }
+.card.pc { position: relative; aspect-ratio: 4 / 5; overflow: hidden; container-type: inline-size; }   /* .pc — 피드 장만. 그냥 .card 면 목록 칸(Section)까지 4:5 로 늘어났다(2026-10-24) */ .card > .cl { position: absolute; inset: 0; width: 100%; height: 100%; } .card > .tex { mix-blend-mode: overlay; }
 .card .ct, .card .cr, .card .ca, .card .cf { position: absolute; } .card .ct { line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere; } .card .ca { display: grid; place-items: center; } .card .ca .art { width: 100% !important; height: 100% !important; } .card .ca .art.mask { background: currentColor; } .card .ca svg { width: 100%; height: 100%; } .card .ca span { font-size: 30cqw; line-height: 1; }
 .card .cf { border-radius: 50%; box-sizing: border-box; cursor: pointer; } .card .cf > .avatar, .card .cf > .noface { width: 100% !important; height: 100% !important; border-radius: 50%; overflow: hidden; display: grid; place-items: center; }
 .card .cf .noface { background: rgba(255,255,255,.14); color: #f5ede3; } .card .cf .noface svg { width: 62%; height: 62%; } .card .cf .mask { position: absolute; right: -4%; bottom: -4%; background: rgba(0,0,0,.6); color: #fff; border-radius: 50%; padding: 2px; display: grid; }

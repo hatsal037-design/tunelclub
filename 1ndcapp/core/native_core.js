@@ -103,7 +103,7 @@ var NativeCore = (function () {
     var rect = state.layout === 'rect', seats = (state.seats || []).map(function (s, i) {
       /* 진행자 판 — 죽음·유령표·표식을 칸 위에 바로(웹 renderSquare 의 사망 흑백·표식 딱지). status 는 명단 줄 한 줄 요약 */
       var rem = (s.rem || []).filter(function (t) { return t !== '유령표'; }), dead = !!s.dead;
-      var causeKo = { exec: '처형', demon: '흉수 습격', night: '밤', day: '낮', curse: '저주', succession: '계승' };
+      var causeKo = { exec: '처형', demon: isOmMode() ? '조직 습격' : '흉수 습격', night: '밤', day: '낮', curse: '저주', succession: '계승' };
       var tokens = rem.map(function (t) { return TK(t); });
       var rc = s.char ? CMAP()[s.char] : null;
       return { id: seatKey(s, i), index: i, number: i + 1, name: s.name || '', role: rc ? rc.ko : null, evil: rc ? ['minion', 'demon', 'mafia'].indexOf(rc.team) >= 0 : false, member: (function () { var w = s.pid ? personById(s.pid) : null; return (w && (w.tunelId || (w.accountId ? 'a:' + w.accountId : null))) || null; })(), dead: dead, tonight: diedTonight(s), ghost: dead && (s.rem || []).indexOf('유령표') >= 0, pdead: dead || (function () { var f = fakeAt(i); return !!f && !(state.phase !== 'day' && f.n === (state.nights || 1) && f.ph !== 'day'); })(),   /* 참가자 판의 생사 — 죽은 척은 발표된 뒤부터 사망(2026-10-05 «죽은 사람처럼») */ tokens: tokens,
@@ -243,10 +243,14 @@ var NativeCore = (function () {
         CHARS().filter(function (x) { return x.team !== 'host' && x.team !== 'fabled' && (!phil || x.team === 'town' || x.team === 'outsider'); })
           .forEach(function (x, k) { targets.push({ id: 'role-' + x.id, index: seen[x.id] !== undefined ? seen[x.id] : -(k + 1), number: 0, name: x.ko, disabledReason: null }); });
       }
-    } else if (usable && a.kind !== 'guesses') targets = pickCands(c, owner).map(function (x) {
-      return { id: seatKey(x.s, x.i), index: x.i, number: x.i + 1, name: x.s.name || ('좌석 ' + (x.i + 1)),
-        disabledReason: pickDis(x, R) ? (R.dead === 'dead' ? '살아 있음' : '사망') : null };
-    });
+    } else if (usable && a.kind !== 'guesses') {
+      /* 오리지널 마피아 의사 — 원작 «두 밤 연속 같은 사람은 못 보호(사회자가 확인)». 다른 계열은 지금처럼 경고만(2026-10-24 야간 개편) */
+      var LT = (state.lastT || {})[c.id], repSeat = (R.noRepeat && ED().winRules === 'original-mafia' && LT && LT.n === (state.nights || 1) - 1) ? LT.seat : -1;
+      targets = pickCands(c, owner).map(function (x) {
+        return { id: seatKey(x.s, x.i), index: x.i, number: x.i + 1, name: x.s.name || ('좌석 ' + (x.i + 1)),
+          disabledReason: pickDis(x, R) ? (R.dead === 'dead' ? '살아 있음' : '사망') : x.i === repSeat ? '어젯밤 고른 사람' : null };
+      });
+    }
     /* 대상 말고 더 물을 것 — 직업(맞히기·둔갑·행세), 본인/대상(주모), 여러 추측(남사당), 생사 답(저승사자) */
     var roleOptions = null, roleTitle = null;
     if (usable && (a.kind === 'guess' || a.kind === 'guesses' || a.kind === 'transform' || a.kind === 'madness')) {
@@ -304,7 +308,7 @@ var NativeCore = (function () {
     var seesBoard = isRoleAny(o.real || c, ['sejak', 'spy', 'hobang', 'widow']), spyFake = null;
     if (seesBoard && !short) { var sw = pickFalsified(owner); if (sw.length) { try { spyFake = spyFakeBoard(owner); } catch (e) { spyFake = null; } if (spyFake && !falseReason) falseReason = sw.join('·'); } }
     return { phaseTitle: (state.nights || 1) === 1 ? '첫밤' : '밤 ' + state.nights, index: cur.k + 1, total: cur.list.length,
-      seatNumber: owner + 1, name: s.name || ('좌석 ' + (owner + 1)), roleName: c.ko, teamName: TKO(c.team),
+      seatNumber: owner + 1, name: s.name || ('좌석 ' + (owner + 1)), roleName: c.ko, teamName: sideKoOf(c),
       instruction: short ? '고를 수 있는 사람이 모자라요 — 이번엔 넘어가요.' : doNow(a, cap, usable, resolved), pickCount: cap, minPick: minPick, targets: targets,
       primaryTitle: short ? '다음 차례' : usable && !resolved ? '대상 확정' : (usable ? '전달하고 재우기' : '다음 차례'),
       trueAnswer: trueAnswer, falseReason: falseReason,
@@ -341,7 +345,7 @@ var NativeCore = (function () {
       return { id: id, name: shelfName(M[id], fam), playable: ok, note: ok ? null : n + '명으로는 할 수 없어요' };
     }).sort(function (a, b) { return ((M[a.id].hub || '당산나무') === fam ? 0 : 1) - ((M[b.id].hub || '당산나무') === fam ? 0 : 1); });   // 본래 판 먼저
     var list = CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) {
-      return { id: c.id, ko: c.ko, team: c.team, teamKo: TKO(c.team), count: ngCounts[c.id] || 0, many: !!ngMany(c),
+      return { id: c.id, ko: c.ko, team: c.team, teamKo: sideKoOf(c), group: isOmMode() ? omSideKey(c) : null, count: ngCounts[c.id] || 0, many: !!ngMany(c),
         pinned: pinsResolved().filter(function (p) { return p.id === c.id; }).map(function (p) { return p.i; }) };   // 이 직업을 정해 둔 자리
     });
     var need = tvNeed(), tv = tvSeatIdx(), total = ngTotal();
@@ -370,14 +374,20 @@ var NativeCore = (function () {
       composition: (function () { try {   // 구성 발표(2026-10-01 햇살님 «총 몇 명, 시민+외지인=선 몇, 악 몇 발표하고 가닥을 잡게») — 앉은 사람의 진짜 직업 팀으로 센다(취객·스파이도 제 팀)
         var n = {}; (state.seats || []).forEach(function (st) { var c = st && st.char ? cm[st.char] : null; if (c) n[c.team] = (n[c.team] || 0) + 1; });
         var town = n.town || 0, out = n.outsider || 0, min = (n.minion || 0) + (n.mafia || 0), dem = n.demon || 0, total = (state.seats || []).filter(function (st) { return st && st.char; }).length;
-        return { total: total, good: town + out, town: town, outsider: out, evil: min + dem, minion: min, demon: dem, other: total - town - out - min - dem,
+        var r = { total: total, good: town + out, town: town, outsider: out, evil: min + dem, minion: min, demon: dem, other: total - town - out - min - dem,
           labels: { town: TKO('town'), outsider: TKO('outsider'), minion: TKO(n.mafia ? 'mafia' : 'minion'), demon: TKO('demon') } };
+        if (isOmMode()) {   // 오리지널 — 시민 편 (선) · 범죄 조직 (악) · 중립 으로 센다(2026-10-24 아침 햇살님 «병기»). 브로커·매수된 판사도 범죄 조직 (악) 쪽
+          var k = { good: 0, evil: 0, other: 0 }; (state.seats || []).forEach(function (st) { var c = st && st.char ? cm[st.char] : null; if (c && c.team !== 'host') k[omSide3(c)]++; });
+          r.good = r.town = k.good; r.outsider = 0; r.evil = r.demon = k.evil; r.minion = 0; r.other = k.other;
+          r.labels.good = OM_SIDE3_KO.good; r.labels.evil = OM_SIDE3_KO.evil; r.labels.other = OM_SIDE3_KO.other;
+        }
+        return r;
       } catch (e) { return null; } })() };
   }
   function handoffPublic(arg) {
     var i = +arg, s = state.seats[i], cm = CMAP(); if (!s || !s.char) return null;
     var shown = cm[(state.fakes || {})[i] || s.char];
-    return { name: s.name || ('좌석 ' + (i + 1)), roleName: shown.ko, teamName: TKO(shown.team), ability: shown.ab, side: ((FIXED.TEAM || {})[shown.team] || {}).side || null };   // side — 팀 글자 색(선·악). 가짜 카드면 보이는 직업의 편
+    return { name: s.name || ('좌석 ' + (i + 1)), roleName: shown.ko, teamName: sideKoOf(shown), ability: shown.ab, side: ((FIXED.TEAM || {})[shown.team] || {}).side || null };   // side — 팀 글자 색(선·악). 가짜 카드면 보이는 직업의 편
   }
 
   /* 진행 단계 — 밤 시작 카드(idx 0) · 카드 · 새벽(마지막 뒤) · 낮 · 마감. 화면은 이것만 보고 무엇을 그릴지 고른다 */
@@ -399,8 +409,8 @@ var NativeCore = (function () {
       return { stage: 'intro', title: title, succession: succession(), notes: introNotes, actions: introActs, nextNight: !!ED().twoNights && (state.nights || 1) === 1,
         order: list.map(function (o) { var l = seatLabel(o.i); l.role = o.c ? o.c.ko : ''; return l; }),
         skipped: nightSkipped(list).map(function (x) { var l = seatLabel(x.i); l.role = x.c.ko;
-          l.why = (key === 'fn' && x.why === '조건' && meetCoversFirst({ c: x.c, s: x.s, i: x.i })) ? '악팀 알려주기' : x.why; return l; }),
-        meet: em ? { steps: em.steps.map(textOf), warn: em.warn.map(textOf) } : null,
+          l.why = (key === 'fn' && x.why === '조건' && meetCoversFirst({ c: x.c, s: x.s, i: x.i })) ? (isOmMode() ? '조직 확인' : '악팀 알려주기') : x.why; return l; }),
+        meet: em ? { steps: em.steps.map(textOf), warn: em.warn.map(textOf), title: isOmMode() ? '조직 확인' : '악팀 알려주기' } : null,   // 제목 — 오리지널은 두 조직이라 «악팀»이 아니다(2026-10-24 야간 개편)
         bluffs: key === 'fn' && em && usesBluff() ? (state.bluffIds || []).map(function (id) { return cm[id] ? cm[id].ko : id; }) : [],
         /* 블러프 보여 줄 때의 자리표 — 흉수 자리(내 자리 표시)와 흉수가 아는 같은 편(붉은 테두리). 같은 편 규칙은 knownAllies 그대로 */
         bluffDemon: (function () { var d = evilRoster().filter(function (o) { return o.c.team === 'demon'; })[0]; return d ? d.i : null; })(),
@@ -448,17 +458,20 @@ var NativeCore = (function () {
   }
   function reference() {
     var ed = ED(), card = null; try { card = nightCard(); } catch (e) {}
-    var row = function (c) { var r = roleArt(c, state.edition || 'basic'); return { id: c.id, ko: c.ko, team: c.team, teamKo: TKO(c.team), ab: c.ab, icon: r.icon, e: r.e }; };
+    var row = function (c) { var r = roleArt(c, state.edition || 'basic'); return { id: c.id, ko: c.ko, team: c.team, teamKo: sideKoOf(c), ab: c.ab, icon: r.icon, e: r.e }; };
     var all = CHARS().filter(function (c) { return c.team !== 'host'; });
     /* 판이 돌 때 — 판에 있는 직업을 위에: 누가 그 직업인지, 선·중립·악 묶음, 묶음 안에서 죽은 사람은 아래(2026-10-01 햇살님) */
     var groups = [];
     if (inGame()) {
       var hold = {}; (state.seats || []).forEach(function (st, i) { if (!st || !st.char) return; (hold[st.char] = hold[st.char] || []).push({ number: i + 1, name: st.name || '', dead: !!st.dead }); });
       var sideOf = function (c) { var sd = fxSide(c.team); return sd === 'evil' ? 'evil' : sd === 'good' ? 'good' : 'neutral'; };
-      [['good', '선'], ['neutral', '중립'], ['evil', '악']].forEach(function (g) {
+      /* 오리지널 마피아는 선·중립·악이 아니라 조직 다섯 묶음 — 서로 적인 두 조직이 한 «악» 칸에 섞이지 않게(2026-10-24 야간 개편) */
+      var om = isOmMode(), bins = om ? OM_SIDE_ORDER.map(function (k) { return [k, OM_SIDE_KO[k]]; }) : [['good', '선'], ['neutral', '중립'], ['evil', '악']];
+      if (om) sideOf = function (c) { return omSideKey(c); };
+      bins.forEach(function (g) {
         var rs = all.filter(function (c) { return hold[c.id] && sideOf(c) === g[0]; }).map(function (c) { var o = row(c); o.holders = hold[c.id]; o.dead = hold[c.id].every(function (h) { return h.dead; }); return o; });
         rs.sort(function (a, b) { return (a.dead ? 1 : 0) - (b.dead ? 1 : 0); });   // 안정 정렬 — 산 직업 먼저, 죽은 직업 아래
-        if (rs.length) groups.push({ side: g[0], ko: g[1], roles: rs });
+        if (rs.length) groups.push({ side: g[0], ko: g[1], roles: rs });   // side 는 묶음 열쇠(아이폰 ForEach id) — 겹치면 묶음이 두 번 그려진다(2026-10-24 시뮬레이터에서 찾음)
       });
     }
     var inPlay = {}; groups.forEach(function (g) { g.roles.forEach(function (r) { inPlay[r.id] = 1; }); });
@@ -484,7 +497,10 @@ var NativeCore = (function () {
   }
   function voters(k) {   // 투표할 수 있는 사람 — uiDayVoteOpen 의 ok 와 같은 잣대 + 표 무게
     var D = dayRec(), n = D.noms[k], cm = CMAP(), cur = (n && n.voters) || [];
+    /* 판사가 살아 있으면 판사만(오리지널 마피아 재판장·매수된 판사) — voterCount 와 같은 잣대(2026-10-24 야간 개편) */
+    var eg = eligibleVoters(), gate = eg.some(function (o) { return isVoteGate(cm[o.s.char]); }) ? eg.map(function (o) { return o.i; }) : null;
     return state.seats.map(function (x, i) { return { x: x, i: i }; }).filter(function (o) {
+      if (gate && gate.indexOf(o.i) < 0 && cur.indexOf(o.i) < 0) return false;
       return o.x.char && cm[o.x.char].team !== 'host' && (!pubDead(o.x) || (o.x.rem || []).indexOf('유령표') >= 0 || (o.x.rem || []).indexOf('두 몫') >= 0 || cur.indexOf(o.i) >= 0); })
       .map(function (o) { var l = seatLabel(o.i); l.weight = voteWeight(o.i); l.ghost = pubDead(o.x); return l; });
   }
@@ -608,7 +624,7 @@ var NativeCore = (function () {
     var usage = null; if (isDay && hubRep() !== 'mafia') {   // 5 오늘 지명 이력 — 이력만(가능 여부·차단 사유 없음). 오리지널 마피아는 지명 기록이 없어 null
       var by = [], tg = []; noms.forEach(function (o) { if (o.by !== null && o.by !== undefined && by.indexOf(sid(o.by)) < 0) by.push(sid(o.by)); if (tg.indexOf(sid(o.t)) < 0) tg.push(sid(o.t)); });
       usage = { dayNumber: dayNo(n), nominatedBy: by, nominatedTargets: tg }; }
-    var ending = null; if (ended) { var R = result(); ending = { kind: state.practice ? 'practice' : (R.winner && R.winner !== 'void') ? 'completed' : 'aborted', winnerLabel: R.winner && R.winner !== 'void' ? (WINKO[R.winner] || R.winner) : null }; }   // 7 승리 진영 — 확정 공개 승리만, 선악 둘로 가두지 않음
+    var ending = null; if (ended) { var R = result(); ending = { kind: state.practice ? 'practice' : (R.winner && R.winner !== 'void') ? 'completed' : 'aborted', winnerLabel: R.winner && R.winner !== 'void' ? winKoOf(R.winner, R.winGroup) : null }; }   // 7 승리 진영 — 확정 공개 승리만, 선악 둘로 가두지 않음
     var body = { schema: 1, gameEpoch: P.epoch, handoff: turn, dayNumber: isDay ? dayNo(n) : null, nightNumber: began && !ended && !isDay ? n : null,
       scene: scene, waiting: waiting, shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, board: pubBoard(), initialComposition: P.comp || null, timer: timer, nomination: nom,
       neededVotes: nom ? G.need : null, results: results, execution: exec,
@@ -618,7 +634,7 @@ var NativeCore = (function () {
     pubSave(P); body.revision = P.rev; return body;
   }
   function verdict() { var w = []; try { w = winCheck() || []; } catch (e) {} return w.filter(function (x) { return x.lv === 'end' || x.lv === 'warn'; }).map(function (x) { return { level: x.lv, text: textOf(x.t), win: x.win || null }; }); }
-  var WINKO = { good: '선 승리', evil: '악 승리', other: '중립 승리', void: '무효 · 중단' };
+  var WINKO = { good: '선 승리', evil: '악 승리', other: '중립 승리', void: '무효 · 중단' };   // 오리지널은 이긴 조직으로 — winKoOf(winner, winGroup)
   /* 7 종료 공개·복기(2026-10-04 햇살님 «직업 + 진영 + 바뀐 것» · «낮 + 밤 행동») — 판이 끝난 뒤, 진행자가 누를 때만 TV 로 나간다.
      앱 재량(판세 보정·앱 선택)은 넣지 않는다 — 그건 진행 도구의 속이라 끝나도 안 보인다 */
   function endLog() { return (state.log && state.log.winner) ? state.log : (state.lastLogId ? (logsAll().find(function (x) { return x.id === state.lastLogId; }) || null) : null); }
@@ -628,7 +644,7 @@ var NativeCore = (function () {
       ev.forEach(function (e) { if ((e.type === '역할 변경' || e.type === '계승') && (e.seat === i + 1 || (e.swapSeats || []).indexOf(i + 1) >= 0)) ch.push(e.type === '계승' ? '계승' + (e.role ? ' → ' + e.role : '') : '직업 바뀜' + (e.role ? ' → ' + e.role : '')); });
       (x.rem || []).forEach(function (r) { var cv = tokConv(r); if (cv) ch.push(r + '(편이 바뀜)'); else if (/^(중독|취함)/.test(r)) ch.push(r); });
       var fk = (state.fakes || {})[i]; if (fk && cm[fk]) ch.push('받은 카드 ' + cm[fk].ko); else if (c.drunkAs || (x.rem || []).indexOf('주정뱅이') >= 0) ch.push('자기 직업을 잘못 알았음');   // 가짜 카드는 state.fakes 에 있다(반증 검토 2-9)
-      return { seatId: 's' + (i + 1), name: x.name || ('좌석 ' + (i + 1)), role: c.ko, team: TKO(c.team), side: realEvil(x) ? 'evil' : (seatSide(x) === 'neutral' ? 'neutral' : 'good'), dead: !!x.dead, icon: roleArt(c, state.edition || 'basic').icon || null, changes: ch }; }).filter(Boolean);
+      return { seatId: 's' + (i + 1), name: x.name || ('좌석 ' + (i + 1)), role: c.ko, team: sideKoOf(c), side: realEvil(x) ? 'evil' : (seatSide(x) === 'neutral' ? 'neutral' : 'good'), dead: !!x.dead, icon: roleArt(c, state.edition || 'basic').icon || null, changes: ch }; }).filter(Boolean);
   }
   /* 복기 쪽 나누기(2026-10-05 햇살님 «첫밤은 정보의 밤, 1낮 1밤이 1일차» · 모든 모드) — 0쪽 = 정보의 밤(첫 낮 전 밤들, 스피드는 둘), k쪽 = 낮 k + 그 뒤 밤 */
   function firstDayN() { return ED().twoNights ? 2 : 1; }   // 첫 낮이 열리는 state.nights
@@ -699,7 +715,7 @@ var NativeCore = (function () {
   function result() {
     var L = (state.log && state.log.winner) ? state.log : (state.lastLogId ? (logsAll().find(function (x) { return x.id === state.lastLogId; }) || null) : null);
     var win = state.practice ? null : ((L && L.winner) || wz.doneWin || null), ends = verdict().filter(function (x) { return x.level === 'end'; }).map(function (x) { return x.text; });
-    return { winner: win, title: win ? WINKO[win] || win : (state.practice ? '연습판 마감' : '판 마감'), why: ends.length ? ends.join(' → ') : (L && L.note ? L.note : (win ? '진행자가 승자를 정해 끝냄' : '승자 없이 마감')),
+    return { winner: win, winGroup: (L && L.winGroup) || null, title: win ? winKoOf(win, L && L.winGroup) : (state.practice ? '연습판 마감' : '판 마감'), why: ends.length ? ends.join(' → ') : (L && L.note ? L.note : (win ? '진행자가 승자를 정해 끝냄' : '승자 없이 마감')),
       recorded: !!(L && L.winner), practice: !!state.practice, politician: htmlItems(state.practice ? '' : polHtml()),
       players: ((L && L.players) || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: p.side || '', won: p.won === true, dead: !!p.dead }; }),
       tvReveal: state.tvReveal !== false, tvReplay: typeof state.tvReplay === 'number' ? state.tvReplay : null, replayDays: endReplayDays() };   // 7 큰 화면 공개·복기 조작용
@@ -708,7 +724,7 @@ var NativeCore = (function () {
   /* R01 기록 · L01 자료실 · S01 백업 — 기록·통계 수식은 기존 함수(logsAll·statsOf·buildExport) 그대로 */
   function recordRow(L) { var ed = allMods()[L.mode] || {};
     return { id: L.id, date: String(L.endedAt || L.at || ''), mode: L.modeName || ed.name || L.mode || '', count: (L.players || []).length,
-      winner: L.winner || null, winnerKo: L.winner ? (WINKO[L.winner] || L.winner) : '진행 중·기록 없음', nights: L.nights || 0 }; }
+      winner: L.winner || null, winnerKo: L.winner ? winKoOf(L.winner, L.winGroup) : '진행 중·기록 없음', nights: L.nights || 0 }; }
   function records() {
     var logs = logsAll().slice().reverse(), P = {}; try { P = statsOf(logsAll()); } catch (e) {}
     return { rows: logs.map(recordRow),
@@ -750,7 +766,7 @@ var NativeCore = (function () {
     var sh = String(id || '').split('|'); id = sh[0];   // «모드|목록» — 자료실이 어느 테마 목록에서 열었나(2026-10-08 테마 옷)
     var m = allMods()[id]; if (!m) return null; outHub = hubRepOf(m);   // 보고 있는 모드의 계열 말로(지금 고른 계열이 아니라)
     if (sh[1]) { var sr = hubRepOf({ hub: sh[1] }), d = dressFor(m, sr); if (d) { outHub = sr; outDress = d; } }
-    return { id: id, name: m.name, guide: textOf(m.guide || ''), rules: (m.guideBlocks || []).map(function (b) { return { ph: b.ph, steps: b.steps || [] }; }), tips: m.guideTips || [], roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, id); return { id: c.id, ko: c.ko, team: c.team, teamKo: TKOof(m, c.team), ab: c.ab || '', icon: r.icon, e: r.e }; }) };
+    return { id: id, name: m.name, guide: textOf(m.guide || ''), rules: (m.guideBlocks || []).map(function (b) { return { ph: b.ph, steps: b.steps || [] }; }), tips: m.guideTips || [], roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, id); return { id: c.id, ko: c.ko, team: c.team, teamKo: sideKoOf(c, m), ab: c.ab || '', icon: r.icon, e: r.e }; }) };
   }
 
   /* A01 사람 상세 — 웹 좌석 시트(openSheet)와 같은 표식 목록: 판에 든 직업의 전용 표식 → 모드 공통 → 지금 붙은 것 */
@@ -761,9 +777,9 @@ var NativeCore = (function () {
     CHARS().forEach(function (cc) { if (inPlay[cc.id]) (cc.tk || []).forEach(function (t) { if (!seen[t]) { seen[t] = 1; items.push(t); } }); });
     (ED().reminders || []).forEach(function (t) { if (!seen[t]) { seen[t] = 1; items.push(t); } });
     (x.rem || []).forEach(function (t) { if (!seen[t]) { seen[t] = 1; items.push(t); } });
-    var causeKo = { exec: '처형', demon: '흉수 습격', night: '밤', day: '낮', curse: '저주', succession: '계승' };
-    return { index: i, number: i + 1, name: x.name || ('좌석 ' + (i + 1)), role: c ? c.ko : '', teamKo: c ? TKO(c.team) : '', ability: c ? c.ab : '',
-      dead: !!x.dead, cause: x.dead ? (causeKo[x.cause] || x.cause || '') : null, sideKind: c && c.team === 'traveler' ? 'traveler' : c && c.team === 'neutral' ? 'neutral' : null, side: c && c.team === 'traveler' ? (x.side || null) : c && c.team === 'neutral' ? (x.lean || null) : null,   // 여행자 편(판정에 반영)·중립 편들기(기록용) — 웹 좌석 시트와 같게
+    var causeKo = { exec: '처형', demon: isOmMode() ? '조직 습격' : '흉수 습격', night: '밤', day: '낮', curse: '저주', succession: '계승' };
+    return { index: i, number: i + 1, name: x.name || ('좌석 ' + (i + 1)), role: c ? c.ko : '', teamKo: c ? sideKoOf(c) : '', ability: c ? c.ab : '',
+      dead: !!x.dead, cause: x.dead ? (causeKo[x.cause] || x.cause || '') : null, sideKind: c && c.team === 'traveler' ? 'traveler' : c && c.team === 'neutral' && !isOmMode() ? 'neutral' : null, side: c && c.team === 'traveler' ? (x.side || null) : c && c.team === 'neutral' && !isOmMode() ? (x.lean || null) : null,   // 여행자 편(판정에 반영)·중립 편들기(기록용) — 웹 좌석 시트와 같게
       canRemove: (state.seats || []).length > 5, isDay: state.phase === 'day', askCause: state.phase !== 'day' && !x.dead && deathCauseMatters(i) && !firstNightNoDemonKill(),
       tokens: items.map(function (t) { return { id: t, label: TK(t), on: (x.rem || []).indexOf(t) >= 0 }; }) };
   }
@@ -1110,7 +1126,8 @@ var NativeCore = (function () {
     /* 큰 화면 — 진행자가 처음 구성(선·악 수)을 말했을 때만 공개 스냅샷에 고정. 그 뒤 진영이 바뀌어도 그대로 */
     'display.announceComposition': function () { if (!firstNightBegun()) return rejected('notAllowedInPhase', '판이 시작되지 않았어요.');
       var P = pubState(pubEpoch()), c = { good: 0, evil: 0 };
-      ((state.log && state.log.players) || []).forEach(function (p) { if (p.team === 'town' || p.team === 'outsider') c.good++; else if (['minion', 'demon', 'mafia'].indexOf(p.team) >= 0) c.evil++; });
+      ((state.log && state.log.players) || []).forEach(function (p) { if (p.team === 'town' || p.team === 'outsider') c.good++; else if (['minion', 'demon', 'mafia'].indexOf(p.team) >= 0) c.evil++; else if (p.team === 'neutral') c.other = (c.other || 0) + 1; });
+      if (isOmMode()) { c.goodKo = OM_SIDE3_KO.good; c.evilKo = OM_SIDE3_KO.evil; c.otherKo = OM_SIDE3_KO.other; }   // 오리지널 — «선 n · 악 n» 대신 «시민 편 (선) n · 범죄 조직 (악) n · 중립 n»
       P.comp = c; pubSave(P); return null; },
     /* 큰 화면 — 토론 타이머가 코어(tm)가 아니라 화면 쪽에 있는 앱(웹·아이폰)이 시작·멈춤·재개·추가·끝·지움을 알린다. 허용한 칸만 받는다 */
     'display.plaza': function (p) {   // 진행자 화면이 광장 체크인 코드·이름·들어온 사람 닉네임을 넣는다(null 이면 걷는다)

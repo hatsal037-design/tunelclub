@@ -15,7 +15,7 @@ export function NightIntroView({ m, revealBluffs }) {
     <${Section}><div class="row">『모두 눈을 감아 주세요. 밤이 되었습니다.』</div><//>
     ${notes.length + acts.length > 0 && html`<${Section}>${notes.map(t => html`<div class="row"><${Warn}>${t}<//></div>`)}
       <${CoreItems} items=${acts} call=${c => R.run('day.call', { call: c })} /><//>`}
-    ${m.meet && html`<${Section} header="악팀 알려주기">
+    ${m.meet && html`<${Section} header=${m.meet.title || '악팀 알려주기'}>
       ${m.meet.warn.map(t => html`<div class="row sub">${t}</div>`)}
       ${m.meet.steps.map(t => html`<div class="row">${t}</div>`)}
       ${m.bluffs && m.bluffs.length > 0 && html`

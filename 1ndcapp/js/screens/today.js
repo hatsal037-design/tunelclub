@@ -102,7 +102,7 @@ const Shortcut = ({ icon, title, text }) => html`<div class="hstack shortcut" st
   <span class="sym"><${Icon} name=${icon} size=${18} /></span><div><div class="shortcut-t">${title}</div><div class="sub">${text}</div></div></div>`;
 
 /* 오늘 화면 «광장» 칸(당산나무 마당·클래식 광장·오리지널 구역 — 계열 말) — 2026-10-05 햇살님 «B안 · 광장 체크인». 폰 앱 PlazaSection 과 같다.
-   진행자: 열기 → 체크인 QR(10분마다 새 코드) → 체크인 명단·판 수 → 닫기. 참가자: QR 로 참가(…/?j=코드로 들어오면 로그인 뒤 저절로) · 나 갈게요 */
+   진행자: 열기 → 체크인 QR(진행자마다 고정 코드 — 서버 0324) → 체크인 명단·판 수 → 닫기. 참가자: QR 로 참가(…/?j=코드로 들어오면 로그인 뒤 저절로) · 나 갈게요 */
 /* 광장 이름 정하기·바꾸기 — 큰 화면 대기에 크게 나온다 */
 function NameSheet({ open, title, value, onInput, go, goLabel, onClose }) {
   return html`<${Sheet} open=${open} onClose=${onClose} detent="medium" label=${title}>

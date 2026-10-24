@@ -2008,5 +2008,13 @@
  "· 중간": "· middle",
  "· 추천": "· suggested",
  "진행자 폰으로 연결해 주세요": "Connect from the host's phone",
- "QR 을 찍거나, 앱의 «화면 연결»에 이 코드를 입력하세요": "Scan the QR, or enter this code in «Connect screen» in the app"
+ "QR 을 찍거나, 앱의 «화면 연결»에 이 코드를 입력하세요": "Scan the QR, or enter this code in «Connect screen» in the app",
+ "매밤: 두 사람을 신점 — 둘 중 {r}가 있는지(마가 낀 마을 편 {n}명도 걸림).": "Each night: Divine two players — learn whether either is {r} ({n} jinxed good player(s) also show up).",
+ "둘 중 {r}거나 마가 낀 사람이 있으면 O, 아니면 X — 하수인은 O가 아님.": "O if either is {r} or jinxed; X otherwise — a Minion does not count as O.",
+ "마가 낌": "Jinxed",
+ "선한 한 명이 악마로 잘못 잡힌다(맹점).": "One good player falsely registers as the Demon (Blind Spot).",
+ "둘 중 악마(또는 맹점)가 있으면 O, 아니면 X.": "If either is the Demon (or the Blind Spot), answer O; otherwise X.",
+ "맹점": "Blind Spot",
+ "범죄 조직이 전멸했지만 {r}이 살아 있어요 — 이 사람은 마지막 한 명이 돼야 이깁니다.": "The criminal organizations are all dead, but {r} is alive — they must be the last player alive to win.",
+ "범죄 조직이 전멸했지만 잠복한 카르텔이 살아 있어요 — 이 사람은 마지막 한 명이 돼야 이깁니다.": "The criminal organizations are all dead, but the Hidden Cartel is alive — they must be the last player alive to win."
 }
