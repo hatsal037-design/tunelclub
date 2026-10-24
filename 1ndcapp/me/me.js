@@ -195,7 +195,7 @@ function CardFace({ it, tag, setTag, interactive }) {
 function CardPage({ page, interactive = true }) {
   const [art, setArt] = useState(ART), [tag, setTag] = useState(null); useEffect(() => { artMap().then(setArt); }, []);
   const b = page.bg.base;
-  return html`<div class="card">
+  return html`<div class="card pc">
     <div class="cl" style=${b.kind === 'image' ? 'background:#221a40 url(screen/night.jpg) center / cover' : 'background:' + rgba(b.rgb)}></div>
     <${Layers} list=${page.bg.layers} />
     ${page.items.map((it, k) => it.t === 'text' ? html`<${CardText} key=${k} it=${it} interactive=${interactive} />`
@@ -408,7 +408,7 @@ function Codex({ rows: l }) {
 /* ── 계정 ── */
 function AccountTab({ close }) {
   const on = useAuth(), nav = useNav();
-  const [me, setMe] = useState({}), [st, setSt] = useState({});
+  const [me, setMe] = useState({}), [st, setSt] = useState({}), [ask, setAsk] = useState(false), [fail, setFail] = useState(null);   // 탈퇴는 계정 화면에서 바로(2026-10-24 햇살님 «탈퇴 한 번에 가능한 버튼») — 설정 안 줄도 그대로 둔다
   const load = async () => { if (!on || DEMO) return; const m = await P.me(); const v = m.value || m; setMe(v); setSt(await P.status()); setLang(v.lang); if ((v.needs || []).length && !seen()) { seen(true); nav.push(html`<${Signup} me=${v} done=${load} />`); window.dispatchEvent(new Event('me-fill')); } };   // 처음 한 번·로그인했을 때만(2026-10-06 «나중에»)   // 빠진 칸(0250) — 계정 탭으로 넘겨 채우게
   useEffect(() => { load(); }, [on]);
   return html`<${Page} left=${close && html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}>
@@ -423,7 +423,11 @@ function AccountTab({ close }) {
       ${me.stats && html`<${Section}><${Stats} s=${me.stats} /><//>
         <${Section}><${Labeled} label=${T('space.host')} value=${T('profile.hosted', { n: me.stats.hosted || 0 })} /><${Row} chevron onClick=${() => nav.push(html`<${Seated} />`)}>${T('games.mine')}<//><//>`}
       <${Ad} />
-      <${Section}><${Row} chevron onClick=${() => nav.push(html`<${Settings} me=${me} done=${load} />`)}>${T('account.settings')}<//><//>`}
+      <${Section}><div class="row" style="padding-top:0;padding-bottom:0"><div class="rc">
+        <button class="blink" style="flex:1;justify-content:flex-start;color:inherit" onClick=${() => nav.push(html`<${Settings} me=${me} done=${load} />`)}>${T('account.settings')}</button>
+        ${st.status !== 'leaving' && html`<button class="blink danger" onClick=${() => setAsk(true)}>${T('leave.do')}</button>`}</div></div><//>`}
+    <${ActionSheet} open=${ask} title=${T('leave.ask')} message=${T('leave.note')} onClose=${() => setAsk(false)} actions=${[{ label: T('leave.ok'), role: 'destructive', onClick: async () => { const r = await P.accountLeave(); if (r && r.ok === false) setFail(msgOf(r)); load(); } }]} />
+    <${Alert} open=${!!fail} title=${fail} onClose=${() => setFail(null)} />
   <//>`;
 }
 function Seated() {
