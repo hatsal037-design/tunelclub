@@ -1,7 +1,8 @@
 /* 참가자 웹 tunel.kr/1ndcapp/me/ — 참가만 하는 가벼운 사람용(2026-10-06 단계 8). 앱 참가 공간(ios/1NDCAPP/Screens/Play)을 떼어 온 판.
    서버는 공통 참가자 모듈(core/participant.js)로만 부른다. 진행 코어(1.5MB)는 올리지 않는다 — 자료는 library/(빌드 때 뽑은 JSON).
    결은 시안 v2(iOS 기본 부품) — 웹 진행 화면과 같은 app.css·ui.js 부품. 광고 칸은 자리만(애드센스 연결 뒤 채움). */
-import { html, render, useState, useEffect, useContext, createContext } from '../lib/preact-htm.js';
+import { html, render, useState, useEffect, useRef, useContext, createContext } from '../lib/preact-htm.js';
+import { mountCards } from '../js/briefing.js';
 import { Icon } from '../js/icons.js';
 import { NavStack, useNav, Back } from '../js/nav.js';
 import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton, Sheet } from '../js/ui.js';
@@ -62,12 +63,23 @@ function PlazaTab() {
         <${Row}><${Icon} name="house" size=${22} /><${RowLabel} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} text=${T('plaza.until', { t: (j.ends_at || '').slice(0, 16).replace('T', ' ') })} /><//>
         ${people.length > 0 && html`<${Row} chevron onClick=${() => nav.push(html`<${PeopleList} title=${T('plaza.people')} load=${async () => rows(await P.plazaPeople(j.plaza))} />`)}>
           <span style="display:flex;gap:4px">${people.slice(0, 5).map(r => html`<${Avatar} r=${r} size=${28} />`)}</span><span class="sec">${T('plaza.count', { n: people.length })}</span><//>`}
-        ${status[j.plaza] && status[j.plaza].modeId && html`<${Row} chevron onClick=${() => nav.push(html`<${ModeView} id=${status[j.plaza].modeId} />`)}><${RowLabel} title=${T('plaza.game_info')} /><span class="sec">${status[j.plaza].mode || ''}</span><//>`}
+        ${status[j.plaza] && (status[j.plaza].brief || status[j.plaza].modeId) && (st => html`<${Row} chevron onClick=${() => nav.push(st.brief ? html`<${BriefView} b=${st.brief} modeId=${st.modeId} />` : html`<${ModeView} id=${st.modeId} />`)}><${RowLabel} title=${T('plaza.game_info')} /><span class="sec">${st.brief ? `${st.brief.title} · ${st.brief.n}명` : st.mode || ''}</span><//>`)(status[j.plaza])}
         <${Row} danger onClick=${async () => { await P.leave(j.plaza); load(); }}>${T('plaza.leave')}<//><//>`)}
       <${Section} header=${T('plaza.code')}>
         <div class="row"><input class="textin grow" id="me-code" value=${code} placeholder=${T('plaza.code_ph')} autocapitalize="characters" onInput=${e => setCode(e.currentTarget.value.trim())} />
         <button class="blink" disabled=${!window.Participant.codeFrom(code)} onClick=${() => checkin(window.Participant.codeFrom(code))}>${T('plaza.join')}</button></div><//>`}
     <${Alert} open=${!!msg} title=${msg} onClose=${() => setMsg(null)} />
+  <//>`;
+}
+
+/* 이번 판 안내(2026-10-24) — 진행자가 올린 광장 현황의 brief 를 공유 장(시안 K)과 같은 장으로 세로로. 모드 자료는 위 단추로(«이번 판 자료» 줄 하나를 같이 쓴다) */
+function BriefView({ b, modeId }) {
+  const nav = useNav(), ref = useRef(null);
+  useEffect(() => { if (ref.current) mountCards(ref.current, b, { seam: true }); }, [b]);
+  /* 큰 화면과 같은 무드 — 페이지 전체가 먹색 천, 장은 틈 없이 이어 붙인다(2026-10-24 햇살님). 모드 자료 단추는 머리줄 오른쪽에 끼운다(새 줄 안 만듦) */
+  return html`<${Page} bg="felt" title=${T('plaza.game_info')} left=${html`<${Back} />`}
+      right=${modeId && html`<button class="nbtn" onClick=${() => nav.push(html`<${ModeView} id=${modeId} />`)}>${T('tab.library')}</button>`}>
+    <div ref=${ref} style="padding:0 0 24px"></div>
   <//>`;
 }
 

@@ -7,6 +7,7 @@ import { NavStack, useNav, Back } from '../nav.js';
 import { SeatBoard, boardLayout } from '../seatboard.js';
 import { account } from '../account.js';
 import { Search } from '../ui.js';
+import * as Brief from '../briefing.js';
 
 /** 사람에서 찾기 — 체크인 → 팔로잉 → 팔로워(2026-10-10 햇살님 «내가 팔로우한 사람이랑 나를 팔로우하는 사람 중에»). 열쇠는 회원 번호, 없으면 «a:계정번호». 이미 넣은 사람은 체크된 채 */
 function MemberPicker({ taken, close, done }) {
@@ -315,11 +316,21 @@ function HandoffView({ c, start }) {
   useEffect(() => { store.dispatch('handoff.begin'); }, []);
   const m = store.handoff;
   const nextP = m && m.position + 1 < m.order.length ? m.order[m.position + 1] : null;
+  /* 이번 판 안내(2026-10-24, 오리지널 마피아) — 직업을 나눈 뒤 넘기기 전엔 «구성 발표» 대신 «룰 설명». 끝을 누르면 넘기기로(briefing.done) */
+  const pub = store.get('display.public'), brief = pub && pub.briefing, [making, setMaking] = useState(false);
+  const shareCards = async () => { if (making) return; setMaking(true); try { await Brief.share(brief); } catch (e) { R.setReply({ rejected: true, recovery: '안내 장을 만들지 못했어요. 다시 시도해 주세요.' }); } setMaking(false); };
+  if (m && brief && pub.briefingStage === 'rules' && m.position < 0) return html`<${PrepPage} c=${c} bottom=${html`<${Primary} title="룰 설명 끝 · 넘기기 시작" loading=${R.busy} onClick=${() => R.run('briefing.done', {})} />`}>
+    <${LargeTitle}>룰 설명<//>
+    <${BriefRules} b=${brief} />
+    <${Section}><${Row} tint onClick=${shareCards} disabled=${making}>${making ? '안내 장 만드는 중…' : '안내 장 저장·공유'}<//><//>
+    ${R.alert}
+  <//>`;
   return html`<${PrepPage} c=${c} bottom=${nextP
       ? html`<${Primary} title=${`${nextP.number} · ${nextP.name}에게 넘기기`} onClick=${() => setTurn(m.position + 1)} />`
       : html`<${Primary} title="첫밤 시작" loading=${R.busy} onClick=${() => R.run('game.beginFirstNight', {}, start)} />`}>
     <${LargeTitle}>넘기기<//>
-    ${m && m.composition && m.position < 0 && html`<${Section} header="구성 발표"><${Composition} c=${m.composition} /><//>`}
+    ${m && !brief && m.composition && m.position < 0 && html`<${Section} header="구성 발표"><${Composition} c=${m.composition} /><//>`}
+    ${m && brief && m.position < 0 && html`<${Section}><${Row} tint onClick=${() => R.run('briefing.done', { done: false })}>룰 설명 다시<//><//>`}
     ${m && m.notice && m.notice.length > 0 && m.position < 0 && html`<${Section} header="이번 판 공지">${m.notice.map((t, k) => html`<div class="row" style="align-items:baseline"><span class="sec num">${k + 1}</span><span class="grow" style="white-space:pre-line">${t}</span></div>`)}<//>`}
     ${m && html`<${Section} header=${`${m.position + 1} / ${m.order.length}`}>${m.order.map((p, k) => html`<${Row} onClick=${() => setTurn(k)}>
       <span class=${k <= m.position || (m.seen || []).includes(k) ? 'blue' : 'sec'}><${Icon} name=${k <= m.position || (m.seen || []).includes(k) ? 'checkCircle' : 'circle'} size=${22} /></span>
@@ -378,4 +389,20 @@ function Composition({ c }) {
     <div class="comp-row evil"><span class="k">${L.evil || '악'}</span><b>${c.evil}</b></div>
     ${c.other > 0 && html`<div class="comp-row"><span class="k">${L.other || '그 밖'}</span><b>${c.other}</b></div>`}
   </div>`;
+}
+
+/** 룰 설명 — 이번 판 안내를 앱 기본 부품으로(구성·누가 누구를 아나 · 승리 조건 크게 · 흐름). 장 그림(공유)만 시안 결 — js/briefing.js */
+const SIDE_C = { '선': 'blue', '악': 'red' };
+const Coin = ({ id, n, size = 40 }) => html`<span class="bcoin" style=${`width:${size}px;height:${size}px;background:${Brief.BAND[id] || 'var(--gray4)'}`}><img src=${`art/${id}.webp`} alt="" />${n > 1 && html`<i>×${n}</i>`}</span>`;
+function BriefRules({ b }) {
+  const cl = g => SIDE_C[g.side] || 'purple';
+  return html`<${Section} header=${`${b.title} · ${b.n}명`}>
+      <div class="row"><span class="grow"><span class="blue">시민 편 ${b.sides.good}</span> · <span class="red">범죄 조직 ${b.sides.evil}</span>${b.sides.other > 0 && html` · <span class="purple">중립 ${b.sides.other}</span>`}</span></div>
+      ${b.groups.map(g => html`<div class="row"><div class="rl">
+        <div class="bline"><b class=${cl(g)}>${g.name}</b><span class="sec bline"><${Icon} name=${g.knows.icon} size=${16} />${g.knows.text}</span></div>
+        <div class="sub">${g.foe}${g.note ? ' · ' + g.note : ''}</div>
+        <div class="bcoins">${g.roles.map(r => html`<${Coin} id=${r.id} n=${r.count} />`)}</div></div></div>`)}<//>
+    <${Section} header="승리 조건">${b.groups.map(g => html`<div class="row"><div class="rl"><div class=${'sub ' + cl(g)}>${g.name}</div><div class="bwin">${g.win.short}</div><div class="sub">${g.win.long}</div></div></div>`)}<//>
+    <${Section} header="흐름">${b.flow.map(f => html`<div class="row"><div class="rl"><div class="bline"><${Icon} name=${f.icon} size=${18} /><b>${f.title}</b></div>
+      ${f.items.map(it => html`<div class="bline bitem">${it.roles.length ? it.roles.map(id => html`<${Coin} id=${id} size=${26} />`) : html`<${Icon} name=${it.icon} size=${18} />`}<span>${it.text}</span></div>`)}</div></div>`)}<//>`;
 }

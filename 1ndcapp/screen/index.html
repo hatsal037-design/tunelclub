@@ -98,6 +98,14 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .caption-names{display:inline-block;max-width:100%}
 .caption-unit,.caption-result{display:inline-block;white-space:nowrap}
 .caption-dot{font-weight:400;color:#8e8e93}
+/* 이번 판 안내(2026-10-24, 오리지널 마피아만 — 코어가 briefing 을 줄 때) — 룰 설명은 화면 전체, 넘기기 중엔 오른쪽 천, 낮엔 오른쪽 아래 구석. 그림은 js/briefing.js */
+#brief{position:absolute;inset:0;z-index:6}
+#bpanel{position:absolute;top:0;right:0;bottom:0;width:36%;z-index:5}
+.bcorner{position:absolute;right:2%;bottom:0;text-align:right;font-size:1.35cqw;line-height:1.45;color:var(--mute);white-space:nowrap}
+.bcorner .b1{color:var(--fg);font-weight:600;font-size:1.15em;margin-bottom:.15em}
+.bcorner .b2{color:var(--fg);font-weight:600}
+.bcorner .b2 svg{width:1em;height:1em;vertical-align:-.15em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-right:.25em}
+.bcorner .bn{font-weight:600;margin-right:.4em}.bcorner .g{color:#007aff}.bcorner .e{color:#ff3b30}.bcorner .n{color:#af52de}
 </style></head><body>
 <div id="stage"><div class="tv" id="tv">
   <div class="topline"><strong id="phase"></strong><small>첫밤 사망자 클럽</small></div>
@@ -105,6 +113,7 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
   <div class="arena" id="arena"></div>
   <div class="pair" id="pair" hidden></div>
   <div class="net" id="net" hidden>연결 확인 중</div>
+  <div id="bpanel" hidden></div><div id="brief" hidden></div>
   <div class="footer"><span id="composition"></span><span><span id="legend">● 남은 유령표</span><button class="leave" id="leave" hidden>연결 끊기</button></span></div>
 </div></div>
 <script src="../lib/qrcode.js"></script>
@@ -380,6 +389,10 @@ function render(force) {
 function draw() {
   const p = P, tv = $('tv');
   tv.classList.remove('waiting');
+  /* 이번 판 안내 — 룰 설명 단계면 화면 전체, 넘기기 중이면 오른쪽 천(자리는 왼쪽으로) */
+  const BR = window.BRIEF, br = BR && p && p.scene === 'prep' && p.briefing, rules = !!(br && p.briefingStage === 'rules'), pan = !!(br && !rules && p.handoff);
+  $('brief').hidden = !rules; if (rules) BR.drawA($('brief'), br);
+  $('bpanel').hidden = !pan; if (pan) BR.drawPanel($('bpanel'), br);
   $('pair').hidden = !!p || !pairing; $('leave').hidden = !linked;
   if (!p) { tv.classList.remove('night', 'round'); $('phase').textContent = linked ? '연결됐어요' : ''; $('ribbon').innerHTML = ''; $('composition').textContent = ''; $('legend').hidden = true;
     $('arena').innerHTML = linked ? '<div class="box" style="left:50%;top:50%"><div class="centername">새 판 준비 중</div></div>' : ''; return; }
@@ -393,7 +406,12 @@ function draw() {
   if (p.scene === 'waiting' && p.waiting) { renderWaiting(p, a, W, H); return; }
   if (p.scene === 'ended' && (p.endReveal?.length || p.endReplay)) { $('ribbon').innerHTML = ''; renderEnded(p, a, W, H); return; }
   NAMES = p.seats.map(s => s.name || s.number + '번');
-  const L = layout(W, H, n, p.shape === 'rect' ? 'rect' : 'circle', !!(p.scene === 'discussion' && p.timer)), t = L.timer;   // 타이머가 없으면 자리를 비워 두지 않는다(2026-10-06)
+  /* 낮 구석 간략판 — 몇째 낮 · 살아 있는 사람 · 판사만 투표 · 무리별 승리 결론(편별 생존 수는 안 낸다). 자리와 겹치면 자리판을 그만큼 왼쪽으로 좁혀 다시 */
+  const corner = p.briefing && /^(dawn|discussion|nomination|voting|confirmed|execution)$/.test(p.scene) ? '<div class="bcorner"><div class="b1">' + (p.dayNumber == null ? '낮' : '낮 ' + p.dayNumber) + ' · 살아 있는 사람 ' + p.seats.filter(s => !s.dead).length + '명</div>'
+    + (p.judgeVote ? '<div class="b2">' + (BR ? BR.ic('vote') : '') + '판사만 투표</div>' : '') + p.briefing.groups.map(g => '<div><span class="bn ' + ({ '선': 'g', '악': 'e' }[g.side] || 'n') + '">' + esc(g.name) + '</span>' + esc(g.win.short) + '</div>').join('') + '</div>' : '';
+  let Wl = pan ? W * 0.64 : W;
+  for (let pass = 0; pass < 2; pass++) {
+  const L = layout(Wl, H, n, p.shape === 'rect' ? 'rect' : 'circle', !!(p.scene === 'discussion' && p.timer)), t = L.timer;   // 타이머가 없으면 자리를 비워 두지 않는다(2026-10-06)
   let h = '', svg = '';   // 회색 판 상자 없앰(2026-10-06 햇살님 «회색 상자는 없어도 되지 않나»)
   if (L.labels) L.labels.forEach(l => { if (!l.mid) svg += '<path class="ld" d="M' + l.ex + ',' + l.ey + ' L' + l.kx + ',' + l.ky + ' L' + l.tx + ',' + l.ky + '"/>'; });
   const at = id => L.seats[p.seats.findIndex(s => s.id === id)];
@@ -423,7 +441,12 @@ function draw() {
   else if (p.scene === 'ended') mid = '<div class="centername">게임 종료</div>';
   h = '<svg class="ov"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8Z" fill="#ff9f0a"/></marker></defs>' + svg + '</svg>' + h;
   if (mid) h += '<div class="box" style="left:' + t.x + 'px;top:' + t.y + 'px;white-space:nowrap;background:var(--bg);padding:.3em .5em;border-radius:14px">' + mid + '</div>';
-  a.innerHTML = h; tick();
+  a.innerHTML = h + corner;
+  const c = corner && a.querySelector('.bcorner').getBoundingClientRect();
+  if (!c || pass || ![...a.querySelectorAll('.st,.nm,.box')].some(e => { const r = e.getBoundingClientRect(); return r.left < c.right && c.left < r.right && r.top < c.bottom && c.top < r.bottom; })) break;
+  Wl = W - c.width - W * 0.04;
+  }
+  tick();
 }
 /* 타이머 — 매초 받지 않는다. 끝나는 시각으로 화면이 센다. ponytail: 진행자 폰 시계 기준이라 폰·TV 시계가 다르면 그만큼 어긋난다 — 실측 뒤 서버 시각 보정 */
 function tick() {
@@ -494,5 +517,6 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && li
 setInterval(() => { tick(); if (linked && deadline && Date.now() > deadline) openRequest(); }, 250);
 try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}   // TV 가 꺼지지 않게(되는 브라우저에서만)
 start();
-</script><script type="module">import { startDomI18n } from '../js/i18n_dom.js'; startDomI18n(document.body);   /* 큰 화면도 TV 브라우저 언어가 영어면 영어로(2026-10-06) */</script>
+</script><script type="module">import * as B from '../js/briefing.js'; window.BRIEF = B; render(true); document.fonts && document.fonts.addEventListener('loadingdone', () => render(true));   /* 이번 판 안내 — 글꼴이 들어오면 관계 선을 다시 잰다 */</script>
+<script type="module">import { startDomI18n } from '../js/i18n_dom.js'; startDomI18n(document.body);   /* 큰 화면도 TV 브라우저 언어가 영어면 영어로(2026-10-06) */</script>
 </body></html>
