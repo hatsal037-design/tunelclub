@@ -327,5 +327,20 @@
   "guide.done.host": "진행 시작하기",
   "guide.done.social": "피드 둘러보기",
   "guide.sound": "소리",
-  "guide.again": "다시 보기"
+  "guide.again": "다시 보기",
+  "live.prep": "준비 중",
+  "live.night": "{n}번째 밤",
+  "live.day": "{n}일째 낮",
+  "live.ended": "판 끝",
+  "live.dead": "사망",
+  "rv.citizen": "시민",
+  "rv.criminal": "범죄 조직",
+  "plaza.my_role": "내 직업",
+  "plaza.hold": "보기",
+  "plaza.no_cam": "카메라를 쓸 수 없어요. 코드를 직접 입력해 주세요.",
+  "role.more": "자세히",
+  "role.feat": "특징",
+  "role.tip": "팁",
+  "role.inplay": "이번 판 직업",
+  "role.mode_all": "이 모드의 직업 전체"
 }

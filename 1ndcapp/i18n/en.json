@@ -327,5 +327,20 @@
   "guide.done.host": "Start hosting",
   "guide.done.social": "Browse the feed",
   "guide.sound": "Sound",
-  "guide.again": "Replay"
+  "guide.again": "Replay",
+  "live.prep": "Getting ready",
+  "live.night": "Night {n}",
+  "live.day": "Day {n}",
+  "live.ended": "Game over",
+  "live.dead": "dead",
+  "rv.citizen": "Citizen",
+  "rv.criminal": "Criminal",
+  "plaza.my_role": "My role",
+  "plaza.hold": "Hold",
+  "plaza.no_cam": "Can't use the camera. Please type the code.",
+  "role.more": "More",
+  "role.feat": "Traits",
+  "role.tip": "Tips",
+  "role.inplay": "Roles in this game",
+  "role.mode_all": "All roles in this mode"
 }
