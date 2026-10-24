@@ -74,10 +74,14 @@ async function plazaPush() {
       if (h.modeId) { st.modeId = h.modeId; st.shelf = h.ruleFamily; }
       if (typeof p.dayNumber === 'number') st.day = p.dayNumber;
       if (typeof p.nightNumber === 'number') st.night = p.nightNumber;
+      if (p.briefing) st.brief = p.briefing;   // 이번 판 안내(0326 — 참가 웹 광장 탭이 그린다. 0326 이 없는 서버는 이 칸을 버린다)
       if (p.timer) { const t = {}; ['state', 'endsAt', 'leftMs', 'durationMs'].forEach(k => { if (p.timer[k] != null) t[k] = p.timer[k]; }); st.timer = t; }
       const epoch = p.gameEpoch || 'none', rev = p.revision || 0, key = epoch + '|' + rev + '|' + JSON.stringify(st);
       if (key === plaza.sent) break;
-      try { const r = await account.rpc('plaza_status_push', { p_pot: pot.id, p_epoch: epoch, p_rev: rev, p_state: st }); if (r && (r.ok || r.code === 'stale')) plaza.sent = key; } catch {}
+      try { const send = () => account.rpc('plaza_status_push', { p_pot: pot.id, p_epoch: epoch, p_rev: rev, p_state: st });
+        let r = await send();
+        if (r && r.code === 'too_long' && st.brief) { delete st.brief; r = await send(); }   /* 0326 전 서버(한도 4096자)는 안내를 넣으면 통째로 거절한다 — 안내만 빼고 다시 */
+        if (r && (r.ok || r.code === 'stale')) plaza.sent = key; } catch {}
     } while (plaza.dirty);
   } finally { plaza.busy = false; }
 }

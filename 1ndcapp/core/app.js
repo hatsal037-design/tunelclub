@@ -8142,7 +8142,10 @@ function winCheckOriginalMafia(cm, alive){
   if(alive.length===0){ out.push({lv:'end', win:'void', t:'아무도 남지 않았어요 — 무효입니다.'}); return out; }
   if(alive.length===1&&solo===1){ out.push({lv:'end', win:'other', wg:'solo', t:`🏁 ${soloKo()} 승리 — 마지막 한 명으로 남았습니다.`}); return out; }
   if(crim===0){
-    if(solo>0) out.push({lv:'warn', t:`범죄 조직이 전멸했지만 ${soloKo()}${josaGa(soloKo())} 살아 있어요 — 이 사람은 마지막 한 명이 돼야 이깁니다. 끝낼지 이어갈지 정해 주세요.`});
+    /* 범죄 조직이 다 죽으면 광인·카르텔이 살아 있어도 시민 편 승리(2026-10-24 햇살님 «시민승» — 원작 미정이라 정함). 시민 편이 한 명도 없으면 아직 진행자에게 */
+    const joined=alive.filter(x=>charGroup(cm[x.char])==='solo'&&seatGroup(x,cm)!=='solo').length;   // 조직에 합류한 카르텔 — 그 조직의 일원이라 조직이 아직 살아 있다(이어 간다)
+    if(joined>0){ out.push({lv:'info', t:`합류한 ${soloKo()}${josaGa(soloKo())} 조직에 남아 있어요 — 판이 이어집니다.`}); return out; }
+    if(solo>0&&civ===0) out.push({lv:'warn', t:`범죄 조직이 전멸했지만 시민 편은 없고 ${soloKo()}${josaGa(soloKo())} 남았어요 — 끝낼지 이어갈지 정해 주세요.`});
     else out.push({lv:'end', win:'good', wg:'citizen', t:'🏁 시민 편 승리 — 범죄 조직이 모두 잡혔습니다.'});
     return out;
   }

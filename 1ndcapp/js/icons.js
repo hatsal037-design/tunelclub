@@ -54,8 +54,15 @@ const P = {
   wrench: 'M14.5 6.5a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3l7.5-7.5ZM3 21l5-5',
   search: 'M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13ZM15.5 15.5 20 20',
   share: 'M12 15V3M8 7l4-4 4 4M5 12v8h14v-8',
+  // 이번 판 안내(2026-10-24) — 시안_v5_틀.html EXTRA 다섯
+  trophy: 'M7.5 4h9v4.5a4.5 4.5 0 0 1-9 0ZM7.5 6H4.5v1a3 3 0 0 0 3 3M16.5 6h3v1a3 3 0 0 1-3 3M12 13v3.5M8.5 20.5h7M9.5 16.5h5v4h-5z',
+  link: 'M9.5 14.5 14.5 9.5M8 11.5 6 13.5a3.5 3.5 0 0 0 5 5l2-2M16 12.5l2-2a3.5 3.5 0 0 0-5-5l-2 2',
+  swords: 'M4 4l10 10M4 4h3.5M4 4v3.5M20 4 10 14M20 4h-3.5M20 4v3.5M11.5 15.5l-3 3M12.5 15.5l3 3M6.5 16.5l2 2M17.5 16.5l-2 2M7 20.5l-1.5 1.5M17 20.5l1.5 1.5',
+  skull: 'M12 3a7.5 7.5 0 0 0-4.5 13.5V20h9v-3.5A7.5 7.5 0 0 0 12 3ZM9.3 11.3h.01M14.7 11.3h.01M10.5 20v-2M13.5 20v-2',
+  vote: 'M4 13h16v7H4zM8 13V4.5h8V13M10 8.5l1.5 1.5L14 7.5',
   cycle: 'M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4',
 };
+export const ICON_PATHS = P;   // 이번 판 안내 그림(web/js/briefing.js)이 글로 쓴다
 const FILLED = new Set(['play', 'checkCircleFill', 'personFill']);
 export function Icon({ name, size = 22, fill = false, stroke = 1.8, cls = '' }) {
   const d = P[name]; if (!d) return null;
