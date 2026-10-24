@@ -387,7 +387,7 @@ var NativeCore = (function () {
   function handoffPublic(arg) {
     var i = +arg, s = state.seats[i], cm = CMAP(); if (!s || !s.char) return null;
     var shown = cm[(state.fakes || {})[i] || s.char];
-    return { name: s.name || ('좌석 ' + (i + 1)), roleName: shown.ko, teamName: sideKoOf(shown), ability: shown.ab, side: ((FIXED.TEAM || {})[shown.team] || {}).side || null };   // side — 팀 글자 색(선·악). 가짜 카드면 보이는 직업의 편
+    return { name: s.name || ('좌석 ' + (i + 1)), roleName: shown.ko, teamName: sideKoOf(shown), ability: shown.ab, revealRule: omRevealRule(s.char) || null, side: ((FIXED.TEAM || {})[shown.team] || {}).side || null };   // side — 팀 글자 색(선·악). 가짜 카드면 보이는 직업의 편
   }
 
   /* 진행 단계 — 밤 시작 카드(idx 0) · 카드 · 새벽(마지막 뒤) · 낮 · 마감. 화면은 이것만 보고 무엇을 그릴지 고른다 */
@@ -482,7 +482,7 @@ var NativeCore = (function () {
       good: ['범죄 조직 전멸', '범죄 조직 (악)이 모두 죽으면' + (hasG('solo') ? ' (광인·카르텔이 살아 있어도)' : '')],
       mafia: tri ? ['삼합회 뺀 범죄자 ≥ 시민 편', '삼합회를 뺀 범죄자(' + mafiaWho + ') 수가 시민 편 수와 같거나 많아지면 (삼합회가 살아 있어도 된다)']
         : cr ? ['마피아 조직 + 조직 편 범죄자 ≥ 시민 편', '범죄자(' + mafiaWho + ') 수가 시민 편 수와 같거나 많아지면'] : ['범죄 조직 ≥ 시민 편', '범죄 조직 수가 시민 편 수와 같거나 많아지면'],
-      triad: ['마피아 조직 · 시민 편 전멸', '마피아 조직과 시민 편이 모두 죽으면'],
+      triad: ['마피아 조직 전멸 + 범죄자 ≥ 시민 편', '마피아 조직이 모두 죽은 뒤 범죄자(' + ['om_yakuza', 'om_ninja'].filter(has).map(function (i) { return byId[i] ? byId[i].ko : i; }).concat(crookWho).join('·') + ') 수가 시민 편 수와 같거나 많아지면'],   // 게임룰-043
       crook: tri ? ['어느 조직이든 이기면 같이', '마피아 조직이든 삼합회 조직이든 이기면 같이'] : ['마피아 조직이 이기면 같이', '마피아 조직이 이기면 같이'],
       solo: ['각자 마지막 한 명', '마지막 한 명으로 남으면']
     };
@@ -497,9 +497,9 @@ var NativeCore = (function () {
       { key: 'first', icon: 'moon', title: '첫밤', items: [it(null, BR_G.mafia.filter(has), mafiaCard ? '마피아 조직끼리 얼굴 확인' : '대부 혼자')]
         .concat(tri ? [it(null, BR_G.triad.filter(has), '삼합회 조직도 따로 확인')] : []).concat([it('moon', [], '아무도 안 죽음')]) },
       { key: 'day', icon: 'sun', title: '낮', items: [it('person2', [], '토론'), it('hand', [], '지목 → 투표 → 처형')]
-        .concat(judges ? [it('vote', [], '판사가 살아 있으면 판사만 투표')] : []).concat([it('eyeSlash', [], '죽은 사람 직업 비공개')]) },
+        .concat(judges ? [it('vote', [], '판사가 살아 있으면 판사만 투표')] : []).concat([it('eyeSlash', [], m.speedWin ? '죽은 사람 직업 비공개' : '처형되면 시민인지 범죄 조직인지 공개')]) },   // 게임룰-044 — 스피드는 자기 룰
       { key: 'night', icon: 'moon', title: '밤', items: [it('skull', [], (tri ? '두 조직이 각자 ' : '조직이 ') + '한 명씩 살해')]
-        .concat(has('om_lunatic') ? [it(null, ['om_lunatic'], '광인도 한 명 살해')] : []).concat(ab.length ? [it(null, ab, '능력 쓰기')] : []) }
+        .concat(has('om_lunatic') ? [it(null, ['om_lunatic'], '광인도 한 명 살해')] : []).concat(ab.length ? [it(null, ab, '능력 쓰기')] : []) }   // 게임룰-044 — 밤 사망은 이름만(2026-10-25 체포 공개 뺌)
     ];
     var links = [['good', 'mafia', 'enemy', '적']];
     if (tri) { links.push(['good', 'triad', 'enemy', '적']); links.push(['mafia', 'triad', 'enemy', '서로 모르는 적']); }
@@ -583,7 +583,7 @@ var NativeCore = (function () {
       noms: D.noms.map(function (o, k) { var st = !o.done && G.leaders.indexOf(o) >= 0 ? (G.leaders.length > 1 ? '동수' : (G.ok ? '단독 선두' : null)) : null;
         var pv = null; if (k === G.k) { try { var v = execVerdicts(state.seats[o.t], o.t).find(function (x) { return x.lv === 'end'; }); if (v) pv = textOf(v.t); } catch (e) {} }
         return { k: k, target: seatLabel(o.t), by: o.by === null || o.by === undefined ? null : seatLabel(o.by), votes: o.v || 0, voters: (o.voters || []).length ? o.voters : [], done: !!o.done,
-        blocked: o.blockedBy || null, dead: !!(state.seats[o.t] && state.seats[o.t].dead), canExecute: k === G.k, tag: st, preview: pv, saved: !!o.saved }; }),
+        blocked: o.blockedBy || null, dead: !!(state.seats[o.t] && state.seats[o.t].dead), reveal: o.done ? revealKo(state.seats[o.t]) : null, canExecute: k === G.k, tag: st, preview: pv, saved: !!o.saved }; }),
       /* 동수(2026-10-04 햇살님 시안 C «선택지 주자») — 문턱 넘은 최다가 둘 이상이면 진행자가 고른다: 처형 없음(규칙)·결선 투표·다시 지명 */
       tie: (function () { if (D.noms.some(function (o) { return o.done; })) return null; if (D.tieNone) return { state: 'none' };
         return G.leaders.length > 1 && G.lead >= G.need ? { state: 'open', names: G.leaders.map(function (o) { return seatLabel(o.t); }) } : null; })(),
@@ -636,9 +636,10 @@ var NativeCore = (function () {
     var sid = function (i) { return 's' + (i + 1); };
     if (began && (ended || announced)) P.announcedThrough = Math.max(P.announcedThrough || 0, n);
     if (!began || ended || announced) P.seats = (state.seats || []).map(function (s) { var dead = began && pubDead(s);   // 공개 생사(index.html pubDead) — 죽은 척은 사망 · 유령표가 있는 걸로 — 표식 이름은 안 내보낸다
-      return { dead: dead, ghost: dead && ((s.rem || []).indexOf('유령표') >= 0 || (!s.dead && !villageType())) }; });   // 죽은 척도 유령표를 받는다(fakeDeadMark, 유령표 쓰는 판) — 안 쓰는 판은 예전처럼 있음으로
+      var rv = null; if (dead) { try { rv = omDeathReveal(s); } catch (e) {} }   // 오리지널 — 처형·체포로 죽은 사람만 'citizen'|'criminal'(게임룰-044). 발표 뒤에만 찍히는 이 묶음에 같이
+      return { dead: dead, ghost: dead && ((s.rem || []).indexOf('유령표') >= 0 || (!s.dead && !villageType())), reveal: rv }; });   // 죽은 척도 유령표를 받는다(fakeDeadMark, 유령표 쓰는 판) — 안 쓰는 판은 예전처럼 있음으로
     var seats = (state.seats || []).map(function (s, i) { var v = (P.seats && P.seats[i]) || { dead: false, ghost: false };
-      return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost }; });
+      return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost, reveal: v.reveal || null }; });
     var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), tvw = localStorage.getItem(TVW_KEY), waiting = tvp && tvp.code && (tvw === '1' ? (!began || ended) : tvw !== '0' && tvw !== '2' && !began) ? { code: tvp.code, title: (pot0 && pot0.title) || tvp.title || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: (tvp.people || []).slice(0, 20) } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
     var scene = waiting ? 'waiting' : !began ? 'prep' : ended ? 'ended' : !isDay ? 'night' : !announced ? 'dawn' : 'discussion';
     var noms = D ? D.noms || [] : [], G = isDay ? execGate() : null, nom = null, exec = null;
@@ -688,8 +689,19 @@ var NativeCore = (function () {
     var key = J(body); if (key !== P.last) { P.last = key; P.rev = (P.rev || 0) + 1; }   // 공개 내용이 같으면 revision 그대로
     pubSave(P); body.revision = P.rev; return body;
   }
+  function revealKo(s) { var r = null; try { r = omDeathReveal(s); } catch (e) {} return r ? OM_REVEAL_KO[r] : null; }   // 오리지널 사망 공개(게임룰-044) — 진행자 화면 글
   function verdict() { var w = []; try { w = winCheck() || []; } catch (e) {} return w.filter(function (x) { return x.lv === 'end' || x.lv === 'warn'; }).map(function (x) { return { level: x.lv, text: textOf(x.t), win: x.win || null }; }); }
   var WINKO = { good: '선 승리', evil: '악 승리', other: '중립 승리', void: '무효 · 중단' };   // 오리지널은 이긴 조직으로 — winKoOf(winner, winGroup)
+  /* 진행자가 고르는 승자(판 끝내기·승자 정정) — 오리지널은 조직이 둘이라 «악 승리» 하나로는 누가 이겼는지 못 가른다. 모드에 있는 조직만 (2026-10-24) */
+  var OM_WG_WIN = { citizen: 'good', mafia: 'evil', triad: 'evil', solo: 'other' };
+  function winChoices(modeId) {
+    var ed = allMods()[modeId] || {};
+    if (ed.winRules !== 'original-mafia') return ['good', 'evil', 'other', 'void'].map(function (w) { return { winner: w, wg: null, label: WINKO[w] }; });
+    var has = {}; (ed.chars || []).forEach(function (c) { var g = charGroup(c); if (g) has[g] = true; });
+    return ['citizen', 'mafia', 'triad', 'solo'].filter(function (g) { return g === 'citizen' || has[g]; })
+      .map(function (g) { return { winner: OM_WG_WIN[g], wg: g, label: winKoOf(OM_WG_WIN[g], g) }; }).concat([{ winner: 'void', wg: null, label: WINKO.void }]);
+  }
+  function wgBad(p) { return p.wg != null && OM_WG_WIN[p.wg] !== p.winner; }   // 이긴 조직과 승자 코드가 어긋나면 받지 않는다
   /* 7 종료 공개·복기(2026-10-04 햇살님 «직업 + 진영 + 바뀐 것» · «낮 + 밤 행동») — 판이 끝난 뒤, 진행자가 누를 때만 TV 로 나간다.
      앱 재량(판세 보정·앱 선택)은 넣지 않는다 — 그건 진행 도구의 속이라 끝나도 안 보인다 */
   function endLog() { return (state.log && state.log.winner) ? state.log : (state.lastLogId ? (logsAll().find(function (x) { return x.id === state.lastLogId; }) || null) : null); }
@@ -802,7 +814,7 @@ var NativeCore = (function () {
     var L = logsAll().find(function (x) { return x.id === id; }); if (!L) return null; logHub(L);
     var r = recordRow(L); r.note = L.note || '';
     r.players = (L.players || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: p.side || '', won: p.won === true, dead: !!p.dead }; });
-    r.events = (L.events || []).map(eventLine).filter(Boolean); return r;
+    r.events = (L.events || []).map(eventLine).filter(Boolean); r.winChoices = winChoices(L.mode); return r;
   }
   function library() {
     var M = allMods(), hubs = {};
@@ -833,7 +845,7 @@ var NativeCore = (function () {
     (ED().reminders || []).forEach(function (t) { if (!seen[t]) { seen[t] = 1; items.push(t); } });
     (x.rem || []).forEach(function (t) { if (!seen[t]) { seen[t] = 1; items.push(t); } });
     var causeKo = { exec: '처형', demon: isOmMode() ? '조직 습격' : '흉수 습격', night: '밤', day: '낮', curse: '저주', succession: '계승' };
-    return { index: i, number: i + 1, name: x.name || ('좌석 ' + (i + 1)), role: c ? c.ko : '', teamKo: c ? sideKoOf(c) : '', ability: c ? c.ab : '',
+    return { index: i, number: i + 1, name: x.name || ('좌석 ' + (i + 1)), role: c ? c.ko : '', teamKo: c ? sideKoOf(c) : '', ability: c ? c.ab : '', revealRule: (c && omRevealRule(x.char)) || null,
       dead: !!x.dead, cause: x.dead ? (causeKo[x.cause] || x.cause || '') : null, sideKind: c && c.team === 'traveler' ? 'traveler' : c && c.team === 'neutral' && !isOmMode() ? 'neutral' : null, side: c && c.team === 'traveler' ? (x.side || null) : c && c.team === 'neutral' && !isOmMode() ? (x.lean || null) : null,   // 여행자 편(판정에 반영)·중립 편들기(기록용) — 웹 좌석 시트와 같게
       canRemove: (state.seats || []).length > 5, isDay: state.phase === 'day', askCause: state.phase !== 'day' && !x.dead && deathCauseMatters(i) && !firstNightNoDemonKill(),
       tokens: items.map(function (t) { return { id: t, label: TK(t), on: (x.rem || []).indexOf(t) >= 0 }; }) };
@@ -934,7 +946,7 @@ var NativeCore = (function () {
   function logHub(L) { try { var m = L && allMods()[L.mode]; if (m) outHub = hubRepOf(m); } catch (e) {} return L; }   // 지난 판은 그 판의 계열 말로
   function replayLog(a) { return logHub(replayLogRaw(a)); }
   var narrowMemo = {};
-  var QUERIES = { home: home, 'preparation.board': board, 'game.current': nightCard, 'preparation.roles': roles, 'preparation.handoff': handoff, 'handoff.public': handoffPublic, 'game.stage': stage, 'game.process': process, reference: reference, 'roles.art': function () { var mid = state.edition || 'basic'; return CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, mid); return { ko: c.ko, icon: r.icon, e: r.e }; }); }, 'game.day': day, 'display.public': displayPublic, 'game.verdict': function () { return { items: verdict(), winner: endWinner() }; }, 'game.briefing': function () { return briefing(); }, 'game.result': result, 'game.replay': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; return GameReplay.build(L, { public: /^public:/.test(String(a || '')) }); },
+  var QUERIES = { home: home, 'preparation.board': board, 'game.current': nightCard, 'preparation.roles': roles, 'preparation.handoff': handoff, 'handoff.public': handoffPublic, 'game.stage': stage, 'game.process': process, reference: reference, 'roles.art': function () { var mid = state.edition || 'basic'; return CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, mid); return { ko: c.ko, icon: r.icon, e: r.e }; }); }, 'game.day': day, 'display.public': displayPublic, 'game.winChoices': function () { return winChoices(state.edition); }, 'game.verdict': function () { return { items: verdict(), winner: endWinner() }; }, 'game.briefing': function () { return briefing(); }, 'game.result': result, 'game.replay': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; return GameReplay.build(L, { public: /^public:/.test(String(a || '')) }); },
     'game.replayNarrow': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; var k = L.uuid || L.id; if (!(k in narrowMemo)) narrowMemo[k] = GameReplay.narrow(L); return narrowMemo[k]; }, 'day.voters': function (k) { return voters(+k); }, records: records, record: record, library: library, 'library.mode': libraryMode,
     /* 엔진 내부 관측: 공개 확정본의 생사·공개한 밤만. 큰 화면 전송 형식에는 추가하지 않는다. */
     'observation.public': function () { var P = pubState(pubEpoch()); return { through: P.announcedThrough || 0, dead: (P.seats || []).map(function (s) { return !!s.dead; }) }; },
@@ -1287,8 +1299,8 @@ var NativeCore = (function () {
       if (p.day === null || p.day === undefined) { delete state.tvReplay; return null; } var d = +p.day, t = endReplayDays(); if (!(d >= 0 && d <= t)) return rejected('invalidSelection', '그날 기록이 없어요.'); state.tvReplay = d; return null; },
     'game.finish': function (p) { if (gameEnded()) return rejected('notAllowedInPhase', '이미 끝난 판이에요.');
       wzFinish(); if (wz.mode === 'done') return null;
-      if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0) return rejected('invalidSelection', '승자를 골라 주세요.');
-      wzFinishDo(p.winner, true); return wz.mode === 'done' ? null : rejected('coreFailure', '마감하지 못했어요.'); },
+      if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0 || wgBad(p)) return rejected('invalidSelection', '승자를 골라 주세요.');
+      wzFinishDo(p.winner, true, p.wg || undefined); return wz.mode === 'done' ? null : rejected('coreFailure', '마감하지 못했어요.'); },
     'game.again': function (p) { if (!gameEnded()) return rejected('notAllowedInPhase', '끝난 판이 아니에요.'); state.tvReveal = false; delete state.tvReplay;   /* 끈 채로 — 새 판이 시작되면 아래 걷기에서 지워져 다음 종료 때 다시 먼저 뜬다 */   /* 한 판 더 — 지난 판 직업 공개·복기를 TV 에서 걷는다 */ if (state.practice) localStorage.setItem(PRACTICE_KEY, '1');   /* 연습판에서 «한 판 더»는 계속 연습(웹 연습 마당과 같게) */ wz.again = {}; wzAgainGo(); try { prepClose(); } catch (e) {}
       if (p && p.shuffle) state.seatShuffle = true;   // «자리 섞어서 다시»
       if (p && p.fresh) { switchEdition(state.edition, { quiet: true, force: true }); state.seats.forEach(function (x) { x.dead = false; delete x.cause; delete x.causeN; }); }   // «바꿔서 한 판 더» — 인원·자리부터 다시 볼 땐 지난 판 흔적(사망·역할)을 걷는다(명단 확정의 끝난 판 갈래와 같게)
@@ -1305,8 +1317,8 @@ var NativeCore = (function () {
       r.notes.forEach(function (t) { effects.push({ kind: 'notice', text: textOf(t) }); }); return null; },   // «죽은 척하고 살아남아요» 같은 웹 안내를 화면에 — 안 그러면 누른 게 아무 일도 안 한 것처럼 보였다
     'seat.revive': function (p) { var i = +p.seat, x = state.seats[i]; if (!x || !x.dead) return rejected('invalidSelection', '살아 있는 사람이에요.');
       var keep = editing; editing = i; try { asking({ force: true }, function () { toggleDead(); }); } finally { editing = keep; } return null; },
-    'record.setWinner': function (p) { if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0) return rejected('invalidSelection', '승자를 골라 주세요.');
-      if (!logsAll().some(function (x) { return x.id === p.id; })) return rejected('invalidSelection', '기록을 못 찾았어요.'); logSetWinner(p.id, p.winner); return null; },
+    'record.setWinner': function (p) { if (['good', 'evil', 'other', 'void'].indexOf(p.winner) < 0 || wgBad(p)) return rejected('invalidSelection', '승자를 골라 주세요.');
+      if (!logsAll().some(function (x) { return x.id === p.id; })) return rejected('invalidSelection', '기록을 못 찾았어요.'); logSetWinner(p.id, p.winner, p.wg || undefined); return null; },
     'director.setModeStats': function (p) { try { localStorage.setItem('dangsan_modestats', JSON.stringify(p.rows || {})); } catch (e) {} return null; },   // 모드·인원별 선·악 승수(서버 합계) — 앱을 켤 때 받아 둔다. 구성·블러프처럼 첫밤 전에 뽑는 것도 쓸 수 있게
     'director.setRoleStats': function (p) { try { localStorage.setItem('dangsan_rolestats', JSON.stringify(p.rows || {})); } catch (e) {} return null; },   // 직업별 승률 합계(서버) — 구성 기울이기
     'director.setEnabled': function (p) { try { localStorage.setItem('dangsan_tilt', p.on ? 'on' : 'off'); } catch (e) {} return null; },

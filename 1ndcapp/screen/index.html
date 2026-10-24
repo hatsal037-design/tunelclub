@@ -22,7 +22,7 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .st.turn i{border:3px solid #007aff;box-shadow:0 0 0 .5cqw rgba(0,122,255,.18)}   /* 역할을 보고 있는 자리 */
 .st .vt{position:absolute;left:50%;top:-8%;transform:translate(-50%,-100%);background:#ff9f0a;color:#fff;font-weight:700;border-radius:6px;padding:0 .4em;white-space:nowrap}
 .nm{position:absolute;white-space:nowrap;font-weight:500;line-height:1}
-.nm.dead{opacity:.4;text-decoration:line-through}
+.nm.dead{opacity:.4;text-decoration:line-through}.nm.dead2 .n{opacity:.4;text-decoration:line-through}.nm .rv{font-weight:600;font-size:.62em}.nm .rv.c{color:#007aff}.nm .rv.e{color:#ff3b30}
 .mv-draw{stroke-dasharray:1;stroke-dashoffset:1;animation:mvDraw .55s ease-out forwards}
 .mv-glow{stroke-dasharray:.07 .93;stroke-dashoffset:1;opacity:0;animation:mvGlow 1.8s linear .55s infinite}
 .mv-head{opacity:0;animation:mvHead .2s ease-out .45s forwards}
@@ -102,6 +102,7 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 #brief{position:absolute;inset:0;z-index:6}
 #bpanel{position:absolute;top:0;right:0;bottom:0;width:36%;z-index:5}
 .bcorner{position:absolute;right:2%;bottom:0;text-align:right;font-size:1.35cqw;line-height:1.45;color:var(--mute);white-space:nowrap}
+html:not([lang=ko]) .bcorner{white-space:normal;width:21cqw}   /* 다른 말은 길어 한 줄로 두면 자리판이 반쪽이 된다 — 아이폰 구석판(폭 0.19)처럼 접는다(2026-10-24) */
 .bcorner .b1{color:var(--fg);font-weight:600;font-size:1.15em;margin-bottom:.15em}
 .bcorner .b2{color:var(--fg);font-weight:600}
 .bcorner .b2 svg{width:1em;height:1em;vertical-align:-.15em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-right:.25em}
@@ -428,7 +429,7 @@ function draw() {
     else { const e = L.d * .5, ln = L.d * .7, side = L.lead && (pt.nm === 'left' || pt.nm === 'right'), g = L.gap != null ? L.gap : side ? e + ln + L.fs * .3 : e + L.fs * .35;
       if (side) { const sg = pt.nm === 'left' ? -1 : 1; svg += '<path class="ld" d="M' + (pt.x + sg * e) + ',' + pt.y + ' L' + (pt.x + sg * (e + ln)) + ',' + pt.y + '"/>'; }
       pos = pt.nm === 'left' ? 'right:' + (W - pt.x + g) + 'px;top:' + pt.y + 'px;transform:translateY(-50%)' : pt.nm === 'right' ? 'left:' + (pt.x + g) + 'px;top:' + pt.y + 'px;transform:translateY(-50%)' : pt.nm === 'above' ? 'left:' + pt.x + 'px;top:' + (pt.y - g) + 'px;transform:translate(-50%,-100%)' : 'left:' + pt.x + 'px;top:' + (pt.y + g) + 'px;transform:translateX(-50%)'; }
-    h += '<div data-k="n' + s.id + '" class="nm ' + (s.dead ? 'dead' : '') + '" style="font-size:' + L.fs + 'px;' + pos + '">' + esc(s.name || '') + '</div>';
+    h += '<div data-k="n' + s.id + '" class="nm ' + (s.dead ? (s.reveal ? 'dead2' : 'dead') : '') + '" style="font-size:' + L.fs + 'px;' + pos + '">' + (s.reveal ? '<span class="n">' + esc(s.name || '') + '</span> · <span class="rv ' + (s.reveal === 'criminal' ? 'e' : 'c') + '">' + (s.reveal === 'criminal' ? '범죄 조직 (악)' : '시민') + '</span>' : esc(s.name || '')) + '</div>';   // 오리지널 사망 공개(게임룰-044) — 이름 옆 같은 줄
   });
   let mid = '';
   if (p.scene === 'discussion') mid = p.timer ? '<div class="centerlabel">자유롭게 이야기하세요</div><div class="centerbig" id="time"></div><div class="centersub" id="timesub">토론 시간</div>' : '<div class="centername">토론</div>';
@@ -441,7 +442,7 @@ function draw() {
   else if (p.scene === 'ended') mid = '<div class="centername">게임 종료</div>';
   h = '<svg class="ov"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8Z" fill="#ff9f0a"/></marker></defs>' + svg + '</svg>' + h;
   if (mid) h += '<div class="box" style="left:' + t.x + 'px;top:' + t.y + 'px;white-space:nowrap;background:var(--bg);padding:.3em .5em;border-radius:14px">' + mid + '</div>';
-  a.innerHTML = h + corner;
+  a.innerHTML = h + corner; if (window.__i18nFix) window.__i18nFix(a);   // 다른 말이면 재기 전에 바꾼다(재고 나서 바뀌면 영어 폭이 겹친다)
   const c = corner && a.querySelector('.bcorner').getBoundingClientRect();
   if (!c || pass || ![...a.querySelectorAll('.st,.nm,.box')].some(e => { const r = e.getBoundingClientRect(); return r.left < c.right && c.left < r.right && r.top < c.bottom && c.top < r.bottom; })) break;
   Wl = W - c.width - W * 0.04;

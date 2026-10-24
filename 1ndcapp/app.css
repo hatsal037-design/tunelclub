@@ -268,6 +268,7 @@ h1, h2, p { margin: 0; }
 .pcard .rn { font-size: 34px; font-weight: 700; }
 .pcard .tn { font-weight: 600; }
 .pcard .ab2 { font-size: 17px; white-space: pre-line; }
+.pcard .ab2.sub { font-size: 14px; color: var(--sec, #8a8a8e); margin-top: 6px; }   /* 죽으면 어떻게 공개되나(게임룰-044) */
 .big-ans { font-size: 34px; font-weight: 700; white-space: pre-line; padding: 24px; }
 .grim { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .grim > div { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--card); border-radius: 10px; }
