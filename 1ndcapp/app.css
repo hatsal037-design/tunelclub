@@ -581,3 +581,7 @@ a.mention { color: var(--blue); text-decoration: none; background: none; padding
 .lseats > div.dead .lsn { color: var(--sec, #8a8a8e); text-decoration: line-through; }
 .lseats small { font-size: 12px; }
 .hold-sm .hold { width: auto; min-height: 44px; padding: 0 14px; font-size: 15px; border-radius: 10px; }
+/* 참가 웹 «지금 판»(2026-10-25) — 머리에 단계·타이머만 크게 */
+.gnow-head { padding: 8px 20px 16px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gnow-ph { font-size: 28px; font-weight: 700; }
+.gnow-tm { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }

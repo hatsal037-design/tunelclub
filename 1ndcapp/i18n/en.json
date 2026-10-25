@@ -342,5 +342,10 @@
   "role.feat": "Traits",
   "role.tip": "Tips",
   "role.inplay": "Roles in this game",
-  "role.mode_all": "All roles in this mode"
+  "role.mode_all": "All roles in this mode",
+  "game.now": "Now playing",
+  "game.wait": "{n} checked in",
+  "plaza.login_to_join": "Log in to join the plaza",
+  "plaza.code_is": "Code {c}",
+  "signup.later": "Later"
 }
