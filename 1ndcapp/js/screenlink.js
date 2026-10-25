@@ -2,6 +2,9 @@
 // 서버 계약: docs/큰화면_서버연결_설계_v1.md · 연결 상태는 탭보다 위(여기)가 들고, 화면은 구독만 한다.
 import { store } from './store.js';
 import { account } from './account.js';
+import { settings } from './settings.js';
+import { soundOut } from './soundbus.js';
+import { bgmSync } from './bgm.js';
 
 const subs = new Set();
 const live = l => Date.parse(l.expires_at) > Date.now();
@@ -21,6 +24,7 @@ export const screens = {
     const g = ++this._gen;
     try { const r = await account.rpc('screen_mine'); if (g === this._gen) this.links = r || []; } catch {}
     this.emit(); this.push();
+    try { bgmSync(store.get('bgm.slot')); } catch {}   // 화면이 붙거나 떨어지면 배경 음악 자리도 다시(큰 화면 소리)
   },
   /** 승인 — QR 로 들어왔든 손으로 쳤든 코드 하나. 요청 중 다시 누르기는 무시, 늦게 온 답이 끊긴 연결을 살리지 않는다(서버가 본다) */
   async approve(code) {
@@ -44,7 +48,7 @@ export const screens = {
     this._pushing = true;
     try {
       do { this._dirty = false;
-        const p = store.get('display.public'); if (!p) break;
+        const p = withSound(store.get('display.public')); if (!p) break;
         for (const l of this.active()) {
           if (this.sent[l.id] >= p.revision) continue;
           try { const r = await account.rpc('screen_push', { p_id: l.id, p_epoch: p.gameEpoch, p_rev: p.revision, p_state: p });
@@ -53,10 +57,28 @@ export const screens = {
         }
       } while (this._dirty);
     } finally { this._pushing = false; }
-    if (this.active().every(l => this.sent[l.id] >= (store.get('display.public')?.revision ?? -1))) this._rk = -1;   // 다 올라가면 재시도 간격 처음부터
+    if (this.active().every(l => this.sent[l.id] >= (withSound(store.get('display.public'))?.revision ?? -1))) this._rk = -1;   // 다 올라가면 재시도 간격 처음부터
     if (this._stale) { this._stale = false; this.load(); }
   },
 };
+/* 큰 화면 소리(2026-10-25) — 설정 «큰 화면 소리»가 큰 화면이고 연결돼 있으면 낭독·짧은 소리·알림음·배경 음악을 공개 정보에 실어 TV 가 튼다.
+   낭독처럼 화면은 그대로인데 소리만 나는 일이 있어서, 올리는 판본 = 코어 판본×1000 + 그 판본 뒤로 소리가 바뀐 횟수(서버는 판본이 올라야 받는다).
+   ponytail: 같은 연결에 아이폰 앱(코어 판본 그대로)이 번갈아 올리면 낮은 판본이 거절된다 — 둘을 섞어 쓰게 되면 판본 규칙을 맞춘다 */
+const au = { items: [], bgm: null, k: 0, base: 0, core: -1, n: 0 };
+const routed = () => settings.get('soundAt') === 'screen' && screens.active().length > 0;
+const bump = () => { au.k++; screens.push(); };
+soundOut.send = items => { if (!routed()) return false;
+  items.forEach(x => { x.id = Date.now() * 100 + (au.n++ % 100); au.items.push(x); });   // 진행자 폰을 새로 열어도 번호가 앞으로만 간다
+  au.items = au.items.slice(-8); bump(); return true; };
+soundOut.bgm = b => { const on = routed(), want = on ? b : null;
+  if (JSON.stringify(want) !== JSON.stringify(au.bgm)) { au.bgm = want; bump(); }   // 폰으로 돌리면 TV 음악은 멈춘다
+  return on; };
+soundOut.ping = bump;
+function withSound(p) {
+  if (!p) return p;
+  if (p.revision !== au.core) { au.core = p.revision; au.base = au.k; }
+  return Object.assign({}, p, { revision: p.revision * 1000 + Math.min(999, au.k - au.base), audio: routed() ? { items: au.items, bgm: au.bgm } : null });
+}
 /* 판이 바뀔 때마다(명령 성공 뒤) 최신 공개 정보를 올린다. 코어가 같은 내용엔 판본을 안 올리므로 중복 전송은 없다 */
 /* 광장 현황(0320·0321) — 참가자 폰 잠금화면·«이번 판 자료»용 공개 한 줄. 앱 Bridge/PlazaStatus.swift 와 같은 규칙(2026-10-10 웹 구성 W2).
    열린 실전 광장이 있고 로그인했으면, 허용 칸(광장 이름·모드·모드 번호·테마·장면·몇째 날/밤·타이머)만, 바뀌었을 때만 올린다. 실패해도 진행은 안 막는다 */
