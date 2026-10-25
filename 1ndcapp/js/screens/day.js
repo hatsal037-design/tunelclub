@@ -7,6 +7,7 @@ import { Page, Section, Row, CheckRow, ActionSheet, Menu, NavButton, RoleArt, Sh
 import { SeatBoard } from '../seatboard.js';
 import { useNav } from '../nav.js';
 import { speak } from '../narrator.js';
+import { soundOut } from '../soundbus.js';
 import { ReplayView } from './replay.js';
 
 /** 코어 항목 묶음 — 글은 글로, 버튼은 명령(day.call). 죽이거나 보호를 뚫는 단추는 한 번 더 묻는다 */
@@ -224,7 +225,7 @@ export const timer = {
   alert(time, text, strong) {
     this.shout = { time, text };
     if (settings.get('haptics') && navigator.vibrate) try { navigator.vibrate(strong ? [200, 100, 200] : 80); } catch {}
-    if (settings.get('timerSound')) beep(strong);
+    if (settings.get('timerSound') && !(soundOut.send && soundOut.send([{ k: 'beep', strong }]))) beep(strong);
     setTimeout(() => { if (this.shout && this.shout.text === text) { this.shout = null; this.emit(); } }, 4000);
     this.emit();
   },

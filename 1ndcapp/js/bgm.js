@@ -1,9 +1,13 @@
 // 배경 음악 — 계열 × 과정 곡(폰 앱 BgmPlayer 와 같음, 2026-10-04). 곡 이름은 코어 bgm.slot, 처형·판 끝 짧은 소리는 효과 sting. 기본 꺼짐.
 import { settings } from './settings.js';
+import { soundOut } from './soundbus.js';
 let cur = null, curName = null;
 const vol = () => { const v = settings.get('bgmVolume'); return v == null ? 0.5 : v; };
 function fade(a, to, ms, done) { const from = a.volume, t0 = performance.now(); const step = t => { const k = Math.min(1, (t - t0) / ms); a.volume = Math.max(0, Math.min(1, from + (to - from) * k)); if (k < 1) requestAnimationFrame(step); else if (done) done(); }; requestAnimationFrame(step); }
+let lastSlot = null;
 export function bgmSync(slot) {
+  lastSlot = slot || null;
+  if (soundOut.bgm && soundOut.bgm(settings.get('bgm') && slot ? { name: `${slot.hub}_${slot.slot}`, vol: vol() } : null)) { bgmStop(); return; }   // 큰 화면에서 틀면 폰은 멈춘다
   if (!settings.get('bgm') || !slot) { bgmStop(); return; }
   const name = `${slot.hub}_${slot.slot}`; if (name === curName) return;
   const a = new Audio(`bgm/${name}.m4a`); a.loop = true; a.volume = 0; const prev = curName; curName = name;
@@ -14,6 +18,7 @@ export function bgmEffects(fx) {
   if (!settings.get('bgm')) return;
   /* 한 응답의 짧은 소리 여럿(처형 → 승패)은 차례로(2026-10-05) */
   const list = fx.filter(e => e.kind === 'sting').map(e => `bgm/${e.hub}_${e.name}.m4a`);
+  if (list.length && soundOut.send && soundOut.send(list.map(u => ({ k: 'sting', u: u.slice(4), vol: vol() })))) return;
   const next = () => { const u = list.shift(); if (!u) { if (cur && !ducked) fade(cur, vol(), 400); return; }
     const s = new Audio(u); s.volume = Math.min(1, vol() * 1.2); if (cur) fade(cur, vol() * 0.35, 250); s.onended = next; s.onerror = next; s.play().catch(next); };
   if (list.length) next();
@@ -21,5 +26,5 @@ export function bgmEffects(fx) {
 /* 낭독하는 동안 줄이기 — narrator.js 가 부른다 */
 let ducked = false;
 export function bgmDuck(on) { ducked = on; if (cur) fade(cur, on ? vol() * 0.35 : vol(), on ? 250 : 400); }
-export function bgmVolume() { if (cur) cur.volume = vol(); }
+export function bgmVolume() { if (cur) cur.volume = vol(); else bgmSync(lastSlot); }   // 큰 화면에서 트는 중이면 크기만 다시 보낸다
 export function bgmStop() { if (cur) { const old = cur; fade(old, 0, 600, () => old.pause()); } cur = null; curName = null; }

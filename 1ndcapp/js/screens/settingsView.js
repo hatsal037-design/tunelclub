@@ -3,7 +3,8 @@ import { LANG_NAMES } from '../i18n_dom.js';
 import { html, useState, useRef } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { settings } from '../settings.js';
-import { say, speak, VOICES } from '../narrator.js';
+import { say, speak, VOICES, toScreen } from '../narrator.js';
+import { soundOut } from '../soundbus.js';
 import { bgmSync, bgmStop, bgmVolume } from '../bgm.js';
 import { Page, Section, Row, Toggle, Segmented, Labeled, useRun } from '../ui.js';
 import { Back, useNav } from '../nav.js';
@@ -54,7 +55,7 @@ export function SettingsView() {
       <${Toggle} checked=${settings.get('sound')} onChange=${v => set('sound', v)}>진행 소리<//>
       <${Toggle} checked=${!!store.get('director.enabled')} onChange=${async v => { await store.dispatch('director.setEnabled', { on: v }); rerender(); }}>판세 보정<//>
       ${settings.get('sound') && html`<div class="row"><span class="grow">진행 목소리</span><select class="textin" style="width:auto" value=${settings.get('voice') || 'mujin'} onChange=${e => set('voice', e.currentTarget.value)}>${VOICES.map(([id, nm]) => html`<option value=${id}>${nm}</option>`)}</select></div>
-        <${Row} tint onClick=${() => speak('날이 밝았습니다. 마을 사람들이 하나둘 눈을 뜹니다. 간밤에 한 사람이 돌아오지 못했습니다. 이제 이야기를 나눠 주세요. 누가 마을을 해치고 있을까요.', [{ clip: 'dangsan_morning_one_0' }])}>들어 보기<//>`}
+        <${Row} tint onClick=${() => { const t = '날이 밝았습니다. 마을 사람들이 하나둘 눈을 뜹니다. 간밤에 한 사람이 돌아오지 못했습니다. 이제 이야기를 나눠 주세요. 누가 마을을 해치고 있을까요.', pl = [{ clip: 'dangsan_morning_one_0' }]; if (!(soundOut.send && soundOut.send([toScreen(t, pl, 'day')]))) speak(t, pl); }}>들어 보기<//>`}
     <//>
     ${settings.get('bgm') && html`<div class="foot" style="margin:-8px 16px 12px">배경 음악: MiniMax-Music3 로 만들었어요.</div>`}
     <${Section} header="화면">
@@ -62,6 +63,8 @@ export function SettingsView() {
         options=${[['system', '시스템'], ['light', '라이트'], ['dark', '다크']]} /></div></div>
       <div class="row"><div class="rc">큰 화면 순환</div><div style="width:200px"><${Segmented} value=${store.get('display.public')?.cycle || 'ring'} onChange=${async v => { await store.dispatch('display.cycle', { style: v }); rerender(); }}
         options=${[['ring', '링'], ['card', '카드']]} /></div></div>
+      <div class="row"><div class="rc">큰 화면 소리</div><div style="width:200px"><${Segmented} value=${settings.get('soundAt') || 'phone'} onChange=${v => { set('soundAt', v); bgmSync(store.get('bgm.slot')); soundOut.ping && soundOut.ping(); }}
+        options=${[['phone', '이 폰'], ['screen', '큰 화면']]} /></div></div>
       <div class="row"><div class="rc">언어</div><select class="textin" id="set-lang" style="max-width:200px" value=${(() => { try { return localStorage.getItem('1ndc_lang') || ''; } catch { return ''; } })()}
         onChange=${e => { try { e.currentTarget.value ? localStorage.setItem('1ndc_lang', e.currentTarget.value) : localStorage.removeItem('1ndc_lang'); } catch {} location.reload(); }}>
         <option value="">기기 언어</option>${Object.entries(LANG_NAMES).map(([c, n]) => html`<option value=${c}>${n}</option>`)}</select></div>

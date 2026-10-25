@@ -138,6 +138,8 @@ html:not([lang=ko]) .bcorner{white-space:normal;width:21cqw}   /* 다른 말은 
 .v5tv .v5leave{position:absolute;right:80px;top:984px;line-height:30px;font:inherit;font-size:23px;background:none;border:0;padding:0;color:var(--mute);text-decoration:underline;cursor:pointer}
 .v5tv .v5leave:focus-visible{outline:3px solid #007aff;outline-offset:3px}
 .net{position:fixed!important;z-index:9}
+.snd{position:fixed;left:24px;bottom:24px;z-index:20;font:600 20px/1 -apple-system,"Apple SD Gothic Neo",sans-serif;color:#fff;background:rgba(0,0,0,.62);border:0;border-radius:8px;padding:12px 18px;cursor:pointer}   /* 큰 화면 소리 — 브라우저가 한 번 눌러야 소리를 허락해서(2026-10-25) */
+.snd:focus-visible{outline:3px solid #007aff;outline-offset:3px}
 </style></head><body>
 <div id="stage"><div class="tv" id="tv">
   <div class="topline"><strong id="phase"></strong><small>첫밤 사망자 클럽</small></div>
@@ -147,7 +149,7 @@ html:not([lang=ko]) .bcorner{white-space:normal;width:21cqw}   /* 다른 말은 
   <div id="bpanel" hidden></div><div id="brief" hidden></div>
   <div class="footer"><span id="composition"></span><span><span id="legend">● 남은 유령표</span><button class="leave" id="leave" hidden>연결 끊기</button></span></div>
 </div></div>
-<div class="v5" id="v5" hidden></div><div class="net" id="net" hidden>연결 확인 중</div>
+<div class="v5" id="v5" hidden></div><div class="net" id="net" hidden>연결 확인 중</div><button class="snd" id="snd" type="button" hidden>소리 켜기</button>
 <script src="../lib/qrcode.js"></script>
 <script>
 'use strict';
@@ -493,7 +495,7 @@ function tick() {
 
 /* ── 연결 — 요청 열기(QR·코드) → 승인 기다리기 → 2초마다 새 판본 묻기. 끊김·만료면 이름을 지우고 새 코드 ── */
 let link = null, linked = false, pairing = false, gen = 0, known = { epoch: null, rev: null }, deadline = 0, deadTimer = 0, pollTimer = 0, fails = 0;
-function wipe() { P = null; linked = false; known = { epoch: null, rev: null }; clearTimeout(deadTimer); listen(); }   // 연결이 끝나면 듣기도 닫는다
+function wipe() { if (window.__snd) window.__snd(null); P = null; linked = false; known = { epoch: null, rev: null }; clearTimeout(deadTimer); listen(); }   // 연결이 끝나면 듣기도 닫는다
 async function openRequest() {
   const g = ++gen; wipe(); pairing = true; link = null; store.set('screen_link', null); render();
   try {
@@ -532,7 +534,7 @@ async function poll1(g) {
     if (!linked) { linked = true; pairing = false; }
     deadline = Date.now() + (Date.parse(r.expires_at) - Date.parse(r.server_at));   // 서버 시각과의 차이를 빼고 TV 시계로 — 인터넷이 끊겨도 12시간이면 지운다
     clearTimeout(deadTimer); deadTimer = setTimeout(() => { if (g === gen) openRequest(); }, Math.max(0, deadline - Date.now()));
-    if (r.state && r.state.schema === 1 && (r.epoch !== known.epoch || known.rev === null || r.revision > known.rev)) { known = { epoch: r.epoch, rev: r.revision }; P = r.state; window.__at = Date.now(); }
+    if (r.state && r.state.schema === 1 && (r.epoch !== known.epoch || known.rev === null || r.revision > known.rev)) { known = { epoch: r.epoch, rev: r.revision }; P = r.state; window.__at = Date.now(); if (window.__snd) window.__snd(P.audio || null); }
     render(); listen(); return schedule(g, document.hidden ? 10000 : wsOk() ? 5000 : 2000);   // 신호를 듣는 동안은 5초에 한 번만 확인
   }
   if (r.status === 'waiting') return schedule(g, document.hidden ? 10000 : 2000);
@@ -553,7 +555,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && li
 setInterval(() => { tick(); if (linked && deadline && Date.now() > deadline) openRequest(); }, 250);
 try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}   // TV 가 꺼지지 않게(되는 브라우저에서만)
 start();
-</script><script type="module">import * as V5 from '../js/screen_v5.js'; window.V5 = V5; render(true);</script>
+</script><script type="module">import { screenSound } from '../js/screen_audio.js'; window.__snd = screenSound; if (P) screenSound(P.audio || null);</script><script type="module">import * as V5 from '../js/screen_v5.js'; window.V5 = V5; render(true);</script>
 <script type="module">import * as B from '../js/briefing.js'; window.BRIEF = B; render(true); document.fonts && document.fonts.addEventListener('loadingdone', () => render(true));   /* 이번 판 안내 — 글꼴이 들어오면 관계 선을 다시 잰다 */</script>
 <script type="module">import { startDomI18n } from '../js/i18n_dom.js'; startDomI18n(document.body).then(() => render(true));   /* 큰 화면도 TV 브라우저 언어가 영어면 영어로(2026-10-06) */</script>
 </body></html>
