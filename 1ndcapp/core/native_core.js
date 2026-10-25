@@ -148,7 +148,7 @@ var NativeCore = (function () {
     if (dk === undefined || state.phase === 'day') return;
     var list = nightListOf((state.nights || 1) === 1 ? 'fn' : 'on'), at = -1;
     for (var i = 0; i < list.length; i++) if (String(list[i].dk) === String(dk)) { at = i; break; }
-    if (at >= 0) wz.idx = at + 1;
+    if (at >= 0) { wz.idx = at + 1; if (wz.lastWho) { wz.lastWho.len = list.length; wz.lastWho.idx = wz.idx; } }   /* 보던 카드 기억(웹 wzRender lastWho)도 같이 — 안 고치면 «다음»을 누른 뒤 옛 길이·위치를 보고 같은 카드로 되돌아갔다(찰거머리가 앞 차례를 죽인 밤에 찰거머리 카드가 두 번, 2026-10-25) */
   }
   function current() {
     var key = (state.nights || 1) === 1 ? 'fn' : 'on', list = nightListOf(key);
@@ -664,6 +664,8 @@ var NativeCore = (function () {
       return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost, reveal: v.reveal || null, cause: v.dead ? v.cause || pubCause(i) : null }; });   // 까닭도 공개 스냅샷에서(밤에 되살아나 바뀌어도 발표 전엔 그대로)
     var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), tvw = localStorage.getItem(TVW_KEY), waiting = tvp && tvp.code && (tvw === '1' ? (!began || ended) : tvw !== '0' && tvw !== '2' && !began) ? { code: tvp.code, title: (pot0 && pot0.title) || tvp.title || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: (tvp.people || []).slice(0, 20) } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
     var scene = waiting ? 'waiting' : !began ? 'prep' : ended ? 'ended' : !isDay ? 'night' : !announced ? 'dawn' : 'discussion';
+    var lpot = (function () { try { return potsAll().reduce(function (m, x) { return !m || (x.openedAt || 0) > (m.openedAt || 0) ? x : m; }, null); } catch (e) { return null; } })();   // 가장 최근 광장 — 끝난 판은 기록이 보관으로 넘어가 판에서 광장을 못 찾는다
+    var idle = !waiting && (!began || ended) && !pot0 && !!(lpot && lpot.closedAt);   // 광장이 닫혔고 도는 판이 없으면 빈 화면 — 지난 판 종료·자리를 다시 띄우지 않는다(2026-10-25 햇살님 «닫은 광장에 이전 게임 화면이 나온다»)
     var noms = D ? D.noms || [] : [], G = isDay ? execGate() : null, nom = null, exec = null;
     var vo = typeof wz.voteOpen === 'number' && noms[wz.voteOpen] && !noms[wz.voteOpen].done ? wz.voteOpen : -1;
     var execd = noms.filter(function (o) { return o.done; }).pop(), execSeat = execd ? execd.t : (state.seats || []).findIndex(function (x) { return x && x.dead && x.cause === 'exec' && x.causeN === n; });
@@ -716,12 +718,13 @@ var NativeCore = (function () {
         var e2 = execOf(k); if (e2) ev2.push({ what: e2.died ? 'exec' : 'survived', targetId: sid(e2.t), byId: null, votes: null, need: null });
         if (ev2.length || (k === n && state.phase === 'day')) flow.push({ kind: 'day', n: dayNo(k), events: ev2 }); } }   // 밤에 끝난 판엔 빈 «낮 n» 을 만들지 않는다
     body.flow = flow;
-    var np = null; if (began && !ended && !isDay) { try { var NL = nightListOf((state.nights || 1) === 1 ? 'fn' : 'on'); if (NL.length) np = Math.round(Math.max(0, Math.min(1, ((wz.idx || 1) - 1) / NL.length)) * 100) / 100; } catch (e) {} }
+    var np = null; if (began && !ended && !isDay) { try { var NL = nightListOf((state.nights || 1) === 1 ? 'fn' : 'on'); if (NL.length) np = Math.floor(Math.max(0, Math.min(1, ((wz.idx || 1) - 1) / NL.length)) * 10) / 10;   /* 10% 단위로만(2026-10-25 햇살님 «10%마다 차게 해서 두루뭉술하게») — 차례 하나하나가 막대에 드러나지 않게 */ } catch (e) {} }
     body.nightProgress = np;   // 밤 차례가 얼마나 지났나(0~1) — 화면은 숫자 없이 막대만(깨는 직업 수가 드러나지 않게, 2026-10-25 햇살님)
     body.cycle = localStorage.getItem(TVC_KEY) === 'card' ? 'card' : 'ring';
     var br = ended ? null : briefing(); if (br) { body.briefing = br;   // 이번 판 안내(2026-10-24) — 구성은 원작 인원표라 공개, 직업·자리는 안 싣는다
       body.briefingStage = !began && !state.briefDone && (state.seats || []).some(function (x) { return x && x.char; }) && !(typeof state.rvPos === 'number' && state.rvPos >= 0) ? 'rules' : null;   // 직업을 나눴고 진행자가 «룰 설명 끝»을 누르기 전(넘기기를 이미 시작했어도 끝) = 룰 설명 단계
       if (isDay && br.judges) { var cmj = CMAP(); body.judgeVote = (state.seats || []).some(function (x) { var c = x && x.char ? cmj[x.char] : null; return c && (c.id === 'om_judge' || c.id === 'om_badjudge') && !pubDead(x); }); } }   // 7 — 끝나면 직업 공개가 먼저 크게(2026-10-06 햇살님 «처음에 직업 공개를 공통으로 크게»), 진행자가 끄거나 복기를 열면 그쪽
+    if (idle) { body.scene = 'idle'; body.seats = []; body.board = null; body.handoff = null; body.initialComposition = null; body.ending = null; body.endReveal = null; body.endReplay = null; body.pastExecutions = []; body.flow = []; delete body.briefing; delete body.briefingStage; delete body.judgeVote; }   // 지난 판 이름·직업이 남지 않게 비운다
     var key = J(body); if (key !== P.last) { P.last = key; P.rev = (P.rev || 0) + 1; }   // 공개 내용이 같으면 revision 그대로
     pubSave(P); body.revision = P.rev; return body;
   }
