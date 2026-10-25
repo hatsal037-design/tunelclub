@@ -342,5 +342,10 @@
   "role.feat": "특징",
   "role.tip": "팁",
   "role.inplay": "이번 판 직업",
-  "role.mode_all": "이 모드의 직업 전체"
+  "role.mode_all": "이 모드의 직업 전체",
+  "game.now": "지금 판",
+  "game.wait": "체크인 {n}명",
+  "plaza.login_to_join": "로그인하면 바로 광장에 들어가요",
+  "plaza.code_is": "코드 {c}",
+  "signup.later": "나중에"
 }

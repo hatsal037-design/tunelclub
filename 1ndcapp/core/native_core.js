@@ -637,9 +637,13 @@ var NativeCore = (function () {
   }
   /* 큰 화면 대기(2026-10-06 햇살님 «게임 시작 전 대기 화면 — 참가 QR») — 광장 체크인 코드·이름·들어온 사람은 진행자 화면이 display.plaza 로 넣는다.
      판을 시작하기 전, 진행자가 자리 잡기(준비 명령)를 하기 전까지 대기. «한 판 더»를 누르면 다시 대기 */
-  var TVP_KEY = 'dangsan_tv_plaza', TVW_KEY = 'dangsan_tv_wait';
+  var TVP_KEY = 'dangsan_tv_plaza', TVW_KEY = 'dangsan_tv_wait', TVC_KEY = 'dangsan_tv_cycle';   // TVC — 큰 화면 순환 표시 ring|card(진행자 기기 설정, 2026-10-25)
   function tvPlaza() { try { return JSON.parse(localStorage.getItem(TVP_KEY) || 'null'); } catch (e) { return null; } }
   var PREP_CMD = /^board\.|^preparation\.commitPeople$|^handoff\.|^roles\.assign$/;   // 자리 배치를 실제로 시작할 때만 대기 끝(2026-10-06 햇살님 «자리 배치 하기 전까진 대기로») — «새 판 준비»(preparation.enter)·계열·모드 고르기는 아직 대기
+  /* 공개 사망의 까닭 — 큰 화면 자리에 «밤 = 달 · 처형 = ✕» 기호(2026-10-25 큰 화면 v5). 죽은 척은 그 표식이 붙은 때(낮이면 처형으로) */
+  function pubCause(i) { var x = state.seats[i], f = null; try { f = fakeAt(i); } catch (e) {}
+    if (x && x.dead) return x.cause === 'exec' ? 'exec' : x.cause === 'day' ? 'day' : 'night';
+    return f && f.ph === 'day' ? 'exec' : 'night'; }
   function prepareDisplayPublic() {
     var tvw0 = localStorage.getItem(TVW_KEY), began0 = firstNightBegun(), old = began0 && gameEnded() && tvw0 === '2';   // '2' = 지난 판이 끝난 채로 새 판 자리 배치를 시작 — 지난 판 종료·복기 대신 새 준비 화면
     if (tvw0 === '2' && !(began0 && gameEnded())) { localStorage.setItem(TVW_KEY, '0'); tvw0 = '0'; }   // 새 판이 시작되면 보통으로
@@ -651,7 +655,7 @@ var NativeCore = (function () {
       var rv = null; if (dead) { try { rv = omDeathReveal(s); } catch (e) {} }   // 오리지널 — 처형·체포로 죽은 사람만 'citizen'|'criminal'(게임룰-044). 발표 뒤에만 찍히는 이 묶음에 같이
       return { dead: dead, ghost: dead && ((s.rem || []).indexOf('유령표') >= 0 || (!s.dead && !villageType())), reveal: rv }; });   // 죽은 척도 유령표를 받는다(fakeDeadMark, 유령표 쓰는 판) — 안 쓰는 판은 예전처럼 있음으로
     var seats = (state.seats || []).map(function (s, i) { var v = (P.seats && P.seats[i]) || { dead: false, ghost: false };
-      return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost, reveal: v.reveal || null }; });
+      return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost, reveal: v.reveal || null, cause: v.dead ? pubCause(i) : null }; });
     var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), tvw = localStorage.getItem(TVW_KEY), waiting = tvp && tvp.code && (tvw === '1' ? (!began || ended) : tvw !== '0' && tvw !== '2' && !began) ? { code: tvp.code, title: (pot0 && pot0.title) || tvp.title || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: (tvp.people || []).slice(0, 20) } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
     var scene = waiting ? 'waiting' : !began ? 'prep' : ended ? 'ended' : !isDay ? 'night' : !announced ? 'dawn' : 'discussion';
     var noms = D ? D.noms || [] : [], G = isDay ? execGate() : null, nom = null, exec = null;
@@ -695,6 +699,23 @@ var NativeCore = (function () {
       neededVotes: nom ? G.need : null, results: results, execution: exec,
       morningAnnouncement: morning, pastExecutions: past, nominationUsage: usage, ending: ending,
       endReveal: ended && state.tvReveal !== false ? endReveal() : null, endReplay: ended && typeof state.tvReplay === 'number' ? endReplay(state.tvReplay) : null };
+    /* 2026-10-25 큰 화면 v5(애플 결) — 판 흐름 · 밤 진행 · 순환 표시. 다 공개된 사실만 */
+    var flow = []; if (began) {   // 판 흐름 — 발표한 밤의 사망 · 지난 낮(과 발표한 오늘)의 처형 · 오늘 지명. 오래된 것부터
+      var thr = ended ? n : (P.announcedThrough || 0), days2 = state.days || {};
+      for (var k = 1; k <= n; k++) {
+        if (k <= thr) flow.push({ kind: 'night', n: k, events: pubNightDeaths(k).map(function (o) { return { what: 'death', targetId: sid(o.i), byId: null, votes: null, need: null }; }) });
+        if (!(k < n || ended || (isDay && announced))) continue;
+        var dk = days2[k] || {}, nm2 = dk.noms || [], ev2 = [];
+        if (k === n && isDay) nm2.forEach(function (o, j) { if (o.done) return; var open = j === vo || o.need === undefined;   // 집계 중·지명만 한 것은 숫자 없이
+          ev2.push({ what: 'nom', targetId: sid(o.t), byId: o.by === null || o.by === undefined ? null : sid(o.by), votes: open ? null : (o.v || 0), need: open ? null : o.need }); });
+        var dn = nm2.filter(function (o) { return o.done; }).pop(), t = dn ? dn.t : (state.seats || []).findIndex(function (x) { return x && x.dead && x.cause === 'exec' && x.causeN === k; });
+        if (t >= 0) { var x = state.seats[t], f = fakeAt(t), died = !!(x && ((x.dead && x.cause === 'exec' && x.causeN === k) || (f && f.n === k && f.ph === 'day')));
+          ev2.push({ what: died ? 'exec' : 'survived', targetId: sid(t), byId: null, votes: null, need: null }); }
+        if (ev2.length || k === n) flow.push({ kind: 'day', n: dayNo(k), events: ev2 }); } }
+    body.flow = flow;
+    var np = null; if (began && !ended && !isDay) { try { var NL = nightListOf((state.nights || 1) === 1 ? 'fn' : 'on'); if (NL.length) np = Math.round(Math.max(0, Math.min(1, ((wz.idx || 1) - 1) / NL.length)) * 100) / 100; } catch (e) {} }
+    body.nightProgress = np;   // 밤 차례가 얼마나 지났나(0~1) — 화면은 숫자 없이 막대만(깨는 직업 수가 드러나지 않게, 2026-10-25 햇살님)
+    body.cycle = localStorage.getItem(TVC_KEY) === 'card' ? 'card' : 'ring';
     var br = ended ? null : briefing(); if (br) { body.briefing = br;   // 이번 판 안내(2026-10-24) — 구성은 원작 인원표라 공개, 직업·자리는 안 싣는다
       body.briefingStage = !began && !state.briefDone && (state.seats || []).some(function (x) { return x && x.char; }) && !(typeof state.rvPos === 'number' && state.rvPos >= 0) ? 'rules' : null;   // 직업을 나눴고 진행자가 «룰 설명 끝»을 누르기 전(넘기기를 이미 시작했어도 끝) = 룰 설명 단계
       if (isDay && br.judges) { var cmj = CMAP(); body.judgeVote = (state.seats || []).some(function (x) { var c = x && x.char ? cmj[x.char] : null; return c && (c.id === 'om_judge' || c.id === 'om_badjudge') && !pubDead(x); }); } }   // 7 — 끝나면 직업 공개가 먼저 크게(2026-10-06 햇살님 «처음에 직업 공개를 공통으로 크게»), 진행자가 끄거나 복기를 열면 그쪽
@@ -925,7 +946,7 @@ var NativeCore = (function () {
       var r = state.rng; state.rng = null; try { return f0.apply(this, arguments); } finally { state.rng = r; } };
     if (nm === 'uuidV7') uuidV7 = g; else personNew = g; }, this);
   noticeHook = function (m) { effects.push({ kind: 'notice', text: String(m) }); };   // 앱 쪽 안내 한 줄을 화면 알림으로(기록 덜어 내기 등)
-  var REC_SKIP = { 'sync.markUploaded': 1, 'sync.merge': 1, 'display.plaza': 1 };   // 판 밖 일(서버 동기화)은 적지 않는다
+  var REC_SKIP = { 'sync.markUploaded': 1, 'sync.merge': 1, 'display.plaza': 1, 'display.cycle': 1 };   // 판 밖 일(서버 동기화)은 적지 않는다
   function recStore() { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k !== 'botc_logs' && k !== 'botc_pots') o[k] = localStorage.getItem(k); } return o; }
   /* 판 시작 때의 기록 요약(logsDigest) — 앉은 사람 것만. 다른 판 사람 이름은 남기지 않는다(직전 판 자리는 앉은 사람 아니면 '~번호') */
   function recDigest() { var d = logsDigest(), names = {}, keys = {};
@@ -1212,6 +1233,7 @@ var NativeCore = (function () {
       if (isOmMode()) { c.goodKo = OM_SIDE3_KO.good; c.evilKo = OM_SIDE3_KO.evil; c.otherKo = OM_SIDE3_KO.other; }   // 오리지널 — «선 n · 악 n» 대신 «시민 편 (선) n · 범죄 조직 (악) n · 중립 n»
       P.comp = c; pubSave(P); return null; },
     /* 큰 화면 — 토론 타이머가 코어(tm)가 아니라 화면 쪽에 있는 앱(웹·아이폰)이 시작·멈춤·재개·추가·끝·지움을 알린다. 허용한 칸만 받는다 */
+    'display.cycle': function (p) { localStorage.setItem(TVC_KEY, p && p.style === 'card' ? 'card' : 'ring'); return null; },   // 큰 화면 순환 표시 — 링 | 카드(진행자 설정)
     'display.plaza': function (p) {   // 진행자 화면이 광장 체크인 코드·이름·들어온 사람 닉네임을 넣는다(null 이면 걷는다)
       if (!p || !p.code) { localStorage.removeItem(TVP_KEY); return null; }
       if (!/^[A-Z]{8}$/.test(String(p.code))) return rejected('invalidSelection', '체크인 코드가 아니에요.');

@@ -60,6 +60,8 @@ export function SettingsView() {
     <${Section} header="화면">
       <div class="row"><div class="rc">외관</div><div style="width:200px"><${Segmented} value=${settings.get('appearance')} onChange=${v => set('appearance', v)}
         options=${[['system', '시스템'], ['light', '라이트'], ['dark', '다크']]} /></div></div>
+      <div class="row"><div class="rc">큰 화면 순환</div><div style="width:200px"><${Segmented} value=${store.get('display.public')?.cycle || 'ring'} onChange=${async v => { await store.dispatch('display.cycle', { style: v }); rerender(); }}
+        options=${[['ring', '링'], ['card', '카드']]} /></div></div>
       <div class="row"><div class="rc">언어</div><select class="textin" id="set-lang" style="max-width:200px" value=${(() => { try { return localStorage.getItem('1ndc_lang') || ''; } catch { return ''; } })()}
         onChange=${e => { try { e.currentTarget.value ? localStorage.setItem('1ndc_lang', e.currentTarget.value) : localStorage.removeItem('1ndc_lang'); } catch {} location.reload(); }}>
         <option value="">기기 언어</option>${Object.entries(LANG_NAMES).map(([c, n]) => html`<option value=${c}>${n}</option>`)}</select></div>

@@ -15,7 +15,7 @@ let ko = {}, dict = {}, DATA = null;   /* DATA — 게임 자료 영어(한국�
 const T = (k, v) => window.Participant.text(dict, k, v, ko);
 const D = t => (DATA && t && DATA[t]) || t;
 const tr = t => !!(DATA && t && DATA[t]);
-const rows = r => (r && (r.rows || r.value)) || [];
+const rows = r => Array.isArray(r) ? r : (r && (r.rows || r.value)) || [];   // 모듈이 state 에 담고 배열을 그대로 돌려주는 것(joined·inbox·notices)도 — 예전엔 늘 빈 목록(반증 검토 2026-10-25)
 const msgOf = r => r && !r.ok ? (r.code === 'legacy' ? r.legacy : T('err.' + r.code)) : null;
 const photoURL = p => URL_ + '/storage/v1/object/public/' + p;
 const LANGS = [['ko', '한국어'], ['en', 'English'], ['ja', '日本語'], ['es', 'Español'], ['zh-Hans', '简体中文'], ['zh-Hant', '繁體中文'], ['th', 'ไทย'], ['vi', 'Tiếng Việt'], ['id', 'Bahasa Indonesia'], ['pt-BR', 'Português (Brasil)']];
@@ -48,60 +48,91 @@ function Stats({ s }) {
 function Loading({ v, children }) { return v === undefined ? html`<div class="boot">…</div>` : children; }
 
 /* ── 광장 ── */
-/* 실시간 판 정보(2026-10-25 햇살님 «참가한 광장에 내가 하고 있는 게임 정보를 실시간으로» → «+ 내 역할까지»)
-   진행자가 올린 광장 현황(0320·0327)을 보고 있는 동안 5초마다 다시 읽는다. 자리판은 큰 화면과 같은 공개 값, 내 직업은 넘길 때 본 카드(본인만 읽음) */
+/* 실시간 판 정보(2026-10-25 햇살님 «참가한 광장에 내가 하고 있는 게임 정보를 실시간으로» → «+ 내 역할까지» → «과정이 좀 끊어지는 게 아쉽네» → «지금 판» 한 화면)
+   광장 탭과 «지금 판»이 같은 현황(live)을 본다. 진행자가 올린 광장 현황(0320·0327)을 보고 있는 동안 5초마다 다시 읽는다.
+   자리판은 큰 화면과 같은 공개 값, 내 직업은 넘길 때 본 카드(본인만 읽음) */
 const LIVE_MS = 5000;
-const liveText = (st, left) => { if (!st) return '';
-  const ph = st.night ? T('live.night', { n: st.night }) : st.day ? T('live.day', { n: st.day }) : st.scene === 'ended' ? T('live.ended') : st.scene ? T('live.prep') : '';
-  return [ph, left].filter(Boolean).join(' · '); };
+const live = { joined: [], status: {}, people: {}, skew: 0, ready: false, subs: new Set(), on: false,
+  emit() { this.subs.forEach(f => f()); },
+  async refresh(full) { const t = this.busy = Date.now(); try { await this.load(full); } finally { if (this.busy === t) this.busy = 0; } },
+  async load(full) {   // 망이 한 번 끊겨도(ok:false) 직전 광장·명단·현황을 그대로 둔다 — 비우면 폴링까지 멈췄다(반증 검토 2026-10-25)
+    if (DEMO) { demoPlaza(this); this.ready = true; return this.emit(); }
+    if (!auth.user) { this.joined = []; this.status = {}; this.ready = true; return this.emit(); }
+    if (full || !this.ready) { const jr = await P.joined(); if (!(jr && jr.ok === false)) this.joined = rows(jr); const pp = {}; for (const x of this.joined) { const r = await P.plazaPeople(x.plaza); pp[x.plaza] = r && r.ok === false ? (this.people[x.plaza] || []) : rows(r); } this.people = pp; }
+    const st = {}; for (const x of this.joined) { const r = await P.plazaStatus(x.plaza); if (r && r.ok) { st[x.plaza] = { ...(r.state || {}), mine: r.mine || null }; if (r.now) this.skew = r.now - Date.now(); } else if (r && r.code === 'net' && this.status[x.plaza]) st[x.plaza] = this.status[x.plaza]; }
+    this.status = st; this.ready = true; this.emit(); },
+  slow() { return this.busy && Date.now() - this.busy < 20000; },
+  start() { if (this.on) return; this.on = true;   // 보고 있는 동안만 — 다른 탭·화면 꺼짐이면 쉰다
+    setInterval(() => { if (!document.hidden && this.joined.length && !DEMO && !this.slow()) this.refresh(); }, LIVE_MS);   // 앞 읽기가 안 끝났으면 건너뜀 — 느린 망에서 겹쳐 쌓이지 않게(20초 넘게 안 오면 걸린 것으로 보고 다시)
+    setInterval(() => { if (!document.hidden && this.joined.length && !DEMO && !this.slow()) this.refresh(true); }, LIVE_MS * 6);   // 체크인 명단·나간 광장은 30초마다
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && this.joined.length) this.refresh(); }); } };
+function useLive() { const [, f] = useState(0); useEffect(() => { const g = () => f(x => x + 1); live.subs.add(g); live.start(); return () => live.subs.delete(g); }, []); return live; }
+function useTick() { const [, f] = useState(0); useEffect(() => { const t = setInterval(() => f(x => x + 1), 1000); return () => clearInterval(t); }, []); }
+const phaseText = st => !st ? '' : st.night ? T('live.night', { n: st.night }) : st.day ? T('live.day', { n: st.day }) : st.scene === 'ended' ? T('live.ended') : T('live.prep');
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 function timerLeft(tm, skew) { if (!tm) return null; if (tm.state === 'running' && tm.endsAt) return tm.endsAt - (Date.now() + skew); if (tm.state === 'paused' && tm.leftMs != null) return tm.leftMs; return null; }
+const liveText = (st, skew) => { if (!st || !st.scene) return ''; const l = timerLeft(st.timer, skew); return [phaseText(st), l != null ? mmss(l) : ''].filter(Boolean).join(' · '); };
 function SeatGrid({ seats }) {
   return html`<div class="lseats">${seats.map(s => html`<div class=${s.dead ? 'dead' : ''} aria-label=${s.n + ' ' + s.name + (s.dead ? ' · ' + T('live.dead') : '') + (s.rv ? ' · ' + T('rv.' + s.rv) : '')}>
     <span class="sec">${s.n}</span> <span class="lsn">${s.name}</span>${s.rv && html` <small class=${s.rv === 'criminal' ? 'red' : 'blue'}>${T('rv.' + s.rv)}</small>`}</div>`)}</div>`;
 }
-/* 시안 확인용(?demo=1) — 로그인 없이 진행 중인 판 하나를 보여 준다 */
-function demoPlaza(setJ, setS) {
-  const names = ['햇살', '지수', '민수', '영희', '철수', '수아', '도윤', '하린', '서준', '유나', '태오', '나래'];
-  setJ([{ plaza: 'demo', host: '햇살', ends_at: '2026-10-25T21:00' }]);
-  setS({ demo: { scene: 'discussion', mode: '베이직 확장 No.1', modeId: 'om_ext', brief: window.__demoBrief || undefined, day: 2, timer: { state: 'running', endsAt: Date.now() + 83000 },
+/* 시안 확인용(?demo=1) — 로그인 없이 진행 중인 판 하나를 보여 준다. ?demo=1&wait=1 이면 대기 중 */
+function demoPlaza(L) {
+  const names = ['햇살', '지수', '민수', '영희', '철수', '수아', '도윤', '하린', '서준', '유나', '태오', '나래'], wait = /[?&]wait=1/.test(location.search);
+  L.joined = [{ plaza: 'demo', host: '햇살', ends_at: '2026-10-25T21:00' }];
+  L.people = { demo: names.slice(0, 8).map(n => ({ nick: n })) };
+  L.status = { demo: wait ? { scene: 'prep' } : { scene: 'discussion', mode: '베이직 확장 No.1', modeId: 'om_ext', brief: window.__demoBrief || undefined, day: 2, timer: { state: 'running', endsAt: Date.now() + 83000 },
     seats: names.map((n, i) => ({ n: i + 1, name: n, dead: i === 2 || i === 6, rv: i === 2 ? 'criminal' : undefined })),
-    mine: { id: 'om_detective', role: '수사관', team: '시민 편 (선)', side: 'good', ab: '매밤: 한 명을 조사해 범죄자 그룹인지 확인한다. 브로커가 있으면 브로커는 시민으로 보인다.', rule: '처형되면 «시민»으로 공개' } } });
+    mine: { id: 'om_detective', role: '수사관', team: '시민 편 (선)', side: 'good', ab: '매밤: 한 명을 조사해 범죄자 그룹인지 확인한다. 브로커가 있으면 브로커는 시민으로 보인다.', rule: '처형되면 «시민»으로 공개' } } };
 }
+const openGame = () => window.dispatchEvent(new Event('me-game'));
 function PlazaTab() {
-  const on = useAuth(), nav = useNav();
-  const [joined, setJoined] = useState([]), [people, setPeople] = useState([]), [code, setCode] = useState(''), [msg, setMsg] = useState(null), [status, setStatus] = useState({}), [scan, setScan] = useState(false), [peek, setPeek] = useState(null), [, tick] = useState(0);
-  const skew = useRef(0), jr = useRef([]);
-  const readStatus = async j => { const st = {}; for (const x of j) { const r = await P.plazaStatus(x.plaza); if (r && r.ok) { st[x.plaza] = { ...(r.state || {}), mine: r.mine || null }; if (r.now) skew.current = r.now - Date.now(); } } setStatus(st); };   // 광장 공개 현황 — «이번 판 자료»(장부 4) · 실시간(0327)
-  const load = async () => { if (DEMO) { demoPlaza(setJoined, setStatus); return; } if (!on) return; const j = rows(await P.joined()); jr.current = j; setJoined(j); setPeople(j[0] ? rows(await P.plazaPeople(j[0].plaza)) : []); await readStatus(j); };
-  const checkin = async c => { const r = await P.checkin(c); setMsg(msgOf(r) || T('plaza.entered', { host: r.host || '', place: T('place.plaza') })); if (r && r.ok !== false) window.dispatchEvent(new Event('me-reload')); await load(); };   // 처음 온 사람은 체크인 때 계정이 생긴다(0323) — 그때 다시 읽어야 빈 칸 채우기가 뜬다(2026-10-25 햇살님 «가입하면 바로 아이디 닉네임 입력이 아니고»)
-  useEffect(() => { load(); }, [on]);
+  const on = useAuth(), nav = useNav(), L = useLive(); useTick();
+  const [code, setCode] = useState(''), [msg, setMsg] = useState(null), [scan, setScan] = useState(false);
+  const pending = !on && window.Participant.codeFrom(location.href);   // QR 로 들어왔는데 아직 로그인 전
+  const checkin = async c => { const r = await P.checkin(c); const bad = msgOf(r) || (r && r.error);
+    if (bad) { setMsg(bad); return; }
+    window.dispatchEvent(new Event('me-reload'));   // 처음 온 사람은 체크인 때 계정이 생긴다(0323) — 다시 읽어야 빈 칸 채우기가 뜬다
+    await live.refresh(true); try { sessionStorage.removeItem('me.game.closed'); } catch {} openGame(); };   // 알림 창 없이 바로 «지금 판»
+  useEffect(() => { live.refresh(true); }, [on]);
   useEffect(() => { const c = window.Participant.codeFrom(location.href); if (c && on && !DEMO) { history.replaceState(null, '', location.pathname); checkin(c); } }, [on]);
-  useEffect(() => { if (!on || DEMO) return;   // 보고 있는 동안만 — 다른 탭·화면 꺼짐이면 쉰다
-    const a = setInterval(() => { if (!document.hidden && jr.current.length) readStatus(jr.current); }, LIVE_MS), b = setInterval(() => tick(x => x + 1), 1000);
-    const v = () => { if (!document.hidden && jr.current.length) readStatus(jr.current); }; document.addEventListener('visibilitychange', v);
-    return () => { clearInterval(a); clearInterval(b); document.removeEventListener('visibilitychange', v); }; }, [on]);
   return html`<${Page} ...${useShell()}>
     <${LargeTitle}>${T('tab.plaza')}<//>
-    ${!on ? html`<${LoginRows} />` : html`
-      ${!joined.length && html`<${Section}><${Row}><span class="sec">${T('empty.plaza')}</span><//><//>`}
-      ${joined.map(j => { const st = status[j.plaza], left = st && timerLeft(st.timer, skew.current), live = st && st.scene ? liveText(st, left != null ? mmss(left) : '') : '';
+    ${!on ? html`${pending && html`<${Section}><${Row}><${Icon} name="house" size=${22} /><${RowLabel} title=${T('plaza.login_to_join')} text=${T('plaza.code_is', { c: pending })} /><//><//>`}<${LoginRows} />` : html`
+      ${L.ready && !L.joined.length && html`<${Section}><${Row}><span class="sec">${T('empty.plaza')}</span><//><//>`}
+      ${L.joined.map(j => { const st = L.status[j.plaza], pp = L.people[j.plaza] || [];
         return html`<${Section} header=${T('plaza.joined')}>
         <${Row}><${Icon} name="house" size=${22} /><${RowLabel} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} text=${T('plaza.until', { t: (j.ends_at || '').slice(0, 16).replace('T', ' ') })} /><//>
-        ${people.length > 0 && html`<${Row} chevron onClick=${() => nav.push(html`<${PeopleList} title=${T('plaza.people')} load=${async () => rows(await P.plazaPeople(j.plaza))} />`)}>
-          <span style="display:flex;gap:4px">${people.slice(0, 5).map(r => html`<${Avatar} r=${r} size=${28} />`)}</span><span class="sec">${T('plaza.count', { n: people.length })}</span><//>`}
-        ${st && (st.brief || st.modeId) && html`<${Row} chevron onClick=${() => nav.push(st.brief ? html`<${BriefView} b=${st.brief} modeId=${st.modeId} />` : html`<${ModeView} id=${st.modeId} />`)}><${RowLabel} title=${T('plaza.game_info')} /><span class="sec">${live || (st.brief ? `${st.brief.title} · ${st.brief.n}명` : st.mode || '')}</span><//>`}
-        ${st && st.seats && st.seats.length > 0 && html`<div class="row lseats-row"><${SeatGrid} seats=${st.seats} /></div>`}
-        ${st && st.mine && html`<${Row}><span class="grow">${T('plaza.my_role')} <b class=${peek === j.plaza ? (st.mine.side === 'evil' ? 'red' : 'blue') : 'sec'}>${peek === j.plaza ? D(st.mine.role) : '•••'}</b></span>
-          <span class="hold-sm"><${HoldButton} label=${T('plaza.hold')} onChange=${v => setPeek(v ? j.plaza : null)} /></span>
-          <button class="blink" onClick=${() => nav.push(html`<${RoleDetail} card=${st.mine} brief=${st.brief} modeId=${st.modeId} mine=${true} />`)}>${T('role.more')}</button><//>`}
-        <${Row} danger onClick=${async () => { await P.leave(j.plaza); load(); }}>${T('plaza.leave')}<//><//>`; })}
+        <${Row} chevron onClick=${openGame}><${RowLabel} title=${T('game.now')} /><span class="sec">${liveText(st, L.skew) || phaseText(st || {})}</span><//>
+        ${pp.length > 0 && html`<${Row} chevron onClick=${() => nav.push(html`<${PeopleList} title=${T('plaza.people')} load=${async () => rows(await P.plazaPeople(j.plaza))} />`)}>
+          <span style="display:flex;gap:4px">${pp.slice(0, 5).map(r => html`<${Avatar} r=${r} size=${28} />`)}</span><span class="sec">${T('plaza.count', { n: pp.length })}</span><//>`}
+        <${Row} danger onClick=${async () => { await P.leave(j.plaza); live.refresh(true); }}>${T('plaza.leave')}<//><//>`; })}
       <${Section} header=${T('plaza.code')}>
         <div class="row"><input class="textin grow" id="me-code" value=${code} placeholder=${T('plaza.code_ph')} autocapitalize="characters" onInput=${e => setCode(e.currentTarget.value.trim())} />
         <button class="blink" aria-label=${T('plaza.qr')} onClick=${() => setScan(true)}><${Icon} name="qrcode" size=${22} /></button>
         <button class="blink" disabled=${!window.Participant.codeFrom(code)} onClick=${() => checkin(window.Participant.codeFrom(code))}>${T('plaza.join')}</button></div><//>`}
     ${scan && html`<${QrScanner} title=${T('plaza.scan')} noCam=${T('plaza.no_cam')} closeLabel=${T('ui.close')} parse=${t => window.Participant.codeFrom(t)} onClose=${() => setScan(false)} onCode=${c => { setScan(false); checkin(c); }} />`}
     <${Alert} open=${!!msg} title=${msg} onClose=${() => setMsg(null)} />
+  <//>`;
+}
+
+/* 지금 판 — 체크인한 광장의 판을 한 화면으로(2026-10-25 햇살님 «원활하게 게임에 참여하고 내가 하는 게임 정보를 알 수 있게»).
+   대기(진행자 준비 중·체크인 수) → 안내 → 내 직업 → 밤·낮·타이머·자리판 → 끝까지 현황만 보고 스스로 바뀐다. 역할 받기는 진행자 폰(정함) */
+function GameNow({ close }) {
+  const nav = useNav(), L = useLive(), [peek, setPeek] = useState(false); useTick();
+  const j = L.joined[0], st = j && L.status[j.plaza], pp = j ? (L.people[j.plaza] || []) : [];
+  if (!j) return html`<${Page} title=${T('game.now')} left=${html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}><${Section}><${Row}><span class="sec">${T('empty.plaza')}</span><//><//><//>`;
+  const going = st && (st.day || st.night || st.scene === 'ended'), left = st && timerLeft(st.timer, L.skew);
+  const guide = st && st.brief && (st.brief.groups || []).length;
+  return html`<${Page} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} left=${html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}>
+    <div class="gnow-head"><div class="gnow-ph">${going ? phaseText(st) : T('live.prep')}</div>${left != null ? html`<div class="gnow-tm">${mmss(left)}</div>` : !going && html`<div class="sec">${T('game.wait', { n: pp.length })}</div>`}</div>
+    ${st && st.mine && html`<${Section}><${Row}><span class="grow">${T('plaza.my_role')} <b class=${peek ? (st.mine.side === 'evil' ? 'red' : 'blue') : 'sec'}>${peek ? D(st.mine.role) : '•••'}</b></span>
+      <span class="hold-sm"><${HoldButton} label=${T('plaza.hold')} onChange=${setPeek} /></span>
+      <button class="blink" onClick=${() => nav.push(html`<${RoleDetail} card=${st.mine} brief=${st.brief} modeId=${st.modeId} mine=${true} />`)}>${T('role.more')}</button><//><//>`}
+    ${st && st.seats && st.seats.length > 0 && going && html`<${Section}><div class="row lseats-row"><${SeatGrid} seats=${st.seats} /></div><//>`}
+    ${st && (st.brief || st.modeId) && html`<${Section}>
+      ${st.brief && html`<${Row} chevron onClick=${() => nav.push(html`<${BriefView} b=${st.brief} modeId=${st.modeId} />`)}><${RowLabel} title=${T('plaza.game_info')} /><span class="sec">${st.brief.title} · ${st.brief.n}명</span><//>`}
+      <${Row} chevron onClick=${() => nav.push(guide ? html`<${RoleGuide} b=${st.brief} />` : html`<${ModeView} id=${st.modeId} />`)}><${RowLabel} title=${T(guide ? 'role.inplay' : 'role.mode_all')} /><span class="sec">${!st.brief && st.mode ? D(st.mode) : ''}</span><//><//>`}
   <//>`;
 }
 
@@ -527,8 +558,8 @@ function Signup({ me, done }) {
   const nav = useNav(); const [nick, setNick] = useState(me.nick || ''), [handle, setHandle] = useState(me.handle || ''), [nm, setNm] = useState(me.display_name || ''), [agree, setAgree] = useState(false), [busy, setBusy] = useState(false), [fail, setFail] = useState({});
   const nn = useNameCheck('nick', nick, me.nick), hn = useNameCheck('handle', handle, me.handle || '');
   const ok = (agree || !need('agree')) && handle && nick && !(nn && !nn[0]) && !(hn && !hn[0]);
-  const save = async () => { setBusy(true); const ch = {}; if (need('agree')) ch.agreed = true; if (handle !== (me.handle || '')) ch.handle = handle; if (nick !== me.nick) ch.nick = nick; if (nm !== (me.display_name || '')) ch.name = nm; const r = await P.setProfile(ch); setBusy(false); if (r.ok) { nav.pop(); done(); } else setFail(r.failed || {}); };
-  return html`<${Page} title=${T('signup.title')} right=${html`<${NavButton} label=${T('signup.go')} bold disabled=${!ok || busy} onClick=${save} />`}>
+  const save = async () => { setBusy(true); const ch = {}; if (need('agree')) ch.agreed = true; if (handle !== (me.handle || '')) ch.handle = handle; if (nick !== me.nick) ch.nick = nick; if (nm !== (me.display_name || '')) ch.name = nm; const r = await P.setProfile(ch); setBusy(false); if (r.ok) { nav.pop(); done(); window.dispatchEvent(new Event('me-filled')); } else setFail(r.failed || {}); };   // 채우고 나면 계정 화면에 머물지 않고 보던 곳(지금 판)으로
+  return html`<${Page} title=${T('signup.title')} left=${html`<${NavButton} label=${T('signup.later')} onClick=${() => { nav.pop(); window.dispatchEvent(new Event('me-filled')); }} />`} right=${html`<${NavButton} label=${T('signup.go')} bold disabled=${!ok || busy} onClick=${save} />`}>
     <${Section}><div class="row" style="white-space:pre-line">${T(me.from_tunel ? 'signup.intro.tunel' : 'signup.intro')}</div><//>
     ${html`<${Section} header=${T('profile.nick')} footer=${T('signup.nick.help') + (me.from_tunel ? ' ' + T('signup.nick.tunel') : '')}><div class="row"><input class="textin grow" id="su-nick" value=${nick} onInput=${e => setNick(e.currentTarget.value)} /></div><//><${Note} n=${fail.nick ? [false, T('err.' + fail.nick)] : nn} />`}
     ${html`<${Section} header=${T('profile.handle')} footer=${T('signup.handle.help')}><div class="row"><span class="sec">@</span><input class="textin grow" id="su-handle" value=${handle} autocapitalize="off" autocomplete="off" spellcheck="false" onInput=${e => setHandle(e.currentTarget.value)} /></div><//><${Note} n=${fail.handle ? [false, T('err.' + fail.handle)] : hn} />`}
@@ -607,12 +638,21 @@ function App() {
   const [picking, setPicking] = useState(false);
   const go = (sp, t) => { setSpace(sp); ls('me.space', sp); if (t) { setTabs(x => ({ ...x, [sp]: t })); ls('me.tab.' + sp, t); } setOver(null); };
   useEffect(() => { const f = () => setOver('account'); window.addEventListener('me-fill', f); return () => window.removeEventListener('me-fill', f); }, []);
+  /* «지금 판»(2026-10-25) — 체크인한 광장이 있으면 들어올 때·체크인한 뒤·빈 칸을 채운(또는 «나중에») 뒤 저절로 연다. 닫으면 이번 방문 동안은 광장 탭 «지금 판» 줄로만.
+     참가자 화면은 다 선택이다(햇살님 «개인 화면은 다 옵션, 게임 진행에 관여하지 않아») — 진행은 이 화면을 기다리지 않고, 여기서 실패해도 판은 그대로 */
+  const closedKey = 'me.game.closed', L = useLive();
+  useEffect(() => { const g = () => setOver(o => o === 'account' ? o : 'game'), f = () => setOver(o => o === 'account' ? null : o);
+    window.addEventListener('me-game', g); window.addEventListener('me-filled', f); return () => { window.removeEventListener('me-game', g); window.removeEventListener('me-filled', f); }; }, []);
+  useEffect(() => { const j = L.joined[0]; let closed = null; try { closed = sessionStorage.getItem(closedKey); } catch {}
+    if (!over && j && closed !== j.plaza) setOver('game'); }, [L.joined.length && L.joined[0].plaza, over]);
+  const closeGame = () => { try { if (L.joined[0]) sessionStorage.setItem(closedKey, L.joined[0].plaza); } catch {} setOver(null); };
   const sh = { space, open: setOver, pick: setPicking };
   const cur = tabs[space];
   const all = [...SPACES.play.map(t => ['play', ...t]), ...SPACES.feed.map(t => ['feed', ...t])];
   return html`<${ShellCtx.Provider} value=${sh}><div class="shell">
     ${all.map(([sp, id, , , C]) => html`<div class="tabpage" key=${sp + '.' + id} style=${!over && space === sp && cur === id ? '' : 'display:none'}><${NavStack} root=${html`<${C} />`} /></div>`)}
     <div class="tabpage" key="account" style=${over === 'account' ? '' : 'display:none'}><${NavStack} root=${html`<${AccountTab} close=${() => setOver(null)} />`} /></div>
+    ${over === 'game' && html`<div class="tabpage" key="game"><${NavStack} root=${html`<${GameNow} close=${closeGame} />`} /></div>`}
     ${over === 'settings' && html`<div class="tabpage" key="settings"><${NavStack} root=${html`<${WebSettings} close=${() => setOver(null)} />`} /></div>`}
     ${!over && html`<nav class="tabs">${SPACES[space].map(([id, k, ic]) => html`<button class=${cur === id ? 'on' : ''} aria-current=${cur === id ? 'page' : undefined} onClick=${() => go(space, id)}><${Icon} name=${ic} size=${24} />${T(k)}</button>`)}</nav>`}
     <${ActionSheet} open=${picking} title=${T('space.pick')} onClose=${() => setPicking(false)}
