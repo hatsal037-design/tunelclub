@@ -5,6 +5,7 @@
    · 무대는 1080 점 높이 · 폭 = 창 비율(4:3~21:9) × 1080, 통째로 줄여 맞춘다. 안전 여백 위아래 60 · 양옆 80
    같은 그림을 아이폰 AirPlay(ExternalPublicView.swift)가 SwiftUI 로 그린다 — 이 파일을 고치면 거기도 */
 import { TABLE } from './screen_table.js';
+import { narrTr } from './i18n_dom.js';   // 다른 말이면 순환 표시 글을 재기 전에 바꾼다(반증 검토 2026-10-25 — 영어 «Morning announcement» 가 칸 밖으로)
 
 const PH = ['밤', '아침', '토론', '지명', '투표', '처형'];
 const PHK = i => PH[i] === '아침' ? '아침 발표' : PH[i];
@@ -48,16 +49,16 @@ function stad(hw, r) { const q = Math.PI * r / 2, L = 4 * hw + 2 * Math.PI * r, 
   const nrm = (x, y) => { if (Math.abs(x) <= hw) return [0, Math.sign(y)]; const c = Math.sign(x) * hw, dd = Math.hypot(x - c, y); return [(x - c) / dd, y / dd]; };
   return { L, pt, seg, nrm }; }
 /* g0 = 지금 칸 게이지(0~1, 잴 수 없는 구간은 null) */
-function cycle(kind, cur, g0, night) { const C = APC[night ? 'night' : 'day'], nm = PHK(cur);
+function cycle(kind, cur, g0, night) { const C = APC[night ? 'night' : 'day'], nm = narrTr(PHK(cur));
   if (kind !== 'card') { const T = stad(106, 54), L = T.L, sA = x => (x - .1) * L, w = 18, gap = 13; let g = '';
     PH.forEach((p, i) => { if (i !== cur) g += T.seg(sA(APCUM[i]) + gap, sA(APCUM[i + 1]) - gap, `stroke="${i < cur ? 'var(--g2)' : 'var(--g5)'}" stroke-width="${w}" stroke-linecap="round"`); });
     const a = sA(APCUM[cur]) + gap, b = sA(APCUM[cur + 1]) - gap;
     g += g0 == null ? T.seg(a, b, `stroke="${C[cur]}" stroke-width="${w}" stroke-linecap="round"`) : T.seg(a, b, `stroke="${C[cur]}" stroke-opacity=".25" stroke-width="${w}" stroke-linecap="round"`) + T.seg(a, a + (b - a) * Math.max(.02, g0), `stroke="${C[cur]}" stroke-width="${w}" stroke-linecap="round"`);
     PH.forEach((p, i) => { const [x, y] = T.pt(sA(APCUM[i] + APF[i] / 2)), [nx, ny] = T.nrm(x, y); g += apIc(i, x + nx * 36, y + ny * 36, i === cur ? 32 : 26, i === cur ? C[cur] : i < cur ? 'var(--g2)' : 'var(--sec)'); });
-    const t = tw(nm, 57, 700), x0 = -(t + 56) / 2; g += apIc(cur, x0 + 22, 0, 44, C[cur]) + `<text x="${x0 + 56}" y="20" font-size="57" font-weight="700" fill="var(--fg)">${nm}</text>`;
+    const t0 = tw(nm, 57, 700), fs = t0 > 240 ? 57 * 240 / t0 : 57, t = t0 * fs / 57, x0 = -(t + 56) / 2; g += apIc(cur, x0 + 22, 0, 44, C[cur]) + `<text x="${x0 + 56}" y="${fs * .35}" font-size="${fs}" font-weight="700" fill="var(--fg)">${esc(nm)}</text>`;   // 링 안쪽 폭을 넘는 말(영어)만 줄인다
     return `<svg class="cyc" width="440" height="224" viewBox="-220 -112 440 224">${g}</svg>`; }
   const W = 380, x0 = -190; let g = `<rect x="-218" y="-98" width="436" height="196" rx="34" fill="var(--mat)" stroke="var(--matl)" stroke-width="1.5"/>`;
-  g += apIc(cur, -170, -40, 48, C[cur]) + `<text x="-136" y="-19" font-size="57" font-weight="700" fill="var(--fg)">${nm}</text>`;
+  { const t0 = tw(nm, 57, 700), fs = t0 > 330 ? 57 * 330 / t0 : 57; g += apIc(cur, -170, -40, 48, C[cur]) + `<text x="-136" y="${-40 + fs * .37}" font-size="${fs}" font-weight="700" fill="var(--fg)">${esc(nm)}</text>`; }
   PH.forEach((p, i) => { const a = x0 + APCUM[i] * W + (i ? 2.5 : 0), b = x0 + APCUM[i + 1] * W - (i < 5 ? 2.5 : 0), w = b - a, y = 14, h = 14;
     if (i !== cur) g += `<rect x="${a}" y="${y}" width="${w}" height="${h}" rx="7" fill="${i < cur ? 'var(--g2)' : 'var(--g5)'}"/>`;
     else if (g0 == null) g += `<rect x="${a}" y="${y}" width="${w}" height="${h}" rx="7" fill="${C[i]}"/>`;
@@ -120,7 +121,7 @@ function infoBlock(p, nameOf) { const n = p.seats.length, alive = p.seats.filter
   const voteT = p.nomination && /^(voting|confirmed)$/.test(p.scene) ? p.nomination.targetId : null;
   const F = (p.flow || []).slice().reverse();
   let g = '';
-  F.forEach((f, k) => { const now = k === 0 && ((f.kind === 'day' && inDay) || (f.kind === 'night' && p.scene === 'night'));
+  F.forEach((f, k) => { const now = k === 0 && ((f.kind === 'day' && inDay && f.n === p.dayNumber) || (f.kind === 'night' && p.scene === 'night'));   // 아침(발표 전)의 맨 위는 지난 낮 — «지금» 아님
     let rows = '';
     if (now && voteT) { const r = (p.results || []).find(x => x.targetId === voteT), v = p.scene === 'confirmed' && r ? r.votes : null;
       rows += `<div style="margin-top:6px">${poll(nameOf(voteT), v, p.neededVotes, alive, p.nomination.byId ? nameOf(p.nomination.byId) : null, false)}</div>`; }
@@ -187,9 +188,13 @@ export function drawV5(host, p, vw, vh) {
   if (hasInfo) o += `<div id="inf" class="blk${lay.mode === 'row' ? ' row' : ''}" style="position:absolute;width:440px">${cur != null ? `<div class="isec" id="v5cyc" style="text-align:center" data-g="${g0 == null ? '' : g0}">${cycle(p.cycle, cur, g0, night)}</div>` : ''}${night ? '' : infoBlock(p, nameOf)}</div>`;
   o += `<button class="v5leave t23" type="button">연결 끊기</button>`;
   host.innerHTML = `<div class="v5tv${night ? ' night' : ''}" style="width:${W}px;transform:translate(${(vw - W * k) / 2}px,${(vh - 1080 * k) / 2}px) scale(${k})">${o}</div>`;
+  if (window.__i18nFix) window.__i18nFix(host);   // 재기 전에 바꾼다(재고 나서 바뀌면 폭이 어긋난다)
   place(host, lay, W, hasInfo);
   tickV5(host, p);
 }
+/* 판 흐름 접기 — 오래된 낮·밤 묶음부터, 하나만 남으면 그 안의 오래된 줄부터(한 낮에 지명이 많으면 묶음 하나가 칸보다 높다, 반증 검토 2026-10-25). 줄은 하나는 남긴다 */
+function fold(inf, tooTall) { while (tooTall()) { const g = inf.querySelectorAll('.pg'); if (g.length > 1) { g[g.length - 1].remove(); continue; }
+  const ev = g.length ? g[0].querySelectorAll('.ev') : []; if (ev.length > 1) ev[0].remove(); else break; } }
 /* 짜임 — 자리판·시계·정보 칸을 실제 크기로 재서 안전 여백 안에 놓는다(시안 place 와 같은 규칙) */
 function place(host, lay, W, hasInfo) {
   const tv = host.querySelector('.v5tv'), R = tv.getBoundingClientRect(), sc = R.height / 1080;
@@ -202,7 +207,7 @@ function place(host, lay, W, hasInfo) {
     if (ck) { ck.style.left = (x + B.w * bk + 80) + 'px'; ck.style.top = (540 - T.h / 2) + 'px'; } return; }
   let I = box([inf]);
   { const top0 = (60 + (lay.vy - B.h / 2)) / 2, maxH = lay.mode === 'row' ? 960 - B.h - 120 : lay.mode === 'stack' && T ? 975 - (top0 + T.h + 36) : 975 - top0;
-    let g; while (box([inf]).h > maxH && (g = inf.querySelectorAll('.pg')).length > 1) g[g.length - 1].remove(); I = box([inf]); }
+    fold(inf, () => box([inf]).h > maxH); I = box([inf]); }
   if (lay.mode === 'row') {
     const rk = Math.min(1, (W - 160) / B.w), Bw = B.w * rk, Bh = B.h * rk, ik = Math.min(1, (W - 160) / I.w), Iw = I.w * ik, Ih = I.h * ik;
     const e = (960 - Bh - Ih) / 3, yB = 60 + e, yI = yB + Bh + e, M = W / 2;
@@ -220,5 +225,5 @@ function place(host, lay, W, hasInfo) {
   const topB = (60 + (vy - B.h * bk / 2)) / 2;   // 정보 칸 윗선 = 위 안전 여백과 판 윗선의 가운데
   if (pos.S) { const s = pos.S; ck.style.left = (s.x + (s.w - T.w) / 2) + 'px'; ck.style.top = topB + 'px'; inf.style.left = s.x + 'px'; inf.style.top = (topB + T.h + 36) + 'px'; }
   if (pos.I) { inf.style.left = pos.I.x + 'px'; inf.style.top = topB + 'px'; }
-  { const it = parseFloat(inf.style.top); let g; while (it + box([inf]).h > 975 && (g = inf.querySelectorAll('.pg')).length > 1) g[g.length - 1].remove(); }
+  { const it = parseFloat(inf.style.top); fold(inf, () => it + box([inf]).h > 975); }
 }

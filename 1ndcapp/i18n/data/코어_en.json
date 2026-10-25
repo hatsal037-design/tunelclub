@@ -2106,5 +2106,22 @@
  "처형·체포로 죽으면 «시민»으로 공개": "If executed or arrested, revealed as «Citizen»",
  "처형·체포로 죽으면 «범죄 조직»으로 공개": "If executed or arrested, revealed as «Criminal Organization»",
  "처형되면 «시민»으로 공개": "If executed, revealed as «Citizen»",
- "처형되면 «범죄 조직»으로 공개": "If executed, revealed as «Criminal Organization»"
+ "처형되면 «범죄 조직»으로 공개": "If executed, revealed as «Criminal Organization»",
+ "다음": "Next",
+ "토론 시간 끝": "Time's up",
+ "필요 {n}": "{n} needed",
+ "/ 필요 {n}": "/ {n} needed",
+ "{p}가 지명": "Nominated by {p}",
+ "{p}이 지명": "Nominated by {p}",
+ "{n}표": "{n} votes",
+ "{n}표 미달": "{n} votes, short",
+ "살았어요": "Survived",
+ "아무도 죽지 않았어요": "No one died",
+ "판 흐름": "Game flow",
+ "필요 {n}표": "{n} needed",
+ "· 범죄 조직 (악)": "· Criminal Organization (evil)",
+ "· 시민": "· Citizen",
+ "어젯밤": "Last night",
+ "아침이 밝았어요": "Morning has come",
+ "1표": "1 vote"
 }
