@@ -123,6 +123,7 @@ html:not([lang=ko]) .bcorner{white-space:normal;width:21cqw}   /* 다른 말은 
 .v5tv .st.nom{box-shadow:0 0 0 4px var(--bg),0 0 0 9px #30B0C7}.v5tv .st.turn{box-shadow:0 0 0 4px var(--bg),0 0 0 9px #007aff}
 .v5tv .st .gh{position:absolute;right:-4%;bottom:-4%;width:28%;height:28%;border-radius:50%;background:var(--fg);border:3px solid var(--bg)}   /* 남은 유령표 */
 .v5tv .lb{position:absolute;white-space:nowrap}.v5tv .lb .nm{position:static;display:block;font-weight:600;opacity:1;text-decoration:none}.v5tv .lb.dead .nm{color:var(--sec);font-weight:500}
+.v5tv .lb .rl{margin-left:.4em;font-weight:600;font-size:.82em;white-space:nowrap}.v5tv .lb.al-c .nm{display:flex;flex-direction:column;align-items:center}.v5tv .lb.al-c.up .nm{flex-direction:column-reverse}.v5tv .lb.al-c .rl{margin:0;line-height:1.2}   /* 위아래 줄 이름은 직업을 바깥 줄로(이름 자리는 그대로) */.v5tv .lb .rl img{width:1.2em;height:1.2em;object-fit:contain;vertical-align:-.25em;margin-right:.15em}
 .v5tv .lb.al-r{text-align:right}.v5tv .lb.al-c{text-align:center}
 .v5tv .mid{position:absolute;transform:translate(-50%,-50%);text-align:center;white-space:nowrap}
 .v5tv .v5hd{display:flex;gap:8px;align-items:center;justify-content:center}.v5tv .v5name{font-weight:700;line-height:1.2}
@@ -418,7 +419,7 @@ function render(force) {
   draw();
 }
 function draw() {
-  const p = P, tv = $('tv');
+  const p = P && P.scene === 'idle' ? null : P, tv = $('tv');   // 광장이 닫혀 도는 판이 없으면(idle) 판 없는 화면과 같게
   tv.classList.remove('waiting');
   /* 이번 판 안내 — 룰 설명 단계면 화면 전체, 넘기기 중이면 오른쪽 천(자리는 왼쪽으로) */
   const BR = window.BRIEF, br = BR && p && p.scene === 'prep' && p.briefing, rules = !!(br && p.briefingStage === 'rules'), pan = !!(br && !rules && p.handoff);

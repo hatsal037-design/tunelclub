@@ -11,7 +11,7 @@ const PH = ['밤', '아침', '토론', '지명', '투표', '처형'];
 const PHK = i => PH[i] === '아침' ? '아침 발표' : PH[i];
 const APC = { day: ['#5856D6', '#FF9500', '#32ADE6', '#007AFF', '#30B0C7', '#AF52DE'], night: ['#5E5CE6', '#FF9F0A', '#64D2FF', '#0A84FF', '#40C8E0', '#BF5AF2'] };
 const APF = [.2, .08, .34, .13, .14, .11], APCUM = APF.reduce((a, f) => (a.push(a[a.length - 1] + f), a), [0]);
-const TEAL = '#30B0C7', RED = '#ff3b30', BLUE = '#007aff';
+const TEAL = '#30B0C7', RED = '#ff3b30', BLUE = '#007aff', SIDEC = { good: '#007aff', evil: '#ff3b30', neutral: '#ff9500' };
 const josa = (w, a, b) => { w = String(w || ''); const c = w.charCodeAt(w.length - 1); return w + (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b); };   // 받침 있으면 «이»
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ctx = document.createElement('canvas').getContext('2d');
@@ -23,7 +23,7 @@ const CUR = { night: 0, dawn: 1, discussion: 2, nomination: 3, voting: 4, confir
 export function usesV5(p) {
   if (!p || !p.seats || !p.seats.length) return false;
   if (p.scene === 'waiting') return false;
-  if (p.scene === 'ended') return !(p.endReveal && p.endReveal.length) && !p.endReplay;
+  if (p.scene === 'ended') return !p.endReplay;   // 직업 공개도 이 자리판에(이름 옆 직업 아이콘·이름, 2026-10-25) — 날짜별 복기만 옛 그림
   if (p.scene === 'prep') return !p.briefing;
   return p.scene in CUR;
 }
@@ -171,14 +171,16 @@ export function drawV5(host, p, vw, vh) {
     bo += `<div class="st${s.dead ? ' dead' : ''}${rv}${s.id === nomT ? ' nom' : s.id === turn ? ' turn' : ''}" data-k="${cs}" style="left:${pt.x}px;top:${pt.y}px;width:${h.d}px;height:${h.d}px;font-size:${Math.round(h.d * .43)}px">${s.dead ? '' : s.number}${s.dead && s.ghost ? '<span class="gh"></span>' : ''}</div>`;
     const cls = 'lb' + (s.dead ? ' dead' : ''), fs = h.fs; let pos, al;
     if (L.kind === 'c') { const l = L.labels[i];
-      if (l.mid) { al = 'al-c'; pos = `left:${l.x}px;${l.mid < 0 ? `bottom:${1080 - (l.y - h.d / 2 - 18)}px` : `top:${l.y + h.d / 2 + 10}px`};transform:translateX(-50%)`; }
+      if (l.mid) { al = 'al-c' + (l.mid < 0 ? ' up' : ''); pos = `left:${l.x}px;${l.mid < 0 ? `bottom:${1080 - (l.y - h.d / 2 - 18)}px` : `top:${l.y + h.d / 2 + 10}px`};transform:translateX(-50%)`; }
       else { svg += `<path class="ld" d="M${l.ex},${l.ey} L${l.kx},${l.ky} L${l.tx},${l.ky}"/>`; al = l.side > 0 ? 'al-l' : 'al-r'; pos = `top:${l.ky - fs * .6}px;` + (l.side > 0 ? `left:${l.tx + 8}px` : `right:${1920 - l.tx + 8}px`); } }
     else { const g = h.d / 2 + 12;
-      if (pt.nm === 'above') { al = 'al-c'; pos = `left:${pt.x}px;bottom:${1080 - (pt.y - g - 8)}px;transform:translateX(-50%)`; }
+      if (pt.nm === 'above') { al = 'al-c up'; pos = `left:${pt.x}px;bottom:${1080 - (pt.y - g - 8)}px;transform:translateX(-50%)`; }
       else if (pt.nm === 'below') { al = 'al-c'; pos = `left:${pt.x}px;top:${pt.y + g}px;transform:translateX(-50%)`; }
       else if (pt.nm === 'left') { al = 'al-r'; pos = `right:${1920 - (pt.x - g)}px;top:${pt.y - fs * .6}px`; }
       else { al = 'al-l'; pos = `left:${pt.x + g}px;top:${pt.y - fs * .6}px`; } }
-    bo += `<div class="${cls} ${al}" style="font-size:${fs}px;line-height:${Math.round(fs * 1.24)}px;${pos}"><span class="nm">${esc(L.names[i])}</span></div>`; });
+    const rr = p.scene === 'ended' ? (p.endReveal || []).find(x => x.seatId === s.id) : null;   // 끝난 판 직업 공개 — 이름 옆에 직업 아이콘·직업 이름만(편 색)
+    const rl = rr ? `<span class="rl" style="color:${SIDEC[rr.side] || 'var(--sec)'}">${rr.icon && /^[\w-]+$/.test(rr.icon) ? `<img src="../art/${encodeURIComponent(rr.icon)}.webp" alt="">` : ''}${esc(rr.role)}</span>` : '';
+    bo += `<div class="${cls} ${al}" style="font-size:${fs}px;line-height:${Math.round(fs * 1.24)}px;${pos}"><span class="nm">${esc(L.names[i])}${rl}</span></div>`; });
   if (nomT && p.nomination.byId) { const a = L.seats[p.seats.findIndex(s => s.id === p.nomination.byId)], b = L.seats[p.seats.findIndex(s => s.id === nomT)]; if (a && b) svg += nomArrow(a, b, L, h.d); }
   const inB = lay.mode === 'in' || lay.mode === 'row', rin = Math.min(...L.seats.map(q => Math.hypot(q.x - L.cx, q.y - L.cy))) - h.d / 2 - 30, clockK = inB ? Math.max(.62, Math.min(1, rin / 183)) : 1;
   const midH = midHtml(p, nameOf, night, clockK), inMid = inB && midH;
