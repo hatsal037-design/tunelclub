@@ -554,5 +554,5 @@ try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {})
 start();
 </script><script type="module">import * as V5 from '../js/screen_v5.js'; window.V5 = V5; render(true);</script>
 <script type="module">import * as B from '../js/briefing.js'; window.BRIEF = B; render(true); document.fonts && document.fonts.addEventListener('loadingdone', () => render(true));   /* 이번 판 안내 — 글꼴이 들어오면 관계 선을 다시 잰다 */</script>
-<script type="module">import { startDomI18n } from '../js/i18n_dom.js'; startDomI18n(document.body);   /* 큰 화면도 TV 브라우저 언어가 영어면 영어로(2026-10-06) */</script>
+<script type="module">import { startDomI18n } from '../js/i18n_dom.js'; startDomI18n(document.body).then(() => render(true));   /* 큰 화면도 TV 브라우저 언어가 영어면 영어로(2026-10-06) */</script>
 </body></html>

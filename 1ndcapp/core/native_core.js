@@ -650,12 +650,18 @@ var NativeCore = (function () {
     var n = state.nights || 1, began = began0 && !old, ended = began && gameEnded(), isDay = began && !ended && state.phase === 'day';
     var D = isDay ? dayRec() : null, announced = !!(D && D.announced), P = pubState(pubEpoch());
     var sid = function (i) { return 's' + (i + 1); };
+    /* 지난 일은 공개된 그때 값으로 얼린다(반증 검토 2026-10-25) — 밤에 되살아나거나 다시 죽어도 발표 전엔 판 흐름·지난 처형이 안 바뀐다. 공개 순간(발표한 낮·끝난 판)엔 오늘 것만 다시 잰다 */
+    var snap = began && (ended || announced), FZ = P.fz || (P.fz = {});
+    var frozen = function (key, today, live) { if ((snap && today) || !(key in FZ)) FZ[key] = live(); return FZ[key]; };
+    var execOf = function (d) { return frozen('d' + d, d === n, function () {   // 그 낮 처형 — { t: 자리, died } | null. 그 낮 처형에서 죽은 척 = 공개 사망
+      var done = (((state.days || {})[d] || {}).noms || []).filter(function (o) { return o.done; }).pop(), t = done ? done.t : (state.seats || []).findIndex(function (x) { return x && x.dead && x.cause === 'exec' && x.causeN === d; });
+      if (t < 0) return null; var x = state.seats[t], f = fakeAt(t); return { t: t, died: !!(x && ((x.dead && x.cause === 'exec' && x.causeN === d) || (f && f.n === d && f.ph === 'day'))) }; }); };
     if (began && (ended || announced)) P.announcedThrough = Math.max(P.announcedThrough || 0, n);
-    if (!began || ended || announced) P.seats = (state.seats || []).map(function (s) { var dead = began && pubDead(s);   // 공개 생사(index.html pubDead) — 죽은 척은 사망 · 유령표가 있는 걸로 — 표식 이름은 안 내보낸다
+    if (!began || ended || announced) P.seats = (state.seats || []).map(function (s, i) { var dead = began && pubDead(s);   // 공개 생사(index.html pubDead) — 죽은 척은 사망 · 유령표가 있는 걸로 — 표식 이름은 안 내보낸다
       var rv = null; if (dead) { try { rv = omDeathReveal(s); } catch (e) {} }   // 오리지널 — 처형·체포로 죽은 사람만 'citizen'|'criminal'(게임룰-044). 발표 뒤에만 찍히는 이 묶음에 같이
-      return { dead: dead, ghost: dead && ((s.rem || []).indexOf('유령표') >= 0 || (!s.dead && !villageType())), reveal: rv }; });   // 죽은 척도 유령표를 받는다(fakeDeadMark, 유령표 쓰는 판) — 안 쓰는 판은 예전처럼 있음으로
+      return { dead: dead, ghost: dead && ((s.rem || []).indexOf('유령표') >= 0 || (!s.dead && !villageType())), reveal: rv, cause: dead ? pubCause(i) : null }; });   // 죽은 척도 유령표를 받는다(fakeDeadMark, 유령표 쓰는 판) — 안 쓰는 판은 예전처럼 있음으로
     var seats = (state.seats || []).map(function (s, i) { var v = (P.seats && P.seats[i]) || { dead: false, ghost: false };
-      return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost, reveal: v.reveal || null, cause: v.dead ? pubCause(i) : null }; });
+      return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost, reveal: v.reveal || null, cause: v.dead ? v.cause || pubCause(i) : null }; });   // 까닭도 공개 스냅샷에서(밤에 되살아나 바뀌어도 발표 전엔 그대로)
     var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), tvw = localStorage.getItem(TVW_KEY), waiting = tvp && tvp.code && (tvw === '1' ? (!began || ended) : tvw !== '0' && tvw !== '2' && !began) ? { code: tvp.code, title: (pot0 && pot0.title) || tvp.title || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: (tvp.people || []).slice(0, 20) } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
     var scene = waiting ? 'waiting' : !began ? 'prep' : ended ? 'ended' : !isDay ? 'night' : !announced ? 'dawn' : 'discussion';
     var noms = D ? D.noms || [] : [], G = isDay ? execGate() : null, nom = null, exec = null;
@@ -687,9 +693,8 @@ var NativeCore = (function () {
       morning = { id: 'm' + n, dayNumber: dayNo(n), deaths: dead, revivals: [], at: D.announcedAt || null }; }
     var past = [];   // 2 마지막 처형 하나 — 오늘보다 앞선 낮 중 가장 최근(«처형 없는 낮»이 지난 처형을 덮지 않는다)
     if (began) { var days = state.days || {}; Object.keys(days).map(Number).filter(function (d) { return d < n || (ended && d <= n); }).sort(function (a, b) { return b - a; }).some(function (d) {
-      var done = (days[d].noms || []).filter(function (o) { return o.done; }).pop(); var t = done ? done.t : (state.seats || []).findIndex(function (x) { return x && x.dead && x.cause === 'exec' && x.causeN === d; });
-      if (t < 0) return false; var x = state.seats[t], f = fakeAt(t), died = !!(x && ((x.dead && x.cause === 'exec' && x.causeN === d) || (f && f.n === d && f.ph === 'day')));   // 그 낮 처형에서 죽은 척 = 공개 사망
-      past.push({ id: 'x' + d, dayNumber: dayNo(d), targetId: sid(t), outcome: died ? 'died' : 'survived' }); return true; }); }
+      var e = execOf(d); if (!e) return false;
+      past.push({ id: 'x' + d, dayNumber: dayNo(d), targetId: sid(e.t), outcome: e.died ? 'died' : 'survived' }); return true; }); }
     var usage = null; if (isDay && hubRep() !== 'mafia') {   // 5 오늘 지명 이력 — 이력만(가능 여부·차단 사유 없음). 오리지널 마피아는 지명 기록이 없어 null
       var by = [], tg = []; noms.forEach(function (o) { if (o.by !== null && o.by !== undefined && by.indexOf(sid(o.by)) < 0) by.push(sid(o.by)); if (tg.indexOf(sid(o.t)) < 0) tg.push(sid(o.t)); });
       usage = { dayNumber: dayNo(n), nominatedBy: by, nominatedTargets: tg }; }
@@ -703,15 +708,13 @@ var NativeCore = (function () {
     var flow = []; if (began) {   // 판 흐름 — 발표한 밤의 사망 · 지난 낮(과 발표한 오늘)의 처형 · 오늘 지명. 오래된 것부터
       var thr = ended ? n : (P.announcedThrough || 0), days2 = state.days || {};
       for (var k = 1; k <= n; k++) {
-        if (k <= thr) flow.push({ kind: 'night', n: k, events: pubNightDeaths(k).map(function (o) { return { what: 'death', targetId: sid(o.i), byId: null, votes: null, need: null }; }) });
+        if (k <= thr) flow.push({ kind: 'night', n: k, events: frozen('n' + k, k === n, function () { return pubNightDeaths(k).map(function (o) { return sid(o.i); }); }).map(function (id) { return { what: 'death', targetId: id, byId: null, votes: null, need: null }; }) });
         if (!(k < n || ended || (isDay && announced))) continue;
         var dk = days2[k] || {}, nm2 = dk.noms || [], ev2 = [];
         if (k === n && isDay) nm2.forEach(function (o, j) { if (o.done) return; var open = j === vo || o.need === undefined;   // 집계 중·지명만 한 것은 숫자 없이
           ev2.push({ what: 'nom', targetId: sid(o.t), byId: o.by === null || o.by === undefined ? null : sid(o.by), votes: open ? null : (o.v || 0), need: open ? null : o.need }); });
-        var dn = nm2.filter(function (o) { return o.done; }).pop(), t = dn ? dn.t : (state.seats || []).findIndex(function (x) { return x && x.dead && x.cause === 'exec' && x.causeN === k; });
-        if (t >= 0) { var x = state.seats[t], f = fakeAt(t), died = !!(x && ((x.dead && x.cause === 'exec' && x.causeN === k) || (f && f.n === k && f.ph === 'day')));
-          ev2.push({ what: died ? 'exec' : 'survived', targetId: sid(t), byId: null, votes: null, need: null }); }
-        if (ev2.length || k === n) flow.push({ kind: 'day', n: dayNo(k), events: ev2 }); } }
+        var e2 = execOf(k); if (e2) ev2.push({ what: e2.died ? 'exec' : 'survived', targetId: sid(e2.t), byId: null, votes: null, need: null });
+        if (ev2.length || (k === n && state.phase === 'day')) flow.push({ kind: 'day', n: dayNo(k), events: ev2 }); } }   // 밤에 끝난 판엔 빈 «낮 n» 을 만들지 않는다
     body.flow = flow;
     var np = null; if (began && !ended && !isDay) { try { var NL = nightListOf((state.nights || 1) === 1 ? 'fn' : 'on'); if (NL.length) np = Math.round(Math.max(0, Math.min(1, ((wz.idx || 1) - 1) / NL.length)) * 100) / 100; } catch (e) {} }
     body.nightProgress = np;   // 밤 차례가 얼마나 지났나(0~1) — 화면은 숫자 없이 막대만(깨는 직업 수가 드러나지 않게, 2026-10-25 햇살님)
