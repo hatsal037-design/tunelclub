@@ -5,6 +5,7 @@ import { account } from './account.js';
 import { settings } from './settings.js';
 import { soundOut } from './soundbus.js';
 import { bgmSync } from './bgm.js';
+import { liveState } from './plaza_live.js';
 
 const subs = new Set();
 const live = l => Date.parse(l.expires_at) > Date.now();
@@ -63,12 +64,15 @@ export const screens = {
 };
 /* 큰 화면 소리(2026-10-25) — 설정 «큰 화면 소리»가 큰 화면이고 연결돼 있으면 낭독·짧은 소리·알림음·배경 음악을 공개 정보에 실어 TV 가 튼다.
    낭독처럼 화면은 그대로인데 소리만 나는 일이 있어서, 올리는 판본 = 코어 판본×1000 + 그 판본 뒤로 소리가 바뀐 횟수(서버는 판본이 올라야 받는다).
-   ponytail: 같은 연결에 아이폰 앱(코어 판본 그대로)이 번갈아 올리면 낮은 판본이 거절된다 — 둘을 섞어 쓰게 되면 판본 규칙을 맞춘다 */
-const au = { items: [], bgm: null, k: 0, base: 0, core: -1, n: 0 };
+   아이폰 앱도 같은 판본 규칙(Bridge/ScreenLink.swift withSound, 2026-10-26 아침 선택 1-6).
+   ponytail: 한 연결에 진행자 둘(다른 코어)이 번갈아 올리면 판본 비교가 뜻이 없어 낮은 쪽이 거절된다 — 그렇게 쓰게 되면 연결마다 판본을 서버가 매긴다 */
+const au = { items: [], bgm: null, k: 0, base: 0, core: -1, n: 0, g: 0 };
+let auSaved = (() => { try { return JSON.parse(localStorage.getItem('screen_au') || 'null'); } catch { return null; } })();   // 진행자 웹을 새로 열어도 같은 코어 판본 안에서 올린 판본보다 크게(서버는 판본이 올라야 받는다)
 const routed = () => settings.get('soundAt') === 'screen' && screens.active().length > 0;
 const bump = () => { au.k++; screens.push(); };
 soundOut.send = items => { if (!routed()) return false;
-  items.forEach(x => { x.id = Date.now() * 100 + (au.n++ % 100); au.items.push(x); });   // 진행자 폰을 새로 열어도 번호가 앞으로만 간다
+  const g = Date.now() * 100 + (au.g++ % 100);   // 한 번에 보낸 묶음 — TV 는 새 묶음의 낭독이 오면 앞 낭독을 끊는다(폰과 같게)
+  items.forEach(x => { x.id = Date.now() * 100 + (au.n++ % 100); x.g = g; au.items.push(x); });   // 진행자 폰을 새로 열어도 번호가 앞으로만 간다
   au.items = au.items.slice(-8); bump(); return true; };
 soundOut.bgm = b => { const on = routed(), want = on ? b : null;
   if (JSON.stringify(want) !== JSON.stringify(au.bgm)) { au.bgm = want; bump(); }   // 폰으로 돌리면 TV 음악은 멈춘다
@@ -76,8 +80,9 @@ soundOut.bgm = b => { const on = routed(), want = on ? b : null;
 soundOut.ping = bump;
 function withSound(p) {
   if (!p) return p;
-  if (p.revision !== au.core) { au.core = p.revision; au.base = au.k; }
-  return Object.assign({}, p, { revision: p.revision * 1000 + Math.min(999, au.k - au.base), audio: routed() ? { items: au.items, bgm: au.bgm } : null });
+  if (p.revision !== au.core) { au.core = p.revision; au.base = au.k - (auSaved && auSaved.core === p.revision ? auSaved.sub + 1 : 0); auSaved = null; }
+  const sub = Math.min(999, au.k - au.base); try { localStorage.setItem('screen_au', JSON.stringify({ core: p.revision, sub })); } catch {}
+  return Object.assign({}, p, { revision: p.revision * 1000 + sub, audio: routed() ? { items: au.items, bgm: au.bgm } : null });
 }
 /* 판이 바뀔 때마다(명령 성공 뒤) 최신 공개 정보를 올린다. 코어가 같은 내용엔 판본을 안 올리므로 중복 전송은 없다 */
 /* 광장 현황(0320·0321) — 참가자 폰 잠금화면·«이번 판 자료»용 공개 한 줄. 앱 Bridge/PlazaStatus.swift 와 같은 규칙(2026-10-10 웹 구성 W2).
@@ -97,7 +102,7 @@ async function plazaPush() {
       if (typeof p.dayNumber === 'number') st.day = p.dayNumber;
       if (typeof p.nightNumber === 'number') st.night = p.nightNumber;
       if (p.briefing) st.brief = p.briefing;   // 이번 판 안내(0326 — 참가 웹 광장 탭이 그린다. 0326 이 없는 서버는 이 칸을 버린다)
-      if (Array.isArray(p.seats)) st.seats = p.seats.map(s => Object.assign({ n: s.number, name: s.name || '', dead: !!s.dead }, s.reveal ? { rv: s.reveal } : {}));   // 0327 공개 자리판 — 큰 화면과 같은 값(생사는 공개 생사, 처형 공개만)
+      Object.assign(st, liveState(p));   // 0327 공개 자리판 + 0328 «지금 판» 공개 값(자리 모양·지명·처형·아침·넘김·판 흐름·판 끝 직업 공개) — 아이폰 PlazaStatus.swift 와 같은 꼴
       if (p.timer) { const t = {}; ['state', 'endsAt', 'leftMs', 'durationMs'].forEach(k => { if (p.timer[k] != null) t[k] = p.timer[k]; }); st.timer = t; }
       const epoch = p.gameEpoch || 'none', rev = p.revision || 0, key = epoch + '|' + rev + '|' + JSON.stringify(st);
       /* 0327 내 카드 — 자리별 «넘길 때 본 카드»(코어 plaza.cards)를 통째로. 서버가 체크인한 계정 것만 남기고 본인만 읽게 한다 */

@@ -4,21 +4,21 @@
    · 가운데: 토론은 «잠금 화면» 결 시계(작은 머리글 + 큰 숫자 + 남은 시간 막대), 그 밖 장면은 머리글 + 큰 이름 + 한 줄
    · 무대는 1080 점 높이 · 폭 = 창 비율(4:3~21:9) × 1080, 통째로 줄여 맞춘다. 안전 여백 위아래 60 · 양옆 80
    같은 그림을 아이폰 AirPlay(ExternalPublicView.swift)가 SwiftUI 로 그린다 — 이 파일을 고치면 거기도 */
-import { TABLE } from './screen_table.js';
+import { TABLE } from './screen_table.js';   // 참가 웹 «지금 판»(me/me.js)도 여기 APC·CUR·josa·ico·cycle·geo 를 가져다 쓴다(2026-10-26 v6d — 같은 그림을 복제하지 않는다)
 import { narrTr } from './i18n_dom.js';   // 다른 말이면 순환 표시 글을 재기 전에 바꾼다(반증 검토 2026-10-25 — 영어 «Morning announcement» 가 칸 밖으로)
 
 const PH = ['밤', '아침', '토론', '지명', '투표', '처형'];
 const PHK = i => PH[i] === '아침' ? '아침 발표' : PH[i];
-const APC = { day: ['#5856D6', '#FF9500', '#32ADE6', '#007AFF', '#30B0C7', '#AF52DE'], night: ['#5E5CE6', '#FF9F0A', '#64D2FF', '#0A84FF', '#40C8E0', '#BF5AF2'] };
+export const APC = { day: ['#5856D6', '#FF9500', '#32ADE6', '#007AFF', '#30B0C7', '#AF52DE'], night: ['#5E5CE6', '#FF9F0A', '#64D2FF', '#0A84FF', '#40C8E0', '#BF5AF2'] };
 const APF = [.2, .08, .34, .13, .14, .11], APCUM = APF.reduce((a, f) => (a.push(a[a.length - 1] + f), a), [0]);
 const TEAL = '#30B0C7', RED = '#ff3b30', BLUE = '#007aff', SIDEC = { good: '#007aff', evil: '#ff3b30', neutral: '#ff9500' };
-const josa = (w, a, b) => { w = String(w || ''); const c = w.charCodeAt(w.length - 1); return w + (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b); };   // 받침 있으면 «이»
+export const josa = (w, a, b) => { w = String(w || ''); const c = w.charCodeAt(w.length - 1); return w + (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b); };   // 받침 있으면 «이»
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ctx = document.createElement('canvas').getContext('2d');
 const tw = (t, fs, wt = 500) => { ctx.font = wt + ' ' + fs + 'px -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif'; return ctx.measureText(t).width; };
 
 /* 장면 → 순환 칸(밤 0 · 아침 1 · 토론 2 · 지명 3 · 투표 4 · 처형 5), 순환이 없는 장면은 null */
-const CUR = { night: 0, dawn: 1, discussion: 2, nomination: 3, voting: 4, confirmed: 4, execution: 5 };
+export const CUR = { night: 0, dawn: 1, discussion: 2, nomination: 3, voting: 4, confirmed: 4, execution: 5 };
 /* 이 파일이 그리는 장면 — 대기·직업 공개·복기·이번 판 안내 룰 설명·안내 천이 있는 준비는 옛 그림(따로 확정한 디자인) */
 export function usesV5(p) {
   if (!p || !p.seats || !p.seats.length) return false;
@@ -39,7 +39,7 @@ function apIc(i, x, y, sz, c, bg = 'var(--bg)') { let b = '';
   if (i === 'flag') b = `<path d="M5 2.5v19" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/><path d="M6 3.5h13l-3 4.5 3 4.5H6Z" fill="${c}"/>`;
   if (i === 'pause') b = `<rect x="5" y="4" width="5" height="16" rx="1.5" fill="${c}"/><rect x="14" y="4" width="5" height="16" rx="1.5" fill="${c}"/>`;
   return `<g transform="translate(${x - sz / 2},${y - sz / 2}) scale(${sz / 24})">${b}</g>`; }
-const ico = (k, sz, c, bg) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" style="flex:none;overflow:visible">${apIc(k, 12, 12, 24, c, bg)}</svg>`;
+export const ico = (k, sz, c, bg) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" style="flex:none;overflow:visible">${apIc(k, 12, 12, 24, c, bg)}</svg>`;
 
 /* ── 순환 표시 ── */
 function stad(hw, r) { const q = Math.PI * r / 2, L = 4 * hw + 2 * Math.PI * r, d = `M${-hw - r},0 A${r},${r} 0 0 1 ${-hw},${-r} H${hw} A${r},${r} 0 0 1 ${hw},${r} H${-hw} A${r},${r} 0 0 1 ${-hw - r},0`;
@@ -49,7 +49,7 @@ function stad(hw, r) { const q = Math.PI * r / 2, L = 4 * hw + 2 * Math.PI * r, 
   const nrm = (x, y) => { if (Math.abs(x) <= hw) return [0, Math.sign(y)]; const c = Math.sign(x) * hw, dd = Math.hypot(x - c, y); return [(x - c) / dd, y / dd]; };
   return { L, pt, seg, nrm }; }
 /* g0 = 지금 칸 게이지(0~1, 잴 수 없는 구간은 null) */
-function cycle(kind, cur, g0, night) { const C = APC[night ? 'night' : 'day'], nm = narrTr(PHK(cur));
+export function cycle(kind, cur, g0, night) { const C = APC[night ? 'night' : 'day'], nm = narrTr(PHK(cur));
   if (kind !== 'card') { const T = stad(106, 54), L = T.L, sA = x => (x - .1) * L, w = 18, gap = 13; let g = '';
     PH.forEach((p, i) => { if (i !== cur) g += T.seg(sA(APCUM[i]) + gap, sA(APCUM[i + 1]) - gap, `stroke="${i < cur ? 'var(--g2)' : 'var(--g5)'}" stroke-width="${w}" stroke-linecap="round"`); });
     const a = sA(APCUM[cur]) + gap, b = sA(APCUM[cur + 1]) - gap;
@@ -69,6 +69,8 @@ function cycle(kind, cur, g0, night) { const C = APC[night ? 'night' : 'day'], n
 /* ── 시계(토론) — 남은 시간·막대는 tick 이 1초마다 고친다 ── */
 export function timerLeft(tm, now = Date.now()) { if (!tm) return null; return tm.state === 'paused' ? (tm.leftMs || 0) : tm.state === 'elapsed' ? 0 : Math.max(0, (tm.endsAt || 0) - now); }
 const mmss = ms => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+/* 낮밤 회차는 가운데 머리 글에(2026-10-26 햇살님 아침 선택 1-1 = R3, 시안/승리조건_회차_20261026/찍은것_v2/R3_*.png) — 토론 시계 위 작은 글 «낮 2 · 토론», 밤엔 비어 있는 판 가운데 «밤 2». 글은 코어 사전 «낮 {n}»·«밤 {n}»·«토론» 조각으로 옮겨진다 */
+const dayHead = p => p.dayNumber != null ? '낮 ' + p.dayNumber + ' · ' : '';
 function clockHtml(tm, k, night) { const C = APC[night ? 'night' : 'day'][2], W = 300;
   return `<div style="width:${300 * k}px;height:${210 * k}px"><div style="width:300px;transform:scale(${k});transform-origin:0 0">
     <div class="t25 v5hd" id="v5tlab" style="justify-content:center;font-weight:600"></div><div class="v5tm" id="v5time"></div>
@@ -78,14 +80,14 @@ export function tickV5(host, p, now = Date.now()) {
   const left = timerLeft(tm, now), dur = tm.durationMs || 0, warn = left <= 60000, C = APC.day[2];
   el.textContent = mmss(left); el.style.color = warn ? RED : '';
   const bar = host.querySelector('#v5bar'); if (bar) { bar.setAttribute('width', dur ? Math.max(0, Math.min(1, left / dur)) * 300 : 0); bar.setAttribute('fill', warn ? RED : C); }
-  const lab = host.querySelector('#v5tlab'); if (lab) lab.innerHTML = tm.state === 'paused' ? ico('pause', 24, 'var(--sec)') + '일시정지' : left <= 0 ? ico(2, 24, RED) + '토론 시간 끝' : ico(2, 24, C) + '토론';
+  const lab = host.querySelector('#v5tlab'); if (lab) { const dn = dayHead(p); lab.innerHTML = tm.state === 'paused' ? ico('pause', 24, 'var(--sec)') + dn + '일시정지' : left <= 0 ? ico(2, 24, RED) + dn + '토론 시간 끝' : ico(2, 24, C) + dn + '토론'; }
   const g = dur ? 1 - left / dur : null, cy = host.querySelector('#v5cyc');   // 순환 표시의 토론 게이지도 같이(1초에 한 번이면 충분)
   if (cy && g != null && Math.abs((+cy.dataset.g || 0) - g) > .004) { cy.dataset.g = g; cy.innerHTML = cycle(p.cycle, 2, g, false); }
 }
 
 /* ── 자리 배치 — 원형 c<인원> · 사각 r<가로>x<세로>(진행자가 고른 칸 그대로) ── */
 const CX = 720, CY = 545;   // 판을 그리는 상자 가운데(그린 뒤 짜임이 옮긴다)
-function geo(p) { const n = p.seats.length, names = p.seats.map(s => s.name || s.number + '번');
+export function geo(p) { const n = p.seats.length, names = p.seats.map(s => s.name || s.number + '번');
   if (p.shape !== 'rect') { const keys = Object.keys(TABLE.circle).map(k => +k.slice(1)), nn = keys.reduce((a, b) => Math.abs(b - n) < Math.abs(a - n) ? b : a), h = TABLE.circle['c' + nn], seats = [], labels = [];
     for (let i = 0; i < n; i++) { const a = (-90 + i * 360 / n) * Math.PI / 180, co = Math.cos(a), si = Math.sin(a), x = CX + h.R * co, y = CY + h.R * si;
       seats.push({ x, y }); const mid = Math.abs(co) < .08 ? (si < 0 ? -1 : 1) : 0, side = co > 1e-6 || (Math.abs(co) <= 1e-6 && si < 0) ? 1 : -1, lead = h.d * .5 + 34;
@@ -119,9 +121,9 @@ function infoBlock(p, nameOf) { const n = p.seats.length, alive = p.seats.filter
   const ev = (a, b, c) => `<div class="ev t29"><span>${a}</span><span class="t25" style="color:${c || 'var(--sec)'};white-space:nowrap">${b}</span></div>`;
   const rv = id => { const s = p.seats.find(x => x.id === id); return s && s.reveal ? (s.reveal === 'criminal' ? [' · 범죄 조직', RED] : [' · 시민', BLUE]) : ['', null]; };
   const voteT = p.nomination && /^(voting|confirmed)$/.test(p.scene) ? p.nomination.targetId : null;
-  const F = (p.flow || []).slice().reverse();
+  const F = (p.flow || []).slice();   // 채팅처럼 — 오래된 것이 위, 새 것이 아래(2026-10-26 햇살님 «늘어나면 위로 올라가게, 올라가면 투명해지게»)
   let g = '';
-  F.forEach((f, k) => { const now = k === 0 && ((f.kind === 'day' && inDay && f.n === p.dayNumber) || (f.kind === 'night' && p.scene === 'night'));   // 아침(발표 전)의 맨 위는 지난 낮 — «지금» 아님
+  F.forEach((f, k) => { const now = k === F.length - 1 && ((f.kind === 'day' && inDay && f.n === p.dayNumber) || (f.kind === 'night' && p.scene === 'night'));   // 아침(발표 전)의 맨 위는 지난 낮 — «지금» 아님
     let rows = '';
     if (now && voteT) { const r = (p.results || []).find(x => x.targetId === voteT), v = p.scene === 'confirmed' && r ? r.votes : null;
       rows += `<div style="margin-top:6px">${poll(nameOf(voteT), v, p.neededVotes, alive, p.nomination.byId ? nameOf(p.nomination.byId) : null, false)}</div>`; }
@@ -133,13 +135,17 @@ function infoBlock(p, nameOf) { const n = p.seats.length, alive = p.seats.filter
     if (!f.events.length && f.kind === 'night') rows += `<div class="ev t25" style="color:var(--sec)">아무도 죽지 않았어요</div>`;
     g += `<div class="pg"><div class="per${now ? ' now' : ''}">${f.kind === 'night' ? '밤 ' + f.n : '낮 ' + f.n}${now ? ' · 지금' : ''}</div>${rows}</div>`; });
   return `<div class="isec"><div class="sc">${st(alive, '살아 있음')}${st(n - alive, '죽음', 'var(--g2)')}${st(ghost, '유령표', 'var(--g2)')}</div></div>`
-    + (g ? `<div class="isec"><div class="cap t25">판 흐름</div><div class="tl" style="--pc:${APC.day[CUR[p.scene] == null ? 2 : CUR[p.scene]]}">${g}</div></div>` : ''); }
+    + (g ? `<div class="isec"><div class="cap t25">판 흐름</div><div class="tlw"><div class="tl${flowGrew(F) ? ' up' : ''}" style="--pc:${APC.day[CUR[p.scene] == null ? 2 : CUR[p.scene]]}">${g}</div></div></div>` : ''); }
+let flowN = -1;   // 판 흐름 줄 수 — 늘었을 때만 위로 미끄러지는 움직임(같은 내용으로 다시 그릴 땐 안 움직임)
+const flowGrew = F => { const n = F.reduce((a, f) => a + 1 + f.events.length, 0), up = flowN >= 0 && n > flowN; flowN = n; return up; };
 
 /* ── 가운데 글 ── */
-function midHtml(p, nameOf, night, clockK) { const alive = p.seats.filter(s => !s.dead).length, hd = (i, t, c = 'var(--sec)') => `<div class="t25 v5hd" style="color:var(--sec)">${i == null ? '' : ico(i, 24, c, 'var(--bg)')}${t}</div>`;
+function midHtml(p, nameOf, night, clockK, inW) { const alive = p.seats.filter(s => !s.dead).length, hd = (i, t, c = 'var(--sec)') => `<div class="t25 v5hd" style="color:var(--sec)">${i == null ? '' : ico(i, 24, c, 'var(--bg)')}${t}</div>`;
   const big = t => `<div class="v5name" style="font-size:${tw(t, 57, 700) > 560 ? 44 : 57}px">${esc(t)}</div>`, sub = t => `<div class="t25" style="color:var(--sec)">${t}</div>`;
   const s = p.scene;
-  if (s === 'discussion') return p.timer ? clockHtml(p.timer, clockK, night) : hd(2, '토론', APC.day[2]) + big('자유롭게 이야기하세요');
+  if (s === 'night') { if (!p.nightNumber) return ''; const t = '밤 ' + p.nightNumber, w = tw(narrTr(t), 57, 700);   // 판 안 폭(inW, 자리 사이)을 넘는 말(영어 «Night 2» · 2열 사각 판)만 줄인다
+    return `<div class="v5name" style="font-size:${w > inW ? Math.floor(57 * inW / w) : 57}px">${esc(t)}</div>`; }
+  if (s === 'discussion') return p.timer ? clockHtml(p.timer, clockK, night) : hd(2, dayHead(p) + '토론', APC.day[2]) + big('자유롭게 이야기하세요');
   if ((s === 'nomination' || s === 'voting' || s === 'confirmed') && p.nomination) { const t = p.nomination.targetId, by = p.nomination.byId, r = (p.results || []).find(x => x.targetId === t);
     return hd(3, by ? esc(josa(nameOf(by), '이', '가')) + ' 지명' : '지명') + big(nameOf(t)) + sub(s === 'confirmed' && r ? r.votes + '표 · 필요 ' + p.neededVotes + '표 · ' + ({ leading: '유력', tied: '공동 최다', qualified: '기준 충족', below: '기준 미달' }[r.status] || '') : '필요 ' + p.neededVotes + '표 · 생존 ' + alive + '명'); }
   if (s === 'execution' && p.execution) { const t = p.execution.targetId, x = p.seats.find(q => q.id === t), rvT = x && x.reveal ? (x.reveal === 'criminal' ? `<span style="color:${RED}"> · 범죄 조직 (악)</span>` : `<span style="color:${BLUE}"> · 시민</span>`) : '';
@@ -168,7 +174,9 @@ export function drawV5(host, p, vw, vh) {
   L.gaps.forEach(g => { bo += `<div class="st gp" style="left:${g.x}px;top:${g.y}px;width:${h.d * .55}px;height:${h.d * .55}px"></div>`; });
   const nomT = p.nomination && /^(nomination|voting|confirmed)$/.test(p.scene) ? p.nomination.targetId : null, turn = p.handoff && p.handoff.seatId;
   L.seats.forEach((pt, i) => { const s = p.seats[i], cs = s.dead ? (s.cause === 'night' ? 'm' : 'x') : '', rv = s.reveal === 'criminal' ? ' ring-e' : s.reveal === 'citizen' ? ' ring-c' : '';
-    bo += `<div class="st${s.dead ? ' dead' : ''}${rv}${s.id === nomT ? ' nom' : s.id === turn ? ' turn' : ''}" data-k="${cs}" style="left:${pt.x}px;top:${pt.y}px;width:${h.d}px;height:${h.d}px;font-size:${Math.round(h.d * .43)}px">${s.dead ? '' : s.number}${s.dead && s.ghost ? '<span class="gh"></span>' : ''}</div>`;
+    const rr = p.scene === 'ended' ? (p.endReveal || []).find(x => x.seatId === s.id) : null;   // 끝난 판 직업 공개 — 자리엔 번호 대신 직업 그림(없으면 머리글자 한 자), 이름 옆엔 직업 아이콘·이름(편 색). 죽은 자리는 그림을 옅게(2026-10-26 햇살님 «자리표에 숫자 없어지고 거기에 직업 아이콘»)
+    const art = rr ? (rr.icon && /^[\w-]+$/.test(rr.icon) ? `<img class="ri" src="../art/${encodeURIComponent(rr.icon)}.webp" alt="">` : `<span class="ri">${esc(Array.from(String(rr.role || ''))[0] || '')}</span>`) : '';
+    bo += `<div class="st${s.dead ? ' dead' : ''}${rr ? ' rev' : ''}${rv}${s.id === nomT ? ' nom' : s.id === turn ? ' turn' : ''}" data-k="${rr ? '' : cs}" style="left:${pt.x}px;top:${pt.y}px;width:${h.d}px;height:${h.d}px;font-size:${Math.round(h.d * .43)}px">${rr ? art : s.dead ? '' : s.number}${s.dead && s.ghost ? '<span class="gh"></span>' : ''}</div>`;
     const cls = 'lb' + (s.dead ? ' dead' : ''), fs = h.fs; let pos, al;
     if (L.kind === 'c') { const l = L.labels[i];
       if (l.mid) { al = 'al-c' + (l.mid < 0 ? ' up' : ''); pos = `left:${l.x}px;${l.mid < 0 ? `bottom:${1080 - (l.y - h.d / 2 - 18)}px` : `top:${l.y + h.d / 2 + 10}px`};transform:translateX(-50%)`; }
@@ -178,12 +186,12 @@ export function drawV5(host, p, vw, vh) {
       else if (pt.nm === 'below') { al = 'al-c'; pos = `left:${pt.x}px;top:${pt.y + g}px;transform:translateX(-50%)`; }
       else if (pt.nm === 'left') { al = 'al-r'; pos = `right:${1920 - (pt.x - g)}px;top:${pt.y - fs * .6}px`; }
       else { al = 'al-l'; pos = `left:${pt.x + g}px;top:${pt.y - fs * .6}px`; } }
-    const rr = p.scene === 'ended' ? (p.endReveal || []).find(x => x.seatId === s.id) : null;   // 끝난 판 직업 공개 — 이름 옆에 직업 아이콘·직업 이름만(편 색)
-    const rl = rr ? `<span class="rl" style="color:${SIDEC[rr.side] || 'var(--sec)'}">${rr.icon && /^[\w-]+$/.test(rr.icon) ? `<img src="../art/${encodeURIComponent(rr.icon)}.webp" alt="">` : ''}${esc(rr.role)}</span>` : '';
+    const fit = rr && L.kind !== 'c' && al.startsWith('al-c') ? (() => { const av = h.sx - 16, w0 = fs * .82 * 1.4 + tw(rr.role, fs * .82, 600); return w0 > av ? `;font-size:${Math.max(.62, .82 * av / w0).toFixed(3)}em;max-width:${av}px;overflow:hidden;text-overflow:ellipsis` : ''; })() : '';   // 사각 위·아래 줄 — 직업 줄이 옆 칸을 넘으면 줄이고 끝은 줄임표(반증 2026-10-25, 20명 사각)
+    const rl = rr ? `<span class="rl" style="color:${SIDEC[rr.side] || 'var(--sec)'}${fit}">${rr.icon && /^[\w-]+$/.test(rr.icon) ? `<img src="../art/${encodeURIComponent(rr.icon)}.webp" alt="">` : ''}${esc(rr.role)}</span>` : '';
     bo += `<div class="${cls} ${al}" style="font-size:${fs}px;line-height:${Math.round(fs * 1.24)}px;${pos}"><span class="nm">${esc(L.names[i])}${rl}</span></div>`; });
   if (nomT && p.nomination.byId) { const a = L.seats[p.seats.findIndex(s => s.id === p.nomination.byId)], b = L.seats[p.seats.findIndex(s => s.id === nomT)]; if (a && b) svg += nomArrow(a, b, L, h.d); }
   const inB = lay.mode === 'in' || lay.mode === 'row', rin = Math.min(...L.seats.map(q => Math.hypot(q.x - L.cx, q.y - L.cy))) - h.d / 2 - 30, clockK = inB ? Math.max(.62, Math.min(1, rin / 183)) : 1;
-  const midH = midHtml(p, nameOf, night, clockK), inMid = inB && midH;
+  const midH = midHtml(p, nameOf, night, clockK, 2 * (rin + 14)), inMid = (inB || night) && midH;   // 밤 «밤 2»(R3)는 세로로 긴 사각 판(stack)도 판 가운데 — 밤엔 판 안이 비어 있다. 시계·글만 옆 칸으로
   let o = `<div id="bw" style="position:absolute;left:0;top:0;width:1920px;height:1080px"><svg class="ov">${svg}</svg>${bo}${inMid ? `<div class="mid" style="left:${L.cx}px;top:${L.cy}px">${midH}</div>` : ''}</div>`;
   if (midH && !inMid) o += `<div id="ck" class="blk" style="position:absolute"><div class="mid" style="position:static;transform:none">${midH}</div></div>`;
   const g0 = cur === 0 ? (p.nightProgress == null ? null : p.nightProgress) : cur === 2 && p.timer && p.timer.durationMs ? 1 - timerLeft(p.timer) / p.timer.durationMs : null;
@@ -194,9 +202,8 @@ export function drawV5(host, p, vw, vh) {
   place(host, lay, W, hasInfo);
   tickV5(host, p);
 }
-/* 판 흐름 접기 — 오래된 낮·밤 묶음부터, 하나만 남으면 그 안의 오래된 줄부터(한 낮에 지명이 많으면 묶음 하나가 칸보다 높다, 반증 검토 2026-10-25). 줄은 하나는 남긴다 */
-function fold(inf, tooTall) { while (tooTall()) { const g = inf.querySelectorAll('.pg'); if (g.length > 1) { g[g.length - 1].remove(); continue; }
-  const ev = g.length ? g[0].querySelectorAll('.ev') : []; if (ev.length > 1) ev[0].remove(); else break; } }
+/* 판 흐름 접기(2026-10-26 채팅처럼) — 칸 높이를 줄여 옛것이 위로 밀려 나가게 한다. 아래 끝(지금)은 늘 보이고, 잘린 위쪽 1/3 은 흐려진다(.tlw.clip). 한 줄 높이(44)는 남긴다 */
+function fold(inf, tooTall) { const w = inf.querySelector('.tlw'); if (!w) return; let h = w.offsetHeight; while (tooTall() && h > 44) { h -= 8; w.style.height = h + 'px'; w.classList.add('clip'); } }
 /* 짜임 — 자리판·시계·정보 칸을 실제 크기로 재서 안전 여백 안에 놓는다(시안 place 와 같은 규칙) */
 function place(host, lay, W, hasInfo) {
   const tv = host.querySelector('.v5tv'), R = tv.getBoundingClientRect(), sc = R.height / 1080;
@@ -228,4 +235,27 @@ function place(host, lay, W, hasInfo) {
   if (pos.S) { const s = pos.S; ck.style.left = (s.x + (s.w - T.w) / 2) + 'px'; ck.style.top = topB + 'px'; inf.style.left = s.x + 'px'; inf.style.top = (topB + T.h + 36) + 'px'; }
   if (pos.I) { inf.style.left = pos.I.x + 'px'; inf.style.top = topB + 'px'; }
   { const it = parseFloat(inf.style.top); fold(inf, () => it + box([inf]).h > 975); }
+}
+
+/* ── 판 사이 «지금 고른 모드»(2026-10-26 햇살님 아침 선택 1-4 메모, 확정 시안 시안/큰화면_모드정보_20261026/시안_v2) — 받은 p.mode 만 그린다.
+   가운데 위 계열(작게) · 모드 이름(크게) · «n~m명 · 직업 k» · 모드 한 줄 / 가운데 편 무리(이름 (선/악) + 수, 직업 그림 원 줄) / 아래 승리 결론(꼬리표 + 큰 결론, 가운데 세로선). 낮 결만 */
+const MI_CLS = { good: 'g', evil: 'e', neutral: 'n', traveler: 't' }, MI_SD = { good: '선', evil: '악' };
+const TROPHY = 'M7.5 4h9v4.5a4.5 4.5 0 0 1-9 0ZM7.5 6H4.5v1a3 3 0 0 0 3 3M16.5 6h3v1a3 3 0 0 1-3 3M12 13v3.5M8.5 20.5h7M9.5 16.5h5v4h-5z';   // icons.js trophy
+export function drawMode(host, m, vw, vh) {
+  const W = stageW(vw, vh), k = Math.min(vw / W, vh / 1080), mx = Math.max(1, ...m.groups.map(g => g.roles.length)), cs = Math.round(19.2 * Math.max(3.3, Math.min(6.6, 60 / (1.3 * mx))));   // 직업 그림 크기 — 한 줄이 길수록 작게(시안 --cs)
+  const coin = r => r.icon && /^[\w-]+$/.test(r.icon) ? `<span class="mc${r.band ? ' band' : ''}"><img alt="${esc(r.e)}" src="../art/${encodeURIComponent(r.icon)}.webp"${r.band ? ` style="background:${/^#[0-9a-f]{3,8}$/i.test(r.band) ? r.band : ''}"` : ''}></span>` : `<span class="mc emo">${esc(r.e)}</span>`;
+  const sub = (m.range ? m.range[0] + '~' + m.range[1] + '명 · ' : '') + '직업 ' + m.roleCount;
+  /* 승리 결론 — 둘이면 한 줄, 셋 이상(오리지널 확장: 조직·중립마다)이면 셋씩 줄을 나눈다. 줄마다 «연결 끊기»(오른쪽 아래)와 안 겹치게 양옆 260 을 비우고, 넘치면 글을 줄인다 */
+  const many = m.wins.length > 2, rows = []; for (let i = 0; i < m.wins.length; i += many ? 3 : 2) rows.push(m.wins.slice(i, i + (many ? 3 : 2)));
+  const pad = many ? 40 : 65, top = many ? 36 : 48, wfs = Math.min(top, ...rows.map(r => top * (W - 520 - r.length * 2 * pad) / r.reduce((a, w) => a + Math.max(tw(w[1], top, 700), tw(w[0] + ' 승리', 22, 600) + 30), 0)));
+  host.innerHTML = `<div class="v5tv mi${many ? ' many' : ''}" style="width:${W}px;transform:translate(${(vw - W * k) / 2}px,${(vh - 1080 * k) / 2}px) scale(${k})">
+    <div class="mik">${esc(m.hub)}</div>
+    <div class="mih"><b>${esc(m.title)}</b><span class="sub">${esc(sub)}</span>${m.tagline ? `<span class="tag">${esc(m.tagline)}</span>` : ''}</div>
+    <div class="mim"><div class="mig" style="--cs:${cs}px">${m.groups.map(g => `<div class="grp"><div class="gl ${MI_CLS[g.side] || 'n'}"><span>${esc(g.name)}</span>${MI_SD[g.side] ? ` (<span>${MI_SD[g.side]}</span>)` : ''}<i>${g.roles.length}</i></div><div class="coins">${g.roles.map(coin).join('')}</div></div>`).join('')}</div></div>
+    <div class="miw" style="--wf:${wfs.toFixed(1)}px;--wp:${pad}px">${rows.map(r => `<div class="wr">${r.map(w => `<div class="win"><div class="wh"><svg viewBox="0 0 24 24"><path d="${TROPHY}"/></svg><span>${esc(w[0] + ' 승리')}</span></div><div class="wb">${esc(w[1])}</div></div>`).join('')}</div>`).join('')}</div>
+    <button class="v5leave t23" type="button">연결 끊기</button></div>`;
+  host.querySelectorAll('.mc img').forEach(i => { i.onerror = () => { const s = i.parentNode; s.className = 'mc emo'; s.textContent = i.alt; }; });   // 그림 파일이 없는 직업은 이모지
+  if (window.__i18nFix) window.__i18nFix(host);
+  const mid = host.querySelector('.mim'), g = host.querySelector('.mig'), sc = Math.min(1, mid.clientHeight / g.offsetHeight, mid.clientWidth / g.offsetWidth);   // 무리가 넘치면(직업이 아주 많은 판) 통째로 줄인다
+  if (sc < 1) g.style.transform = `scale(${sc})`;
 }

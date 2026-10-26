@@ -2,11 +2,12 @@
    서버는 공통 참가자 모듈(core/participant.js)로만 부른다. 진행 코어(1.5MB)는 올리지 않는다 — 자료는 library/(빌드 때 뽑은 JSON).
    결은 시안 v2(iOS 기본 부품) — 웹 진행 화면과 같은 app.css·ui.js 부품. 광고 칸은 자리만(애드센스 연결 뒤 채움). */
 import { html, render, useState, useEffect, useRef, useContext, createContext } from '../lib/preact-htm.js';
-import { mountCards, setBriefTr } from '../js/briefing.js';
+import { mountCards, setBriefTr, saveFiles } from '../js/briefing.js';
 import { Icon } from '../js/icons.js';
 import { NavStack, useNav, Back } from '../js/nav.js';
 import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton, Sheet, HoldButton } from '../js/ui.js';
 import { QrScanner } from '../js/qrscan.js';
+import { APC, CUR, josa, ico, cycle, geo } from '../js/screen_v5.js';   // 지금 판 = 큰 화면 v5 를 세로로 접은 판(2026-10-26 v6d) — 순환 표시·기호·자리 배치는 큰 화면 것을 그대로
 
 const URL_ = 'https://yguvfogtzazoawtclqvf.supabase.co', KEY = 'sb_publishable_KeezD9hmEnxSTEWA_w8x-A_Tgk3roUf';
 const sb = window.supabase.createClient(URL_, KEY);
@@ -70,17 +71,14 @@ function useLive() { const [, f] = useState(0); useEffect(() => { const g = () =
 function useTick() { const [, f] = useState(0); useEffect(() => { const t = setInterval(() => f(x => x + 1), 1000); return () => clearInterval(t); }, []); }
 const phaseText = st => !st ? '' : st.night ? T('live.night', { n: st.night }) : st.day ? T('live.day', { n: st.day }) : st.scene === 'ended' ? T('live.ended') : T('live.prep');
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
-function timerLeft(tm, skew) { if (!tm) return null; if (tm.state === 'running' && tm.endsAt) return tm.endsAt - (Date.now() + skew); if (tm.state === 'paused' && tm.leftMs != null) return tm.leftMs; return null; }
+function timerLeft(tm, skew) { if (!tm) return null; if (tm.state === 'running' && tm.endsAt) return tm.endsAt - (Date.now() + skew); if (tm.state === 'paused' && tm.leftMs != null) return tm.leftMs; if (tm.state === 'elapsed' || tm.state === 'done') return 0; return null; }
 const liveText = (st, skew) => { if (!st || !st.scene) return ''; const l = timerLeft(st.timer, skew); return [phaseText(st), l != null ? mmss(l) : ''].filter(Boolean).join(' · '); };
-function SeatGrid({ seats }) {
-  return html`<div class="lseats">${seats.map(s => html`<div class=${s.dead ? 'dead' : ''} aria-label=${s.n + ' ' + s.name + (s.dead ? ' · ' + T('live.dead') : '') + (s.rv ? ' · ' + T('rv.' + s.rv) : '')}>
-    <span class="sec">${s.n}</span> <span class="lsn">${s.name}</span>${s.rv && html` <small class=${s.rv === 'criminal' ? 'red' : 'blue'}>${T('rv.' + s.rv)}</small>`}</div>`)}</div>`;
-}
 /* 시안 확인용(?demo=1) — 로그인 없이 진행 중인 판 하나를 보여 준다. ?demo=1&wait=1 이면 대기 중 */
 function demoPlaza(L) {
   const names = ['햇살', '지수', '민수', '영희', '철수', '수아', '도윤', '하린', '서준', '유나', '태오', '나래'], wait = /[?&]wait=1/.test(location.search);
   L.joined = [{ plaza: 'demo', host: '햇살', ends_at: '2026-10-25T21:00' }];
   L.people = { demo: names.slice(0, 8).map(n => ({ nick: n })) };
+  if (window.__demoStatus) { L.status = { demo: window.__demoStatus }; return; }   // 화면 확인용 — 헤드리스가 실제 현황 꼴을 넣어 찍는다(2026-10-26 v6d)
   L.status = { demo: wait ? { scene: 'prep' } : { scene: 'discussion', mode: '베이직 확장 No.1', modeId: 'om_ext', brief: window.__demoBrief || undefined, day: 2, timer: { state: 'running', endsAt: Date.now() + 83000 },
     seats: names.map((n, i) => ({ n: i + 1, name: n, dead: i === 2 || i === 6, rv: i === 2 ? 'criminal' : undefined })),
     mine: { id: 'om_detective', role: '수사관', team: '시민 편 (선)', side: 'good', ab: '매밤: 한 명을 조사해 범죄자 그룹인지 확인한다. 브로커가 있으면 브로커는 시민으로 보인다.', rule: '처형되면 «시민»으로 공개' } } };
@@ -118,22 +116,117 @@ function PlazaTab() {
 
 /* 지금 판 — 체크인한 광장의 판을 한 화면으로(2026-10-25 햇살님 «원활하게 게임에 참여하고 내가 하는 게임 정보를 알 수 있게»).
    대기(진행자 준비 중·체크인 수) → 안내 → 내 직업 → 밤·낮·타이머·자리판 → 끝까지 현황만 보고 스스로 바뀐다. 역할 받기는 진행자 폰(정함) */
+/* 지금 판 v6d(2026-10-26 햇살님 «큰 화면 표기와 같은 스타일로» → «자리 모양 그대로» → «내 직업이랑 자리표 위치 바꾸고 마무리», 시안 시안/참가웹_지금판_20261026_v6/v6d)
+   순서: 머리 글(낮 n · 장면 + 시계 / 큰 이름) → 순환 표시 + 숫자 셋 → 자리(접힘 줄 · 펼치면 큰 화면 배치표 그대로) → 내 직업 → 판 흐름 → 밑줄 링크.
+   낮 = 밝은 회색 · 밤 = 남색(큰 화면처럼 장면이 바탕을 정함). 서버 값은 전부 글자로만 그린다(htm 이 이스케이프 — innerHTML 은 큰 화면 기호 SVG 뿐, 그 안엔 서버 값이 없다).
+   자리 이름: 12명까지 번호 + 이름 전체 작게 · 13명부터 번호만(누르면 자리 줄에 이름) · 판 끝은 늘 펼침(직업 공개가 자리판에만 있다) */
+const SIDEC = { good: '#007aff', evil: '#ff3b30', neutral: '#ff9500' }, RED = '#ff3b30', BLUE = '#007aff';
+const FOLD_KEY = 'me.gnow.seatsFold';
+const foldGet = () => { try { return localStorage.getItem(FOLD_KEY) !== '0'; } catch { return true; } };
+const foldSet = v => { try { localStorage.setItem(FOLD_KEY, v ? '1' : '0'); } catch {} };
+const artOk = i => typeof i === 'string' && /^[\w-]{1,60}$/.test(i);
+const Svg = ({ s, cls }) => html`<span class=${cls} dangerouslySetInnerHTML=${{ __html: s }}></span>`;   // 큰 화면 기호·순환 표시(고정 글만 — 서버 값 없음)
+const tw5 = (() => { let c; return (t, fs) => { c = c || document.createElement('canvas').getContext('2d'); c.font = '600 ' + fs + 'px -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif'; return c.measureText(String(t)).width; }; })();
+function GnowHead({ st, nameOf, left }) {
+  const s = st.scene, n = (st.seats || []).length, alive = (st.seats || []).filter(x => !x.dead).length, hd = (i, t, c) => html`<div class="g5hd">${i != null && html`<${Svg} s=${ico(i, 18, c || 'var(--sec)', 'var(--bg)')} />`}${t}</div>`;
+  const big = t => { const w = tw5(t, 34), fs = w > 340 ? Math.max(22, Math.floor(34 * 340 / w)) : 34; return html`<div class="g5big" style=${'font-size:' + fs + 'px'}>${t}</div>`; };
+  const sub = t => html`<div class="g5sub">${t}</div>`, dn = st.day ? T('gnow.day', { n: st.day }) + ' · ' : '';
+  const ko = (document.documentElement.lang || 'ko') === 'ko', by = id => ko ? josa(nameOf(id), '이', '가') : nameOf(id);
+  if (!n && (!s || s === 'idle' || s === 'waiting' || s === 'prep')) return html`${big(T('live.prep'))}${sub(T('game.wait', { n: st.checkin || 0 }))}`;
+  if (s === 'night') return st.night ? big(T('gnow.night', { n: st.night })) : null;
+  if (s === 'discussion') { if (!st.timer || left == null) return html`${hd(2, dn + T('gnow.disc'), APC.day[2])}${big(T('gnow.free'))}`;
+    const warn = left <= 60000, C = warn ? RED : APC.day[2], dur = st.timer.durationMs || 0, sec = Math.max(0, Math.ceil(left / 1000));
+    const lab = st.timer.state === 'paused' ? html`<${Svg} s=${ico('pause', 18, 'var(--sec)')} />${dn}${T('gnow.paused')}` : left <= 0 ? html`<${Svg} s=${ico(2, 18, RED)} />${dn}${T('gnow.time_up')}` : html`<${Svg} s=${ico(2, 18, C)} />${dn}${T('gnow.disc')}`;
+    return html`<div class="g5hd" style="font-weight:600">${lab}</div><div class="g5tm" style=${warn ? 'color:' + RED : ''}>${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}</div>
+      <div class="g5bar"><i style=${'width:' + (dur ? Math.max(0, Math.min(1, left / dur)) * 100 : 0) + '%;background:' + C}></i></div>`; }
+  if ((s === 'nomination' || s === 'voting' || s === 'confirmed') && st.nom) { const x = st.nom;
+    return html`${hd(3, x.by ? T('gnow.nom_by', { p: by(x.by) }) : T('gnow.nom'))}${big(nameOf(x.t))}${sub(s === 'confirmed' && x.v != null ? T('gnow.result', { x: x.v, v: x.need }) + (x.status ? ' · ' + T('gnow.st.' + x.status) : '') : T('gnow.need', { v: x.need, a: alive }))}`; }
+  if (s === 'execution' && st.exec) { const x = (st.seats || []).find(q => q.n === st.exec.t);
+    return html`${hd(5, T('gnow.exec'), APC.day[5])}${big(nameOf(st.exec.t))}${sub(html`${st.exec.died ? T('live.dead') : T('gnow.survived')}${x && x.rv ? html`<span style=${'color:' + (x.rv === 'criminal' ? RED : BLUE)}> · ${T('rv.' + x.rv)}</span>` : ''}`)}`; }
+  if (s === 'dawn') { const ds = st.morning || [];
+    return ds.length ? html`${hd(0, T('gnow.last_night'), APC.day[0])}${big(ds.map(nameOf).join(' · '))}${sub(T('live.dead'))}` : html`${hd(1, T('gnow.morning'), APC.day[1])}${big(T('gnow.morning_big'))}`; }
+  if (s === 'prep') { const H = st.handoff;
+    if (H && H.total) return H.t ? html`${hd(null, T('gnow.handoff', { k: H.seen, n: H.total }))}${big(nameOf(H.t))}${sub(T('gnow.turn'))}` : html`${hd(null, T('gnow.handoff', { k: H.total, n: H.total }))}${big(T('gnow.all_seen'))}`;
+    if (st.briefStage) return html`${hd(null, T('plaza.game_info'))}${big(D(st.mode || ''))}`;
+    return big(T('gnow.seat_check')); }
+  if (s === 'ended') return html`${hd('flag', T('gnow.ended'))}${big(st.win || T('gnow.ended'))}`;
+  if (st.day) return hd(null, dn.replace(/ · $/, ''));
+  return null;
+}
+function GnowCycle({ st, left }) {
+  const cur = CUR[st.scene], night = st.scene === 'night', n = (st.seats || []).length, alive = (st.seats || []).filter(x => !x.dead).length, hasG = (st.seats || []).some(x => x.ghost);
+  const g0 = cur === 0 ? (typeof st.np === 'number' ? st.np : null) : cur === 2 && st.timer && st.timer.durationMs && left != null ? 1 - left / st.timer.durationMs : null;
+  const num = (v, l, dim) => html`<div><b style=${dim ? 'color:var(--g2)' : ''}>${v}</b><span>${l}</span></div>`;
+  return html`${cur != null && html`<${Svg} cls="g5cyc" s=${cycle(st.cyc === 'card' ? 'card' : 'ring', cur, g0, night)} />`}
+    ${!night && n > 0 && (cur != null || st.scene === 'ended') && html`<div class="g5nums">${num(alive, T('gnow.alive'))}${num(n - alive, T('gnow.dead'), true)}${hasG && num((st.seats || []).filter(x => x.dead && x.ghost).length, T('gnow.ghost'), true)}</div>`}`;
+}
+/* 자리판 — 큰 화면 geo()(배치표 screen_table.js)로 1080 무대에 놓고 폭에 맞춰 통째로 줄인다 */
+function GnowBoard({ st, mineN, onTap }) {
+  const seats = st.seats, n = seats.length, full = n <= 12, rv = st.scene === 'ended' && Array.isArray(st.reveal) ? Object.fromEntries(st.reveal.map(r => [r.n, r])) : null;
+  const rect = st.shape === 'rect' && st.board && Array.isArray(st.board.cells);
+  const p = { seats: seats.map(x => ({ id: 's' + x.n, number: x.n, name: x.name })), shape: rect ? 'rect' : 'round',
+    board: rect ? { cols: st.board.cols, rows: st.board.rows, cells: st.board.cells.map(c => ({ col: c.c, row: c.r, seatId: c.n ? 's' + c.n : null })) } : null };
+  const L = geo(p), h = L.h, W = Math.max(280, Math.min(480, (window.innerWidth || 390) - 32));
+  const two = !!rv, fsT = h.fs * (two ? 2.5 : 1.3) + 8;
+  let box; if (L.kind === 'c') { const lead = h.d * .3 + 6, band = full ? lead + h.fs * 4 + 16 : 0, tl = full ? fsT - 2 : 0, R = h.R; box = { x: L.seats.reduce((a, q) => a + q.x, 0) / n - (R + h.d / 2 + band), y: L.seats.reduce((a, q) => a + q.y, 0) / n - (R + h.d / 2 + tl), w: 2 * (R + h.d / 2 + band), h: 2 * (R + h.d / 2 + tl) }; }
+  else { const xs = L.seats.concat(L.gaps).map(q => q.x), ys = L.seats.concat(L.gaps).map(q => q.y), sb = full ? h.fs * 4 + 16 : 0, tb = full ? fsT : 0;
+    box = { x: Math.min(...xs) - h.d / 2 - sb, y: Math.min(...ys) - h.d / 2 - tb, w: Math.max(...xs) - Math.min(...xs) + h.d + 2 * sb, h: Math.max(...ys) - Math.min(...ys) + h.d + 2 * tb }; }
+  const k = W / box.w, d = Math.round(h.d * k), fs = Math.max(9, Math.round(h.fs * k * 10) / 10), H = Math.round(box.h * k), X = x => (x - box.x) * k, Y = y => (y - box.y) * k, nomT = st.nom && /^(nomination|voting|confirmed)$/.test(st.scene) ? st.nom.t : null, turn = st.handoff && st.scene === 'prep' ? st.handoff.t : null;
+  const R0 = L.kind === 'c' ? h.R : 0, CX = L.kind === 'c' ? L.seats.reduce((a, q) => a + q.x, 0) / n : 0, CY = L.kind === 'c' ? L.seats.reduce((a, q) => a + q.y, 0) / n : 0;   // 원의 가운데(geo 의 cy 는 가운데 글 자리라 midDy 만큼 다르다)
+  return html`<div class="g5board" style=${'width:' + W + 'px;height:' + H + 'px'}>
+    ${L.gaps.map(g => html`<div class="st gp" style=${`left:${X(g.x)}px;top:${Y(g.y)}px;width:${d * .55}px;height:${d * .55}px`}></div>`)}
+    ${seats.map((x, i) => { const pt = L.seats[i]; if (!pt) return null; const r = rv && rv[x.n], cls = 'st' + (x.dead ? ' dead' : '') + (r ? ' rev' : '') + (x.rv === 'criminal' ? ' ring-e' : x.rv === 'citizen' ? ' ring-c' : '') + (x.n === nomT ? ' nom' : x.n === turn ? ' turn' : '');
+      const seat = html`<button type="button" class=${cls} data-k=${r ? '' : x.dead ? (x.cause === 'exec' ? 'x' : x.cause ? 'm' : '') : ''} aria-label=${x.n + ' ' + x.name + (x.dead ? ' · ' + T('live.dead') : '') + (r ? ' · ' + D(r.role) : '')} onClick=${() => onTap(x.n)}
+        style=${`left:${X(pt.x)}px;top:${Y(pt.y)}px;width:${d}px;height:${d}px;font-size:${Math.round(d * .43)}px`}>${r ? (artOk(r.icon) ? html`<img class="ri" src=${'art/' + r.icon + '.webp'} alt="" />` : html`<span class="ri">${Array.from(D(r.role || ''))[0] || ''}</span>`) : x.dead ? '' : x.n}${x.dead && x.ghost && html`<span class="gh"></span>`}</button>`;
+      if (!full) return seat;
+      let pos, inl; const g0 = d / 2 + 4;
+      if (L.kind === 'c') { const co = (pt.x - CX) / R0, si = (pt.y - CY) / R0, side = Math.abs(co) >= .3, g = side ? g0 + d * .3 : g0, ax = X(pt.x) + co * g, ay = Y(pt.y) + si * g; inl = side;
+        if (!side) { const mw = Math.max(24, 2 * R0 * k * Math.sin(Math.PI / n) * .96); pos = `left:${ax - mw / 2}px;width:${mw}px;text-align:center;` + (si < 0 ? `bottom:${H - ay + 2}px` : `top:${ay + 2}px`); }
+        else if (co > 0) pos = `left:${ax + 2}px;width:${W - ax - 1}px;text-align:left;top:${ay - fs * .6}px`; else pos = `left:0;width:${ax - 1}px;text-align:right;top:${ay - fs * .6}px`; }
+      else { const px = X(pt.x), py = Y(pt.y), mw = h.sx * k - 4; inl = pt.nm === 'left' || pt.nm === 'right';
+        pos = pt.nm === 'above' ? `left:${px - mw / 2}px;width:${mw}px;text-align:center;bottom:${H - (py - g0) + 2}px` : pt.nm === 'below' ? `left:${px - mw / 2}px;width:${mw}px;text-align:center;top:${py + g0}px`
+          : pt.nm === 'left' ? `left:0;width:${px - g0 - 1}px;text-align:right;top:${py - fs * .6}px` : `left:${px + g0}px;width:${W - (px + g0) - 1}px;text-align:left;top:${py - fs * .6}px`; }
+      return html`${seat}<div class=${'g5lb' + (x.dead ? ' dead' : '') + (inl ? ' inl' : '')} style=${'font-size:' + fs + 'px;' + pos}>${x.name}${mineN === x.n && html`<span class="my">${T('gnow.me')}</span>`}${r && html`<span class="rl" style=${'color:' + (SIDEC[r.side] || 'var(--sec)')}>${D(r.role)}</span>`}</div>`; })}
+  </div>`;
+}
 function GameNow({ close }) {
-  const nav = useNav(), L = useLive(), [peek, setPeek] = useState(false); useTick();
-  const j = L.joined[0], st = j && L.status[j.plaza], pp = j ? (L.people[j.plaza] || []) : [];
+  const nav = useNav(), L = useLive(), [peek, setPeek] = useState(false), [fold, setFold0] = useState(foldGet), [tap, setTap] = useState(null); useTick();
+  const setFold = v => { setFold0(v); foldSet(v); };
+  const j = L.joined[0], st0 = j && L.status[j.plaza], pp = j ? (L.people[j.plaza] || []) : [];
   if (!j) return html`<${Page} title=${T('game.now')} left=${html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}><${Section}><${Row}><span class="sec">${T('empty.plaza')}</span><//><//><//>`;
-  const going = st && (st.day || st.night || st.scene === 'ended'), left = st && timerLeft(st.timer, L.skew);
-  const guide = st && st.brief && (st.brief.groups || []).length;
-  return html`<${Page} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} left=${html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}>
-    <div class="gnow-head"><div class="gnow-ph">${going ? phaseText(st) : T('live.prep')}</div>${left != null ? html`<div class="gnow-tm">${mmss(left)}</div>` : !going && html`<div class="sec">${T('game.wait', { n: pp.length })}</div>`}</div>
-    ${st && st.mine && html`<${Section}><${Row}><span class="grow">${T('plaza.my_role')} <b class=${peek ? (st.mine.side === 'evil' ? 'red' : 'blue') : 'sec'}>${peek ? D(st.mine.role) : '•••'}</b></span>
-      <span class="hold-sm"><${HoldButton} label=${T('plaza.hold')} onChange=${setPeek} /></span>
-      <button class="blink" onClick=${() => nav.push(html`<${RoleDetail} card=${st.mine} brief=${st.brief} modeId=${st.modeId} mine=${true} />`)}>${T('role.more')}</button><//><//>`}
-    ${st && st.seats && st.seats.length > 0 && going && html`<${Section}><div class="row lseats-row"><${SeatGrid} seats=${st.seats} /></div><//>`}
-    ${st && (st.brief || st.modeId) && html`<${Section}>
-      ${st.brief && html`<${Row} chevron onClick=${() => nav.push(html`<${BriefView} b=${st.brief} modeId=${st.modeId} />`)}><${RowLabel} title=${T('plaza.game_info')} /><span class="sec">${st.brief.title} · ${st.brief.n}명</span><//>`}
-      <${Row} chevron onClick=${() => nav.push(guide ? html`<${RoleGuide} b=${st.brief} />` : html`<${ModeView} id=${st.modeId} />`)}><${RowLabel} title=${T(guide ? 'role.inplay' : 'role.mode_all')} /><span class="sec">${!st.brief && st.mode ? D(st.mode) : ''}</span><//><//>`}
+  const st = { ...(st0 || {}), seats: (st0 && Array.isArray(st0.seats)) ? st0.seats : [], checkin: pp.length }, left = timerLeft(st.timer, L.skew), night = st.scene === 'night';
+  const nameOf = n => { const x = st.seats.find(q => q.n === n); return x ? x.name || n + '번' : ''; };
+  const guide = st.brief && (st.brief.groups || []).length, ended = st.scene === 'ended', open = ended || !fold, mineN = st.mine && st.mine.n;
+  const me = mineN ? st.seats.find(q => q.n === mineN) : null, alive = st.seats.filter(q => !q.dead).length;
+  const sum = tap && st.seats.length > 12 ? tap + ' · ' + nameOf(tap) : ended ? T('gnow.reveal') : me ? T('gnow.my_seat', { n: me.n, s: me.dead ? T('gnow.dead') : T('gnow.alive') }) : T('gnow.seats_sum', { n: st.seats.length, a: alive });
+  return html`<${Page} bg=${night ? 'g5n' : 'g5'} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} left=${html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}>
+    <div class="g5">
+      <div class="g5mid"><${GnowHead} st=${st} nameOf=${nameOf} left=${left} /></div>
+      <${GnowCycle} st=${st} left=${left} />
+      ${st.seats.length > 0 && html`<button type="button" class="g5row" aria-expanded=${open} disabled=${ended} onClick=${() => setFold(!fold)}><span class="lab">${T('gnow.seats')}</span><span class="val">${sum}</span>${!ended && html`<span class="tg">${fold ? '▸' : '▾'}</span>`}</button>
+        ${open && html`<${GnowBoard} st=${st} mineN=${mineN} onTap=${n => setTap(tap === n ? null : n)} />`}`}
+      ${st.mine && html`<div class="g5row g5me"><span class="lab">${T('plaza.my_role')}</span><span class="val" style=${peek ? 'color:' + (SIDEC[st.mine.side] || 'inherit') : ''}>${peek ? D(st.mine.role) : '•••'}</span>
+        <span class="hold-sm g5hold"><${HoldButton} label=${T('plaza.hold')} onChange=${setPeek} /></span>
+        <button type="button" class="g5lnk" onClick=${() => nav.push(html`<${RoleDetail} card=${st.mine} brief=${st.brief} modeId=${st.modeId} mine=${true} />`)}>${T('role.more')}</button></div>`}
+      ${!night && Array.isArray(st.flow) && st.flow.length > 0 && html`<${GnowFlow} st=${st} nameOf=${nameOf} />`}
+      ${(st.brief || st.modeId) && html`<div class="g5links">${st.brief && html`<button type="button" class="g5lnk" onClick=${() => nav.push(html`<${BriefView} b=${st.brief} modeId=${st.modeId} />`)}>${T('plaza.game_info')}</button>`}
+        <button type="button" class="g5lnk" onClick=${() => nav.push(guide ? html`<${RoleGuide} b=${st.brief} />` : html`<${ModeView} id=${st.modeId} />`)}>${T(guide ? 'role.inplay' : 'role.mode_all')}</button></div>`}
+    </div>
   <//>`;
+}
+function GnowFlow({ st, nameOf }) {
+  const inDay = /^(dawn|discussion|nomination|voting|confirmed|execution)$/.test(st.scene), cur = CUR[st.scene];
+  const rvOf = n => { const x = st.seats.find(q => q.n === n); return x && x.rv ? [' · ' + T('rv.' + x.rv), x.rv === 'criminal' ? RED : BLUE] : ['', null]; };
+  const ev = (a, b, c) => html`<div class="ev"><span>${a}</span><span class="r" style=${c ? 'color:' + c : ''}>${b}</span></div>`;
+  /* 채팅처럼(2026-10-26 햇살님 «늘어나면 위로 올라가게, 올라가면 투명해지게») — 오래된 것 위·새 것 아래, 칸 높이를 넘으면 위로 잘리며 위쪽 1/3 이 흐려진다. 줄이 늘 때만 위로 미끄러짐 */
+  const ref = useRef(null), cnt = st.flow.reduce((a, f) => a + 1 + (f.ev || []).length, 0), last = useRef(cnt), up = cnt > last.current;
+  useEffect(() => { last.current = cnt; const w = ref.current, t = w && w.firstElementChild; if (w && t) w.classList.toggle('clip', t.offsetHeight > w.clientHeight + 1); });   // 아래 붙임(flex-end)이라 넘친 위쪽은 scrollHeight 에 안 잡힌다 — 안쪽 높이로 잰다
+  return html`<div class="g5flow"><div class="cap">${T('gnow.flow')}</div><div class="tlw" ref=${ref}><div key=${cnt} class=${'tl' + (up ? ' up' : '')} style=${'--pc:' + APC.day[cur == null ? 2 : cur]}>
+    ${st.flow.map((f, i) => { const now = i === st.flow.length - 1 && ((f.k === 'day' && inDay && f.n === st.day) || (f.k === 'night' && st.scene === 'night'));
+      return html`<div class="pg"><div class=${'per' + (now ? ' now' : '')}>${f.k === 'night' ? T('gnow.night', { n: f.n }) : T('gnow.day', { n: f.n })}${now ? ' · ' + T('gnow.now') : ''}</div>
+        ${(f.ev || []).map(e => e.w === 'nom' ? ev((e.by ? nameOf(e.by) + ' → ' : '') + nameOf(e.t), e.v == null ? T('gnow.nom') : T('gnow.nom') + ' · ' + T('gnow.votes', { v: e.v }) + (e.need != null && e.v < e.need ? ' ' + T('gnow.short') : ''))
+          : e.w === 'death' ? (([t, c]) => ev(nameOf(e.t), T('live.dead') + t, c))(rvOf(e.t)) : e.w === 'exec' ? (([t, c]) => ev(nameOf(e.t), T('gnow.exec') + t, c || RED))(rvOf(e.t)) : e.w === 'survived' ? ev(nameOf(e.t), T('gnow.exec') + ' · ' + T('gnow.survived')) : null)}
+        ${!(f.ev || []).length && f.k === 'night' && html`<div class="ev sec">${T('gnow.nobody')}</div>`}</div>`; })}</div></div></div>`;
 }
 
 /* 직업 자세히(2026-10-25 햇살님 «내 직업에 대한 자세한 설명 — 팁이나 특징») — 능력 글 + 특징·팁(library/tips.json, 오리지널부터).
@@ -144,15 +237,15 @@ const gSide = g => g.key === 'good' ? 'good' : g.key === 'solo' ? null : 'evil';
 const briefRoles = b => b && b.groups ? b.groups.flatMap(g => (g.roles || []).map(r => ({ ...r, group: g.name, side: gSide(g) }))) : [];
 function useArt() { const [a, setA] = useState(ART || {}); useEffect(() => { artMap().then(setA); }, []); return a; }
 function RoleDetail({ card, brief, modeId, mine }) {
-  const nav = useNav(), art = useArt(), tips = useTips(), tp = (document.documentElement.lang || 'ko') === 'ko' && card.id ? tips[card.id] : null;   // 팁은 한국어부터(번역은 검토 뒤)
+  const nav = useNav(), art = useArt(), tips = useTips(), tp = (document.documentElement.lang || 'ko') === 'ko' && card.id ? tips[card.id] : null;   // 팁은 한국어부터(번역은 검토 뒤) · card.id 는 코어 plaza.cards 가 준 «보이는(믿는) 직업» id — 취객·신들린이류는 믿는 직업의 팁이 나오고 진짜 직업은 오지 않는다(3-0 ①, 2026-10-26). 팁 없는 직업은 칸을 안 그린다
   const others = briefRoles(brief);
   return html`<${Page} title=${mine ? T('plaza.my_role') : D(card.role)} left=${html`<${Back} />`}>
     <${Section}><div class="row" style="flex-direction:column;align-items:center;gap:6px;padding:20px 16px;text-align:center">
       <${RoleArt} r=${art[card.role] || {}} size=${72} /><div style="font-size:22px;font-weight:700">${D(card.role)}</div>
       ${card.team && html`<div class=${card.side === 'evil' ? 'red' : card.side === 'good' ? 'blue' : 'sec'}>${D(card.team)}</div>`}
       <div>${D(card.ab)}</div>${card.rule && html`<div class="sec" style="font-size:14px">${card.rule}</div>`}</div><//>
-    ${tp && tp.feat && html`<${Section} header=${T('role.feat')}>${tp.feat.map(s => html`<${Row}><span>${s}</span><//>`)}<//>`}
-    ${tp && tp.tip && html`<${Section} header=${T('role.tip')}>${tp.tip.map(s => html`<${Row}><span>${s}</span><//>`)}<//>`}
+    ${tp && (tp.feat || []).length > 0 && html`<${Section} header=${T('role.feat')}>${tp.feat.map(s => html`<${Row}><span>${s}</span><//>`)}<//>`}
+    ${tp && (tp.tip || []).length > 0 && html`<${Section} header=${T('role.tip')}>${tp.tip.map(s => html`<${Row}><span>${s}</span><//>`)}<//>`}
     ${mine && (others.length ? html`<${Section} header=${T('role.inplay')}>${others.map(r => html`<${Row} chevron onClick=${() => nav.push(html`<${RoleDetail} card=${{ id: r.id, role: r.name, team: r.group, side: r.side, ab: r.ability }} />`)}>
         <${RoleArt} r=${art[r.name] || {}} size=${32} /><${RowLabel} title=${D(r.name) + (r.count > 1 ? ' ×' + r.count : '')} text=${D(r.group || '')} /><//>`)}<//>`
       : modeId && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${ModeView} id=${modeId} />`)}>${T('role.mode_all')}<//><//>`)}
@@ -202,7 +295,8 @@ function ModeView({ id }) {
   useEffect(() => { fetch(`library/modes/${id}.json`).then(r => r.json()).then(setM); }, [id]);
   const roles = m ? m.roles.filter(r => !q || (r.ko + D(r.ko) + (r.ab || '') + D(r.ab || '')).toLowerCase().includes(q.toLowerCase())) : [];
   const save = async () => { if (!on) { setMsg(T('err.not_logged_in')); return; } setAd(true); };
-  const download = async () => { setAd(false); for (const [i, blob] of (await sheets(m)).entries()) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${T('lib.sheet_file', { name: D(m.name) })}${i ? '_' + (i + 1) : ''}.png`; a.click(); } };
+  /* 아이폰 사파리는 공유 시트 «이미지 저장»으로 사진 앱에, 안 되면 내려받기(2026-10-26 — 예전엔 내려받기만이라 파일 앱으로 갔다) */
+  const download = async () => { setAd(false); const name = T('lib.sheet_file', { name: D(m.name) }); await saveFiles((await sheets(m)).map((blob, i) => new File([blob], `${name}${i ? '_' + (i + 1) : ''}.png`, { type: 'image/png' })), D(m.name)); };
   return html`<${Page} title=${m ? D(m.name) : ''} left=${html`<${Back} />`}>
     <${Loading} v=${m}>${m && html`
       <div style="display:flex;gap:10px;padding:12px 16px"><button class="bsec grow" onClick=${() => nav.push(html`<${Rulebook} m=${m} />`)}>${T('lib.rulebook')}</button><button class="bsec grow" onClick=${save}>${T('lib.download')}</button></div>

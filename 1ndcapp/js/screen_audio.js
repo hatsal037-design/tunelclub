@@ -5,7 +5,7 @@ const TAG = { ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', 'zh-Hans': 'zh-CN', 'zh-Han
 const MOODS = { night: [0.88, 0.85], day: [1, 1], exec: [0.92, 0.8], end: [0.95, 0.9] };
 const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 const voice = new Audio(), sting = new Audio(), music = new Audio(); music.loop = true;
-let open = false, want = false, seen = null, bgm = null, bgmOn = '', talking = 0, vq = Promise.resolve(), sq = Promise.resolve(), actx = null;
+let open = false, want = false, seen = null, bgm = null, bgmOn = '', talking = 0, vq = Promise.resolve(), sq = Promise.resolve(), actx = null, vgen = 0, lastG = null, cut = null;
 const btn = document.getElementById('snd');
 const show = () => { if (btn) btn.hidden = open || !want; };
 function unlock() {
@@ -16,14 +16,14 @@ function unlock() {
   bgmOn = ''; setBgm(bgm);
 }
 addEventListener('pointerdown', unlock, true); addEventListener('keydown', unlock, true);
-const once = (a, u) => new Promise(ok => { a.onended = ok; a.onerror = ok; a.src = u; a.play().catch(ok); });
+const once = (a, u) => new Promise(ok => { if (a === voice) cut = () => ok(false); a.onended = () => ok(true); a.onerror = () => ok(false); a.src = u; a.play().catch(() => ok(false)); });   // false = 못 틂·끊김
 const level = () => { if (bgm) music.volume = Math.min(1, bgm.vol * (talking ? 0.35 : 1)); };
-async function speakOne(x) {
-  talking++; level();
+async function speakOne(x, my) {
+  if (my !== vgen) return; talking++; level();
   try {
     if (x.v !== 'system' && x.plan && x.plan.length && REC.includes(x.L)) {
       const pre = x.L === 'ko' ? `${x.v}__` : `hyeongyeong__${x.L}__`;
-      for (const p of x.plan) if (p.clip) await once(voice, `../voice/${pre}${p.clip}.m4a`);
+      for (const p of x.plan) if (p.clip && (my !== vgen || !(await once(voice, `../voice/${pre}${p.clip}.m4a`)))) break;   // 조각 하나라도 없으면 그 문장은 조용히(폰과 같게)
     } else if (window.speechSynthesis) {
       const u = new SpeechSynthesisUtterance(x.text), m = MOODS[x.mood] || MOODS.day; u.lang = TAG[x.L] || 'ko-KR'; u.rate = m[0]; u.pitch = m[1];
       await new Promise(ok => { u.onend = ok; u.onerror = ok; speechSynthesis.speak(u); });
@@ -43,13 +43,15 @@ function setBgm(b) {
   bgmOn = bgm.name; music.src = `../bgm/${bgm.name}.m4a`; music.play().catch(() => {});
 }
 /** 받은 공개 정보의 audio 칸 — 처음 받을 때 이미 있던 소리는 지난 것이라 안 튼다 */
-export function screenSound(a) {
+export function screenSound(a, fresh) {
+  if (fresh) { seen = null; lastG = null; }   // 연결이 끝났다 다시 짝지으면 처음처럼 — 쌓여 있던 지난 소리를 안 튼다
   want = !!a; show();
   if (!a) { setBgm(null); return; }
   const items = a.items || [];
   if (seen === null) seen = items.reduce((m, x) => Math.max(m, x.id), 0);
   for (const x of items) { if (x.id <= seen) continue; seen = x.id; if (!open) continue;
-    if (x.k === 'speak') vq = vq.then(() => speakOne(x));
+    if (x.k === 'speak') { if (x.g !== lastG) { lastG = x.g; vgen++; voice.pause(); if (cut) cut(); try { speechSynthesis.cancel(); } catch {} vq = Promise.resolve(); }   // 새 묶음은 앞 낭독을 끊는다
+      const my = vgen; vq = vq.then(() => speakOne(x, my)); }
     else if (x.k === 'sting') sq = sq.then(() => { sting.volume = Math.min(1, (x.vol ?? 0.5) * 1.2); return once(sting, `../bgm/${x.u}`); });
     else if (x.k === 'beep') beep(x.strong); }
   setBgm(a.bgm);
