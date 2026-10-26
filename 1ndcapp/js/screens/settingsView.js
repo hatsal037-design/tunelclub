@@ -50,7 +50,7 @@ export function SettingsView() {
   return html`<${Page} title="설정" left=${html`<${Back} />`}>
     <${Section} header="진행">
       <${Toggle} checked=${settings.get('haptics')} onChange=${v => set('haptics', v)}>진동 피드백<//>
-      <${Toggle} checked=${settings.get('bgm')} onChange=${v => { set('bgm', v); if (v) bgmSync(store.get('bgm.slot')); else bgmStop(); }}>배경 음악<//>
+      <${Toggle} checked=${settings.get('bgm')} onChange=${v => { set('bgm', v); bgmSync(store.get('bgm.slot')); }}>배경 음악<//>
       ${settings.get('bgm') && html`<div class="row"><input type="range" min="0" max="1" step="0.05" style="width:100%" value=${settings.get('bgmVolume') ?? 0.5} onInput=${e => { set('bgmVolume', +e.currentTarget.value); bgmVolume(); }} aria-label="배경 음악 크기" /></div>`}
       <${Toggle} checked=${settings.get('sound')} onChange=${v => set('sound', v)}>진행 소리<//>
       <${Toggle} checked=${!!store.get('director.enabled')} onChange=${async v => { await store.dispatch('director.setEnabled', { on: v }); rerender(); }}>판세 보정<//>

@@ -247,7 +247,15 @@ function artColor(a) {
       ok(artColors[a.icon] = k > 8 ? `rgb(${Math.round(r / k)},${Math.round(g / k)},${Math.round(b / k)})` : null); } catch (e) { ok(null); } };
     img.src = `art/${a.icon}.webp`; });
 }
-export function RevealBoard({ roles, shown = [], me, allies = [], title, side, meTint }) {
+/** 밤 답 그림(2026-10-26 햇살님, 시안/밤정보_픽토그램_20261026 v2) — 기호 하나. O·시계 방향 빨강 · X·반시계 파랑 · 선 해·악 달(편 색) · 같은 거리 ↔ 글자색 · 없음 회색 */
+const picIcon = p => p.kind === 'ox' ? [p.v ? 'circle' : 'xmark', p.v ? 'red' : 'blue'] : p.kind === 'team' ? [p.v === 'evil' ? 'moon' : 'sun', p.v === 'evil' ? 'red' : 'blue']
+  : p.kind === 'dir' ? (p.v === 'cw' ? ['cw', 'red'] : p.v === 'ccw' ? ['ccw', 'blue'] : ['tie', '']) : ['minusCircle', 'sec'];
+export function AnsPic({ pic, size = 96 }) {
+  if (pic.kind === 'num') return html`<div class="ans-num" aria-hidden="true" style=${`font-size:${size}px`}>${pic.v}${pic.of != null && html`<small>/${pic.of}</small>`}</div>`;
+  const [n, c] = picIcon(pic);
+  return html`<span class=${cx('ans-pic', c)} aria-hidden="true"><${Icon} name=${n} size=${size} /></span>`;
+}
+export function RevealBoard({ roles, shown = [], me, allies = [], title, side, meTint, pic, picSize }) {
   const b = store.board;
   const id = i => { const s = b.seats.find(s => s.index === i); return s ? s.id : null; };
   const round = b.shape === 'round' || !b.cells.length;
@@ -258,14 +266,16 @@ export function RevealBoard({ roles, shown = [], me, allies = [], title, side, m
   /* 대상 자리는 알려 준 직업의 색으로 테두리, 보는 사람 자리는 원을 파랑으로 채운다(2026-10-02 햇살님 «자기랑 대상이 달라야»). 직업 색 = 그 직업 그림의 색(그림이 단색 목판이면 편 색: 선 파랑·악 빨강) */
   const [roleColor, setRoleColor] = useState(null);
   useEffect(() => { let live = true; setRoleColor(null); if (roles.length === 1) artColor(store.artOf(roles[0])).then(c => { if (live) setRoleColor(c); }); return () => { live = false; }; }, [roles.join('|')]);
-  const targets = shown.map(id).filter(Boolean);
+  const targets = (pic ? pic.about : shown).map(id).filter(Boolean);   // 답 그림이면 물어본 자리
   const shownIds = new Set(targets); if (meTint && id(me)) shownIds.add(id(me));   // 보는 사람 자리는 번호·이름도 같이
-  const rings = {}; if (side || roleColor) targets.forEach(x => { if (x !== id(me)) rings[x] = side === 'dead' ? 'purple' : (roleColor || (side === 'evil' ? 'red' : 'blue')); });   // 죽은 사람의 직업(장의사)은 보라 — 2026-10-04 (줄 끝 주석이 «});»를 삼켜 10-05 05:11 배포부터 웹이 안 떴다 — 2026-10-06 고침)
+  const rings = {}; if (pic) targets.forEach(x => { if (x !== id(me)) rings[x] = pic.kind === 'team' ? (pic.v === 'evil' ? 'red' : 'blue') : 'label'; });   // 물어본 자리 — 글자색 테두리(선악 답은 편 색)
+  else if (side || roleColor) targets.forEach(x => { if (x !== id(me)) rings[x] = side === 'dead' ? 'purple' : (roleColor || (side === 'evil' ? 'red' : 'blue')); });   // 죽은 사람의 직업(장의사)은 보라 — 2026-10-04 (줄 끝 주석이 «});»를 삼켜 10-05 05:11 배포부터 웹이 안 떴다 — 2026-10-06 고침)
   return html`<div class=${cx('reveal', meTint && 'me-tint')}>
     ${title && html`<div class="rv-title">${title}</div>`}
     ${!inCenter && roles.length > 0 && cluster}
+    ${!inCenter && pic && html`<${AnsPic} pic=${pic} size=${picSize || 72} />`}
     <div class="nohit"><${SeatBoard} board=${b} me=${id(me)} publicView=${true} allies=${new Set(allies.map(id).filter(Boolean))} rings=${rings}
-      shownOnly=${shownIds} center=${inCenter && roles.length ? cluster : undefined} /></div>
+      shownOnly=${pic ? null : shownIds} center=${inCenter && pic ? html`<${AnsPic} pic=${pic} size=${picSize || (round ? 110 : 80)} />` : inCenter && roles.length ? cluster : undefined} /></div>
   </div>`;
 }
 export function BluffBoard({ bluffs }) {

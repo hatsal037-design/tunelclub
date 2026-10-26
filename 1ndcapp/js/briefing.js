@@ -116,7 +116,19 @@ svg.wire line.unk{stroke:rgba(238,234,226,.35);stroke-dasharray:4 5}
 `;
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-export const ic = k => ICON_PATHS[k] ? `<svg class="i" viewBox="0 0 24 24"><path d="${ICON_PATHS[k]}"/></svg>` : '';
+/* 두 번째 문턱(2026-10-26 종합점검 v2 1번) — 참가 웹은 서버(광장 현황 brief)에서 받은 안내를 그린다. 서버 0329 가 허용 목록으로 거르지만,
+   화면도 이스케이프 없이 끼우는 칸(숫자·직업 id·무리 key)을 여기서 한 번 더 숫자·정규식으로 고정한다. 글은 그리는 자리에서 esc. */
+const RID = /^[a-z0-9_]{1,40}$/, GKEY = ['good', 'mafia', 'triad', 'crook', 'solo'];
+const num = (v, lo, hi) => { v = Number(v); return Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : 0; };
+export function safeBrief(b) {
+  const s = (b && b.sides) || {}, arr = v => (Array.isArray(v) ? v : []);
+  return { ...b, n: num(b && b.n, 0, 40), sides: { good: num(s.good, 0, 40), evil: num(s.evil, 0, 40), other: num(s.other, 0, 40) },
+    groups: arr(b && b.groups).filter(g => g && GKEY.includes(g.key)).map(g => ({ ...g, knows: g.knows || {}, win: g.win || {},
+      roles: arr(g.roles).filter(r => r && RID.test(r.id)).map(r => ({ ...r, count: num(r.count, 1, 40) })) })),
+    flow: arr(b && b.flow).filter(f => f).map(f => ({ ...f, items: arr(f.items).filter(it => it).map(it => ({ ...it, roles: arr(it.roles).filter(i => RID.test(i)) })) })),
+    links: arr(b && b.links).filter(l => Array.isArray(l) && GKEY.includes(l[0]) && GKEY.includes(l[1])) };
+}
+export const ic = k => Object.hasOwn(ICON_PATHS, k) ? `<svg class="i" viewBox="0 0 24 24"><path d="${ICON_PATHS[k]}"/></svg>` : '';
 /* 코인 바닥 색 — 앱 COIN_BAND 를 먹색 천에 맞게 누른 값(구현약속 «코인») */
 export const BAND = { om_citizen: '#3a5f6f', om_detective: '#3a6f43', om_doctor: '#3a6f43', om_immortal: '#3a6f43', om_judge: '#3a6f43', om_sheriff: '#3a6f43', om_mafia: '#514f57', om_godfather: '#514f57', om_yakuza: '#6d3f3c', om_ninja: '#6d3f3c', om_lawyer: '#6e6a65', om_badjudge: '#6e6a65', om_lunatic: '#675b79', om_werewolf: '#675b79' };
 export const tone = g => ({ '선': 'g', '악': 'e' })[g.side] || 'n';
@@ -164,6 +176,7 @@ function wire(root, links) {
 
 /** 큰 화면 룰 설명(시안 A) — host 는 TV 전체를 덮는 칸 */
 export function drawA(host, b) {
+  b = safeBrief(b);
   const { r, set } = shadow(host), g = G(b), tri = !!g.triad, solo = !!g.solo, cr3 = !!g.crook && tri;
   const P = { good: [solo ? 38 : 50, 0], solo: [88, 0], mafia: [22, cr3 ? 37 : 46], triad: [78, cr3 ? 37 : 46], crook: [50, 72] };
   if (!tri) { P.mafia = [27, 50]; P.crook = [73, 50]; }
@@ -175,6 +188,7 @@ export function drawA(host, b) {
 
 /** 큰 화면 넘기기 옆 «이번 판» — 편별 수 · 무리별 코인 · 승리 결론. 넘치면 통째로 줄인다(위아래 가운데) */
 export function drawPanel(host, b) {
+  b = safeBrief(b);
   const { r, set } = shadow(host);
   set(`<div class="felt Pn light"><div class="pin"><div class="kick">이번 판</div><div class="hd"><b>${esc(b.title)} · ${b.n}명</b><span>${sideLine(b)}</span></div>
     <div class="pl">${b.groups.map(x => `<div class="pgr"><div class="gl ${tone(x)}">${nameOf(x)} <span class="gs">· ${esc(x.knows.text)}</span></div><div class="coins">${coins(x)}</div><div class="gw">${ic('trophy')}${esc(x.win.short)}</div></div>`).join('')}</div></div></div>`);
@@ -184,6 +198,7 @@ export function drawPanel(host, b) {
 
 /** 공유 장 K 다섯 종 — 구성 → 흐름 → 누가 누구를 아나 → 승리 조건 → 직업 능력(한 장에 셋까지) */
 export function cardsHTML(b) {
+  b = safeBrief(b);
   const g = G(b), head = `${esc(b.hub)} · ${esc(b.title)} ${b.n}명`, link = (a, c) => (b.links || []).find(l => (l[0] === a && l[1] === c) || (l[0] === c && l[1] === a));
   const grpK = x => `<div class="grp"><div class="gl ${tone(x)}">${nameOf(x)}</div><div class="gs">${ic(x.knows.icon)} ${esc(x.knows.text)}</div><div class="coins">${coins(x)}</div><div class="gw">${ic('trophy')} ${esc(x.win.short)}</div></div>`;
   const grpC = x => `<div class="grp"><div class="gl ${tone(x)}">${nameOf(x)}</div><div class="coins">${coins(x)}</div></div>`;
@@ -191,7 +206,7 @@ export function cardsHTML(b) {
   const mt = link('mafia', 'triad');
   rel += g.triad ? `<div class="two">${grpK(g.mafia)}<div class="mid e">${ic('swords')}${esc((mt && mt[3]) || '서로 모르는 적').replace(' ', '<br>')}</div>${grpK(g.triad)}</div>` : g.mafia ? grpK(g.mafia) : '';
   if (g.crook) rel += `<div class="lk unk"><span>${esc((link('crook', 'mafia') || [])[3] || '같은 편 · 서로 모름')}</span></div>` + grpK(g.crook);
-  if (g.solo) rel += `<div class="solo1">${coins(g.solo, false)}<span class="n" style="font-family:var(--serif);font-weight:700">${esc(g.solo.name)}</span> ${esc(g.solo.knows.text)} · ${ic('trophy')} ${esc(g.solo.win.short.replace(/^각자\s*/, ''))}</div>`;
+  if (g.solo) rel += `<div class="solo1">${coins(g.solo, false)}<span class="n" style="font-family:var(--serif);font-weight:700">${esc(g.solo.name)}</span> ${esc(g.solo.knows.text)} · ${ic('trophy')} ${esc(String(g.solo.win.short || '').replace(/^각자\s*/, ''))}</div>`;
   const wins = b.groups.map(x => `<div class="win"><div class="wh ${tone(x)}">${coins(x, false)}${esc(x.name)}</div><div class="wb">${esc(x.win.short)}</div><div class="wd">${esc(x.win.long)}</div></div>`).join('');
   const pages = [
     ['구성', `<div class="sub" style="margin:-8px 0 18px">${sideLine(b)}</div>` + b.groups.map(grpC).join('')],
@@ -244,7 +259,11 @@ export async function pngs(b) {
 }
 /** 공유가 되면 공유 시트(카톡·에어드롭), 아니면 내려받기 — 노트북 진행자가 주로 쓴다 */
 export async function share(b) {
-  const files = (await pngs(b)).map((bl, i) => new File([bl], `이번판안내_${i + 1}.png`, { type: 'image/png' }));
-  if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, title: '이번 판 안내' }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  return saveFiles((await pngs(b)).map((bl, i) => new File([bl], `이번판안내_${i + 1}.png`, { type: 'image/png' })), '이번 판 안내');
+}
+/** 이미지 파일 저장 — 공유 시트(아이폰 사파리는 여기 «이미지 저장» → 사진 앱), 안 되면(데스크톱·사용자 동작 끊김) 내려받기. 돌려주는 값: 'share'|'cancel'|'download' */
+export async function saveFiles(files, title) {
+  if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, title }); return 'share'; } catch (e) { if (e && e.name === 'AbortError') return 'cancel'; } }
   for (const f of files) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); await new Promise(res => setTimeout(res, 250)); }
+  return 'download';
 }

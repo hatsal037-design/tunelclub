@@ -158,7 +158,7 @@
   "명을 선택해주세요.": "players to select.",
   "명이에요 — 인원에 맞는 모드를 골라 주세요.": "players — choose a mode for this count.",
   "몇 판 경험해 기본 흐름은 알지만, 직업과 상황에 따라 설명이 필요해요.": "Has played a few games and knows the basic flow, but needs help with some roles and situations.",
-  "모두 확인했어요": "Confirm",
+  "모두 확인했어요": "Everyone's checked",
   "모드를 찾지 못했어요.": "Mode not found.",
   "모든 회원": "All members",
   "모인 사람들이 QR로 들어오고\\n여기서 판을 이어 가요.": "Players join by QR code\\nand continue playing here.",
@@ -457,5 +457,7 @@
   "흉수 습격": "Demon attack",
   "흉수(악마)": "Demon (Demon)",
   "흉수가 죽으면 마을 승": "Villagers win if the Demon dies",
-  "흐려짐": "Blurred"
+  "흐려짐": "Blurred",
+  "판정할 사람과, 규수(아가씨)일 때 바꿀 마을 직업을 골라요.": "Choose a player to judge, and the Villager role to turn them into if they are the Maiden (Damsel).",
+  "바꿀 마을 직업(판에 없는 직업만)": "Villager role to turn into (only roles not in play)"
 }

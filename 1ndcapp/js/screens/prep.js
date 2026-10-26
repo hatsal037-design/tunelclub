@@ -266,7 +266,7 @@ function RolesView({ c, next }) {
         onKeyDown=${e => { if (e.key === 'Enter') { clearTimeout(timer.current); run('roles.setWin', { mode: 'custom', text: e.currentTarget.value }); } }} /></div>`}
     <//>`}
     <${Section} header=${`구성 ${m.total} / ${m.count}명`} footer=${m.notice}>
-      <div class="row" style="font-size:15px">${m.summary}</div>
+      <div class="row" style="font-size:15px"><div>${m.summary}${(m.composeWarns || []).map(t => html`<div class="red" style="font-size:13px;margin-top:4px">${t}</div>`)}</div></div>
       ${m.total !== m.count && html`<${Row} tint onClick=${() => run('roles.fit')}>자리 수에 맞추기<//>`}
     <//>
     <${Section}><${Toggle} checked=${!!m.seatShuffle} onChange=${v => run('roles.setSeatShuffle', { on: v })}>자리 섞기<//><//>

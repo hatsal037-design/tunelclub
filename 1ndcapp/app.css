@@ -197,6 +197,7 @@ h1, h2, p { margin: 0; }
 .face.edge-red { box-shadow: inset 0 0 0 2.5px var(--red); }
 .face.edge-purple { box-shadow: inset 0 0 0 3px var(--purple); }   /* 죽은 사람의 직업(장의사 답) — 2026-10-04 */
 .face.edge-orange { box-shadow: inset 0 0 0 2.5px var(--orange); }
+.face.edge-label { box-shadow: inset 0 0 0 3px var(--label); color: var(--label); }   /* 밤 답 그림 — 물어본 자리(2026-10-26) */
 .face.edge-gray { box-shadow: inset 0 0 0 2.5px var(--gray); }
 .face.on.edge-blue, .face.on.edge-gray { box-shadow: none; }
 .face.on.edge-red:not(.tint-red) { box-shadow: 0 0 0 2.5px var(--red); }
@@ -262,6 +263,17 @@ h1, h2, p { margin: 0; }
 .reveal-page .mid { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 200px; text-align: center; }
 .reveal-page .hid { color: var(--sec); }
 .reveal-page .acts { display: flex; flex-direction: column; gap: 12px; }
+.reveal-page .who { padding: 0 48px; } .reveal-page .farb { position: absolute; top: calc(24px + var(--safe-t)); right: 8px; width: 44px; height: 44px; display: grid; place-items: center; color: var(--blue); }
+/* 밤 답 그림(2026-10-26 다 안) — 자리판 가운데 기호·숫자 */
+.ans-pic { display: inline-flex; line-height: 0; } .ans-pic.sec { color: var(--sec); }
+.reveal > .ans-pic, .reveal > .ans-num { align-self: center; }   /* 사각 판(가운데가 좁음) — 판 위 가운데에 */
+.row-pic { display: inline-flex; align-items: center; gap: 12px; } .row-pic .ans-pic, .row-pic .ans-num { width: 28px; justify-content: center; font-size: 22px; }
+.ans-num { font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.03em; line-height: .95; } .ans-num small { font-size: .42em; color: var(--sec); font-weight: 600; letter-spacing: 0; }
+/* 멀리서 — 폰을 들어 보여 주는 전체 화면, 큰 화면 v5 밤 결(바탕 #0b0f1c) */
+.far-ans { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: calc(16px + var(--safe-t)) 16px calc(16px + var(--safe-b)); cursor: pointer;
+  --bg: #0b0f1c; --card: #1c1c1e; --fill: rgba(118,118,128,.24); --label: #fff; --sec: rgba(235,235,245,.6); --ter: rgba(235,235,245,.3); --sep: rgba(84,84,88,.65);
+  --blue: #0a84ff; --red: #ff453a; --orange: #ff9f0a; --purple: #bf5af2; --gray5: #2c2c2e; --gray4: #3a3a3c; background: var(--bg); color: var(--label); color-scheme: dark; }
+.far-ans > * { width: 100%; } .far-ans .big-ans { font-size: 64px; font-weight: 700; text-align: center; }
 .hold { width: 100%; min-height: 56px; border-radius: 14px; background: var(--fill); font-weight: 600; font-size: 17px; touch-action: none; -webkit-user-select: none; user-select: none; }
 .hold:active { background: var(--gray4); }
 .pcard { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 24px; }
@@ -574,14 +586,48 @@ a.mention { color: var(--blue); text-decoration: none; background: none; padding
 .page.bg-felt { background: url(tex/tex-suede.png) center/360px, #1a1a1d; background-blend-mode: soft-light; color: #eeeae2; }
 .page.bg-felt .navbar { background: rgba(26,26,29,.92); color: #eeeae2; border-bottom: 1px solid rgba(184,154,98,.32); box-shadow: none; }
 .page.bg-felt .nbtn, .page.bg-felt .back { color: #d9ba7e; }
-/* 참가 웹 실시간 자리판·내 직업(2026-10-25) — 상자 없이 번호·이름 줄, 죽은 사람은 흐리게 긋고 처형 공개만 작은 글자 */
-.lseats-row { display: block; padding-top: 6px; padding-bottom: 10px; }
-.lseats { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 4px 12px; font-size: 15px; }
-.lseats > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 24px; }
-.lseats > div.dead .lsn { color: var(--sec, #8a8a8e); text-decoration: line-through; }
-.lseats small { font-size: 12px; }
+/* 참가 웹 «내 직업» 누르는 동안 보기(2026-10-25) */
 .hold-sm .hold { width: auto; min-height: 44px; padding: 0 14px; font-size: 15px; border-radius: 10px; }
-/* 참가 웹 «지금 판»(2026-10-25) — 머리에 단계·타이머만 크게 */
-.gnow-head { padding: 8px 20px 16px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.gnow-ph { font-size: 28px; font-weight: 700; }
-.gnow-tm { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* 참가 웹 «지금 판» v6d(2026-10-26) — 큰 화면 v5(screen/index.html .v5tv) 토큰·자리 그림을 ×0.5~0.6 으로. 낮 = 밝은 회색, 밤 = 남색(장면이 바탕을 정함, 라이트/다크 아님). 시안 시안/참가웹_지금판_20261026_v6/v6d */
+.page.bg-g5, .page.bg-g5n { --bg: #f5f5f7; --fg: #1c1c1e; --mute: #6e6e73; --line: rgba(60,60,67,.24); --sec: rgba(60,60,67,.6); --g2: #aeaeb2; --g5: #e5e5ea; --mat: #fff; --matl: rgba(0,0,0,.06); background: var(--bg); color: var(--fg); }
+.page.bg-g5n { --bg: #0b0f1c; --fg: #f2f2f7; --mute: #9a9aa6; --line: rgba(235,235,245,.2); --sec: rgba(235,235,245,.6); --g2: #636366; --g5: #2c2c2e; --mat: #1c1c1e; --matl: rgba(255,255,255,.08); }
+.page.bg-g5 .navbar, .page.bg-g5n .navbar { background: var(--bg); color: var(--fg); box-shadow: none; border-bottom: 0; }
+.page.bg-g5n .nbtn { color: var(--fg); }
+.g5 { max-width: 512px; margin: 0 auto; padding: 4px 16px 32px; font-size: 15px; line-height: 1.45; }
+.g5mid { text-align: center; padding: 10px 0 4px; }
+.g5hd { display: flex; gap: 6px; align-items: center; justify-content: center; color: var(--sec); font-size: 15px; line-height: 20px; }
+.g5hd svg { display: block; }
+.g5big { font-weight: 700; line-height: 1.2; word-break: keep-all; overflow-wrap: anywhere; }
+.g5sub { color: var(--sec); font-size: 15px; line-height: 20px; }
+.g5tm { font-size: 90px; line-height: 95px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.g5bar { width: 180px; height: 6px; border-radius: 3px; background: var(--g5); margin: 4px auto 0; overflow: hidden; } .g5bar i { display: block; height: 100%; border-radius: 3px; }
+.g5cyc { display: block; margin: 22px auto 0; width: 264px; } .g5cyc svg { display: block; width: 264px; height: auto; overflow: visible; }
+.g5nums { display: flex; gap: 20px; align-items: flex-end; justify-content: center; margin-top: 14px; }
+.g5nums b { display: block; font-size: 46px; line-height: 50px; font-weight: 600; font-variant-numeric: tabular-nums; } .g5nums span { display: block; font-size: 14px; color: var(--sec); }
+.g5row { display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 12px 0 6px; margin-top: 12px; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; min-height: 44px; }
+.g5row .lab { color: var(--sec); flex: none; } .g5row .val { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .g5row .tg { color: var(--mute); font-size: 13px; }
+.g5row:disabled { opacity: 1; cursor: default; }
+.g5me { align-items: center; } .g5me .val { font-size: 19px; }
+.g5lnk { background: none; border: 0; padding: 0; font: inherit; font-size: 15px; color: var(--mute); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; min-height: 44px; }
+.g5hold .hold { background: none; color: var(--mute); text-decoration: underline; text-underline-offset: 3px; padding: 0 4px; font-weight: 400; }
+.g5links { display: flex; justify-content: flex-end; gap: 18px; margin-top: 18px; }
+.g5board { position: relative; margin: 10px auto 0; }
+.g5board .st { position: absolute; transform: translate(-50%,-50%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-variant-numeric: tabular-nums; background: var(--mat); color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 0 0 1px var(--matl); border: 0; padding: 0; font-family: inherit; }
+.g5board .st.gp { background: none; box-shadow: none; border: 1.5px dashed var(--line); }
+.g5board .st.dead { background: transparent; color: transparent; box-shadow: inset 0 0 0 2px var(--g5); }
+.g5board .st.dead[data-k=m] { background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M14 2A10 10 0 1 0 22 15.5A8 8 0 0 1 14 2Z' fill='%23aeaeb2'/></svg>") center/46% no-repeat; }
+.g5board .st.dead[data-k=x] { background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10.5' fill='%23aeaeb2'/><path d='M8.2 8.2l7.6 7.6M15.8 8.2l-7.6 7.6' stroke='white' stroke-width='2.6' stroke-linecap='round'/></svg>") center/46% no-repeat; }
+.g5board .st.ring-e { box-shadow: inset 0 0 0 2px #ff3b30; } .g5board .st.ring-c { box-shadow: inset 0 0 0 2px #007aff; }
+.g5board .st.nom { box-shadow: 0 0 0 2px var(--bg), 0 0 0 5px #30B0C7; } .g5board .st.turn { box-shadow: 0 0 0 2px var(--bg), 0 0 0 5px #007aff; }
+.g5board .st .gh { position: absolute; right: -4%; bottom: -4%; width: 28%; height: 28%; border-radius: 50%; background: var(--fg); border: 2px solid var(--bg); }
+.g5board .st .ri { width: 62%; height: 62%; object-fit: contain; display: flex; align-items: center; justify-content: center; } .g5board .st.rev.dead { color: var(--sec); } .g5board .st.rev.dead .ri { opacity: .45; }
+.g5lb { position: absolute; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; line-height: 1.15; pointer-events: none; }
+.g5lb.dead { color: var(--sec); font-weight: 500; } .g5lb .rl { display: block; font-weight: 600; } .g5lb.inl .rl { display: inline; margin-left: .3em; }
+.g5lb .my { color: #007aff; font-weight: 600; margin-left: .3em; font-size: .82em; }
+.g5flow { margin-top: 22px; } .g5flow .cap { color: var(--mute); font-weight: 600; }
+.g5flow .tlw { max-height: 280px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; } .g5flow .tlw.clip { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 33%); mask-image: linear-gradient(to bottom, transparent 0, #000 33%); }
+.g5flow .tl.up { animation: g5up .2s ease-out; } @keyframes g5up { from { transform: translateY(16px); } to { transform: none; } } @media (prefers-reduced-motion: reduce) { .g5flow .tl.up { animation: none; } }
+.g5flow .tl { position: relative; padding-left: 18px; margin-top: 6px; } .g5flow .tl:before { content: ''; position: absolute; left: 5px; top: 8px; bottom: 6px; width: 2px; background: var(--g5); }
+.g5flow .per { position: relative; color: var(--sec); font-size: 14px; line-height: 18px; font-weight: 600; margin-top: 8px; } .g5flow .per:before { content: ''; position: absolute; left: -17px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--bg); border: 2px solid var(--g2); }
+.g5flow .per.now { color: var(--fg); } .g5flow .per.now:before { background: var(--pc); border-color: var(--pc); }
+.g5flow .ev { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 2px 0; font-size: 17px; line-height: 22px; } .g5flow .ev .r { font-size: 15px; color: var(--sec); white-space: nowrap; } .g5flow .ev.sec { color: var(--sec); font-size: 15px; }

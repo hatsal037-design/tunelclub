@@ -19,6 +19,9 @@ export function CoreItems({ items, call }) {
     <${ActionSheet} open=${!!ask} title=${ask && ask.label} message="바로 기록돼요." onClose=${() => setAsk(null)} actions=${[{ label: ask ? ask.label : '처리', role: 'destructive', onClick: () => call(ask.call) }]} />`;
 }
 
+/** 망나니 반전·출두(통과·무산) — 처형 확인 칸, 지명자 줄 오른쪽 빈자리에(6-13). 반전·무산 = 처형은 있었고 사망 없음 */
+const EXEC_ACT_KO = { reverse: '망나니 반전', void: '출두 무산', pass: '출두 통과' };
+
 export function DayView({ m, run, finish }) {
   const [nominating, setNom] = useState(false), [voting, setVoting] = useState(null);
   useEffect(() => { if (m.ended) timer.reset(); }, [m.ended]);
@@ -39,7 +42,8 @@ export function DayView({ m, run, finish }) {
           <div class="top"><span class="headline grow">${n.target.number}번 ${n.target.name}</span>
             ${n.tag && html`<span class=${cx('tag', n.tag === '동수' && 'orange')}>${n.tag}</span>`}
             <span class=${cx('num', n.votes >= m.need ? 'blue' : 'sec')}>${n.votes}표 / ${m.need}</span></div>
-          <div class="sub">${n.by ? `${n.by.number}번 ${n.by.name} 지명` : '지명자 기록 안 함'}</div>
+          <div class="hstack sub"><span class="grow">${n.by ? `${n.by.number}번 ${n.by.name} 지명` : '지명자 기록 안 함'}</span>
+            ${!m.ended && (n.acts || []).map(a => html`<button class="blink" onClick=${() => run('day.execAct', { k: n.k, how: a })}>${EXEC_ACT_KO[a]}</button>`)}</div>
           ${n.done ? html`<div class="hstack sub" style="color:var(--label)"><${Icon} name="seal" size=${18} /><span class="grow">${n.blocked ? `처형됐지만 살아남음 · ${n.blocked}` : n.dead ? (n.reveal ? `처형됨 · ${n.reveal}` : '처형됨') : '처형 처리됨'}</span>
               <button class="blink" onClick=${() => run('day.executeUndo', { k: n.k })}>되돌리기</button></div>`
             : html`${n.preview && html`<div class="hstack sub orange"><${Icon} name="flag" size=${16} />${n.preview}</div>`}

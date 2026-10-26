@@ -1,4 +1,4 @@
-// 낭독 — 코어가 명령 응답 effects 로 넘긴 «모두 들어도 되는 말»만(폰 앱 Narrator 와 같음). 기본 꺼짐.
+// 낭독 — 코어가 명령 응답 effects 로 넘긴 «모두 들어도 되는 말»만(폰 앱 Narrator 와 같음). 웹은 기본 켜짐(2026-10-26, settings.js DEF.sound).
 import { settings } from './settings.js';
 import { bgmDuck } from './bgm.js';
 import { narrLang, narrTr } from './i18n_dom.js';
@@ -12,7 +12,7 @@ export function speakEffects(fx) {
   if (list.length && !(soundOut.send && soundOut.send(list.map(e => toScreen(e.text, e.plan, e.mood))))) speakAll(list);
 }
 /* 큰 화면으로 보낼 낭독 한 줄 — 목소리·말은 진행자 폰 것, 글은 기기 음성용으로 미리 옮겨 둔다 */
-export const toScreen = (text, plan, mood) => ({ k: 'speak', text: narrTr(text), plan: plan || null, mood: mood || 'day', v: settings.get('voice') || 'mujin', L: narrLang });
+export const toScreen = (text, plan, mood) => ({ k: 'speak', text: narrTr(text), plan: plan || null, mood: mood || 'day', v: (v0 => VOICES.some(x => x[0] === v0) ? v0 : 'mujin')(settings.get('voice') || 'mujin'), L: narrLang });   // 목록에서 뺀 목소리면 기본(폰 speakOne 과 같게)
 /* 한 응답 안의 낭독은 이어서 — 처형 낭독이 승패 낭독에 바로 끊기던 것(2026-10-05). 새 응답은 앞 응답을 끊는다. 읽는 동안 배경 음악은 줄인다 */
 async function speakAll(list) {
   const my = ++gen; stopSpeaking(); bgmDuck(true);
