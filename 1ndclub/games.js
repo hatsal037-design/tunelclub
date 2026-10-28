@@ -146,6 +146,9 @@ const GAMES = [
   { n:'야단법석 달리기', man:[{t:'설명서', f:'manual/magical-athlete.pdf'}], min:2, max:6, t:30, cat:'party', lv:'초보', out:false, host:false, own:'', have:true,
     d:'선수마다 판을 뒤집는 능력을 가진 엉망진창 달리기 경주. (원제 Magical Athlete)',
     r:'주사위를 굴려 내 선수를 그만큼 움직인다. 선수마다 규칙을 깨는 특수 능력이 있어 매 경주가 난장판. 여러 번 경주해 점수를 가장 많이 모은 사람이 우승.' },
+  { n:'스컬킹', min:2, max:8, t:30, cat:'party', lv:'초보', out:false, host:false, own:'', have:false,
+    d:'이번 라운드에 몇 판 딸지 예측하는 해적 트릭테이킹.',
+    r:'라운드마다 손패 수가 하나씩 늘고, 각자 딸 트릭 수를 동시에 예측한다. 정확히 맞히면 점수, 틀리면 감점. 스컬킹·해적·머메이드가 서로를 잡는 특수 카드로 판이 뒤집힌다.' },
   // ── 순발력 ────────────────────────────────
   { n:'타코캣고트치즈피자', man:[{t:'설명서', f:'manual/tacocat.pdf'}], bl:{"rate": 6.8, "weight": 1.04, "rank": 1108, "players": "2-8", "minutes": "10-30", "age": 8, "url": "https://boardlife.co.kr/game/12352"}, img:'img/t/tacocat.jpg', min:3, max:8, t:10, cat:'quick', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'10분. 시끄럽고, 아무도 지루할 틈이 없다.',
