@@ -29,9 +29,10 @@ function openM(i){
       ${isStaff()&&!canSeeOwner(g)?`<div class="mrow"><div class="k">소유자</div><div><span style="color:var(--red-lite);cursor:pointer" onclick="editOwner(${i})">지정하기</span></div></div>`:''}
     </div>
     <div class="mrule"><b style="color:var(--ink)">어떻게 하는 게임인가요</b><br>${g.r}</div>
-    ${g.bl?`<div style="display:flex;gap:6px;margin-top:10px">
-      <a class="mclose" style="flex:1;margin:0;text-decoration:none;text-align:center" href="${g.bl.url}" target="_blank" rel="noopener">보드라이프에서 보기</a>
-      ${g.bl.bgg?`<a class="mclose" style="flex:1;margin:0;text-decoration:none;text-align:center" href="${g.bl.bgg}" target="_blank" rel="noopener">BGG에서 보기</a>`:''}
+    ${(g.man||g.bl)?`<div style="display:flex;gap:6px;margin-top:10px">
+      ${(g.man||[]).map(m=>`<a class="mclose" style="flex:1;margin:0;text-decoration:none;text-align:center" href="${m.f}" target="_blank" rel="noopener">📄 ${m.t}</a>`).join('')}
+      ${g.bl?.url?`<a class="mclose" style="flex:1;margin:0;text-decoration:none;text-align:center" href="${g.bl.url}" target="_blank" rel="noopener">${g.man?'보드라이프':'보드라이프에서 보기'}</a>`:''}
+      ${g.bl?.bgg&&!g.man?`<a class="mclose" style="flex:1;margin:0;text-decoration:none;text-align:center" href="${g.bl.bgg}" target="_blank" rel="noopener">BGG에서 보기</a>`:''}
     </div>`:''}
     <div class="mbtns">
       <button class="mbtn" onclick="openRules(${i})">📖 룰 자세히 보기${g.rules?.length?'':' (준비 중)'}</button>
