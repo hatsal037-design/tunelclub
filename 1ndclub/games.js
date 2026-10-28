@@ -16,6 +16,7 @@
      img  카드에 쓸 사진 경로 (없으면 이름으로 만든 커버가 뜬다) — img/README.md 참고
      bl   보드라이프 데이터 {rate 평점, weight 난이도(1~5), rank 종합순위, players, minutes, age, url, bgg}
           — 수집 2026-08-11, 재수집은 클럽폴더 data_boardlife.json 참고
+     man  한글 설명서 PDF [{t:'버튼 글', f:'manual/파일.pdf'}] — 원드라이브 «보드게임» 폴더의 (한글설명서) 판을 폰용으로 줄여 넣음(2026-10-28)
      rules 룰 상세. 없으면 앱에서 '아직 정리 전'으로 뜬다. 블록을 순서대로 쌓는다.
            { h:'소제목' }              소제목만
            { h:'소제목', p:'설명' }     소제목 + 문단
@@ -44,7 +45,7 @@ const GAMES = [
       { h:'이기는 조건', p:'마피아를 전부 처형하면 시민 승리. 마피아 수가 시민 수와 같아지면 마피아 승리입니다.' },
       { h:'우리 모임에서는', p:'첫 밤에 죽어도 끝까지 자리에 남아 구경합니다. 판이 끝나면 다 같이 복기하니까 그때 이야기를 나눠주세요. 판이 도는 중에 훈수는 금지입니다.' },
     ] },
-  { n:'시크릿 히틀러', bl:{"rate": 7.5, "weight": 1.74, "rank": 268, "players": "5-10", "minutes": "45", "age": 13, "url": "https://boardlife.co.kr/game/6131"}, img:'img/t/secret-hitler.jpg', min:5, max:10, t:45, cat:'mafia', lv:'중급', out:false, host:false, own:'임햇살', have:true,
+  { n:'시크릿 히틀러', man:[{t:'설명서', f:'manual/secret-hitler.pdf'}], bl:{"rate": 7.5, "weight": 1.74, "rank": 268, "players": "5-10", "minutes": "45", "age": 13, "url": "https://boardlife.co.kr/game/6131"}, img:'img/t/secret-hitler.jpg', min:5, max:10, t:45, cat:'mafia', lv:'중급', out:false, host:false, own:'임햇살', have:true,
     d:'아무도 죽지 않는 마피아. 법안을 통과시키며 정체를 읽는다.',
     r:'대통령과 총리가 법안 카드를 골라 통과시킨다. 자유당은 자유 법안 5장, 파시스트는 파시스트 법안 6장 또는 히틀러를 총리로 만들면 승리.',
     rules:[
@@ -61,7 +62,7 @@ const GAMES = [
   { n:'아발론', bl:{"rate": 7.836, "weight": 1.74, "rank": 79, "players": "5-10", "minutes": "30", "age": 13, "url": "https://boardlife.co.kr/game/523", "bgg": "https://boardgamegeek.com/boardgame/128882/the-resistance-avalon"}, img:'img/t/avalon.jpg', min:5, max:10, t:30, cat:'mafia', lv:'중급', out:false, host:false, own:'채연주', have:true,
     d:'원탁의 기사 안에 숨은 모드레드의 하수인을 찾아라.',
     r:'원정대를 꾸려 임무를 보낸다. 선이 3번 성공하면 승리, 악이 3번 방해하면 패배. 멀린은 악을 알지만 들키면 안 된다.' },
-  { n:'스파이폴2', bl:{"rate": 6.5, "weight": 1.22, "rank": 1666, "players": "3-12", "minutes": "15", "age": 13, "url": "https://boardlife.co.kr/game/8159", "bgg": "https://boardgamegeek.com/boardgame/193308/spyfall-2"}, img:'img/t/spyfall2.jpg', min:3, max:12, t:20, cat:'mafia', lv:'초보', out:false, host:false, own:'채연주', have:true,
+  { n:'스파이폴2', man:[{t:'설명서', f:'manual/spyfall2.pdf'}], bl:{"rate": 6.5, "weight": 1.22, "rank": 1666, "players": "3-12", "minutes": "15", "age": 13, "url": "https://boardlife.co.kr/game/8159", "bgg": "https://boardgamegeek.com/boardgame/193308/spyfall-2"}, img:'img/t/spyfall2.jpg', min:3, max:12, t:20, cat:'mafia', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'나만 장소를 모른다. 아는 척하며 질문을 넘긴다.',
     r:'한 명만 장소 카드를 못 받는다. 서로 질문을 주고받으며 스파이를 찾고, 스파이는 장소를 알아맞히면 승리. 12명까지 한 판.',
     rules:[
@@ -71,7 +72,7 @@ const GAMES = [
       { h:'이기는 조건', p:'시간이 끝나면 투표로 스파이를 지목합니다. 맞히면 시민 승리. 스파이는 정체가 들키기 전에 장소를 맞히면 승리합니다.' },
       { h:'우리 모임에서는', p:'20분이면 한 판이라 몸풀기로 자주 씁니다. 늦게 오신 분이 있어도 다음 판에 바로 합류할 수 있어요.' },
     ] },
-  { n:'사보타지', bl:{"rate": 6.9, "weight": 1.32, "rank": 935, "players": "3-10", "minutes": "30", "age": 8, "url": "https://boardlife.co.kr/game/1270"}, img:'img/t/saboteur.jpg', min:3, max:10, t:30, cat:'mafia', lv:'초보', out:false, host:false, own:'', have:true,
+  { n:'사보타지', man:[{t:'설명서', f:'manual/saboteur.pdf'}], bl:{"rate": 6.9, "weight": 1.32, "rank": 935, "players": "3-10", "minutes": "30", "age": 8, "url": "https://boardlife.co.kr/game/1270"}, img:'img/t/saboteur.jpg', min:3, max:10, t:30, cat:'mafia', lv:'초보', out:false, host:false, own:'', have:true,
     d:'금을 캐는 광부 사이에 길을 막는 방해꾼이 섞여 있다.',
     r:'터널 카드를 이어 금까지 길을 낸다. 광부는 도착하면 승리, 방해꾼은 막으면 승리. 서로 정체를 모른 채 진행.' },
   { n:'한밤의 늑대인간', bl:{"rate": 7.4, "weight": 1.38, "rank": 328, "players": "3-10", "minutes": "10", "age": 8, "url": "https://boardlife.co.kr/game/2500", "bgg": "https://boardgamegeek.com/boardgame/147949/one-night-ultimate-werewolf"}, img:'img/t/onuw.jpg', min:3, max:10, t:10, cat:'mafia', lv:'초보', out:false, host:false, own:'임햇살', have:true,
@@ -99,7 +100,7 @@ const GAMES = [
     ] },
 
   // ── 파티 ──────────────────────────────────
-  { n:'장난꾸러기 호박벌', bl:{"rate": 6.6, "weight": 1.26, "players": "3-5", "minutes": "20-25", "age": 7, "url": "https://boardlife.co.kr/game/9583", "bgg": "https://boardgamegeek.com/boardgame/300956/cheating-bumblebee"}, img:'img/t/schummel-hummel.jpg', min:3, max:5, t:20, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
+  { n:'장난꾸러기 호박벌', man:[{t:'설명서', f:'manual/cheating-bumblebee.pdf'}], bl:{"rate": 6.6, "weight": 1.26, "players": "3-5", "minutes": "20-25", "age": 7, "url": "https://boardlife.co.kr/game/9583", "bgg": "https://boardgamegeek.com/boardgame/300956/cheating-bumblebee"}, img:'img/t/schummel-hummel.jpg', min:3, max:5, t:20, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'반칙이 공식적으로 허용되는 카드 게임. 몰래 버리고 시치미 떼기.',
     r:'손의 카드를 먼저 다 버리면 승리. 규칙대로만 내면 느리니까 카드를 몰래 숨기고 떨어뜨려도 된다 — 단, 호박벌 감시자에게 걸리면 벌칙. 걸리느냐 못 본 척하느냐의 눈치 싸움.' },
   { n:'힛스터', bl:{"rate": 7.3, "weight": 1.01, "rank": 397, "players": "2-10", "minutes": "30", "age": 16, "url": "https://boardlife.co.kr/game/16056", "bgg": "https://boardgamegeek.com/boardgame/318243/hitster"}, img:'img/t/hitster.jpg', min:2, max:null, t:30, cat:'party', lv:'초보', out:false, host:false, own:'임햇살', have:true,
@@ -108,13 +109,13 @@ const GAMES = [
   { n:'달무티', bl:{"rate": 7.4, "weight": 1.29, "rank": 300, "players": "4-8", "minutes": "60", "age": 8, "url": "https://boardlife.co.kr/game/968", "bgg": "https://boardgamegeek.com/boardgame/929/the-great-dalmuti"}, img:'img/t/dalmuti.jpg', min:4, max:8, t:15, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'신분 계급이 매 판 뒤집힌다. 왕이 거지가 되는 맛.',
     r:'낮은 숫자가 강하다. 카드를 먼저 다 버린 순서대로 다음 판의 계급이 정해지고, 계급에 따라 카드를 상납한다.' },
-  { n:'플립7', bl:{"rate": 7.4, "weight": 1.04, "rank": 327, "players": "3-99", "minutes": "20", "age": 8, "url": "https://boardlife.co.kr/game/19910", "bgg": "https://boardgamegeek.com/boardgame/420087/flip-7"}, img:'img/t/flip7.jpg', min:3, max:18, t:20, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
+  { n:'플립7', man:[{t:'설명서', f:'manual/flip7.pdf'}], bl:{"rate": 7.4, "weight": 1.04, "rank": 327, "players": "3-99", "minutes": "20", "age": 8, "url": "https://boardlife.co.kr/game/19910", "bgg": "https://boardgamegeek.com/boardgame/420087/flip-7"}, img:'img/t/flip7.jpg', min:3, max:18, t:20, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'한 장 더? 여기서 멈춤? 18명까지 되는 심플 도박.',
     r:'카드를 계속 뽑아 점수를 쌓되 같은 숫자가 겹치면 그 판 점수는 0. 서로 다른 숫자 7장을 모으면 보너스.' },
   { n:'애니멀렐름', bl:{"rate": 6.4, "weight": 1.5, "rank": 1821, "players": "3-7", "minutes": "5-20", "age": 8, "url": "https://boardlife.co.kr/game/11812", "bgg": "https://boardgamegeek.com/boardgame/307995/animal-realms"}, img:'img/t/animal-realms.jpg', min:3, max:7, t:15, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'동물 카드로 벌이는 짧은 세력 다툼.',
     r:'같은 동물을 모으거나 상대를 밀어내며 영역을 차지한다. 한 판이 짧아 여러 번 돌린다.' },
-  { n:'바퀴벌레포커', bl:{"rate": 6.6, "weight": 1.1, "rank": 1420, "players": "2-6", "minutes": "20", "age": 8, "url": "https://boardlife.co.kr/game/215"}, img:'img/t/cockroach-poker.jpg', min:3, max:5, t:20, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
+  { n:'바퀴벌레포커', man:[{t:'설명서', f:'manual/cockroach-poker.pdf'}], bl:{"rate": 6.6, "weight": 1.1, "rank": 1420, "players": "2-6", "minutes": "20", "age": 8, "url": "https://boardlife.co.kr/game/215"}, img:'img/t/cockroach-poker.jpg', min:3, max:5, t:20, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'거짓말 하나로 굴러가는 게임. 마피아 몸풀기에 좋다.',
     r:'카드를 뒤집어 내밀며 "이건 바퀴벌레"라고 말한다. 받는 사람은 진실인지 거짓인지 판정하고, 틀린 쪽이 카드를 가져간다. 같은 벌레 4장을 모으면 패배.' },
   { n:'조겐 (Zogen)', bl:{"rate": 6.0, "weight": 1.67, "rank": 6468, "players": "2-6", "minutes": "20", "age": 6, "url": "https://boardlife.co.kr/game/9703", "bgg": "https://boardgamegeek.com/boardgame/249289/zogen"}, img:'img/t/zogen.jpg', min:2, max:6, t:20, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
@@ -129,15 +130,24 @@ const GAMES = [
   { n:'다섯 개의 탑', old:['5타워'], bl:{"rate": 6.4, "weight": 1.25, "rank": 1723, "players": "2-5", "minutes": "15-30", "age": 7, "url": "https://boardlife.co.kr/game/17925", "bgg": "https://boardgamegeek.com/boardgame/400205/5-towers"}, img:'img/t/5towers.jpg', min:2, max:5, t:25, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'경매로 카드를 따내 다섯 색깔 탑을 높이 쌓는 카드 게임. 카스퍼 랩(마법의 미로) 작품.',
     r:'매 라운드 카드 다섯 장이 공개되면 "몇 장 가져갈지"를 입찰한다. 가장 높이 부른 사람이 그만큼 가져가 자기 탑에 쌓되, 같은 색 탑에 숫자가 내려가는 순서로만 놓을 수 있다. 8·9는 아무 숫자 위에나 놓이고, 0을 올리면 그 탑은 완성돼 잠긴다. 카드를 받은 사람은 탑 맨 위 한 장을 헐어낼 수 있다. 가장 높고 멋진 탑을 만든 쪽이 승리.' },
-  { n:'굿페이스밷페이스', img:'img/t/goodface.jpg', min:2, max:5, t:15, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
+  { n:'굿페이스밷페이스', man:[{t:'설명서', f:'manual/good-face-bad-face.pdf'}], img:'img/t/goodface.jpg', min:2, max:5, t:15, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'표정으로 굴러가는 짧은 파티게임.',
     r:'라운드마다 조건에 맞는 카드를 고른다. 룰이 단순해 첫 게임으로 쓰기 좋다.' },
   { n:'워드캡처', bl:{"rate": 7.1, "weight": 1.13, "rank": 646, "players": "2-5", "minutes": "10", "age": 6, "url": "https://boardlife.co.kr/game/12896", "bgg": "https://boardgamegeek.com/boardgame/322204/word-capture"}, img:'img/t/word-capture.jpg', min:2, max:6, t:10, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'10분짜리 단어 게임. 대기 시간 메우기에 최적.',
     r:'제시된 조건에 맞는 단어를 먼저 잡는다. 순발력과 어휘력 싸움.' },
 
+  { n:'장난꾸러기 나방', man:[{t:'설명서', f:'manual/cheating-moth.pdf'}], min:3, max:5, t:20, cat:'party', lv:'초보', out:false, host:false, own:'', have:true,
+    d:'반칙이 허용되는 카드 게임. 호박벌의 친척, 이번엔 나방을 몰래 버린다.',
+    r:'앞 카드보다 숫자가 정확히 1 크거나 작은 카드를 내며 손패를 먼저 비우면 승리. 행동 카드로 서로 견제하고, 감시 벌레 몰래 카드를 숨겨 버려도 된다 — 걸리면 벌칙.' },
+  { n:'팬텀 잉크', man:[{t:'설명서', f:'manual/phantom-ink.pdf'}, {t:'2~3인용', f:'manual/phantom-ink-2-3p.pdf'}], min:4, max:8, t:15, cat:'party', lv:'초보', out:false, host:false, own:'', have:true,
+    d:'유령이 한 글자씩 적어 주는 단서로 정답을 맞히는 팀 대결.',
+    r:'팀의 영매가 유령에게 질문하면 유령은 답을 한 글자씩 적는다. 알 것 같으면 멈추고 추측한다. 상대 팀도 같은 글자를 보고 있어서, 적게 보고 먼저 맞히는 쪽이 이긴다.' },
+  { n:'야단법석 달리기', man:[{t:'설명서', f:'manual/magical-athlete.pdf'}], min:2, max:6, t:30, cat:'party', lv:'초보', out:false, host:false, own:'', have:true,
+    d:'선수마다 판을 뒤집는 능력을 가진 엉망진창 달리기 경주. (원제 Magical Athlete)',
+    r:'주사위를 굴려 내 선수를 그만큼 움직인다. 선수마다 규칙을 깨는 특수 능력이 있어 매 경주가 난장판. 여러 번 경주해 점수를 가장 많이 모은 사람이 우승.' },
   // ── 순발력 ────────────────────────────────
-  { n:'타코캣고트치즈피자', bl:{"rate": 6.8, "weight": 1.04, "rank": 1108, "players": "2-8", "minutes": "10-30", "age": 8, "url": "https://boardlife.co.kr/game/12352"}, img:'img/t/tacocat.jpg', min:3, max:8, t:10, cat:'quick', lv:'초보', out:false, host:false, own:'채연주', have:true,
+  { n:'타코캣고트치즈피자', man:[{t:'설명서', f:'manual/tacocat.pdf'}], bl:{"rate": 6.8, "weight": 1.04, "rank": 1108, "players": "2-8", "minutes": "10-30", "age": 8, "url": "https://boardlife.co.kr/game/12352"}, img:'img/t/tacocat.jpg', min:3, max:8, t:10, cat:'quick', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'10분. 시끄럽고, 아무도 지루할 틈이 없다.',
     r:'"타코-캣-고트-치즈-피자"를 순서대로 외치며 카드를 낸다. 말과 카드가 일치하면 손을 올린다. 가장 늦은 사람이 카드 더미를 가져간다.' },
   { n:'할리갈리', bl:{"rate": 6.2, "weight": 1.02, "rank": 2267, "players": "2-6", "minutes": "10", "age": 6, "url": "https://boardlife.co.kr/game/2145"}, img:'img/t/halli-galli.jpg', min:2, max:6, t:15, cat:'quick', lv:'초보', out:false, host:false, own:'채연주', have:true,
@@ -175,10 +185,10 @@ const GAMES = [
   { n:'루미큐브', bl:{"rate": 7.3, "weight": 1.71, "rank": 440, "players": "2-4", "minutes": "60", "age": 8, "url": "https://boardlife.co.kr/game/2061"}, img:'img/t/rummikub.jpg', min:2, max:4, t:20, cat:'strategy', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'숫자 타일로 하는 조합 게임. 룰이 직관적이다.',
     r:'같은 색 연속 또는 같은 숫자 세트를 만들어 내려놓는다. 판 위의 조합을 재배열해도 된다. 먼저 다 내려놓으면 승리.' },
-  { n:'하모니즈', bl:{"rate": 7.7, "weight": 2.01, "rank": 128, "players": "1-4", "minutes": "30-45", "age": 10, "url": "https://boardlife.co.kr/game/19124", "bgg": "https://boardgamegeek.com/boardgame/414317/harmonies"}, img:'img/t/harmonies.jpg', min:1, max:4, t:30, cat:'strategy', lv:'중급', out:false, host:false, own:'채연주', have:true,
+  { n:'하모니즈', man:[{t:'설명서', f:'manual/harmonies.pdf'}], bl:{"rate": 7.7, "weight": 2.01, "rank": 128, "players": "1-4", "minutes": "30-45", "age": 10, "url": "https://boardlife.co.kr/game/19124", "bgg": "https://boardgamegeek.com/boardgame/414317/harmonies"}, img:'img/t/harmonies.jpg', min:1, max:4, t:30, cat:'strategy', lv:'중급', out:false, host:false, own:'채연주', have:true,
     d:'조각을 쌓아 자연 지형을 만드는 퍼즐형 게임.',
     r:'색 토큰을 규칙에 맞게 쌓아 서식지를 만들고, 동물 카드 조건을 충족해 점수를 얻는다.' },
-  { n:'봄버스터즈', bl:{"rate": 7.78, "weight": 1.96, "rank": 94, "players": "2-5", "minutes": "30", "age": 10, "url": "https://boardlife.co.kr/game/19722", "bgg": "https://boardgamegeek.com/boardgame/413246/bomb-busters"}, img:'img/t/bomb-busters.jpg', min:2, max:5, t:30, cat:'strategy', lv:'중급', out:false, host:false, own:'채연주', have:true,
+  { n:'봄버스터즈', man:[{t:'설명서', f:'manual/bomb-busters.pdf'}], bl:{"rate": 7.78, "weight": 1.96, "rank": 94, "players": "2-5", "minutes": "30", "age": 10, "url": "https://boardlife.co.kr/game/19722", "bgg": "https://boardgamegeek.com/boardgame/413246/bomb-busters"}, img:'img/t/bomb-busters.jpg', min:2, max:5, t:30, cat:'strategy', lv:'중급', out:false, host:false, own:'채연주', have:true,
     d:'폭탄을 피하며 점수를 쌓는 카드 게임.',
     r:'카드를 뽑아 점수를 모으되 폭탄이 터지면 잃는다. 언제 멈출지 판단하는 게 핵심.' },
   { n:'상자아이', bl:{"rate": 6.4, "weight": 2.7, "rank": 1801, "players": "3-5", "minutes": "90-120", "age": 10, "url": "https://boardlife.co.kr/game/7737", "bgg": "https://boardgamegeek.com/boardgame/233848/hako-onna"}, img:'img/t/box-child.jpg', min:3, max:5, t:40, cat:'strategy', lv:'중급', out:false, host:false, own:'채연주', have:true,
@@ -191,8 +201,11 @@ const GAMES = [
     d:'둘이 남았을 때의 최후 수단.',
     r:'설명 생략.' },
 
+  { n:'티츄', man:[{t:'설명서', f:'manual/tichu.pdf'}, {t:'추가룰', f:'manual/tichu-variants.pdf'}], bl:{"rate": 7.821, "weight": 2.34, "rank": 85, "players": "4", "minutes": "60", "age": 10, "url": "https://boardlife.co.kr/game/478"}, min:4, max:4, t:60, cat:'strategy', lv:'중급', out:false, host:false, own:'', have:true,
+    d:'2:2 팀으로 겨루는 클라이밍 카드 게임의 명작.',
+    r:'앞사람과 같은 종류·같은 장수로 더 높은 조합을 내며 손패를 먼저 비운다. 새·개·봉황·용 특수 카드와 «티츄» 선언으로 점수를 크게 걸고, 팀 점수 1,000점을 먼저 모으면 승리.' },
   // ── 협력 ──────────────────────────────────
-  { n:'더 갱', img:'img/t/the-gang.jpg', min:3, max:6, t:20, cat:'coop', lv:'중급', out:false, host:false, own:'채연주', have:true,
+  { n:'더 갱', man:[{t:'설명서', f:'manual/the-gang.pdf'}], img:'img/t/the-gang.jpg', min:3, max:6, t:20, cat:'coop', lv:'중급', out:false, host:false, own:'채연주', have:true,
     d:'말 없이 포커 서열을 맞추는 협력 게임.',
     r:'각자 포커 패를 들고 대화 없이 강한 순서대로 줄을 선다. 순서가 맞으면 다 같이 승리.' },
   { n:'더마인드', bl:{"rate": 7.3, "weight": 1.08, "rank": 407, "players": "2-4", "minutes": "20", "age": 8, "url": "https://boardlife.co.kr/game/9684", "bgg": "https://boardgamegeek.com/boardgame/244992/the-mind"}, img:'img/t/the-mind.jpg', min:2, max:4, t:20, cat:'coop', lv:'초보', out:false, host:false, own:'채연주', have:true,
