@@ -84,7 +84,7 @@ var NativeCore = (function () {
     var n = (state.seats || []).filter(function (s) { return s && (s.name || s.char); }).length;
     var summary = h === 'play' ? ((state.nights || 1) === 1 ? '첫밤' : (state.phase === 'day' ? '낮 ' : '밤 ') + (state.nights || 1)) + ' · ' + n + '명'
       : h === 'draft' ? n + '명 준비 중' : null;
-    return { destination: dest, ruleFamily: curShelf(), modeName: ed.name || null, modeId: ed.id || null, demonKo: KO('team', 'demon', hubRep()), potKo: PKO('그릇'), pot: potView(),   /* 그날 모임·낮 다 같이 이야기 자리의 계열 말 — 당산나무 마당·클래식 광장·오리지널 구역(2026-10-05 햇살님 «테마 따라 이름, 낮에도») */ skillOff: hubRep() === 'mafia',   // 숙련도 안 쓰는 계열(오리지널 마피아) — 준비 화면이 경험 단계를 숨긴다   // 화면 글이 쓰는 계열 말(흉수·악마·범죄 조직)
+    return { destination: dest, ruleFamily: curShelf(), modeName: ed.name || null, modeId: ed.id || null, subHost: (state.log && state.log.subHost && state.log.subHost.name) || null,   /* 이번 판만 대신 진행한 사람(2026-10-29) — 진행 화면 부제 */ demonKo: KO('team', 'demon', hubRep()), potKo: PKO('그릇'), pot: potView(),   /* 그날 모임·낮 다 같이 이야기 자리의 계열 말 — 당산나무 마당·클래식 광장·오리지널 구역(2026-10-05 햇살님 «테마 따라 이름, 낮에도») */ skillOff: hubRep() === 'mafia',   // 숙련도 안 쓰는 계열(오리지널 마피아) — 준비 화면이 경험 단계를 숨긴다   // 화면 글이 쓰는 계열 말(흉수·악마·범죄 조직)
       summary: summary, hasRecords: (localStorage.getItem('botc_logs') || '[]').length > 2,   // 원문 길이로 — 홈을 그릴 때마다 기록 전체를 펴던 것(앱구조점검, 2026-10-05)
       practice: h === 'play' ? !!state.practice : localStorage.getItem(PRACTICE_KEY) === '1',
       prepStep: h !== 'draft' ? null : hasRoles() ? 'handoff' : n >= 5 ? 'seats' : 'people' };   // 준비 이어 하기 — 역할을 나눴으면 넘기기부터(앱을 껐다 켜도 하던 자리로)
