@@ -33,6 +33,23 @@ function MemberPicker({ taken, close, done }) {
   <//>`;
 }
 
+/** 이번 판 진행(2026-10-29 햇살님 «그 판만 다른 사람이 대신») — 나 · 체크인 명단 · 이름만(전적 없음). 고르면 주최자(나)의 명단 줄도 같이 넘긴다 */
+function HostPicker({ current, close, done }) {
+  const [rows, setRows] = useState(undefined), [h, setH] = useState(null), [typed, setTyped] = useState('');
+  useEffect(() => { Promise.all([account.plaza('plaza_mine'), account.plaza('my_profile')]).then(([pz, me]) => {
+    setH(me && (me.handle || (me.value && me.value.handle)) || null); setRows(((pz && pz.roster) || []).filter(x => !x.left && (x.member_id || x.account))); }); }, []);
+  const person = x => ({ member_id: x.member_id || ('a:' + x.account), nick: x.nick || ('@' + (x.handle || '')), handle: x.handle });
+  const me = (rows || []).find(x => x.handle === h);
+  const pick = sub => { done(sub, me ? person(me) : null); close(); };
+  return html`<${Page} title="이번 판 진행" left=${html`<${NavButton} label="취소" onClick=${close} />`}>
+    <${Section}><${Row} sel=${!current} onClick=${() => pick(null)}><span class="grow">나</span>${!current && html`<span class="blue"><${Icon} name="check" size=${20} stroke=${2.4} /></span>`}<//><//>
+    ${rows === undefined ? html`<${Empty} title="명단 받는 중…" />` : html`<${Section} header="체크인">${rows.filter(x => x.handle !== h).map(x => { const p = person(x), on = current && current.member === p.member_id;
+      return html`<${Row} sel=${on} onClick=${() => pick({ name: p.nick, account: x.account || null, member: p.member_id })}><span class="grow">${p.nick}${p.handle && html`<br/><span class="sub">@${p.handle}</span>`}</span>${on && html`<span class="blue"><${Icon} name="check" size=${20} stroke=${2.4} /></span>`}<//>`; })}<//>`}
+    <${Section} header="이름만"><div class="row"><input class="textin" value=${typed} placeholder="닉네임" enterkeyhint="done" aria-label="진행할 사람 닉네임"
+      onInput=${e => setTyped(e.currentTarget.value)} onKeyDown=${e => { const t = typed.trim(); if (e.key === 'Enter' && t) { e.preventDefault(); pick({ name: t.slice(0, 40), account: null, member: null }); } }} /></div><//>
+  <//>`;
+}
+
 const STEPS = [['people', '인원'], ['seats', '자리'], ['roles', '역할'], ['handoff', '넘기기']];
 
 export function PreparationFlow({ step, go, close }) {
@@ -83,6 +100,16 @@ function PeopleView({ c, next }) {
   const [members, setMembers] = useState(() => { if (draft) return draft.members; const m = store.board.seats.map(s => s.member || null); while (m.length < 5) m.push(null); return m; });
   useEffect(() => { draftSave(names, members, levels); }, [names, members, levels]);   // 칸마다 투넬 회원 번호(없으면 이름만)
   const [picking, setPicking] = useState(false), [clearAsk, setClearAsk] = useState(false);
+  const [host, setHost] = useState(null), [hostPicking, setHostPicking] = useState(false);   // 이번 판만 대신 진행 — null 이면 나(주최자)
+  const pickHost = (h, me) => {   // 진행할 사람은 인원에서 빼고, 주최자(나)는 체크인한 참가자로 넣는다
+    setHost(h); if (!h) return;
+    const i = h.member ? members.indexOf(h.member) : names.findIndex(n => n.trim() === h.name);
+    const n = names.slice(), m = members.slice(), l = levels.slice();
+    if (i >= 0) { n.splice(i, 1); m.splice(i, 1); l.splice(i, 1); }
+    if (me && !m.includes(me.member_id)) { let k = n.findIndex(x => !x.trim()); if (k < 0) { n.push(''); m.push(null); l.push(2); k = n.length - 1; } n[k] = me.nick; m[k] = me.member_id; l[k] = 2; }
+    while (n.length < 5) { n.push(''); m.push(null); l.push(2); }
+    setNames(n); setMembers(m); setLevels(l);
+  };
   const pad = (n, m) => { while (n.length < 5) { n.push(''); m.push(null); } setNames(n); setMembers(m); };
   const removeAt = i => { setLevels(a => { const l = a.filter((_, j) => j !== i); while (l.length < 5) l.push(2); return l; }); pad(names.filter((_, j) => j !== i), members.filter((_, j) => j !== i)); };
   const clearAll = () => { setLevels([2, 2, 2, 2, 2]); pad([], []); };
@@ -118,14 +145,15 @@ function PeopleView({ c, next }) {
   const valid = names.length >= 5 && names.every(n => n.trim());
   const setCount = n => { setLevels(a => n > a.length ? a.concat(Array(n - a.length).fill(2)) : a.slice(0, n)); setNames(a => n > a.length ? a.concat(Array(n - a.length).fill('')) : a.slice(0, n)); setMembers(a => n > a.length ? a.concat(Array(n - a.length).fill(null)) : a.slice(0, n)); };
   const commit = async force => {
-    const p = { people: names.map((n, i) => ({ name: n.trim(), member: members[i] || null, manualExperience: source(members[i]) === 'manual' ? levels[i] || null : null })) }; if (force) p.force = true;
+    const p = { people: names.map((n, i) => ({ name: n.trim(), member: members[i] || null, manualExperience: source(members[i]) === 'manual' ? levels[i] || null : null })), subHost: host ? { name: host.name, accountId: host.account || null } : null }; if (force) p.force = true;
     const r = await R.run('preparation.commitPeople', p);
     if (r.ok) { draftClear(); next(); } else if (r.confirm) setAsk(r.choices[0] || '역할을 다시 나눠요.');
   };
   const inputs = useRef([]);
   return html`<${PrepPage} c=${c} bottom=${html`<${Primary} title="자리 정하기" enabled=${valid} loading=${R.busy} onClick=${() => commit(false)} />`}>
     <${LargeTitle}>인원<//>
-    <${Section}><${Stepper} value=${names.length} min=${5} max=${20} onChange=${setCount}>참가 인원 ${names.length}명<//><//>
+    <${Section}><${Stepper} value=${names.length} min=${5} max=${20} onChange=${setCount}>참가 인원 ${names.length}명<//>
+      <${Row} onClick=${() => account.user ? setHostPicking(true) : account.login()}><span class="grow">이번 판 진행</span><span class="sub">${host ? host.name : '나'}</span><//><//>
     <${Section}><${Row} tint onClick=${() => account.user ? setPicking(true) : account.login()}><${Icon} name="person2" size=${20} />${account.user ? '사람에서 찾기' : '사람에서 찾기 · 로그인'}<//>
       <${Row} danger disabled=${!names.some(n => n.trim())} onClick=${() => setClearAsk(true)}><${Icon} name="xmark" size=${20} />모두 비우기<//><//>
     <${Section} cls="experience-list" header="닉네임 · 오른쪽 띠를 끌어 경험 단계">${names.map((n, i) => html`<div class=${cx('row experience-row', experiencePick === i && 'open')} key=${i}>
@@ -144,6 +172,7 @@ function PeopleView({ c, next }) {
     </div>`)}<//>
     <${ActionSheet} open=${clearAsk} title="닉네임을 모두 비울까요?" onClose=${() => setClearAsk(false)} actions=${[{ label: '모두 비우기', role: 'destructive', onClick: clearAll }]} />
     <${Sheet} open=${picking} onClose=${() => setPicking(false)}>${picking && html`<${MemberPicker} taken=${members.filter(Boolean)} close=${() => setPicking(false)} done=${addMembers} />`}<//>
+    <${Sheet} open=${hostPicking} onClose=${() => setHostPicking(false)}>${hostPicking && html`<${HostPicker} current=${host} close=${() => setHostPicking(false)} done=${pickHost} />`}<//>
     <${ActionSheet} open=${!!ask} title=${ask} onClose=${() => setAsk(null)} actions=${[{ label: '역할 비우고 변경', role: 'destructive', onClick: () => commit(true) }]} />
     ${R.alert}
   <//>`;

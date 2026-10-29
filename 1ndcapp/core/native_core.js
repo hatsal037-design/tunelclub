@@ -1160,6 +1160,9 @@ var NativeCore = (function () {
       });
       if (people.length < 5 || people.length > 20) return rejected('invalidSelection', '5명에서 20명까지 넣을 수 있어요.');
       if (inGame()) return rejected('notAllowedInPhase', '진행 중인 판이 있어요 — 판을 끝내거나 버린 뒤 바꿀 수 있어요.');
+      /* 이번 판만 대신 진행(2026-10-29 햇살님) — 이름만이면 전적 없음, 계정은 서버가 체크인을 확인한다. logStart 가 판 기록에 옮기고 지운다 */
+      var sh = p.subHost && String(p.subHost.name || '').trim();
+      state.subHost = sh ? { name: sh.slice(0, 40), accountId: (typeof p.subHost.accountId === 'string' && p.subHost.accountId) || null } : null;
       var same = people.length === state.seats.length && people.every(function (x, i) { return state.seats[i] && state.seats[i].name === String(x.name).trim() && (!x.pid || state.seats[i].pid === x.pid); });
       if (same && !gameEnded()) { people.forEach(function (x, i) { state.seats[i].manualExperience = x.manualExperience; }); return null; }   // 참고값만 수정해도 역할은 유지
       if (gameEnded()) {   // 끝난 판 다음 새 준비 — 판 흔적(역할·밤·기록 위치)을 걷고 사람(이름·pid)만 이어받는다 (2026-09-29 «자리 정하기 처리 못함»)
