@@ -631,3 +631,4 @@ a.mention { color: var(--blue); text-decoration: none; background: none; padding
 .g5flow .per { position: relative; color: var(--sec); font-size: 14px; line-height: 18px; font-weight: 600; margin-top: 8px; } .g5flow .per:before { content: ''; position: absolute; left: -17px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--bg); border: 2px solid var(--g2); }
 .g5flow .per.now { color: var(--fg); } .g5flow .per.now:before { background: var(--pc); border-color: var(--pc); }
 .g5flow .ev { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 2px 0; font-size: 17px; line-height: 22px; } .g5flow .ev .r { font-size: 15px; color: var(--sec); white-space: nowrap; } .g5flow .ev.sec { color: var(--sec); font-size: 15px; }
+.nb-t .nb-sub { display: block; font-size: 11px; font-weight: 400; color: var(--sec); line-height: 1.2; }   /* 이번 판만 대신 진행(2026-10-29) — 제목 아래 부제, 새 줄 없이 */

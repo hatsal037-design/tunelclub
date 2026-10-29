@@ -91,7 +91,7 @@ export function GameFlow({ close, toRoles, toPrep }) {
   const succ = st && st.succession && st.succession.length ? st.succession : null;
   const confirmLabel = { execGate: '예외로 처형', exec2: '한 번 더 처형', night: '밤으로', clearRoles: '역할 다시 나누기' };
   return html`<div class="page" style="position:absolute;inset:0"><${Page}
-    title=${(st && st.title) || (card && card.phaseTitle) || ''}
+    title=${html`${(st && st.title) || (card && card.phaseTitle) || ''}${store.home.subHost && html`<span class="nb-sub">대신 진행 · ${store.home.subHost}</span>`}`}
     left=${html`<${NavButton} icon="chevronLeft" label="오늘로 돌아가기" onClick=${close} />`}
     right=${html`${kind !== 'done' && store.home.practice && html`<${NavButton} label="연습 끝" onClick=${endGame} />`}${kind !== 'done' && html`<${Menu} aria="판 메뉴" disabled=${R.busy} label=${html`<${Icon} name="ellipsisCircle" size=${24} />`} items=${menuItems} />`}
       ${!folded && kind === 'card' && html`<${NavButton} label="판 보기" onClick=${() => fold(true)} />`}`}
