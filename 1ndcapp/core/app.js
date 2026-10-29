@@ -13076,6 +13076,8 @@ function logStart(){
   /* 참가 기록 ID — 좌석은 회전·퇴장으로 바뀌지만(빠지면 0) 이건 안 바뀐다.
      서버에서 이 값이 참가 기록의 정체성이 된다. 옛 판은 저장을 다시 쓰지 않고 aidOf 가 자리로 만든다 (2026-09-14) */
   (state.log.players||[]).forEach((p,i)=>{ p.aid=state.log.uuid+'#'+i; });
+  if(state.subHost&&state.subHost.name) state.log.subHost={ name:state.subHost.name, accountId:state.subHost.accountId||null };   // 이번 판만 대신 진행 — 서버 0330 이 payload.subHost 를 읽는다
+  delete state.subHost;
   (state.pickBuf||[]).forEach(d=>state.log.events.push({n:1, phase:'prep', type:'앱 선택', code:(FXV().EVENT['앱 선택']||'other'), ...d})); delete state.pickBuf;   // 역할 나눌 때 고른 것(가짜 직업 등)
   potTouch();
   save();
