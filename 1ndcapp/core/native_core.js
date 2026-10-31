@@ -1189,7 +1189,7 @@ var NativeCore = (function () {
       try { localStorage.setItem(TVW_KEY, '1'); } catch (e) {}   // 광장을 열면 큰 화면은 바로 대기 — 지난 판 종료·복기 화면이 남아 있어도(2026-10-06 햇살님 «광장 열어도 이전 복기가 뜬다»)
       return null; },
     'pot.rename': function (p) { var o = potNow(), t = String((p && p.title) || '').trim().slice(0, 40); if (!o) return rejected('notAllowedInPhase', '열린 ' + PKO('그릇') + '이 없어요.'); if (!t) return rejected('invalidSelection', '이름을 적어 주세요.'); potUpdate(o.id, function (x) { x.title = t; x.titleEdited = true; }); return null; },
-    'pot.close': function () { if (!potNow()) return null; if (inGame() && !gameEnded()) return rejected('notAllowedInPhase', '진행 중인 판이 있어 닫을 수 없어요.'); potClose('hand'); return null; },
+    'pot.close': function (p) { if (!potNow()) return null; if (inGame() && !gameEnded()) { if (!(p && p.force)) return rejected('notAllowedInPhase', '진행 중인 판이 있어 닫을 수 없어요.'); wzDiscardToRoles(); } potClose('hand'); return null; },   // force: 진행 중인 판을 버리고 닫는다(2026-10-31 햇살님 «하던 거 끝내야 광장을 닫는데 불편해»)
     'board.setLayout': function (p) { var g = guardSetup(); if (g) return g; setLayout(p.layout === 'rect' ? 'rect' : 'circle'); save(); return null; },
     /* 사각 빈자리 — 웹 자리 잡기의 «빈자리 없애기»(sbCloseGaps, 인원에 맞게 칸을 다시 고름)·«빈자리 고르게»(gapsSpread) */
     'board.closeGaps': function () { var g = guardSetup(); if (g) return g; if (state.layout !== 'rect') return rejected('invalidSelection', '사각 배치에서만 써요.');

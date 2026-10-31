@@ -128,9 +128,9 @@ function PlazaSection() {
       if (pot && !pot.practice) { const m = await account.plaza('plaza_mine'); if (m && m.pot_id === pot.id) { id = m.id; setSrv(m.id); setRoster(m.roster || []); } else if (!id) { const r = await account.plaza('plaza_open', { p_pot: pot.id }); if (r) { id = r.id; setSrv(r.id); showCode(r.code); lastCode = Date.now(); } }   // 마당을 열면 체크인 QR 도 바로
         if (id && Date.now() - lastCode > 540000 && (code || lastCode)) { const r = await account.plaza('plaza_code', { p_id: id }); if (r && r.ok) { showCode(r.code); lastCode = Date.now(); } } } };
     tick(); const t = setInterval(tick, 5000); return () => { dead = true; clearInterval(t); }; }, [logged, pot && pot.id]);   // 들어온 사람이 큰 화면에 빨리 뜨게 5초(전 20초)
-  const close = async () => { const r = await store.dispatch('pot.close', {}); if (!r.ok) return; const id = srv || ((await account.plaza('plaza_mine')) || {}).id; if (id) await account.plaza('plaza_close', { p_id: id }); setSrv(null); showCode(''); store.dispatch('display.plaza', {}); setRoster([]); };
+  const close = async (force) => { const r = await store.dispatch('pot.close', force ? { force: true } : {}); if (!r.ok) return; const id = srv || ((await account.plaza('plaza_mine')) || {}).id; if (id) await account.plaza('plaza_close', { p_id: id }); setSrv(null); showCode(''); store.dispatch('display.plaza', {}); setRoster([]); };
   const here = roster.filter(r => !r.left);
-  const [renaming, setRenaming] = useState(null);
+  const [renaming, setRenaming] = useState(null); const [drop, setDrop] = useState(false);
   // 큰 화면 대기(참가 QR·광장 이름·들어온 사람) — 판 시작 전·자리 잡기 전까지 TV 에 뜬다(2026-10-06)
   const tvKey = code + '|' + (pot && pot.title || '') + '|' + here.map(r => r.nick).join(',');
   useEffect(() => { if (!code || !pot) return; store.dispatch('display.plaza', { code, title: pot.title || word, people: here.map(r => r.nick) }); }, [tvKey]);
@@ -145,7 +145,8 @@ function PlazaSection() {
         <div class="row"><${Labeled} label="체크인" value=${here.length + '명'} /></div>
         ${roster.length > 0 && html`<div class="row sub">${roster.map(r => r.nick + (r.left ? '(나감)' : '')).join(' · ')}</div>`}`}
       <div class="row"><${Labeled} label="판" value=${pot.games + '개'} /></div>
-      <${Row} danger disabled=${h.destination === 'resumeGame'} onClick=${close}>${word} 닫기<//>`
+      <${Row} danger onClick=${() => h.destination === 'resumeGame' ? setDrop(true) : close()}>${word} 닫기<//>
+      <${ActionSheet} open=${drop} title=${`진행 중인 판을 버리고 ${word}을 닫을까요?`} onClose=${() => setDrop(false)} actions=${[{ label: '판 버리고 닫기', role: 'destructive', onClick: () => { setDrop(false); close(true); } }]} />`
     : null}
     ${logged && joined.map(j => html`<div class="row"><span class="grow">${j.host}님의 ${word}</span><button class="btn-s" onClick=${async () => { await account.plaza('plaza_leave', { p_id: j.plaza }); setJoined(await account.plaza('plaza_joined') || []); }}>나 갈게요</button></div>`)}
     ${logged && fixes.map(f => html`<div class="row" style="flex-direction:column;align-items:stretch;gap:6px"><div>${f.nick} · ${f.mode || ''} ${f.seat ? f.seat + '번 자리' : ''}</div><div class="sub">이 판에 없었다고 해요</div>
