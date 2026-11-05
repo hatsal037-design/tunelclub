@@ -39,7 +39,7 @@ function AddFriend({ list, close }) {
     <${Search} value=${q} onInput=${setQ} placeholder="닉네임 검색" />
     ${rows === undefined ? html`<${Empty} title="명단 받는 중…" />` : rows === null ? html`<${Empty} icon="warn" title="명단을 못 받았어요" />`
       : html`<${Section}>${shown.map(r => { const l = label(r.member_id);
-          return html`<div class="row"><span class="grow">${r.nick}</span><button class=${cx('btn-s')} disabled=${l === '친구' || l === '요청함'} onClick=${() => go(r)}>${l}</button></div>`; })}<//>`}
+          return html`<div class="row"><span class="grow">${r.nick}</span><button class=${cx('btn-s')} disabled=${['friend', 'sent'].includes(state[r.member_id] || known[r.member_id])} onClick=${() => go(r)}>${l}</button></div>`; })}<//>`}
   <//>`;
 }
 

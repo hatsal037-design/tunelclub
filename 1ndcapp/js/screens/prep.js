@@ -1,8 +1,9 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // 준비 전면 — 인원 → 자리 → 역할 → 넘기기(01 P01~P04). 닫기는 초안을 버리지 않는다
 import { html, useState, useEffect, useRef, useLayoutEffect, useMemo } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
 import { Icon } from '../icons.js';
-import { Page, Section, Row, RowLabel, CheckRow, Labeled, Primary, Stepper, Segmented, Toggle, Sheet, Cover, ActionSheet, Menu, NavButton, RoleArt, HoldButton, Disclosure, useRun, LargeTitle, Empty, cx } from '../ui.js';
+import { Page, Section, Row, RowLabel, CheckRow, Labeled, Primary, Stepper, Segmented, Toggle, Sheet, Cover, ActionSheet, Menu, NavButton, RoleArt, HoldCover, RoleCard, Disclosure, useRun, LargeTitle, Empty, cx } from '../ui.js';
 import { NavStack, useNav, Back } from '../nav.js';
 import { SeatBoard, boardLayout } from '../seatboard.js';
 import { account } from '../account.js';
@@ -10,11 +11,13 @@ import { Search } from '../ui.js';
 import * as Brief from '../briefing.js';
 
 /** 사람에서 찾기 — 체크인 → 팔로잉 → 팔로워(2026-10-10 햇살님 «내가 팔로우한 사람이랑 나를 팔로우하는 사람 중에»). 열쇠는 회원 번호, 없으면 «a:계정번호». 이미 넣은 사람은 체크된 채 */
-function MemberPicker({ taken, close, done }) {
+function MemberPicker({ taken, host, close, done }) {   /* host — 이번 판 진행자. 진행자는 체크인 명단에서 뺀다(기본 나) — 바꾸면 옛 진행자(나)는 다시 여기로(2026-11-02) */
   const [rows, setRows] = useState(undefined), [sel, setSel] = useState(() => new Set()), [q, setQ] = useState('');
-  useEffect(() => { Promise.all([account.plaza('plaza_mine'), account.followRows('following'), account.followRows('followers')]).then(([pz, fo, fr]) => {
-    const roster = ((pz && pz.roster) || []).filter(x => !x.left), inRoom = new Set(roster.map(x => x.account).filter(Boolean));
+  useEffect(() => { Promise.all([account.plaza('plaza_mine'), account.followRows('following'), account.followRows('followers'), account.plaza('my_profile')]).then(([pz, fo, fr, me]) => {
+    const all = ((pz && pz.roster) || []).filter(x => !x.left), inRoom = new Set(all.map(x => x.account).filter(Boolean));
     const person = (x, g) => ({ member_id: x.member_id || ('a:' + x.account), nick: x.nick || ('@' + (x.handle || '')), handle: x.handle, g });
+    const myH = me && (me.handle || (me.value && me.value.handle)) || null;
+    const roster = all.filter(x => host ? person(x).member_id !== host.member : !(myH && x.handle === myH));
     const seen = new Set(), out = [];
     for (const [l, g] of [[roster, '체크인'], [(fo || []).filter(x => !inRoom.has(x.account)), '팔로잉'], [(fr || []).filter(x => !inRoom.has(x.account)), '팔로워']])
       for (const x of l) { if (!x.member_id && !x.account) continue; const p = person(x, g); if (!seen.has(p.member_id)) { seen.add(p.member_id); out.push(p); } }
@@ -81,8 +84,8 @@ const draftLoad = () => { try { const d = JSON.parse(localStorage.getItem(DRAFT)
   return d && d.pot === ((h.pot && h.pot.id) || null) && d.practice === !!h.practice && Date.now() - d.at < 864e5 ? d : null; } catch (e) { return null; } };
 const draftSave = (names, members, levels) => { try { const h = store.home || {};
   if (!names.some(n => (n || '').trim())) { localStorage.removeItem(DRAFT); return; }
-  localStorage.setItem(DRAFT, JSON.stringify({ names, members, levels, pot: (h.pot && h.pot.id) || null, practice: !!h.practice, at: Date.now() })); } catch (e) {} };
-const draftClear = () => { try { localStorage.removeItem(DRAFT); } catch (e) {} };
+  localStorage.setItem(DRAFT, JSON.stringify({ names, members, levels, pot: (h.pot && h.pot.id) || null, practice: !!h.practice, at: Date.now() })); } catch (e) { 드러냄('prep.draftSave', e); } };
+const draftClear = () => { try { localStorage.removeItem(DRAFT); } catch (e) { 드러냄('prep.draftClear', e); } };
 function PeopleView({ c, next }) {
   const draft = useMemo(draftLoad, []);
   const [levels, setLevels] = useState(() => { if (draft) return draft.levels; const l = store.board.seats.map(s => s.manualExperience || 2); while (l.length < 5) l.push(2); return l; });   // 기본 2단계 — «적당히 몇 번 해본 사람»(2026-10-01 햇살님)
@@ -101,14 +104,10 @@ function PeopleView({ c, next }) {
   useEffect(() => { draftSave(names, members, levels); }, [names, members, levels]);   // 칸마다 투넬 회원 번호(없으면 이름만)
   const [picking, setPicking] = useState(false), [clearAsk, setClearAsk] = useState(false);
   const [host, setHost] = useState(null), [hostPicking, setHostPicking] = useState(false);   // 이번 판만 대신 진행 — null 이면 나(주최자)
-  const pickHost = (h, me) => {   // 진행할 사람은 인원에서 빼고, 주최자(나)는 체크인한 참가자로 넣는다
-    setHost(h); if (!h) return;
-    const i = h.member ? members.indexOf(h.member) : names.findIndex(n => n.trim() === h.name);
-    const n = names.slice(), m = members.slice(), l = levels.slice();
-    if (i >= 0) { n.splice(i, 1); m.splice(i, 1); l.splice(i, 1); }
-    if (me && !m.includes(me.member_id)) { let k = n.findIndex(x => !x.trim()); if (k < 0) { n.push(''); m.push(null); l.push(2); k = n.length - 1; } n[k] = me.nick; m[k] = me.member_id; l[k] = 2; }
-    while (n.length < 5) { n.push(''); m.push(null); l.push(2); }
-    setNames(n); setMembers(m); setLevels(l);
+  const pickHost = (h, me) => {   // 진행할 사람은 인원에서 뺀다. 옛 진행자(나)는 자리에 바로 넣지 않고 «사람에서 찾기» 체크인 명단으로(2026-11-02 «기존 진행자가 다시 대기 목록에»)
+    setHost(h);
+    const i = h ? (h.member ? members.indexOf(h.member) : names.findIndex(n => n.trim() === h.name)) : me ? members.indexOf(me.member_id) : -1;   // «나»는 진행자와 참가자 좌석에 중복으로 넣지 않는다
+    if (i >= 0) removeAt(i);
   };
   const pad = (n, m) => { while (n.length < 5) { n.push(''); m.push(null); } setNames(n); setMembers(m); };
   const removeAt = i => { setLevels(a => { const l = a.filter((_, j) => j !== i); while (l.length < 5) l.push(2); return l; }); pad(names.filter((_, j) => j !== i), members.filter((_, j) => j !== i)); };
@@ -171,7 +170,7 @@ function PeopleView({ c, next }) {
         : html`<p>${source(members[i]) === 'records' ? '20판 이상 기록이 있어 수동 단계를 사용하지 않아요.' : '전적을 확인할 수 없어요. 로그인·친구 공개 범위와 연결을 확인해 주세요.'}</p>${source(members[i]) !== 'manual' && html`<button class="lnk" onClick=${() => refreshExperience(members[i])}>다시 확인</button>`}`}</div>`}
     </div>`)}<//>
     <${ActionSheet} open=${clearAsk} title="닉네임을 모두 비울까요?" onClose=${() => setClearAsk(false)} actions=${[{ label: '모두 비우기', role: 'destructive', onClick: clearAll }]} />
-    <${Sheet} open=${picking} onClose=${() => setPicking(false)}>${picking && html`<${MemberPicker} taken=${members.filter(Boolean)} close=${() => setPicking(false)} done=${addMembers} />`}<//>
+    <${Sheet} open=${picking} onClose=${() => setPicking(false)}>${picking && html`<${MemberPicker} taken=${members.filter(Boolean)} host=${host} close=${() => setPicking(false)} done=${addMembers} />`}<//>
     <${Sheet} open=${hostPicking} onClose=${() => setHostPicking(false)}>${hostPicking && html`<${HostPicker} current=${host} close=${() => setHostPicking(false)} done=${pickHost} />`}<//>
     <${ActionSheet} open=${!!ask} title=${ask} onClose=${() => setAsk(null)} actions=${[{ label: '역할 비우고 변경', role: 'destructive', onClick: () => commit(true) }]} />
     ${R.alert}
@@ -355,7 +354,8 @@ function HandoffView({ c, start }) {
     ${R.alert}
   <//>`;
   return html`<${PrepPage} c=${c} bottom=${nextP
-      ? html`<${Primary} title=${`${nextP.number} · ${nextP.name}에게 넘기기`} onClick=${() => setTurn(m.position + 1)} />`
+      ? html`<div class="brow">${m.position >= 0 && html`<button class="bprev" aria-label=${`${m.order[m.position].name}에게 다시`} onClick=${() => setTurn(m.position)}><${Icon} name="chevronLeft" size=${22} stroke=${2.4} /></button>`}
+          <${Primary} title=${`${nextP.number} · ${nextP.name}에게 넘기기`} onClick=${() => setTurn(m.position + 1)} /></div>`
       : html`<${Primary} title="첫밤 시작" loading=${R.busy} onClick=${() => R.run('game.beginFirstNight', {}, start)} />`}>
     <${LargeTitle}>넘기기<//>
     ${m && !brief && m.composition && m.position < 0 && html`<${Section} header="구성 발표"><${Composition} c=${m.composition} /><//>`}
@@ -371,22 +371,27 @@ function HandoffView({ c, start }) {
   <//>`;
 }
 /* 참가자 화면 — 왼쪽 위 닫기는 확인 없이 목록으로, 본 기록은 그대로(2026-10-05) */
-function PlayerTurn({ m, k, done, close }) {
+function PlayerTurn({ m, k, done, close }) {   /* 확인 뒤 — 차례대로면 다음 사람, 다시 보거나 건너뛰어 본 거면 목록으로(2026-10-05) */
   const p = m.order[k], last = k === m.order.length - 1, R = useRun();
   const [shown, setShown] = useState(null), [seen, setSeen] = useState(false);
-  const cur = useRef(null);
-  const hold = on => { if (on) { cur.current = store.publicCard(p.index); setShown(cur.current); } else if (cur.current) { cur.current = null; setShown(null); setSeen(true); } };
-  return html`<div class="reveal-page">
-    <button class="blink" style="position:absolute;top:calc(4px + var(--safe-t));left:16px" onClick=${() => { setShown(null); close(); }}>닫기</button>
-    <div class="who"><div class="title2">${p.name}님 차례</div><div class="sub">${k + 1} / ${m.order.length}</div></div>
-    <div class="mid">${shown ? html`<div class="pcard"><${RoleArt} r=${shown.roleName} size=${96} /><div class="rn">${shown.roleName}</div>
-        <div class=${cx('tn', shown.side === 'evil' ? 'red' : shown.side === 'good' ? 'blue' : 'sec')}>${shown.teamName}</div><div class="ab2">${shown.ability}</div>${shown.revealRule ? html`<div class="ab2 sub">${shown.revealRule}</div>` : null}</div>`
-      : html`<span class="hid" aria-label="가려져 있어요"><${Icon} name="eyeSlash" size=${44} stroke=${1.5} /></span>`}</div>
-    <div class="acts"><${HoldButton} onChange=${hold} />
-      <${Primary} title=${last ? '확인했어요 · 반납' : '확인했어요 · 다음 사람'} enabled=${seen && !shown} loading=${R.busy}
-        onClick=${() => { const inOrder = k === m.position + 1; setShown(null); R.run('handoff.seen', { position: k }, () => done(last, inOrder)); }} />   /* 차례대로면 다음 사람, 다시 보거나 건너뛰어 본 거면 목록으로(2026-10-05) */</div>
-    ${R.alert}
-  </div>`;
+  const hold = on => { if (on) setShown(store.publicCard(p.index)); else { setShown(null); setSeen(true); } };
+  return html`<${HoldCover} title=${`${p.name}님 차례`} subtitle=${`${k + 1} / ${m.order.length}`} close=${close} reveal=${hold}
+    content=${() => shown && html`<${RoleCard} c=${shown} />`}
+    covered=${() => html`<div class="myseat" aria-label=${`${p.number}번 ${p.name}`}><b>${p.number}번</b><b class="myname">${p.name}</b>
+      <${MiniSeatMap} board=${store.board} me=${p.index} /><div class="sub">내 자리·이름이 맞을 때만 눌러 보세요</div></div>`}
+    footer=${html`<${Primary} title=${last ? '확인했어요 · 반납' : '확인했어요 · 다음 사람'} enabled=${seen && !shown} loading=${R.busy}
+      onClick=${() => { const inOrder = k === m.position + 1; setShown(null); R.run('handoff.seen', { position: k }, () => done(last, inOrder)); }} />`} />
+    ${R.alert}`;
+}
+
+/** 넘기기 «내 자리» 작은 판 — 번호만, 내 자리만 파랑. 원형은 둘레, 사각은 칸 그대로(2026-11-02 햇살님 A안) */
+function MiniSeatMap({ board, me }) {
+  const n = Math.max(board.seats.length, 1), rect = board.shape !== 'round' && board.rows > 0 && board.cols > 0;
+  const spot = s => { const c = rect && board.cells.find(c => c.seatID === s.id);
+    if (c) return [(c.col + .5) / board.cols * 100, (c.row + .5) / board.rows * 100];
+    const a = -Math.PI / 2 + (s.number - 1) / n * 2 * Math.PI; return [50 + 42 * Math.cos(a), 50 + 42 * Math.sin(a)]; };
+  return html`<div class="miniseat" aria-hidden="true">${board.seats.map(s => { const [x, y] = spot(s);
+    return html`<i class=${s.index === me ? 'me' : ''} style=${`left:${x}%;top:${y}%`}>${s.number}</i>`; })}</div>`;
 }
 
 /** 숙련도 1~5 슬라이더(2026-10-01 햇살님 «우리 슬라이더 만든걸 거기 적용») — 재량 띠(26차 확정)와 같은 슬롯·알약·점 모양, 파란 틴트 하나. 추천·중간·선악 없음. 값 없음(미지정)이면 손잡이가 없다 */

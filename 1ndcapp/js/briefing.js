@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 /* 이번 판 안내 그리기(2026-10-24) — 코어 game.briefing / display.public.briefing 하나를 받아 그린다. 규칙은 다시 계산하지 않는다.
    큰 화면 룰 설명(A) · 큰 화면 넘기기 옆 «이번 판»(panel) · 공유 장 4:5(K 다섯 종) · 참가 웹이 같이 쓴다.
    디자인 원본: 시안/이번판안내_20261024/시안_v5_틀.html(햇살님 «이야 아주 맘에 들어») — CSS·wire()·장 나누기·넘치면 본문만 zoom 을 그대로 옮겼다.
@@ -16,7 +17,7 @@ function fonts() { if (faced) return; faced = true; const st = document.createEl
 /* 오리지널 마피아 결 — 먹색 스웨이드 천 · 놋쇠 · 크림(오리지널_컨셉_v1.md) */
 const css = tex => `
 :host{display:block;line-height:normal;letter-spacing:normal;text-align:left;font-size:16px}
-.felt{--bg:#1a1a1d;--txt:#eeeae2;--txt2:#bdb8ae;--dim:#85817a;--gold:#b89a62;--gold-lit:#d9ba7e;--good:#8fb6dd;--evil:#e07a64;--neu:#b7a0d6;
+.felt{--bg:#1a1a1d;--txt:#eeeae2;--txt2:#bdb8ae;--dim:#85817a;--gold:#b89a62;--gold-lit:#d9ba7e;--good:#8fb6dd;--evil:#e07a64;--neu:#9cc78a;
   --hair:rgba(238,234,226,.14);--hairg:rgba(184,154,98,.5);--serif:"bf-serif","Gowun Batang",serif;--sans:"bf-sans","Pretendard",-apple-system,system-ui,sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
 .felt{background:url(${tex}) center/360px,var(--bg);background-blend-mode:soft-light;color:var(--txt);font-family:var(--sans);position:relative;overflow:hidden;container-type:inline-size;word-break:keep-all;overflow-wrap:anywhere}
@@ -74,7 +75,7 @@ svg.wire line.unk{stroke:rgba(238,234,226,.35);stroke-dasharray:4 5}
 .Pn .gw{font-family:var(--serif);font-weight:700;font-size:6.2cqw;line-height:1.3;word-break:keep-all}
 .Pn .gw svg.i{color:var(--gold);font-size:.8em;margin-right:.3em}
 /* 넘기기 옆 패널은 아이폰 큰 화면(원본)처럼 밝은 바탕 위에 — 천 없이(2026-10-24 햇살님 «앱 화면은 그대로») */
-.Pn.light{background:none;--txt:#1c1c1e;--txt2:#6e6e73;--dim:#8e8e93;--gold:#9a7a3e;--hair:rgba(0,0,0,.1);--hairg:rgba(154,122,62,.45);--good:#2f6db5;--evil:#c2412f;--neu:#7d5fb0;color:var(--txt);text-align:left;align-items:stretch}
+.Pn.light{background:none;--txt:#1c1c1e;--txt2:#6e6e73;--dim:#8e8e93;--gold:#9a7a3e;--hair:rgba(0,0,0,.1);--hairg:rgba(154,122,62,.45);--good:#2f6db5;--evil:#c2412f;--neu:#4a8a3a;color:var(--txt);text-align:left;align-items:stretch}
 .Pn.light .kick{justify-content:flex-start}.Pn.light .kick::before{display:none}
 .Pn.light .pgr{display:grid;grid-template-columns:auto 1fr;gap:1cqw 5cqw;align-items:center}
 .Pn.light .pgr .gl{grid-column:1/-1}.Pn.light .coins{justify-content:flex-start;margin:0;font-size:9.6cqw;gap:1.2cqw}
@@ -131,10 +132,10 @@ export function safeBrief(b) {
 export const ic = k => Object.hasOwn(ICON_PATHS, k) ? `<svg class="i" viewBox="0 0 24 24"><path d="${ICON_PATHS[k]}"/></svg>` : '';
 /* 코인 바닥 색 — 앱 COIN_BAND 를 먹색 천에 맞게 누른 값(구현약속 «코인») */
 export const BAND = { om_citizen: '#3a5f6f', om_detective: '#3a6f43', om_doctor: '#3a6f43', om_immortal: '#3a6f43', om_judge: '#3a6f43', om_sheriff: '#3a6f43', om_mafia: '#514f57', om_godfather: '#514f57', om_yakuza: '#6d3f3c', om_ninja: '#6d3f3c', om_lawyer: '#6e6a65', om_badjudge: '#6e6a65', om_lunatic: '#675b79', om_werewolf: '#675b79' };
-export const tone = g => ({ '선': 'g', '악': 'e' })[g.side] || 'n';
+export const tone = g => ({ good: 'g', evil: 'e' })[g.sideKey] || 'n';   // 편 코드(2026-11-04)
 const coin = (id, cnt, name) => `<span class="coin" title="${esc(name || '')}"><img class="c" alt="" style="background:${BAND[id] || '#555'}" src="${art(id)}">${cnt > 1 ? `<span class="x">×${cnt}</span>` : ''}</span>`;
 const coins = (g, cnt = true) => `<span class="coins">${g.roles.map(r => coin(r.id, cnt ? r.count : 1, r.name)).join('')}</span>`;
-const nameOf = g => esc(g.name) + (g.key === 'solo' ? '' : ` (${esc(g.side)})`);
+const nameOf = g => esc(g.name) + (g.sideKey === 'neutral' ? '' : ` (${esc(g.side)})`);
 const sideLine = b => `<span class="g">시민 편 (선) ${b.sides.good}</span> · <span class="e">범죄 조직 (악) ${b.sides.evil}</span>` + (b.sides.other ? ` · <span class="n">중립 ${b.sides.other}</span>` : '');
 const G = b => Object.fromEntries(b.groups.map(g => [g.key, g]));
 const flow = b => b.flow.map(f => `<div class="bs"><h3>${ic(f.icon)}${esc(f.title)}</h3>${f.items.map(it =>
@@ -223,7 +224,7 @@ function fit(root) {
     const room = c.getBoundingClientRect().bottom - 26 - kb.getBoundingClientRect().top, need = kb.scrollHeight;
     if (need > room) kb.style.zoom = Math.max(0.6, room / need).toFixed(3); }
 }
-const ready = async root => { try { await document.fonts.ready; } catch (e) {}
+const ready = async root => { try { await document.fonts.ready; } catch (e) { 드러냄('briefing.ready', e); }
   await Promise.all([...root.querySelectorAll('img')].map(i => i.complete ? 0 : new Promise(res => { i.onload = i.onerror = res; }))); };
 
 /** 참가 웹 — 장을 세로로 쌓고 폭에 맞춘다 */

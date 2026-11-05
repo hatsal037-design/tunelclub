@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // 세 층: 앱 탭(오늘·자료실·화면 연결) · 준비/진행 전면 · 시트. 전면 공간이 탭을 덮는다(폰 앱 AppRoot 와 같다)
 import { html, render, useState, useEffect } from '../lib/preact-htm.js';
 import { store, bootStore } from './store.js';
@@ -19,13 +20,13 @@ import { screens } from './screenlink.js';
 /* 큰 화면의 QR(…/1ndcapp/?screen=코드)로 들어왔으면 코드를 챙기고 주소에서 지운다. 카카오 로그인으로 나갔다 와도 남게 sessionStorage 에 */
 const SCREEN_KEY = 'screen_pending';
 { const u = new URL(location.href), c = u.searchParams.get('screen');
-  if (c) { try { sessionStorage.setItem(SCREEN_KEY, c); } catch {} u.searchParams.delete('screen'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
-  try { screens.pendingCode = sessionStorage.getItem(SCREEN_KEY) || ''; } catch {} }   // 연결에 성공하거나 코드를 고치면 지운다(screenlink.forget)
+  if (c) { try { sessionStorage.setItem(SCREEN_KEY, c); } catch (e) { 드러냄('app.맨위:22', e); } u.searchParams.delete('screen'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
+  try { screens.pendingCode = sessionStorage.getItem(SCREEN_KEY) || ''; } catch (e) { 드러냄('app.맨위:23', e); } }   // 연결에 성공하거나 코드를 고치면 지운다(screenlink.forget)
 const cameFromQr = !!screens.pendingCode;
 /* 광장 체크인 QR(…/1ndcapp/?j=코드) — 코드를 챙기고 주소에서 지운다. 로그인으로 나갔다 와도 남게 sessionStorage (2026-10-05 광장 체크인) */
 { const u = new URL(location.href), c = u.searchParams.get('j');
-  if (c) { try { sessionStorage.setItem('plaza_join', c.toUpperCase()); } catch {} u.searchParams.delete('j'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
-  try { account.plazaJoin = sessionStorage.getItem('plaza_join') || ''; } catch {} }
+  if (c) { try { sessionStorage.setItem('plaza_join', c.toUpperCase()); } catch (e) { 드러냄('app.맨위:27', e); } u.searchParams.delete('j'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
+  try { account.plazaJoin = sessionStorage.getItem('plaza_join') || ''; } catch (e) { 드러냄('app.맨위:28', e); } }
 
 function useStore() { const [, f] = useState(0); useEffect(() => store.subscribe(() => f(x => x + 1)), []); }
 

@@ -1,3 +1,4 @@
+var 드러냄 = /** @type {any} */ (globalThis).드러냄 || (/** @type {any} */ (globalThis).드러냄 = function (곳, e) { var g = /** @type {any} */ (globalThis), L = g.__드러냄 || (g.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게 — 삼킨 오류는 여기 남는다(docs/원칙.md)
 /* 네이티브 코어 받침 — 앱(build/app.js)을 브라우저 없이 JavaScriptCore 에 올린다 (2026-09-28 iOS 3단계).
    tests/_harness.js 의 DOM 스텁(anything)·저장소를 옮겨 왔다 — node 전용(Buffer·vm) 없이. 화면은 그리지 않는다.
    저장소는 메모리 — 스위프트가 부팅 때 __boot_storage 로 채우고, 명령 성공 뒤 NativeCore.exportStorage() 를 파일로 쓴다. */
@@ -36,7 +37,7 @@ function makeStorage() { const m = new Map(); return {
   removeItem: k => m.delete(k), clear: () => m.clear(), key: i => [...m.keys()][i], get length() { return m.size; } }; }
 
 var __timers = []; function setTimeout(f){ __timers.push(f); return __timers.length; } function clearTimeout(){} function setInterval(){ return 0; } function clearInterval(){}
-function __flushTimers(){ for (var n = 0; n < 50 && __timers.length; n++) { var q = __timers.splice(0); q.forEach(function(f){ try { f(); } catch (e) {} }); } }
+function __flushTimers(){ for (var n = 0; n < 50 && __timers.length; n++) { var q = __timers.splice(0); q.forEach(function(f){ try { f(); } catch (e) { 드러냄('dom_stub.__flushTimers', e); } }); } }
 var localStorage = makeStorage();
 if (typeof __boot_storage === 'string' && __boot_storage) {   // 스위프트가 앱 폴더 파일에서 읽어 넘긴 저장본(마지막 정상 커밋)
   var __b = JSON.parse(__boot_storage); Object.keys(__b).forEach(function (k) { if (k !== '__rev') localStorage.setItem(k, __b[k]); });

@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // 투넬 계정 — 투넬(tunel.kr)과 같은 카카오 로그인·같은 서버. 같은 사이트라 투넬에 로그인돼 있으면 여기도 켜진다.
 // 판을 서버 모양으로 만드는 건 코어(sync.pending), 여기는 보내기·받기만. 판이 끝나면 조용히 올린다
 import { store } from './store.js';
@@ -33,7 +34,7 @@ export const account = {
     const c = client(); if (!c) return;
     c.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname } });
   },
-  async logout() { try { await client().auth.signOut({ scope: 'local' }); } catch {} this.user = null; this.info = null; this.emit(); },
+  async logout() { try { await client().auth.signOut({ scope: 'local' }); } catch (e) { 드러냄('account.logout', e); } this.user = null; this.info = null; this.emit(); },
 
   /** 밀린 판 올리기 — 사람 맞추기 → 판 올리기. 올라간 판은 코어에 표시(sync.markUploaded). 같은 판을 두 번 올려도 서버가 하나로 친다 */
   async sync() {
@@ -46,12 +47,12 @@ export const account = {
         try {
           if (g.people.length && !(await rpc('sync_people', { p_people: g.people }))) throw new Error('people');
           await rpc('upload_game', { p_game: slimGame(g.game), p_players: g.players });   // 확인되면 사건 기록 빼고(씨앗+명령 2단계)
-          try { await rpc('game_skill_facts', { p_client_game_id: g.game.client_game_id, p_players: g.players }); } catch {}   // 숙련 등급 재료(0110) — 실패해도 판 올리기는 성공
+          try { await rpc('game_skill_facts', { p_client_game_id: g.game.client_game_id, p_players: g.players }); } catch (e) { 드러냄('account.sync', e); }   // 숙련 등급 재료(0110) — 실패해도 판 올리기는 성공
           done.push(g.id); ok++;
         } catch { bad++; }
       }
       if (done.length) await store.dispatch('sync.markUploaded', { ids: done });
-      if (ok) { try { const d = await rpc('me_info'); this.info = (d && d[0]) || this.info; } catch {} }
+      if (ok) { try { const d = await rpc('me_info'); this.info = (d && d[0]) || this.info; } catch (e) { 드러냄('account.sync', e); } }
     } catch { bad = bad || 1; }
     this.busy = false; this.emit();
     return { ok, bad };
@@ -61,7 +62,7 @@ export const account = {
   plazaJoin: '',   // QR(…/?j=코드)로 들어온 참가 코드 — 로그인 뒤 저절로 체크인한다
   async plaza(fn, args) { if (!this.user) return null; try { return await rpc(fn, args || {}); } catch { return null; } },
   async plazaCheckinPending() { const c = this.plazaJoin; if (!c || !this.user) return null;
-    this.plazaJoin = ''; try { sessionStorage.removeItem('plaza_join'); } catch {}
+    this.plazaJoin = ''; try { sessionStorage.removeItem('plaza_join'); } catch (e) { 드러냄('account.plazaCheckinPending', e); }
     return await this.plaza('plaza_checkin', { p_code: c }) || { ok: false, error: '참가하지 못했어요. 연결을 확인해 주세요.' }; },
   async members() { if (!this.user) return null; try { return (await rpc('list_members')) || []; } catch { return null; } },
   /** 내가 팔로우하는 사람의 아이디 목록(회원 고르기 «팔로잉» 묶음, 2026-10-07) */
@@ -78,7 +79,7 @@ export const account = {
   /** 판세 보정 — 역할을 나눈 직후 회원 편별 실력 차이(숫자 하나)를 받아 코어에 넣는다. 5명 미만이면 서버가 주지 않는다 */
   async director() {
     if (!this.user) return; const c = store.get('director.context'); if (!c || c.good.length + c.evil.length < 5) return;
-    let skill = null; try { skill = await rpc('team_skill_gap', { p_good: c.good, p_evil: c.evil }); } catch {}
+    let skill = null; try { skill = await rpc('team_skill_gap', { p_good: c.good, p_evil: c.evil }); } catch (e) { 드러냄('account.director', e); }
     if (skill) await store.dispatch('director.setServer', { skill });
   },
   /** 서버에 있는 내 판 중 이 기기에 없는 것을 받는다 — 기기를 바꿨을 때.
@@ -86,22 +87,22 @@ export const account = {
   async pull() {
     if (!this.user) return null;
     const key = 'dangsan_pull_since:' + this.user.id;
-    let since = null; try { since = localStorage.getItem(key); } catch {}
+    let since = null; try { since = localStorage.getItem(key); } catch (e) { 드러냄('account.pull', e); }
     try {
       const rows = (await rpc('my_games', since ? { p_limit: 200, p_with_payload: true, p_since: since } : { p_limit: 200, p_with_payload: true })) || [];
       await restoreGames(rows);   // 사건 기록을 빼고 올라간 판은 기기에서 다시 돌려 채운다(씨앗+명령 3단계)
       const r = await store.dispatch('sync.merge', { rows });
       if (!r.ok) return null;
       const last = rows.reduce((m, g) => (g && g.updated_at && g.updated_at > m ? g.updated_at : m), since || '');   // 서버가 같은 꼴(UTC ISO)로 줘서 글자 비교로 충분
-      if (last) { try { localStorage.setItem(key, last); } catch {} }
+      if (last) { try { localStorage.setItem(key, last); } catch (e) { 드러냄('account.pull', e); } }
       this.emit(); return store.get('sync.merged');
-    } catch { if (since) { try { localStorage.removeItem(key); } catch {} } return null; }   // 실패하면 다음엔 전체
+    } catch { if (since) { try { localStorage.removeItem(key); } catch (e) { 드러냄('account.pull', e); } } return null; }   // 실패하면 다음엔 전체
   },
   /** 진행 중인 판을 서버에 두기 — 밤·낮 경계와 처형 뒤. 결과가 정해진 채 12시간 방치되면 서버가 닫는다 (2026-09-30) */
   async snapshot() {
     if (!this.user) return; const g = store.get('sync.snapshot'); if (!g) return;
-    try { await rpc('claim_me', { p_nick: '' }); if (g.people.length) { try { await rpc('sync_people', { p_people: g.people }); } catch {} } await rpc('upload_game', { p_game: g.game, p_players: g.players });
-      try { await rpc('game_skill_facts', { p_client_game_id: g.game.client_game_id, p_players: g.players }); } catch {} } catch {}
+    try { await rpc('claim_me', { p_nick: '' }); if (g.people.length) { try { await rpc('sync_people', { p_people: g.people }); } catch (e) { 드러냄('account.snapshot', e); } } await rpc('upload_game', { p_game: g.game, p_players: g.players });
+      try { await rpc('game_skill_facts', { p_client_game_id: g.game.client_game_id, p_players: g.players }); } catch (e) { 드러냄('account.snapshot', e); } } catch (e) { 드러냄('account.snapshot', e); }
   },
   /** 앱을 켤 때 — 결과가 정해진 판을 12시간 안 건드렸으면 그 결과로 닫는다(코어가 알림을 낸다) */
   async autoClose() { try { const r = await store.dispatch('game.autoClose', {}); return !!(r && r.ok); } catch { return false; } },

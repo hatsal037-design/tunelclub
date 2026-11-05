@@ -1,3 +1,4 @@
+var 드러냄 = /** @type {any} */ (globalThis).드러냄 || (/** @type {any} */ (globalThis).드러냄 = function (곳, e) { var g = /** @type {any} */ (globalThis), L = g.__드러냄 || (g.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게 — 삼킨 오류는 여기 남는다(docs/원칙.md)
 /* GameEngine — 공통 게임이해 엔진 P2 기반 (2026-10-01, 계획 docs/게임이해_엔진/공통엔진_계획_v1.1.md · 11절 «앱에 심는다»)
    규칙은 새로 만들지 않는다 — 판을 움직이는 것은 NativeCore(query/dispatch) 하나. 여기는 그 위에
      보기(view)  : 좌석마다 «합법적으로 아는 것만» (P1_관측규칙표.md)
@@ -21,7 +22,7 @@ var GameEngine = (function () {
       state = JSON.parse(payload.판);
       /* 첫밤 전 고정이면 판 시작 기록(처음 직업)도 그 구성으로 — 블러프 주인·복기가 이것을 본다 */
       if (state.log && state.log.players && !state.nightBegun) state.log.players.forEach(function (p) { var s = state.seats[p.seat - 1], c = s && cm()[s.char]; if (c) { p.roleId = c.id; p.role = c.ko; p.team = c.team; } });
-      try { save(); } catch (e) {} log.push({ type: type, payload: payload, status: 'ok' }); return { status: 'ok' };
+      try { save(); } catch (e) { 드러냄('engine.dispatch', e); } log.push({ type: type, payload: payload, status: 'ok' }); return { status: 'ok' };
     }
     var cmd = { commandId: 'g' + (n++), expectedRevision: rev(), type: type, payload: payload || {} };
     var r = JSON.parse(NC.dispatch(JSON.stringify(cmd)));
@@ -38,14 +39,14 @@ var GameEngine = (function () {
   /* 본인이 믿는 직업 — 속는 직업(취객·망석중…)은 받은 가짜 카드 */
   function shownChar(i) { var f = (state.fakes || {})[i]; return f && cm()[f] ? f : seats()[i].char; }
   /* 진행 중인 판의 기록(state.log) — logsAll()[0] 은 끝난 판 목록이라 진행 중엔 비어 있다(2026-10-01 수기 추적 검사에서 발견) */
-  function events() { try { if (state.log && state.log.events) return state.log.events; var L = logsAll()[0]; return (L && L.events) || []; } catch (e) { return []; } }
+  function events() { return gameEvents(); }   // core/자리.js
   /* 공개 사건 — 직업·고정값은 벗긴다. 밤 사망은 아침(낮 시작) 뒤에만 */
   var PUBLIC = { '지명': 1, '투표': 1, '처형': 1, '사망': 1, '낮 시작': 1, '밤 시작': 1 };
   function publicEvents() {
     var ev = events(), out = [], published = q('observation.public');
     ev.forEach(function (e) {
       if (!PUBLIC[e.type]) return;
-      if (e.type === '사망' && e.phase !== 'day' && (!published || e.n > published.through)) return;   // 낮 진입이 아니라 저장 확정된 발표 뒤에 공개
+      if (evType(e) === 'death' && e.phase !== 'day' && (!published || e.n > published.through)) return;   // 낮 진입이 아니라 저장 확정된 발표 뒤에 공개
       var o = { 사건: '공개' + (out.length + 1), 밤: e.n, 때: e.phase, 종류: e.type };   // 사건 ID — 보이는 목록 안 순번. 판 기록 전체 순번은 숨은 사건 수를 새게 한다(짝 검사에서 잡힘)
       if (e.seat) o.자리 = e.seat;
       if (e.bySeat) o.지명자 = e.bySeat;
@@ -63,43 +64,25 @@ var GameEngine = (function () {
   function evilInfo(i) {
     var s = seats()[i], T = startTeams(), evilT = function (t) { return t === 'demon' || t === 'minion' || t === 'mafia'; };
     if (!s || !evilT(T[i])) return null;
-    var skipped = false; try { skipped = evilInfoSkipped(); } catch (e) {}
+    var skipped = false; try { skipped = evilInfoSkipped(); } catch (e) { 드러냄('engine.evilInfo', e); }
     if (skipped) return null;
     var me = cm()[s.char], out = { 동료: [] };
-    T.forEach(function (t, j) { if (j !== i && evilT(t)) out.동료.push({ 자리: j + 1, 흉수: t === 'demon' }); });
+    /* 동료 — 진행 화면과 같은 판정(2026-11-03 햇살님 «좋아»): 상견례에서 실제로 보여 준 기록(시점 장부, 늦은 알려주기 포함 마지막 것).
+       기록이 아직 없는 첫밤엔 knownAllies(금줄쟁이·대역꾼·망석중·신들린이 예외 반영). 예전엔 판 시작 팀만 보고 예외 없이 다 보여 줬다 */
+    var met = gameEvents().filter(function (e) { return evType(e) === 'info_shown' && e.단계 === 'meet' && e.누구 === i + 1; });
+    var al = met.length ? (met[met.length - 1].자리 || []).map(function (n) { return n - 1; }) : ((state.nights || 1) === 1 ? (function () { try { return knownAllies(i); } catch (e) { return []; } })() : []);
+    al.forEach(function (j) { out.동료.push({ 자리: j + 1, 흉수: T[j] === 'demon' }); });
     /* 블러프는 첫밤 흉수에게만 — 스타패스로 새로 흉수가 된 사람은 받지 않는다(판 시작 기록의 처음 직업) */
     var start = ((state.log && state.log.players) || []).filter(function (p) { return p.seat === i + 1; })[0];
     if (me.team === 'demon' && start && start.team === 'demon') {   // 첫밤에 받은 것을 계속 안다 — 무대 조회는 첫밤에만 주므로 판에 저장된 bluffIds 에서
       var ids = state.bluffIds || []; if (ids.length) out.블러프 = ids.map(ko).filter(function (x) { return x; });
-      else { try { out.블러프 = (q('game.stage') || {}).bluffs || null; } catch (e) {} }
+      else { try { out.블러프 = (q('game.stage') || {}).bluffs || null; } catch (e) { 드러냄('engine.evilInfo', e); } }
     }
     return out;
   }
-  /* 받은 정보 — 코어가 «정보 전달»로 남긴 것 중 이 좌석 몫. 참가자에게 보여 준 답만(진짜 답·거짓 이유는 안 준다) */
-  /* 답 종류 — 직업 이름이 아니라 답 모양으로(파생 직업도 같은 해석, P4 v2.1 3절). 모르는 모양은 추측하지 않고 «미확인» */
-  function answerKind(e) {
-    var a = String(e.답 == null ? '' : e.답), n = (e.자리 || []).length, r = (e.직업들 || []).length;
-    if (e.판) return { 종류: '판' };
-    if (/^\s*\d+\s*$/.test(a)) return { 종류: '수', 값: +a };
-    if (/그렇다|아니다/.test(a)) return { 종류: '예아니오', 값: /그렇다/.test(a) };
-    if (n >= 2 && r) return { 종류: '두자리직업', 값: e.직업들[0] };
-    if (r) return { 종류: '직업', 값: e.직업들[0] };
-    if (/없음/.test(a)) return { 종류: '없음' };   // 사서 «외지인 없음»·조사관 «하수인 없음»
-    return { 종류: '미확인' };
-  }
-  function received(i) {
-    var out = [], acts = 0, last = null;
-    events().forEach(function (e) {
-      if (e.type === '밤 지목' && e.seat === i + 1) { acts++; last = { n: e.n, id: '행동' + acts }; return; }
-      if (e.type !== '정보 전달' || e.누구 !== i + 1) return;
-      var o = { 사건: '받음' + (out.length + 1), 밤: e.n, 답: e.답, 자리: e.자리 || [], 직업들: e.직업들 || [] }, k = answerKind(e);
-      o.답종류 = k.종류; if ('값' in k) o.값 = k.값;
-      if (last && last.n === e.n) { o.계기 = last.id; last = null; }   // 계기 — 같은 밤 이 좌석이 고른 지목(점술가·봉사). 없으면 자동 정보
-      if (e.판) o.판 = e.판;   // 판 — 세작이 그 밤 본 진행자 판 스냅숏
-      out.push(o);
-    });
-    return out;
-  }
+  /* 받은 정보·답 종류 — core/자리.js(ledgerOf·ledgerAnswerKind)로 옮김(2026-11-03 재구조화 2단계). 이름은 그대로 둔다 */
+  function answerKind(x) { return ledgerAnswerKind(x); }
+  function received(i) { return ledgerOf(i); }
   function view(who) {
     if (who === 'host') return { 진행자: true, 판: JSON.parse(JSON.stringify(state)), 기록: events() };
     if (!validSeat(who)) return null;
@@ -117,8 +100,8 @@ var GameEngine = (function () {
   }
   /* 내가 한 행동 — 밤에 고른 자리(«밤 지목» 기록 중 본인 것) */
   function myActions(i) {
-    return events().filter(function (e) { return e.type === '밤 지목' && e.seat === i + 1; }).map(function (e, k) {
-      return { 사건: '행동' + (k + 1), 밤: e.n, 대상: (e.대상 || []).map(function (l) { var m = String(l).match(/좌석 (\d+)/); return m ? +m[1] : null; }).filter(function (x) { return x; }) };
+    return events().filter(function (e) { return evType(e) === 'night_pick' && e.seat === i + 1; }).map(function (e, k) {
+      return { 사건: '행동' + (k + 1), 밤: e.n, 대상: (e.대상ref || []).length ? e.대상ref.map(function (r) { return r.seat; }).filter(function (x) { return x; }) : (e.대상 || []).map(function (l) { var m = String(l).match(/좌석 (\d+)/); return m ? +m[1] : null; }).filter(function (x) { return x; }) };   // 자리 번호 구조(대상ref) 먼저 — 글자 되뽑기는 대상ref 없는 옛 기록만
     });
   }
   function publicDeath(j) { var p = q('observation.public'); return !!(p && p.dead[j]); }
@@ -127,19 +110,19 @@ var GameEngine = (function () {
     if (!validSeat(who)) return [];
     var i = who, out = [];
     if (state.phase !== 'day') {
-      var c = null; try { c = q('game.current'); } catch (e) {}
+      var c = null; try { c = q('game.current'); } catch (e) { 드러냄('engine.legal', e); }
       if (c && c.seatNumber === i + 1 && c.needsTargetsFirst) {
         out.push({ 종류: '대상', 최소: c.minPick, 최대: c.pickCount, 후보: c.targets.filter(function (t) { return !t.disabledReason; }).map(function (t) { return t.index + 1; }) });
         if (canStarpass(i)) out.push({ 종류: '넘겨주기' });   // 원작 스타패스 — 코어는 «객귀·임프 자발적 계승» 흐름(SUC_MAP imp_self)
       }
       return out;
     }
-    var d = null; try { d = q('game.day'); } catch (e) {}
+    var d = null; try { d = q('game.day'); } catch (e) { 드러냄('engine.legal', e); }
     if (!d) return out;
     if ((d.nominators || []).some(function (x) { return x.index === i; }))
       out.push({ 종류: '지명', 후보: (d.targets || []).filter(function (t) { return t.index !== i; }).map(function (t) { return t.index + 1; }) });
     (d.noms || []).forEach(function (nm, k) {
-      var vs = []; try { vs = q('day.voters', String(k)) || []; } catch (e) {}
+      var vs = []; try { vs = q('day.voters', String(k)) || []; } catch (e) { 드러냄('engine.legal', e); }
       if (vs.some(function (v) { return v.index === i; })) out.push({ 종류: '투표', 지명: k });
     });
     return out;
@@ -175,11 +158,12 @@ var GameEngine = (function () {
     if (a.종류 === '넘겨주기') {
       if (!L.some(function (x) { return x.종류 === '넘겨주기'; })) return { status: 'rejected', code: 'invalidSelection' };
       /* 자기 공격도 능력 판정을 거친다(2026-10-01 코덱스 재검토): 흉수가 중독·취함이거나 보호받으면 아무 일 없음 — 요청만 기록, 참가자에게 알리지 않는다 */
-      var me = seats()[i], hurt = false; try { hurt = pickFalsified(i).length > 0; } catch (e) {}
-      if (hurt || (me.rem || []).indexOf('보호됨') >= 0) return dispatch('엔진.넘겨주기무효', { seat: i });
+      /* 관문(core/관문.js)으로(2026-11-03): 능력 무효(취함·중독 — «정보만 거짓»은 아님)와 보호(건 사람이 취했으면 무효인 보호 포함) */
+      var hurt = false, guarded = false; try { hurt = pickVoidReasons(i).length > 0; var H = hitGuards(false); guarded = gateHit(i, { guardSet: H.guardSet, life: H.life, dayKill: false, byDemon: true, force: true }).guard.length > 0; } catch (e) { 드러냄('engine.actRaw', e); }
+      if (hurt || guarded) return dispatch('엔진.넘겨주기무효', { seat: i });
       /* 계승: 건강한 몸주가 살아 있고 흉수 사망 직전 5명 이상이면 몸주(강제). 아니면 살아 있는 하수인 중 진행자 재량 — 엔진 기본값은 가장 앞자리(기록에 남는다) */
       var alive = seats().filter(function (x) { return !x.dead; }).length, heir = -1;
-      seats().forEach(function (x, j) { if (heir < 0 && j !== i && !x.dead && ['scarletwoman', 'momju'].indexOf(x.char) >= 0 && alive >= 5) { var h = false; try { h = pickFalsified(j).length > 0; } catch (e) {} if (!h) heir = j; } });
+      seats().forEach(function (x, j) { if (heir < 0 && j !== i && !x.dead && ['scarletwoman', 'momju'].indexOf(x.char) >= 0 && alive >= 5) { var h = false; try { h = pickVoidReasons(j).length > 0; } catch (e) { 드러냄('engine.actRaw', e); } if (!h) heir = j; } });
       if (heir < 0) seats().forEach(function (x, j) { if (heir < 0 && j !== i && !x.dead && cm()[x.char] && cm()[x.char].team === 'minion') heir = j; });
       return heir < 0 ? { status: 'rejected', code: 'noHeir' } : dispatch('succession.apply', { id: 'imp_self', seat: heir });
     }

@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // D01 · 화면 연결 — TV·컴퓨터에 뜬 코드를 넣어(또는 QR 로 들어와) 연결하고, 연결된 화면을 끊는다. 공개 정보 전송은 screenlink.js 가 알아서
 import { html, useState, useEffect, useRef } from '../../lib/preact-htm.js';
 import { Page, Section, Row, LargeTitle, Primary, ActionSheet } from '../ui.js';
@@ -21,9 +22,9 @@ export function DisplayConnectionView() {
   const links = screens.active(), full = code.replace(/ /g, '').length === 8;
   const connect = async c => { if (await screens.approve(c || code)) setCode(''); };
   const url = 'https://' + SCREEN_URL;
-  const copy = async () => { try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {} };
+  const copy = async () => { try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (e) { 드러냄('display.copy', e); } };
   const share = async () => { if (!navigator.share) return copy();   // 공유 창(에어드롭·카카오톡·메시지…)이 없는 브라우저에선 복사로
-    try { await navigator.share({ title: '첫밤 사망자 클럽 큰 화면', url }); } catch {} };
+    try { await navigator.share({ title: '첫밤 사망자 클럽 큰 화면', url }); } catch (e) { 드러냄('display.share', e); } };
   const [qr, setQr] = useState('');   // 주소 QR — 다른 기기(TV·노트북·옆 사람 폰)로 찍어 큰 화면을 연다
   const showQr = async () => { if (qr) return setQr('');
     if (!window.qrcode) await new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'lib/qrcode.js'; s.onload = ok; s.onerror = no; document.head.appendChild(s); }).catch(() => {});

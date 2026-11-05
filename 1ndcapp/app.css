@@ -270,9 +270,12 @@ h1, h2, p { margin: 0; }
 .row-pic { display: inline-flex; align-items: center; gap: 12px; } .row-pic .ans-pic, .row-pic .ans-num { width: 28px; justify-content: center; font-size: 22px; }
 .ans-num { font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.03em; line-height: .95; } .ans-num small { font-size: .42em; color: var(--sec); font-weight: 600; letter-spacing: 0; }
 /* 멀리서 — 폰을 들어 보여 주는 전체 화면, 큰 화면 v5 밤 결(바탕 #0b0f1c) */
-.far-ans { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: calc(16px + var(--safe-t)) 16px calc(16px + var(--safe-b)); cursor: pointer;
+.far-ans { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: calc(16px + var(--safe-t)) 16px calc(16px + var(--safe-b)); cursor: pointer; }
+.far-ans, .selfpick {   /* 직접 찍기(A안, 2026-11-03)도 같은 밤 결 */
   --bg: #0b0f1c; --card: #1c1c1e; --fill: rgba(118,118,128,.24); --label: #fff; --sec: rgba(235,235,245,.6); --ter: rgba(235,235,245,.3); --sep: rgba(84,84,88,.65);
   --blue: #0a84ff; --red: #ff453a; --orange: #ff9f0a; --purple: #bf5af2; --gray5: #2c2c2e; --gray4: #3a3a3c; background: var(--bg); color: var(--label); color-scheme: dark; }
+.selfpick .head { text-align: center; } .selfpick .head .rn { font-size: 34px; font-weight: 700; } .selfpick .mid > * { width: 100%; }
+.selfpick.back { align-items: center; justify-content: center; cursor: pointer; } .selfpick.back b { font-size: 22px; }
 .far-ans > * { width: 100%; } .far-ans .big-ans { font-size: 64px; font-weight: 700; text-align: center; }
 .hold { width: 100%; min-height: 56px; border-radius: 14px; background: var(--fill); font-weight: 600; font-size: 17px; touch-action: none; -webkit-user-select: none; user-select: none; }
 .hold:active { background: var(--gray4); }
@@ -632,3 +635,33 @@ a.mention { color: var(--blue); text-decoration: none; background: none; padding
 .g5flow .per.now { color: var(--fg); } .g5flow .per.now:before { background: var(--pc); border-color: var(--pc); }
 .g5flow .ev { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 2px 0; font-size: 17px; line-height: 22px; } .g5flow .ev .r { font-size: 15px; color: var(--sec); white-space: nowrap; } .g5flow .ev.sec { color: var(--sec); font-size: 15px; }
 .nb-t .nb-sub { display: block; font-size: 11px; font-weight: 400; color: var(--sec); line-height: 1.2; }   /* 이번 판만 대신 진행(2026-10-29) — 제목 아래 부제, 새 줄 없이 */
+
+.exec-say { margin-top: 6px; padding: 10px; border-radius: 10px; background: var(--fill); display: flex; flex-direction: column; gap: 3px; width: 100%; }   /* 처형 결과 발표할 말(2026-11-02 B-2) */
+.exec-say .sub { font-size: 12px; } .exec-say .note { font-size: 15px; font-weight: 600; } .exec-say.said { opacity: .55; }
+.bprev { flex: 0 0 52px; min-height: 50px; border-radius: 12px; background: var(--fill); color: var(--blue); display: flex; align-items: center; justify-content: center; }   /* 이전 차례 — 주 행동 옆(2026-11-02 «되돌리는 버튼이 너무 숨어 있어») */
+.bprev:disabled { color: var(--ter); }
+.brow .bprim { flex: 1; }
+.bfill { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 4px 14px; border-radius: 10px; background: var(--blue); color: #fff; font-weight: 600; font-size: 17px; }   /* 답 보여주기 — 답 직접 고르기와 구분(2026-11-02) */
+.hist { padding: 2px 0 8px; color: var(--label); white-space: normal; } .hist .hn { font-size: 12px; font-weight: 600; color: var(--sec); margin-bottom: 2px; }   /* 과정 «히스토리 보기»(2026-11-02) */
+.xbtn { width: 44px; height: 44px; margin: -10px -12px -10px 0; display: flex; align-items: center; justify-content: center; color: var(--sec); }   /* 표식 떼기(2026-11-02) */
+.selrow { position: relative; } .selrow select { position: absolute; inset: 0; width: 100%; opacity: 0; font-size: 17px; }   /* 표식 붙이기 — 줄 전체가 셀렉트(2026-11-02) */
+.reveal-page .mid.scroll { overflow-y: auto; flex-direction: column; align-items: stretch; justify-content: flex-start; } .reveal-page .mid.scroll > * { margin: auto 0; } .reveal-page .mid.scroll > .hid { align-self: center; }   /* 밤 기록이 길어지면 넘겨 본다 — 위가 잘리지 않게 auto 여백으로 가운데 */
+.rblock { width: 100%; text-align: left; border-top: .5px solid var(--sep); padding-top: 8px; margin-top: 4px; display: flex; flex-direction: column; gap: 4px; }   /* 다시 보여주기 — 밤마다 본 것(2026-11-02) */
+.rblock .hn { font-size: 12px; font-weight: 600; color: var(--sec); }
+.myseat { display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: 0; max-width: 100%; }   /* 넘기기 가린 화면 — 번호·닉네임 같은 크기(2026-11-02 A안) */
+.myseat > b { font-size: 46px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; } .myseat > b.myname { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.miniseat { position: relative; width: 200px; height: 200px; }
+.miniseat i { position: absolute; transform: translate(-50%, -50%); width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 600; background: var(--fill); color: var(--sec); font-variant-numeric: tabular-nums; }
+.miniseat i.me { width: 40px; height: 40px; font-size: 17px; background: var(--blue); color: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue) 25%, transparent); z-index: 1; }
+/* 복기 PDF — 인쇄할 때만 보인다(2026-11-02) */
+.rp-print { display: none; }
+@media print {
+  body * { visibility: hidden !important; }
+  .rp-print, .rp-print * { visibility: visible !important; }
+  .rp-print { display: block; position: absolute; left: 0; top: 0; width: 100%; background: #fff; color: #000; }
+  html, body, #app { height: auto !important; overflow: visible !important; } #app { display: none !important; }
+  .rp-page { break-after: page; page-break-after: always; padding: 8px 0; }
+  .rp-page:last-child { break-after: auto; page-break-after: auto; }
+  .rp-page h2 { font-size: 22px; margin: 0 0 8px; }
+}
+textarea.textin { font: inherit; resize: none; padding: 8px 0; color: var(--label); }

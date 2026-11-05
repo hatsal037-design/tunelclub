@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // G03 낮 · 지명 · 투표 · 수동 마감 · 결과 · 이야기 시간 타이머. 규칙은 전부 코어 명령
 import { html, useState, useEffect, useRef } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
@@ -31,7 +32,7 @@ export function DayView({ m, run, finish }) {
       <div class="row"><button class="btn-p" onClick=${() => run('day.executeAndFinish', { k: m.endIfExecuted.k })}>처형하고 마감 — ${m.endIfExecuted.winnerKo}</button></div><//>`}
     <${Section} header=${html`<span class="grow">아침 발표</span><button class="blink" style="min-height:24px;font-weight:600" onClick=${() => speak((m.script || []).join(' '), m.scriptPlan || [])}><${Icon} name="speaker" size=${16} /> 읽어 주기</button>`}>
       <div class="row" style="font-size:19px;line-height:1.45;flex-direction:column;align-items:stretch;gap:6px;padding:16px">${(m.script || []).map(t => html`<div>${t}</div>`)}</div>
-      <div class="row" style="padding:12px 16px"><button class=${cx('pill-act', m.announced && 'done')} aria-pressed=${m.announced} onClick=${() => run('day.announce', {})}>${m.announced ? '발표했어요 ✓' : '발표했어요'}</button></div>
+      <div class="row" style="padding:12px 16px"><button class="pill-act done" aria-pressed=${m.announced} onClick=${() => run('day.announce', {})}>${m.announced ? '발표했어요 ✓' : '읽고 나서 아래 «발표했어요»'}</button></div>
     <//>
     ${!m.ended && html`<div style=${m.announced ? '' : 'opacity:.4;pointer-events:none'} aria-disabled=${!m.announced}><${TalkTimerSection} whisper=${!m.mafia} /></div>`}
     ${m.notes.length > 0 && html`<${Section} header="알림"><${CoreItems} items=${m.notes} call=${c => run('day.call', { call: c })} /><//>`}
@@ -40,12 +41,13 @@ export function DayView({ m, run, finish }) {
         const finish = n.canExecute && m.endIfExecuted && m.endIfExecuted.k === n.k, ready = !!n.canExecute;
         return html`<div class="row"><div class="nom grow">
           <div class="top"><span class="headline grow">${n.target.number}번 ${n.target.name}</span>
-            ${n.tag && html`<span class=${cx('tag', n.tag === '동수' && 'orange')}>${n.tag}</span>`}
+            ${n.tag && html`<span class=${cx('tag', n.tagKind === 'tie' && 'orange')}>${n.tag}</span>`}
             <span class=${cx('num', n.votes >= m.need ? 'blue' : 'sec')}>${n.votes}표 / ${m.need}</span></div>
           <div class="hstack sub"><span class="grow">${n.by ? `${n.by.number}번 ${n.by.name} 지명` : '지명자 기록 안 함'}</span>
             ${!m.ended && (n.acts || []).map(a => html`<button class="blink" onClick=${() => run('day.execAct', { k: n.k, how: a })}>${EXEC_ACT_KO[a]}</button>`)}</div>
           ${n.done ? html`<div class="hstack sub" style="color:var(--label)"><${Icon} name="seal" size=${18} /><span class="grow">${n.blocked ? `처형됐지만 살아남음 · ${n.blocked}` : n.dead ? (n.reveal ? `처형됨 · ${n.reveal}` : '처형됨') : '처형 처리됨'}</span>
-              <button class="blink" onClick=${() => run('day.executeUndo', { k: n.k })}>되돌리기</button></div>`
+              <button class="blink" onClick=${() => run('day.executeUndo', { k: n.k })}>되돌리기</button></div>
+              ${n.say && html`<${ExecSay} say=${n.say} note=${n.hostNote} said=${n.said} />`}`
             : html`${n.preview && html`<div class="hstack sub orange"><${Icon} name="flag" size=${16} />${n.preview}</div>`}
               ${!m.ended && html`<div class="hstack" style="justify-content:flex-end"><button class="blink danger" onClick=${() => run('day.nomRemove', { k: n.k })}>지우기</button></div>`}
               <div class="hstack" style="gap:10px;margin-top:4px"><button class="pill-act gray" onClick=${() => setVoting(n)}>투표</button>
@@ -69,6 +71,9 @@ export function DayView({ m, run, finish }) {
   </div>`;
 }
 
+/** 처형 결과 발표 칸 — 모두에게 말할 것(굵게) · 진행자만 알 것(주황). 발표하면 흐리게(2026-11-02 B-2) */
+const ExecSay = ({ say, note, said }) => html`<div class=${cx('exec-say', said && 'said')}><div class="sub">${said ? '발표함' : '발표할 말'}</div><b>${say}</b>${note && html`<div class="orange note">${note}</div>`}</div>`;
+
 /** 오리지널 마피아 낮(2026-10-03 햇살님 «이렇게 확정», 시안/오리지널마피아_낮_20261003 v5) — 지목은 기록 안 함.
     가장 많이 지목받은 사람만 누르고 살린다·죽인다. 둘을 누르면 동수 → 무효(룰)·둘 다 찬반·다시 지목 */
 function MafiaDay({ m, run }) {
@@ -79,7 +84,8 @@ function MafiaDay({ m, run }) {
   return html`<${Section} header="지목 · 처형" footer=${`생존 ${m.alive}명`}>
       ${m.noms.map(n => html`<div class="row"><div class="grow"><div class="headline">${nm(n.target)}</div>
         <div class="sub">${n.done ? (n.blocked ? `처형됐지만 살아남음 · ${n.blocked}` : n.reveal ? `처형됨 · ${n.reveal}` : '처형됨') : n.saved ? '살림' : ''}</div></div>
-        <button class="blink" onClick=${() => run(n.done ? 'day.executeUndo' : 'day.verdictUndo', { k: n.k })}>되돌리기</button></div>`)}
+        <button class="blink" onClick=${() => run(n.done ? 'day.executeUndo' : 'day.verdictUndo', { k: n.k })}>되돌리기</button></div>
+        ${n.say && html`<div class="row"><${ExecSay} say=${n.say} note=${n.hostNote} said=${n.said} /></div>`}`)}
       ${m.tieVoid && html`<div class="row"><div class="grow"><div class="headline">처형 없음</div><div class="sub">동수</div></div>
         <button class="blink" onClick=${() => run('day.tieVoidUndo', {})}>되돌리기</button></div>`}
       <${Row} tint disabled=${!m.targets.length || closed} onClick=${() => setPicking(true)}><${Icon} name="plus" size=${20} />지목받은 사람<//>
@@ -209,7 +215,7 @@ export const timer = {
     const k = this.kind;
     store.dispatch('display.setTimer', done ? { state: 'elapsed', endsAt: Date.now(), durationMs: ms(done), kind: k }
       : !this.running ? { state: null } : this.paused ? { state: 'paused', leftMs: ms(this.pausedLeft), durationMs: ms(this.total), kind: k } : { state: 'running', endsAt: this.endAt, durationMs: ms(this.total), kind: k }); },
-  start(min, kind = 'whisper') { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch {}   // 누른 순간에 소리를 깨워 둔다 — 사파리는 터치 밖에서 만든 소리를 막는다(2026-10-05)
+  start(min, kind = 'whisper') { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch (e) { 드러냄('day.start', e); }   // 누른 순간에 소리를 깨워 둔다 — 사파리는 터치 밖에서 만든 소리를 막는다(2026-10-05)
     this.kind = kind; this.total = min * 60; this.endAt = Date.now() + this.total * 1000; this.pausedLeft = null; this.shouted = new Set(); this.shout = null;
     clearInterval(this.tick); this.tick = setInterval(() => this.poll(), 1000); this.emit(); this.tell(); },
   pause() { if (this.running && !this.paused) { this.pausedLeft = this.left(); this.emit(); this.tell(); } },
@@ -228,7 +234,7 @@ export const timer = {
   },
   alert(time, text, strong) {
     this.shout = { time, text };
-    if (settings.get('haptics') && navigator.vibrate) try { navigator.vibrate(strong ? [200, 100, 200] : 80); } catch {}
+    if (settings.get('haptics') && navigator.vibrate) try { navigator.vibrate(strong ? [200, 100, 200] : 80); } catch (e) { 드러냄('day.alert', e); }
     if (settings.get('timerSound') && !(soundOut.send && soundOut.send([{ k: 'beep', strong }]))) beep(strong);
     setTimeout(() => { if (this.shout && this.shout.text === text) { this.shout = null; this.emit(); } }, 4000);
     this.emit();
@@ -240,7 +246,7 @@ function beep(strong) {
   try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); const n = strong ? 3 : 1;
     for (let i = 0; i < n; i++) { const o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime + i * 0.35;
       o.frequency.value = strong ? 880 : 1320; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.25);
-      o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + 0.3); } } catch {}
+      o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + 0.3); } } catch (e) { 드러냄('day.beep', e); }
 }
 function useTimer() { const [, f] = useState(0); useEffect(() => { const h = () => f(x => x + 1); subs.add(h); return () => subs.delete(h); }, []); return timer; }
 

@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // QR 읽기 — 진행 웹(화면 연결·광장 참가)과 참가 웹이 같이 쓴다(2026-10-25 참가 웹 «코드를 QR로 읽기»). 진행 모듈(store·account)을 끌어오지 않게 따로 둔다
 import { html, useState, useEffect, useRef } from '../lib/preact-htm.js';
 
@@ -13,14 +14,14 @@ export function QrScanner({ onCode, onClose, parse = codeFromQr, title, noCam = 
       try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); }
       catch { if (!dead) setErr(noCam); return; }
       if (dead) { stream.getTracks().forEach(t => t.stop()); return; }
-      const v = video.current; v.srcObject = stream; try { await v.play(); } catch {}
-      if ('BarcodeDetector' in window) { try { det = new window.BarcodeDetector({ formats: ['qr_code'] }); } catch {} }
-      if (!det && !window.jsQR) { try { await loadScript('lib/jsQR.js'); } catch {} }
+      const v = video.current; v.srcObject = stream; try { await v.play(); } catch (e) { 드러냄('qrscan.QrScanner', e); }
+      if ('BarcodeDetector' in window) { try { det = new window.BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { 드러냄('qrscan.QrScanner', e); } }
+      if (!det && !window.jsQR) { try { await loadScript('lib/jsQR.js'); } catch (e) { 드러냄('qrscan.QrScanner', e); } }
       const scan = async () => { if (dead) return; let text = '';
         if (v.readyState >= 2 && v.videoWidth) {
           try { if (det) { const r = await det.detect(v); text = r[0] ? r[0].rawValue : ''; }
             else if (window.jsQR) { const k = Math.min(1, 640 / v.videoWidth); cv.width = v.videoWidth * k; cv.height = v.videoHeight * k; const c = cv.getContext('2d', { willReadFrequently: true });
-              c.drawImage(v, 0, 0, cv.width, cv.height); const d = c.getImageData(0, 0, cv.width, cv.height), r = window.jsQR(d.data, d.width, d.height, { inversionAttempts: 'dontInvert' }); text = r ? r.data : ''; } } catch {} }
+              c.drawImage(v, 0, 0, cv.width, cv.height); const d = c.getImageData(0, 0, cv.width, cv.height), r = window.jsQR(d.data, d.width, d.height, { inversionAttempts: 'dontInvert' }); text = r ? r.data : ''; } } catch (e) { 드러냄('qrscan.scan', e); } }
         const code = parse(text); if (code) return onCode(code);
         raf = setTimeout(scan, det ? 120 : 200); };
       scan();

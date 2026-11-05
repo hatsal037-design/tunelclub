@@ -1,13 +1,14 @@
 // 복기 — 끝난 판의 요약 · 밤낮 넘겨보기 · 참가자 공유판 (30차 시안 2026-10-01 햇살님 «이대로 화면 만들기»)
 // 계산은 전부 코어 GameReplay(game.replay) — 화면은 그리기만. 정보만으로 좁힌 후보는 무거워서 그린 뒤 따로(game.replayNarrow)
-import { html, useState, useEffect } from '../../lib/preact-htm.js';
+import { html, render, useState, useEffect } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
-import { Page, Section, Row, Cover, NavButton } from '../ui.js';
+import { Page, Section, Row, Cover, NavButton, Secondary } from '../ui.js';
+import { Icon } from '../icons.js';
 import { useNav, Back } from '../nav.js';
 
 const EVIL = { minion: 1, demon: 1, mafia: 1 };
 const WIN = { good: '선 승리', evil: '악 승리' };
-const kcls = k => /악을 잡음|킬을 막음|승부/.test(k) ? 'rp-good' : /잃음|흐려짐|선을 처형|계승/.test(k) ? 'rp-evil' : 'sec';
+const kcls = t => t === 'good' ? 'rp-good' : t === 'bad' ? 'rp-evil' : 'sec';   // 복기 코어가 붙인 톤(2026-11-04)
 
 /** 요약 — host 면 사람별(진행자만)과 넘겨보기·공유 단추 */
 function Summary({ r, host, narrow }) {
@@ -15,7 +16,7 @@ function Summary({ r, host, narrow }) {
   const nw = (narrow || []).filter(x => x.좁힘);
   return html`
     <div class="rp-hero"><div class="rp-w">${WIN[r.승자] || '판 끝'}</div><div class="rp-m">${r.모드} · ${r.인원}명 · 밤 ${r.밤.length}</div></div>
-    ${r.주요장면.length > 0 && html`<${Section} header="주요 장면">${r.주요장면.map(s => html`<div class="row rp-scene"><span class="rp-when">${s.때}</span><div><div class=${'rp-kind ' + kcls(s.종류)}>${s.종류}</div><div>${s.글}</div></div></div>`)}<//>`}
+    ${r.주요장면.length > 0 && html`<${Section} header="주요 장면">${r.주요장면.map(s => html`<div class="row rp-scene"><span class="rp-when">${s.때}</span><div><div class=${'rp-kind ' + kcls(s.톤)}>${s.종류}</div><div>${s.글}</div></div></div>`)}<//>`}
     <${Section} header="통계">
       <div class="row rp-stat"><span>처형 적중</span><b>${st.처형.악}/${st.처형.수}<small>${pct(st.처형.악, st.처형.수)}</small></b></div>
       <div class="row rp-stat"><span>선의 지명 적중</span><b>${st.지명.악}/${st.지명.수}<small>${pct(st.지명.악, st.지명.수)}</small></b></div>
@@ -42,13 +43,11 @@ function Board({ r, step, dead }) {
   </div>`;
 }
 
-function Steps({ r }) {
-  const steps = []; r.밤.forEach(n => { steps.push({ t: 'n', d: n }); const dd = r.낮.find(x => x.밤 === n.밤); if (dd) steps.push({ t: 'd', d: dd }); });
-  const [k, setK] = useState(0), s = steps[k];
-  if (!s) return html`<${Page} title="밤낮 넘겨보기" left=${html`<${Back} />`} />`;
-  const nameOf = n => (r.사람.find(p => p.자리 === n) || {}).이름 || n + '번';
-  const dead = new Set(); steps.slice(0, k).forEach(x => { (x.d.죽음 || []).forEach(y => dead.add(y.자리)); (x.d.처형 || []).forEach(y => dead.add(y.자리)); });
-  const rows = [];
+const stepsOf = r => { const st = []; r.밤.forEach(n => { st.push({ t: 'n', d: n }); const dd = r.낮.find(x => x.밤 === n.밤); if (dd) st.push({ t: 'd', d: dd }); }); return st; };
+const stepTitle = x => x.t === 'n' ? (x.d.밤 <= 1 ? '정보의 밤' : `${x.d.밤 - 1}일차 밤`) : `${x.d.밤}일차 낮`;   // 첫밤=정보의 밤, n일차 = 낮n → 밤n+1
+const diedOf = x => [...(x.d.죽음 || []), ...(x.d.처형 || [])].map(y => y.자리);
+function rowsOf(r, s) {
+  const nameOf = n => (r.사람.find(p => p.자리 === n) || {}).이름 || n + '번', rows = [];
   if (s.t === 'n') {
     s.d.악행동.forEach(x => rows.push(['악', `${x.이름}(${x.직업}) → ${x.대상.map(nameOf).join(', ')}`, 'rp-evil']));
     s.d.선행동.forEach(x => rows.push(['선', `${x.이름}(${x.직업}) → ${x.대상.map(nameOf).join(', ')}`, 'rp-good']));
@@ -60,12 +59,34 @@ function Steps({ r }) {
     s.d.처형.forEach(x => rows.push(['처형', `${x.이름}(${x.직업})${x.흉수 ? ' — ' + (store.home.demonKo || '흉수') : ''}`, x.악 ? 'rp-good' : 'rp-evil']));
     if (!s.d.처형.length) rows.push(['처형', '없음', 'sec']);
   }
-  return html`<${Page} title="밤낮 넘겨보기" left=${html`<${Back} />`}>
-    <div class="rp-tabs" role="tablist">${steps.map((x, j) => html`<button role="tab" aria-selected=${j === k} class=${'rp-tab' + (j === k ? ' on' : '')} onClick=${() => setK(j)}>${x.t === 'n' ? '밤' : '낮'} ${x.d.밤}</button>`)}</div>
+  return rows;
+}
+const Rows = ({ rows }) => html`<${Section}>${rows.length ? rows.map(x => html`<div class="row rp-scene"><span class=${'rp-when ' + x[2]}>${x[0]}</span><div>${x[1]}</div></div>`) : html`<div class="row sec">기록된 행동 없음</div>`}<//>`;
+
+/* tv — 방금 끝난 판이면 넘길 때 큰 화면도 같은 날로(2026-11-02 햇살님 «복기를 에어플레이로 다 같이») */
+function Steps({ r, tv }) {
+  const steps = stepsOf(r);
+  const [k, setK] = useState(0), s = steps[k];
+  useEffect(() => { if (tv && s) store.dispatch('display.endReplay', { day: s.t === 'n' ? Math.max(0, s.d.밤 - 1) : s.d.밤 }); }, [k]);   // 큰 화면 쪽 = 낮 n + 밤 n+1, 0쪽 = 정보의 밤
+  if (!s) return html`<${Page} title="밤낮 넘겨보기" left=${html`<${Back} />`} />`;
+  const dead = new Set(); steps.slice(0, k).forEach(x => diedOf(x).forEach(i => dead.add(i)));
+  return html`<${Page} title="밤낮 넘겨보기" left=${html`<${Back} />`} bottom=${html`<div class="brow"><${Secondary} title="‹ 이전" enabled=${k > 0} onClick=${() => setK(k - 1)} /><${Secondary} title="다음 ›" enabled=${k < steps.length - 1} onClick=${() => setK(k + 1)} /></div>`}>
+    <div class="rp-tabs" role="tablist">${steps.map((x, j) => html`<button role="tab" aria-selected=${j === k} class=${'rp-tab' + (j === k ? ' on' : '')} onClick=${() => setK(j)}>${stepTitle(x)}</button>`)}</div>
     <${Board} r=${r} step=${s} dead=${dead} />
     <div class="rp-legend">${s.t === 'n' ? html`<span class="evil">악의 행동</span><span class="good">선의 행동</span><span class="info">받은 정보</span>` : html`<span class="good">악을 겨눈 지명</span><span class="evil">선을 겨눈 지명</span>`}</div>
-    <${Section}>${rows.length ? rows.map(x => html`<div class="row rp-scene"><span class=${'rp-when ' + x[2]}>${x[0]}</span><div>${x[1]}</div></div>`) : html`<div class="row sec">기록된 행동 없음</div>`}<//>
+    <${Rows} rows=${rowsOf(r, s)} />
   <//>`;
+}
+
+/* 복기 PDF — 1쪽 요약·통계·직업, 그다음 밤·낮 한 쪽씩(자리표 + 줄). 브라우저 인쇄 → PDF로 저장(2026-11-02 햇살님 «복기·통계·큰 화면 정보를 PDF 하나로») */
+function PrintPages({ r, narrow }) {
+  const steps = stepsOf(r), dead = new Set();
+  return html`<div class="rp-print">
+    <div class="rp-page"><${Summary} r=${r} host=${false} narrow=${narrow} />
+      <${Section} header="직업 공개">${r.사람.map(p => html`<div class=${'row' + (EVIL[p.편] ? ' rp-evil' : '')}>${p.자리}번 ${p.이름} · ${p.직업 || ''}</div>`)}<//></div>
+    ${steps.map(x => { const before = new Set(dead); diedOf(x).forEach(i => dead.add(i));
+      return html`<div class="rp-page"><h2>${stepTitle(x)}</h2><${Board} r=${r} step=${x} dead=${before} /><${Rows} rows=${rowsOf(r, x)} /></div>`; })}
+  </div>`;
 }
 
 /** 복기 — id 없으면 방금 끝난 판 */
@@ -73,13 +94,21 @@ export function ReplayView({ id }) {
   const nav = useNav();
   const [r] = useState(() => store.get('game.replay', id || ''));
   const [narrow, setNarrow] = useState(null), [share, setShare] = useState(false);
+  const printPdf = () => {   // 화면 밖(body 바로 아래)에 인쇄용 쪽을 그리고 인쇄 → 끝나면 걷는다
+    const box = document.createElement('div'); document.body.appendChild(box);
+    render(html`<${PrintPages} r=${r} narrow=${narrow} />`, box);
+    const done = () => { render(null, box); box.remove(); };
+    window.addEventListener('afterprint', done, { once: true });
+    setTimeout(() => window.print(), 50);
+  };
   useEffect(() => { const t = setTimeout(() => setNarrow(store.get('game.replayNarrow', id || '') || []), 30); return () => clearTimeout(t); }, [id]);
   if (!r) return html`<${Page} title="복기" left=${html`<${Back} />`}><div class="row sec">복기할 판을 찾지 못했어요.</div><//>`;
   return html`<${Page} title="복기" left=${html`<${Back} />`}>
     <${Summary} r=${r} host=${true} narrow=${narrow} />
     <${Section}>
-      <${Row} chevron onClick=${() => nav.push(html`<${Steps} r=${r} />`)}>밤낮 넘겨보기<//>
+      <${Row} chevron onClick=${() => nav.push(html`<${Steps} r=${r} tv=${!id} />`)}>${id ? '밤낮 넘겨보기' : '밤낮 넘겨보기 · 큰 화면 같이'}<//>
       <${Row} chevron onClick=${() => setShare(true)}>참가자에게 보여 주기<//>
+      <${Row} tint onClick=${printPdf}><${Icon} name="share" size=${20} />PDF로 저장·공유<//>
     <//>
     <${Cover} open=${share}>${share && html`<${Page} title="복기" right=${html`<${NavButton} label="닫기" bold onClick=${() => setShare(false)} />`}><${Summary} r=${store.get('game.replay', 'public:' + (id || ''))} host=${false} narrow=${narrow} /><//>`}<//>
   <//>`;

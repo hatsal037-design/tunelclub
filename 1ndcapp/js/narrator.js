@@ -1,9 +1,10 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // 낭독 — 코어가 명령 응답 effects 로 넘긴 «모두 들어도 되는 말»만(폰 앱 Narrator 와 같음). 웹은 기본 켜짐(2026-10-26, settings.js DEF.sound).
 import { settings } from './settings.js';
 import { bgmDuck } from './bgm.js';
 import { narrLang, narrTr } from './i18n_dom.js';
 import { soundOut } from './soundbus.js';
-const REC = ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant', 'es', 'pt-BR'];   // 녹음된 진행 목소리가 있는 말 — 다른 언어는 voice/<목소리>__<언어>__<문장>, 류현경만(2026-10-12). 그 밖(태국어 등)은 기기 음성
+const REC = ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant', 'es', 'pt-BR', 'de', 'fr'];   // 녹음된 진행 목소리가 있는 말 — 다른 언어는 voice/<목소리>__<언어>__<문장>, 류현경만(2026-10-12). 그 밖(태국어 등)은 기기 음성
 const spoken = new Set();
 const MOODS = { night: [0.88, 0.85], day: [1, 1], exec: [0.92, 0.8], end: [0.95, 0.9] };
 export function speakEffects(fx) {
@@ -20,7 +21,7 @@ async function speakAll(list) {
   finally { if (my === gen) bgmDuck(false); }
 }
 /* 진행 목소리(2026-10-04) — 맥에서 미리 뽑은 문장(voice/<목소리>__<id>.m4a)과 «N번 자리 참가자». 하나라도 못 받으면 기기 음성으로 글 전체를 */
-export const VOICES = [['system', '기기 음성'], ['mujin', '백무진'], ['haessal', '햇살'], ['taeo', '최태오'], ['hyeongyeong', '류현경'], ['seyeong', '장세영']];   // 여섯(2026-10-05 «서다온·차강혁·오하람은 빼자» · 2026-10-06 «이상은·한수정·윤장미 빼 줘»·«이청하도 빼 줘»)
+export const VOICES = [['system', '기기 음성'], ['mujin', '백무진'], ['haessal', '햇살'], ['taeo', '최태오'], ['hyeongyeong', '류현경'], ['seyeong', '장세영'], ['sangeun', '이상은']];   // 여섯(2026-10-05 «서다온·차강혁·오하람은 빼자» · 2026-10-06 «이상은·한수정·윤장미 빼 줘»·«이청하도 빼 줘»)
 let cur = null, gen = 0;
 /* 소리 하나를 계속 쓴다 — 아이폰·아이패드 사파리는 누른 순간에 튼 소리만 허락해서, 명령이 끝난 뒤 새로 만든 소리는 막힌다(2026-10-25 햇살님 «웹앱에서 진행 사운드 나오게»).
    처음 누를 때 빈 소리를 한 번 틀어 열어 두고 문장마다 src 만 바꾼다. 기기 음성도 그때 한 번 깨운다 */
@@ -28,7 +29,7 @@ const player = new Audio();
 const unlock = () => {
   removeEventListener('pointerdown', unlock, true); removeEventListener('keydown', unlock, true);
   player.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='; player.play().catch(() => {});
-  try { const S = window.speechSynthesis; if (S) S.speak(Object.assign(new SpeechSynthesisUtterance(' '), { volume: 0 })); } catch {}
+  try { const S = window.speechSynthesis; if (S) S.speak(Object.assign(new SpeechSynthesisUtterance(' '), { volume: 0 })); } catch (e) { 드러냄('narrator.unlock', e); }
 };
 addEventListener('pointerdown', unlock, true); addEventListener('keydown', unlock, true);
 export async function speak(text, plan, mood = 'day') { const my = ++gen; stopSpeaking(); return speakOne(text, plan, mood, my); }
@@ -54,11 +55,11 @@ async function speakOne(text, plan, mood, my) {
 export function say(text, mood = 'day', keep = false) {
   const S = window.speechSynthesis; if (!S) return;
   if (!keep) S.cancel();
-  const tag = { ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW', es: 'es-ES', 'pt-BR': 'pt-BR', th: 'th-TH', vi: 'vi-VN', id: 'id-ID' }[narrLang] || 'en-US';
+  const tag = { ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW', es: 'es-ES', 'pt-BR': 'pt-BR', th: 'th-TH', vi: 'vi-VN', id: 'id-ID', de: 'de-DE', fr: 'fr-FR' }[narrLang] || 'en-US';
   const u = new SpeechSynthesisUtterance(narrTr(text)), m = MOODS[mood] || MOODS.day;
   u.lang = tag; u.rate = m[0]; u.pitch = m[1];
   const v = S.getVoices().filter(x => x.lang && x.lang.replace('_', '-') === tag);
   if (v.length) u.voice = v.find(x => /premium|enhanced|natural/i.test(x.name)) || v[0];
   return new Promise(ok => { u.onend = ok; u.onerror = ok; S.speak(u); });   // 다 읽을 때까지 기다릴 수 있게
 }
-export function stopSpeaking() { try { window.speechSynthesis && window.speechSynthesis.cancel(); if (cur) { cur.pause(); cur = null; } } catch {} }
+export function stopSpeaking() { try { window.speechSynthesis && window.speechSynthesis.cancel(); if (cur) { cur.pause(); cur = null; } } catch (e) { 드러냄('narrator.stopSpeaking', e); } }

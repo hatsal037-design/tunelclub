@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // 자리판 — 폰 앱 SeatBoard 그대로. 원형·사각 칸 좌표에 사람을 놓고(규칙 계산 없음 — 사각 칸 배치는 코어가 준다),
 // 준비 중엔 끌어서 «사이로 끼워 넣기»(놓을 때만 코어 명령 한 번), 투표는 문질러 고르기, 지명은 화살표.
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../lib/preact-htm.js';
@@ -6,7 +7,7 @@ import { store } from './store.js';
 import { settings } from './settings.js';
 import { RoleArt, cx } from './ui.js';
 
-const buzz = ms => { if (settings.get('haptics') && navigator.vibrate) try { navigator.vibrate(ms); } catch {} };
+const buzz = ms => { if (settings.get('haptics') && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) { 드러냄('seatboard.buzz', e); } };
 const hyp = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 function evenOnEllipse(n, c, rx, ry) {   // 타원은 둘레 길이로 고르게 — 각도로 나누면 위·아래 끝에 몰린다
@@ -156,7 +157,7 @@ export function SeatBoard(p) {
     const edge = lifted && !drag.outside ? 'blue' : ally ? 'red' : on ? (tint || 'blue') : mine ? 'orange' : (p.rings && p.rings[s.id]) || null;
     const edgeHex = edge && /^(#|rgb)/.test(edge) ? edge : null;   // 색 이름(blue·red·orange)이 아니면 그 색 그대로 — 답 자리표의 «직업 색 테두리»
     const faceCls = cx('face', on && 'on', on && tint && 'tint-' + tint, (dead || bare) && !on && 'dim', edge && !edgeHex && 'edge-' + edge);
-    const label = [`${number}번 ${s.name}`, mine && '내 자리', ally && '같은 편', p.publicView ? (dead ? '사망' : null) : (s.status && s.status !== '생존' ? s.status : null)].filter(Boolean).join(', ');
+    const label = [`${number}번 ${s.name}`, mine && '내 자리', ally && '같은 편', p.publicView ? (dead ? '사망' : null) : (s.status && !s.plain ? s.status : null)].filter(Boolean).join(', ');
     const interactive = canDrag ? { onPointerDown: e => dragStart(k, e) }
       : p.sweep ? {} : { onClick: () => { if (off) return; p.onTap && p.onTap(s.id); } };
     const Tag = p.sweep ? 'div' : 'button';

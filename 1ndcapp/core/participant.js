@@ -1,3 +1,4 @@
+var 드러냄 = /** @type {any} */ (globalThis).드러냄 || (/** @type {any} */ (globalThis).드러냄 = function (곳, e) { var g = /** @type {any} */ (globalThis), L = g.__드러냄 || (g.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게 — 삼킨 오류는 여기 남는다(docs/원칙.md)
 /* 참가자 모듈 — 앱(JSContext)·웹(me/)이 같은 파일로 서버를 부른다 (2026-10-06, 단계 2)
  * 약속: docs/참가자_계약.md · 설계: docs/보고서/참가자웹_설계도_20261006/클로드_기능설계.md 1절
  * - 통신은 밖에서 넣는다: net(fn, args) → Promise. 웹 = supabase-js rpc, 앱 = 스위프트 URLSession 다리.
@@ -62,7 +63,7 @@
     if (typeof net !== 'function') throw new Error('participant: net 이 필요해요');
     var state = { me: null, joined: [], inbox: null, notices: null };
     var listeners = [], EGG = {};   // EGG — 숨은 장치 누른 수(이번 실행 안)
-    function emit() { listeners.forEach(function (f) { try { f(state); } catch (e) {} }); }
+    function emit() { listeners.forEach(function (f) { try { f(state); } catch (e) { 드러냄('participant.emit', e); } }); }
     function call(fn, args) {
       return Promise.resolve().then(function () { return net(fn, args || {}); }).then(answer, function (e) {
         var m = String((e && e.message) || e || '');
@@ -195,7 +196,7 @@
     return s.replace(/\{(\w+)\}/g, function (m, k) { return vars && vars[k] != null ? String(vars[k]) : m; });
   }
   // 언어 고르기 — 계정에 정한 것 → 기기 언어 → 지원하지 않는 언어면 영어(정함 2026-10-06). 중국어는 대만·홍콩·번체면 번체, 나머지 간체
-  var LANGS = ['ko', 'en', 'ja', 'es', 'zh-Hans', 'zh-Hant', 'th', 'vi', 'id', 'pt-BR'];   // 한류가 통하는 나라에서 많이 쓰는 말(2026-10-06 햇살님)
+  var LANGS = ['ko', 'en', 'ja', 'es', 'zh-Hans', 'zh-Hant', 'th', 'vi', 'id', 'pt-BR', 'de', 'fr'];   // 한류가 통하는 나라에서 많이 쓰는 말(2026-10-06 햇살님) · 독일어·프랑스어(2026-11-04 햇살님 «언어 12개로»)
   function lang(account, device) {
     if (account && LANGS.indexOf(account) >= 0) return account;
     var d = String(device || '').replace('_', '-'), l = d.slice(0, 2).toLowerCase();

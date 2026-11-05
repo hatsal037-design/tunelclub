@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // 큰 화면 연결 — 진행자 쪽. 코드로 승인하고, 판이 바뀔 때마다 코어가 고른 공개 정보(display.public)만 올린다.
 // 서버 계약: docs/큰화면_서버연결_설계_v1.md · 연결 상태는 탭보다 위(여기)가 들고, 화면은 구독만 한다.
 import { store } from './store.js';
@@ -18,14 +19,14 @@ export const screens = {
   subscribe(f) { subs.add(f); return () => subs.delete(f); },
   emit() { subs.forEach(f => f()); },
   active() { return this.links.filter(live); },
-  forget() { this.pendingCode = ''; try { sessionStorage.removeItem('screen_pending'); } catch {} },
+  forget() { this.pendingCode = ''; try { sessionStorage.removeItem('screen_pending'); } catch (e) { 드러냄('screenlink.forget', e); } },
 
   async load() {
     if (!account.user) { this.links = []; this.emit(); return; }
     const g = ++this._gen;
-    try { const r = await account.rpc('screen_mine'); if (g === this._gen) this.links = r || []; } catch {}
+    try { const r = await account.rpc('screen_mine'); if (g === this._gen) this.links = r || []; } catch (e) { 드러냄('screenlink.load', e); }
     this.emit(); this.push();
-    try { bgmSync(store.get('bgm.slot')); } catch {}   // 화면이 붙거나 떨어지면 배경 음악 자리도 다시(큰 화면 소리)
+    try { bgmSync(store.get('bgm.slot')); } catch (e) { 드러냄('screenlink.load', e); }   // 화면이 붙거나 떨어지면 배경 음악 자리도 다시(큰 화면 소리)
   },
   /** 승인 — QR 로 들어왔든 손으로 쳤든 코드 하나. 요청 중 다시 누르기는 무시, 늦게 온 답이 끊긴 연결을 살리지 않는다(서버가 본다) */
   async approve(code) {
@@ -81,7 +82,7 @@ soundOut.ping = bump;
 function withSound(p) {
   if (!p) return p;
   if (p.revision !== au.core) { au.core = p.revision; au.base = au.k - (auSaved && auSaved.core === p.revision ? auSaved.sub + 1 : 0); auSaved = null; }
-  const sub = Math.min(999, au.k - au.base); try { localStorage.setItem('screen_au', JSON.stringify({ core: p.revision, sub })); } catch {}
+  const sub = Math.min(999, au.k - au.base); try { localStorage.setItem('screen_au', JSON.stringify({ core: p.revision, sub })); } catch (e) { 드러냄('screenlink.withSound', e); }
   return Object.assign({}, p, { revision: p.revision * 1000 + sub, audio: routed() ? { items: au.items, bgm: au.bgm } : null });
 }
 /* 판이 바뀔 때마다(명령 성공 뒤) 최신 공개 정보를 올린다. 코어가 같은 내용엔 판본을 안 올리므로 중복 전송은 없다 */
@@ -107,12 +108,12 @@ async function plazaPush() {
       const epoch = p.gameEpoch || 'none', rev = p.revision || 0, key = epoch + '|' + rev + '|' + JSON.stringify(st);
       /* 0327 내 카드 — 자리별 «넘길 때 본 카드»(코어 plaza.cards)를 통째로. 서버가 체크인한 계정 것만 남기고 본인만 읽게 한다 */
       const cards = store.get('plaza.cards') || [], ck = epoch + '|' + JSON.stringify(cards);
-      if (ck !== plaza.cards) { try { const r = await account.rpc('plaza_card_push', { p_pot: pot.id, p_epoch: epoch, p_cards: cards }); if (r && r.ok) plaza.cards = ck; } catch {} }
+      if (ck !== plaza.cards) { try { const r = await account.rpc('plaza_card_push', { p_pot: pot.id, p_epoch: epoch, p_cards: cards }); if (r && r.ok) plaza.cards = ck; } catch (e) { 드러냄('screenlink.plazaPush', e); } }
       if (key === plaza.sent) break;
       try { const send = () => account.rpc('plaza_status_push', { p_pot: pot.id, p_epoch: epoch, p_rev: rev, p_state: st });
         let r = await send();
         if (r && r.code === 'too_long' && st.brief) { delete st.brief; r = await send(); }   /* 0326 전 서버(한도 4096자)는 안내를 넣으면 통째로 거절한다 — 안내만 빼고 다시 */
-        if (r && (r.ok || r.code === 'stale')) plaza.sent = key; } catch {}
+        if (r && (r.ok || r.code === 'stale')) plaza.sent = key; } catch (e) { 드러냄('screenlink.plazaPush', e); }
     } while (plaza.dirty);
   } finally { plaza.busy = false; }
 }

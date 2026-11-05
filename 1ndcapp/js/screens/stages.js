@@ -11,7 +11,7 @@ export function NightIntroView({ m, revealBluffs }) {
   const [reroll, setReroll] = useState(false);
   const notes = m.notes || [], acts = m.actions || [];
   return html`<div>
-    <${LargeTitle}>${m.title === '첫밤' ? '첫날밤이 왔어요' : '밤이 왔어요'}<//>
+    <${LargeTitle}>${m.night === 1 ? '첫날밤이 왔어요' : '밤이 왔어요'}<//>
     <${Section}><div class="row">『모두 눈을 감아 주세요. 밤이 되었습니다.』</div><//>
     ${notes.length + acts.length > 0 && html`<${Section}>${notes.map(t => html`<div class="row"><${Warn}>${t}<//></div>`)}
       <${CoreItems} items=${acts} call=${c => R.run('day.call', { call: c })} /><//>`}
@@ -59,6 +59,8 @@ export function ProcessSheet({ close, discarded }) {
   const down = () => { setHolding(true); t.current = setTimeout(discard, 1200); };
   const up = () => { clearTimeout(t.current); setHolding(false); };
   return html`<${Page} title="과정" left=${html`<${NavButton} label="닫기" onClick=${close} />`}>
+    ${p && p.history && p.history.length > 0 && html`<${Section}><${Disclosure} label="히스토리 보기">${p.history.map(h => html`<div class="hist">
+      <div class="hn">${h.n === 1 ? '첫밤' : `${h.n}번째 밤`}</div>${h.lines.map(l => html`<div>${l}</div>`)}</div>`)}<//><//>`}
     ${p && html`<${Section} header=${p.title}>
       ${p.steps.map(s => html`<div class="row"><span class=${s.status === 'upcoming' ? 'sec' : 'blue'}><${Icon} name=${s.status === 'done' ? 'checkCircle' : s.status === 'current' ? 'dotCircle' : 'circle'} size=${22} /></span>
         <${RoleArt} r=${s.role} size=${24} /><span class="grow">${s.role || ''}</span><span class="sub">${s.number}번 ${s.name}</span></div>`)}

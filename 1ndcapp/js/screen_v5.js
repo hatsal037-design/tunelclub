@@ -8,10 +8,10 @@ import { TABLE } from './screen_table.js';   // 참가 웹 «지금 판»(me/me.
 import { narrTr } from './i18n_dom.js';   // 다른 말이면 순환 표시 글을 재기 전에 바꾼다(반증 검토 2026-10-25 — 영어 «Morning announcement» 가 칸 밖으로)
 
 const PH = ['밤', '아침', '토론', '지명', '투표', '처형'];
-const PHK = i => PH[i] === '아침' ? '아침 발표' : PH[i];
+const PHK = i => i === 1 ? '아침 발표' : PH[i];   // 1 = 아침(번호로, 2026-11-04)
 export const APC = { day: ['#5856D6', '#FF9500', '#32ADE6', '#007AFF', '#30B0C7', '#AF52DE'], night: ['#5E5CE6', '#FF9F0A', '#64D2FF', '#0A84FF', '#40C8E0', '#BF5AF2'] };
 const APF = [.2, .08, .34, .13, .14, .11], APCUM = APF.reduce((a, f) => (a.push(a[a.length - 1] + f), a), [0]);
-const TEAL = '#30B0C7', RED = '#ff3b30', BLUE = '#007aff', SIDEC = { good: '#007aff', evil: '#ff3b30', neutral: '#ff9500' };
+const TEAL = '#30B0C7', RED = '#ff3b30', BLUE = '#007aff', SIDEC = { good: '#007aff', evil: '#ff3b30', neutral: '#34c759' };
 export const josa = (w, a, b) => { w = String(w || ''); const c = w.charCodeAt(w.length - 1); return w + (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b); };   // 받침 있으면 «이»
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ctx = document.createElement('canvas').getContext('2d');

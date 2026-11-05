@@ -19,7 +19,7 @@ const tr = t => !!(DATA && t && DATA[t]);
 const rows = r => Array.isArray(r) ? r : (r && (r.rows || r.value)) || [];   // 모듈이 state 에 담고 배열을 그대로 돌려주는 것(joined·inbox·notices)도 — 예전엔 늘 빈 목록(반증 검토 2026-10-25)
 const msgOf = r => r && !r.ok ? (r.code === 'legacy' ? r.legacy : T('err.' + r.code)) : null;
 const photoURL = p => URL_ + '/storage/v1/object/public/' + p;
-const LANGS = [['ko', '한국어'], ['en', 'English'], ['ja', '日本語'], ['es', 'Español'], ['zh-Hans', '简体中文'], ['zh-Hant', '繁體中文'], ['th', 'ไทย'], ['vi', 'Tiếng Việt'], ['id', 'Bahasa Indonesia'], ['pt-BR', 'Português (Brasil)']];
+const LANGS = [['ko', '한국어'], ['en', 'English'], ['ja', '日本語'], ['es', 'Español'], ['zh-Hans', '简体中文'], ['zh-Hant', '繁體中文'], ['th', 'ไทย'], ['vi', 'Tiếng Việt'], ['id', 'Bahasa Indonesia'], ['pt-BR', 'Português (Brasil)'], ['de', 'Deutsch'], ['fr', 'Français']];
 const DEMO = /[?&]demo=1/.test(location.search);   /* 시안 확인용 — 로그인 없이 화면만 */
 
 const auth = { user: null, subs: new Set(),

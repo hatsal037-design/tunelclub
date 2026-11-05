@@ -14,29 +14,40 @@ var GameReasoner = (function () {
   function script() { var m = {}; charsNow().forEach(function (c) { m[c.ko] = { id: c.id, team: c.team }; }); return m; }
   function combos(arr, k) { var out = []; (function go(s, acc) { if (acc.length === k) { out.push(acc.slice()); return; } for (var i = s; i < arr.length; i++) { acc.push(arr[i]); go(i + 1, acc); acc.pop(); } })(0, []); return out; }
   function num(s) { var m = String(s || '').match(/\d+/); return m ? +m[0] : null; }
+  /* 숫자 답 — 기록 코드로 «수»가 나왔으면 그 값, 아니면 옛 글자에서(2026-11-04 답 기록 코드화) */
+  function ansNum(info) { return info && info.답종류 === '수' && typeof info.값 === 'number' ? info.값 : num(info && info.답); }
   /* 그 밤에 살아 있던 자리 — 공개 사망·처형만으로(아침 발표 기준) */
   function aliveAt(v, night) {
     var dead = {}; v.공개.forEach(function (e) { if ((e.종류 === '사망' && e.밤 < night) || (e.종류 === '처형' && e.밤 < night)) dead[e.자리] = true; });
     return function (seat) { return !dead[seat]; };
   }
   /* 한 정보가 세계(evil: 자리→'demon'|'minion')에서 맞나. null = 이 정보는 판정 못 함 */
+  /* 정보 종류 — 직업 id(또는 이름)로 그 판 직업을 찾아 원형(isRole)으로 가른다. 파생·테마 이름이 생겨도 같은 원형이면 같은 종류(2026-11-04 구조 개선 5·발견 8).
+     코어 없이 돌거나(시험) 직업표에 없는 옛 기록만 옛 이름 표 */
+  var OLD_KIND = { '공감능력자': 'empath', '삽살개 주인': 'empath', '요리사': 'chef', '아낙': 'chef', '세탁부': 'wash', '훈장': 'wash', '조사관': 'inv', '포졸': 'inv', '장의사': 'seeRole', '이방': 'seeRole', '레이븐키퍼': 'seeRole', '봉사': 'seeRole' };
+  function findChar(r) { var c = null; try { c = charsNow().filter(function (x) { return x.id === r || x.ko === r; })[0] || null; } catch (e) { c = null; }
+    if (!c && typeof allMods === 'function') { try { var M = allMods(); Object.keys(M).some(function (k) { c = ((M[k] && M[k].chars) || []).filter(function (x) { return x && x.id === r; })[0] || null; return !!c; }); } catch (e) { c = null; } }   // 지난 판(다른 모드)의 직업
+    return c; }
+  function kindOf(r) { var c = findChar(r);
+    if (c && typeof isRole === 'function') return isRole(c, 'empath') ? 'empath' : isRole(c, 'chef') ? 'chef' : isRole(c, 'washerwoman') ? 'wash' : isRole(c, 'investigator') ? 'inv' : (isRole(c, 'undertaker') || isRole(c, 'ravenkeeper')) ? 'seeRole' : null;
+    return OLD_KIND[r] || null; }
   function check(role, info, world, v, S) {
-    var N = v.좌석.length, t = function (seat) { return world[seat] || 'good'; };
-    var roleTeam = function (ko) { var r = S[ko]; return r ? r.team : null; };
-    if (role === '공감능력자' || role === '삽살개 주인') {
-      var alive = aliveAt(v, info.밤), me = v.자리, cnt = 0, want = num(info.답); if (want === null) return null;
+    var N = v.좌석.length, t = function (seat) { return world[seat] || 'good'; }, kd = kindOf(role);
+    var roleTeam = function (k) { var r = S[k]; if (r) return r.team; var c = null; try { c = charsNow().filter(function (x) { return x.id === k; })[0]; } catch (e) { c = null; } return c ? c.team : null; };   // 이름 또는 직업 id
+    if (kd === 'empath') {
+      var alive = aliveAt(v, info.밤), me = v.자리, cnt = 0, want = ansNum(info); if (want === null) return null;
       [-1, 1].forEach(function (d) { for (var k = 1; k < N; k++) { var s = ((me - 1 + d * k) % N + N) % N + 1; if (s === me) break; if (alive(s)) { if (t(s) !== 'good') cnt++; break; } } });
       return cnt === want;
     }
-    if (role === '요리사' || role === '아낙') {
-      var w2 = num(info.답); if (w2 === null) return null; var pairs = 0;
+    if (kd === 'chef') {
+      var w2 = ansNum(info); if (w2 === null) return null; var pairs = 0;
       for (var s1 = 1; s1 <= N; s1++) { var s2 = s1 % N + 1; if (t(s1) !== 'good' && t(s2) !== 'good') pairs++; }
       return pairs === w2;
     }
-    if (role === '세탁부' || role === '훈장') { var a = info.자리; if (a.length < 2) return null; return !(t(a[0]) !== 'good' && t(a[1]) !== 'good'); }
-    if (role === '조사관' || role === '포졸') { var b = info.자리; if (b.length < 2) return null; return t(b[0]) === 'minion' || t(b[1]) === 'minion'; }
-    if (role === '장의사' || role === '이방' || role === '레이븐키퍼' || role === '봉사') {
-      var seat = info.자리[0], ko = (info.직업들 || [])[0]; if (!seat || !ko) return null;
+    if (kd === 'wash') { var a = info.자리; if (a.length < 2) return null; return !(t(a[0]) !== 'good' && t(a[1]) !== 'good'); }
+    if (kd === 'inv') { var b = info.자리; if (b.length < 2) return null; return t(b[0]) === 'minion' || t(b[1]) === 'minion'; }
+    if (kd === 'seeRole') {
+      var seat = info.자리[0], ko = (info.직업열쇠들 || [])[0] || (info.직업들 || [])[0]; if (!seat || !ko) return null;
       var tm = roleTeam(ko); if (!tm) return null;
       var want2 = tm === 'demon' ? 'demon' : tm === 'minion' ? 'minion' : 'good';
       return t(seat) === want2;
@@ -53,7 +64,7 @@ var GameReasoner = (function () {
   function run(v) {
     if (!v || !v.좌석) return null;
     var N = v.좌석.length, comp = COMP[N]; if (!comp) return { 지원: false, 이유: N + '명 구성표 없음' };
-    var S = script(), me = v.자리, role = v.나.직업, myTeam = (S[role] || {}).team;
+    var S = script(), me = v.자리, role = (v.나.직업열쇠 && kindOf(v.나.직업열쇠)) ? v.나.직업열쇠 : v.나.직업, myTeam = ((S[v.나.직업] || {}).team) || (charsNow().filter(function (x) { return x.id === role; })[0] || {}).team;
     if (v.악안내) return { 지원: true, 악: true, 이유: '악은 동료를 안다 — 추론 대상 아님' };
     var minions = comp[2], others = []; for (var s = 1; s <= N; s++) if (s !== me) others.push(s);
     var has = function (ids) { return charsNow().some(function (c) { return ids.indexOf(c.id) >= 0; }); };

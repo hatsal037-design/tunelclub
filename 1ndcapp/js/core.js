@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // 게임 코어 다리 — 폰 앱 CoreBridge 와 같은 몫. 코어(dom_stub + app + native_core)를 한 함수 안에서 올려
 // 브라우저 전역(document·localStorage·location)을 가리고, 저장은 명령이 ok 일 때만 한 번(직전 정상본을 남긴다).
 const KEY = '1ndc_core', PREV = KEY + '.prev', REV = KEY + '.rev';   // REV는 알림용. 저장 확정과 판 번호의 원본은 KEY 안의 __rev
@@ -10,7 +11,7 @@ const isFull = e => !!e && (e.name === 'QuotaExceededError' || e.name === 'NS_ER
 /** KEY 글 + 따로 둔 키 → 코어 부팅 글. KEY 안에 이미 있으면(옛 꼴) 그쪽이 그 판 번호의 값이다 */
 function assemble(saved) {
   const o = saved ? readable(saved) : {}; written = {};
-  for (const k of SPLIT) { let v = null; try { v = localStorage.getItem(sk(k)); } catch {} written[k] = v; if (o && !(k in o) && v !== null) o[k] = v; }
+  for (const k of SPLIT) { let v = null; try { v = localStorage.getItem(sk(k)); } catch (e) { 드러냄('core.assemble', e); } written[k] = v; if (o && !(k in o) && v !== null) o[k] = v; }
   return o ? (Object.keys(o).length ? JSON.stringify(o) : '') : saved;
 }
 
@@ -23,23 +24,23 @@ function start(saved) {
   const rev = (o && o.__rev) || 0;
   next.setRevision(rev);
   next.initializeDisplay();   // 조회 전에 공개 확정본 준비. 준비까지 성공한 코어만 공개한다
-  revision = rev; NC = next;
+  revision = rev; NC = next; if (LANG && NC.setLang) NC.setLang(LANG[0], LANG[1], LANG[2]);
 }
 
 export async function boot() {
   const files = ['core/dom_stub.js', 'core/core_ver.js', 'core/app.js', 'core/native_core.js'];   // core_ver — 규칙 코드 판본(2026-10-05)
   SRC = (await Promise.all(files.map(f => fetch(f).then(r => { if (!r.ok) throw new Error(f); return r.text(); })))).join('\n;\n');
   // 공통 엔진(2026-10-01) — 코어 위 모듈, 화면 연결 전. 없거나 깨져도 코어는 선다(try 안에서 var GameEngine 은 이 함수 범위로)
-  for (const m of ['engine', 'reasoner', 'replay']) { try { const en = await fetch('core/' + m + '.js'); if (en.ok) SRC += '\n;try{\n' + (await en.text()) + '\n}catch(e){ print && print("' + m + ': " + e); }\n'; } catch {} }   // reasoner — 풀이기(P4 v2)
+  for (const m of ['engine', 'reasoner', 'replay']) { try { const en = await fetch('core/' + m + '.js'); if (en.ok) SRC += '\n;try{\n' + (await en.text()) + '\n}catch(e){ print && print("' + m + ': " + e); }\n'; } catch (e) { 드러냄('core.boot', e); } }   // reasoner — 풀이기(P4 v2)
   let saved = null;
-  try { saved = localStorage.getItem(KEY); } catch {}
+  try { saved = localStorage.getItem(KEY); } catch (e) { 드러냄('core.boot', e); }
   if (saved && !readable(saved)) {   // 깨졌으면 직전 정상본으로 — 깨진 것은 지우지 않고 옆에 둔다
-    try { localStorage.setItem(KEY + '.broken', saved); } catch {}   // 한도에 막혀도 직전 정상본으로는 간다
+    try { localStorage.setItem(KEY + '.broken', saved); } catch (e) { 드러냄('core.boot', e); }   // 한도에 막혀도 직전 정상본으로는 간다
     try { saved = localStorage.getItem(PREV); } catch { saved = null; }
     if (saved && !readable(saved)) saved = null;
   }
   start(saved);
-  try { localStorage.setItem(REV, String(revision)); } catch {}
+  try { localStorage.setItem(REV, String(revision)); } catch (e) { 드러냄('core.boot', e); }
   migrateOld();
 }
 
@@ -73,16 +74,20 @@ function savedState() {
   return { saved, revision: (o && o.__rev) || 0 };
 }
 function reload(saved) { start(saved);
-  try { localStorage.setItem(REV, String(revision)); } catch {} }   // 번호 칸을 다시 읽은 판에 맞춘다 — 어긋난 채 남으면 명령이 계속 거절된다
+  try { localStorage.setItem(REV, String(revision)); } catch (e) { 드러냄('core.reload', e); } }   // 번호 칸을 다시 읽은 판에 맞춘다 — 어긋난 채 남으면 명령이 계속 거절된다
 let onExternal = null;
 export function watchOtherTabs(f) { onExternal = f; }
 if (typeof window !== 'undefined') window.addEventListener('storage', e => {
   if ((e.key === KEY || e.key === REV || e.key === null) && NC) {
-    try { const s = savedState(); if (s.revision !== revision) { reload(s.saved); if (onExternal) onExternal(); } } catch { /* 다음 명령에서도 다시 읽고, 읽지 못하면 거절한다 */ }
+    try { const s = savedState(); if (s.revision !== revision) { reload(s.saved); if (onExternal) onExternal(); } } catch (e) { 드러냄('core.맨위:81', e); /* 다음 명령에서도 다시 읽고, 읽지 못하면 거절한다 */ }
   }
 });
 
 /** 순수 읽기 — {revision, data} 의 data */
+/** 화면 말 — 코어가 조회 글을 이 말로 만든다(기록은 한국어). 코어를 다시 띄워도(start) 이어지게 기억 (2026-11-04 구조 개선 6) */
+let LANG = null;
+export function setLang(lang, pack, data) { LANG = [lang, pack, data]; if (NC && NC.setLang) NC.setLang(lang, pack, data); }
+
 export function query(name, arg) {
   if (!NC) return null;
   const out = arg === undefined || arg === null ? NC.query(name) : NC.query(name, String(arg));
@@ -113,7 +118,7 @@ export function dispatch(type, payload, expected) {
  *  KEY 가 못 쓰이면 따로 키를 되돌린다. 줄어드는 쓰기(기록 지우기)는 한도가 차 있어도 지나간다 */
 function commit(rev) {
   const put = (k, v) => v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v);
-  let o; try { o = readable(NC.exportStorage()); } catch {} if (!o) return 'fail';
+  let o; try { o = readable(NC.exportStorage()); } catch (e) { 드러냄('core.commit', e); } if (!o) return 'fail';
   o.__rev = rev;
   const parts = {};
   for (const k of SPLIT) { const v = k in o ? String(o[k]) : null; delete o[k]; if (v !== written[k]) parts[k] = v; }
@@ -125,12 +130,12 @@ function commit(rev) {
     for (const k in parts) { undo[k] = written[k]; put(sk(k), parts[k]); }
     localStorage.setItem(KEY, JSON.stringify(o));
   } catch (e) {
-    for (const k in undo) { try { put(sk(k), undo[k]); } catch {} }
+    for (const k in undo) { try { put(sk(k), undo[k]); } catch (e) { 드러냄('core.commit', e); } }
     return isFull(e) ? 'full' : 'fail';
   }
   Object.assign(written, parts);
   // KEY 한 번 쓰기가 확정점. 이후 알림 실패로 이미 저장된 명령을 실패라고 돌려주지 않는다.
-  try { localStorage.setItem(REV, String(rev)); } catch {}
+  try { localStorage.setItem(REV, String(rev)); } catch (e) { 드러냄('core.commit', e); }
   return 'ok';
 }
 
@@ -162,7 +167,7 @@ export async function restoreGames(rows) {
       const fresh = new Function('__boot_storage', 'print', src + '\n;__flushTimers(); return NativeCore;')(JSON.stringify(P.rec.start), () => {});
       const L = readable(fresh.replayLog(JSON.stringify(P.rec)) || 'null');
       if (L && Array.isArray(L.events)) P.events = L.events;
-    } catch {}
+    } catch (e) { 드러냄('core.restoreGames', e); }
   }
   return rows;
 }

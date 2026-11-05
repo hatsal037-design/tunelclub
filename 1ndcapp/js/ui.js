@@ -1,5 +1,5 @@
 // 기준 부품 — 폰 앱 NativeUI(주 행동·보조·목록·시트·확인창)를 웹으로. 모양은 iOS 기본 목록(insetGrouped)을 따른다.
-import { html, useState, useEffect, useRef } from '../lib/preact-htm.js';
+import { html, render, useState, useEffect, useRef } from '../lib/preact-htm.js';
 import { Icon } from './icons.js';
 import { store } from './store.js';
 
@@ -138,7 +138,14 @@ export function ReplyAlert({ reply, clear }) {
 export function Menu({ label, items, cls, disabled, aria }) {
   const [o, set] = useState(false);
   return html`<button class=${cls || 'nbtn'} disabled=${disabled} aria-label=${aria} onClick=${() => set(true)}>${label}</button>
-    <${ActionSheet} open=${o} actions=${items} onClose=${() => set(false)} />`;
+    <${Portal}><${ActionSheet} open=${o} actions=${items} onClose=${() => set(false)} /><//>`;
+}
+/* 위 막대(backdrop-filter)는 fixed 자식의 기준 상자가 돼 메뉴 시트가 막대 높이에 잘렸다 — #app 바로 아래에 그린다(2026-11-03) */
+function Portal({ children }) {
+  const box = useRef(null);
+  useEffect(() => { const d = document.createElement('div'); (document.getElementById('app') || document.body).appendChild(d); box.current = d; return () => { render(null, d); d.remove(); }; }, []);
+  useEffect(() => { if (box.current) render(children, box.current); });
+  return null;
 }
 
 /** 누르는 동안만 보기 — 손 떼기·단추 밖·탭 전환에서 즉시 가린다 */
@@ -148,9 +155,27 @@ export function HoldButton({ onChange, label = '누르는 동안 보기' }) {
   useEffect(() => { const h = () => document.hidden && set(false); document.addEventListener('visibilitychange', h); window.addEventListener('blur', h); return () => { document.removeEventListener('visibilitychange', h); window.removeEventListener('blur', h); }; }, []);
   return html`<button class="hold" onPointerDown=${e => { e.preventDefault(); e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId); set(true); }}
     onPointerUp=${() => set(false)} onPointerCancel=${() => set(false)} onLostPointerCapture=${() => set(false)}
+    onPointerMove=${e => { if (!on.current) return; const r = e.currentTarget.getBoundingClientRect(); if (e.clientX < r.left - 24 || e.clientX > r.right + 24 || e.clientY < r.top - 24 || e.clientY > r.bottom + 24) set(false); }}
     onKeyDown=${e => (e.key === ' ' || e.key === 'Enter') && set(true)} onKeyUp=${() => set(false)} onBlur=${() => set(false)}
     onContextMenu=${e => e.preventDefault()}>${label}</button>`;
 }
+
+/** 누르는 동안 보기 전면 — 넘기기·역할 다시 보기·답 보여주기가 함께 쓰는 틀(iOS HoldCover, 2026-11-03). 가림 규칙은 HoldButton 하나.
+ *  content·covered 는 함수 — 보일 때만 그린다 */
+export function HoldCover({ title, subtitle, close, far, reveal, content, covered, footer, scroll }) {
+  const [on, setOn] = useState(false);
+  const set = v => { setOn(v); reveal && reveal(v); };
+  return html`<div class="reveal-page">
+    ${close && html`<button class="blink" style="position:absolute;top:calc(4px + var(--safe-t));left:16px" onClick=${() => { set(false); close(); }}>닫기</button>`}
+    <div class="who"><div class="title2">${title}</div>${subtitle && html`<div class="sub">${subtitle}</div>`}</div>
+    ${far && html`<button class="farb" aria-label="멀리서 보기" onClick=${far}><${Icon} name="expand" size=${22} /></button>`}
+    <div class=${cx('mid', scroll && 'scroll')}>${on ? content() : covered ? covered() : html`<span class="hid" aria-label="가려져 있어요"><${Icon} name="eyeSlash" size=${44} stroke=${1.5} /></span>`}</div>
+    <div class="acts"><${HoldButton} onChange=${set} />${footer}</div>
+  </div>`;
+}
+/** 역할 카드 — 그림·이름·편(색)·능력·공개 규칙(iOS RoleCardView). children 은 카드 아래 덧붙임(밤 기록) */
+export const RoleCard = ({ c, children }) => html`<div class="pcard"><${RoleArt} r=${c.roleName} size=${96} /><div class="rn">${c.roleName}</div>
+  <div class=${cx('tn', c.side === 'evil' ? 'red' : c.side === 'good' ? 'blue' : 'sec')}>${c.teamName}</div><div class="ab2">${c.ability}</div>${c.revealRule ? html`<div class="ab2 sub">${c.revealRule}</div>` : null}${children}</div>`;
 
 /** 한 번 누르면 되는 명령을 도는 동안 잠그는 도우미 */
 export function useRun() {

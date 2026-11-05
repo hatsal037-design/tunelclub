@@ -1,14 +1,15 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 /* 웹 진행 화면 영어(2026-10-06) — 앱 CoreText 와 같은 생각: 화면에 «그려진 글자»만 바꾼다. 코어 값·열쇠는 그대로.
    사전: 앱 화면 말(i18n/data/앱_en_전체.json) + 코어 글 틀(코어_en.json) + 게임 자료(en.json). 영어가 아니면 아무것도 안 한다.
    언어: 이 기기에서 정한 것(localStorage 1ndc_lang) → 기기 언어 → 한국어·영어 아니면 영어. */
 import { setBriefTr } from './briefing.js';
 const BASE = new URL('../', import.meta.url).href;   /* 큰 화면(screen/)에서 불러도 같은 자리 */
-const LANGS = ['ko', 'en', 'ja', 'es', 'zh-Hans', 'zh-Hant', 'th', 'vi', 'id', 'pt-BR'];   /* participant.js LANGS 와 같게 */
-const pick = () => { let a = null; try { a = localStorage.getItem('1ndc_lang'); } catch {} if (a && LANGS.includes(a)) return a;
+const LANGS = ['ko', 'en', 'ja', 'es', 'zh-Hans', 'zh-Hant', 'th', 'vi', 'id', 'pt-BR', 'de', 'fr'];   /* participant.js LANGS 와 같게 */
+const pick = () => { let a = null; try { a = localStorage.getItem('1ndc_lang'); } catch (e) { 드러냄('i18n_dom.pick', e); } if (a && LANGS.includes(a)) return a;
   const d = navigator.language || 'ko', l = d.slice(0, 2).toLowerCase();
   if (l === 'zh') return /Hant|TW|HK|MO/i.test(d) ? 'zh-Hant' : 'zh-Hans'; if (l === 'pt') return 'pt-BR'; if (l === 'in') return 'id';
   return LANGS.includes(l) ? l : 'en'; };
-export const LANG_NAMES = { ko: '한국어', en: 'English', ja: '日本語', es: 'Español', 'zh-Hans': '简体中文', 'zh-Hant': '繁體中文', th: 'ไทย', vi: 'Tiếng Việt', id: 'Bahasa Indonesia', 'pt-BR': 'Português (Brasil)' };
+export const LANG_NAMES = { ko: '한국어', en: 'English', ja: '日本語', es: 'Español', 'zh-Hans': '简体中文', 'zh-Hant': '繁體中文', th: 'ไทย', vi: 'Tiếng Việt', id: 'Bahasa Indonesia', 'pt-BR': 'Português (Brasil)', de: 'Deutsch', fr: 'Français' };
 /* 진행 낭독이 쓰는 말과 번역(2026-10-12) — 한국어면 그대로 */
 export let narrLang = 'ko', narrTr = s => s;
 export async function startDomI18n(root) {
@@ -16,7 +17,8 @@ export async function startDomI18n(root) {
   if (lang === 'ko' || !root) return;
   if (!window.CoreText) await new Promise(r => { const s = document.createElement('script'); s.src = BASE + 'core/coretext.js'; s.onload = r; s.onerror = r; document.head.appendChild(s); });
   const get = f => fetch(BASE + 'i18n/data/' + f).then(r => r.ok ? r.json() : {}).catch(() => ({}));
-  const [app, core, data, narr] = await Promise.all([get(`앱_${lang}_전체.json`), get(`코어_${lang}.json`), get(`${lang}.json`), get(`진행_${lang}.json`)]);   // 진행_ = 진행 낭독 문장(2026-10-12)
+  const [app, core, data, narr] = await Promise.all([get(`앱_${lang}_전체.json`), get(`코어_${lang}.json`), get(`${lang}.json`), get(`진행_${lang}.json`)]);
+  if (root && root.id === 'app') try { const speak = await fetch(BASE + 'i18n/말/' + lang + '.json').then(r => r.ok ? r.text() : null); const C = await import('./core.js'); C.setLang(lang, speak, JSON.stringify(Object.assign(Object.fromEntries(Object.entries(core).filter(([k]) => !k.includes('{'))), data)));   /* 낱말 사전 = 자료 사전 먼저, 없으면 코어 사전 낱말(클래식 직업 이름 «사서», 2026-11-05) */ const S = await import('./store.js'); S.store.refresh(); } catch (e) { console.warn('화면 말', e); }   // 진행 웹(#app)만 — 큰 화면은 코어가 없다. 코어가 조회 글을 이 말로(말 팩) — 못 받으면 한국어 글을 아래 옛 번역이 받는다   // 진행_ = 진행 낭독 문장(2026-10-12)
   /* 앱 카탈로그의 %lld·%@ 열쇠도 틀로({n}·{p}) — 화면에 숫자가 끼워진 채 오므로 */
   const tm = {}; for (const k in app) tm[k.replace(/%(\d\$)?(lld|ld|d)/g, '{n}').replace(/%(\d\$)?@/g, '{p}')] = app[k].replace(/%(\d)\$(?:lld|ld|d|@)/g, '{#$1}').replace(/%(lld|ld|d)/g, '{n}').replace(/%@/g, '{p}');   // %2$lld → {#2}: 번역 어순이 바뀌어도 그 자리 값(2026-10-06 코덱스 재현 «Turn 10 of 2»)
   const tr = window.CoreText.make(Object.assign(tm, narr, core), data); narrLang = lang; narrTr = tr;   setBriefTr(tr);   // 이번 판 안내는 섀도 루트라 따로(2026-10-24)

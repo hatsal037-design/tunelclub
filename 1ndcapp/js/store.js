@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // 화면이 보는 코어 창구 — 폰 앱 CoreStore 와 같다. 읽기는 refresh(한 바퀴), 변경은 dispatch 하나로만.
 import * as core from './core.js';
 import { settings } from './settings.js';
@@ -51,10 +52,10 @@ export const store = {
       const notes = r.effects.filter(e => e.kind === 'notice').map(e => e.text).filter(Boolean);
       if (notes.length) { store.notice = notes.join('\n'); store.emit(); }
     }
-    if (reply.ok) { try { bgmSync(core.query('bgm.slot')); } catch {} }   // 배경 음악 — 과정이 바뀌면 곡도(2026-10-04)
-    if (reply.ok && store.afterCommit) { try { store.afterCommit(type); } catch {} }
-    if (reply.ok && store.afterPublic) { try { store.afterPublic(type); } catch {} }   // 큰 화면 — 공개 정보가 바뀌었으면 올린다
-    if (reply.ok && STEP.has(type) && settings.get('haptics') && navigator.vibrate) { try { navigator.vibrate(12); } catch {} }
+    if (reply.ok) { try { bgmSync(core.query('bgm.slot')); } catch (e) { 드러냄('store._now', e); } }   // 배경 음악 — 과정이 바뀌면 곡도(2026-10-04)
+    if (reply.ok && store.afterCommit) { try { store.afterCommit(type); } catch (e) { 드러냄('store._now', e); } }
+    if (reply.ok && store.afterPublic) { try { store.afterPublic(type); } catch (e) { 드러냄('store._now', e); } }   // 큰 화면 — 공개 정보가 바뀌었으면 올린다
+    if (reply.ok && STEP.has(type) && settings.get('haptics') && navigator.vibrate) { try { navigator.vibrate(12); } catch (e) { 드러냄('store._now', e); } }
     return reply;
   },
 };

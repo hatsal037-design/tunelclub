@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // S01 · 설정 — 진행·화면·백업 / 계정(AccountView) 은 따로
 import { LANG_NAMES } from '../i18n_dom.js';
 import { html, useState, useRef } from '../../lib/preact-htm.js';
@@ -66,7 +67,7 @@ export function SettingsView() {
       <div class="row"><div class="rc">큰 화면 소리</div><div style="width:200px"><${Segmented} value=${settings.get('soundAt') || 'phone'} onChange=${v => { set('soundAt', v); bgmSync(store.get('bgm.slot')); soundOut.ping && soundOut.ping(); }}
         options=${[['phone', '이 폰'], ['screen', '큰 화면']]} /></div></div>
       <div class="row"><div class="rc">언어</div><select class="textin" id="set-lang" style="max-width:200px" value=${(() => { try { return localStorage.getItem('1ndc_lang') || ''; } catch { return ''; } })()}
-        onChange=${e => { try { e.currentTarget.value ? localStorage.setItem('1ndc_lang', e.currentTarget.value) : localStorage.removeItem('1ndc_lang'); } catch {} location.reload(); }}>
+        onChange=${e => { try { e.currentTarget.value ? localStorage.setItem('1ndc_lang', e.currentTarget.value) : localStorage.removeItem('1ndc_lang'); } catch (e) { 드러냄('settingsView.SettingsView', e); } location.reload(); }}>
         <option value="">기기 언어</option>${Object.entries(LANG_NAMES).map(([c, n]) => html`<option value=${c}>${n}</option>`)}</select></div>
     <//>
     <${Section} header="백업" footer=${imported ? '가져왔어요 — 없던 기록만 더했어요.' : null}>

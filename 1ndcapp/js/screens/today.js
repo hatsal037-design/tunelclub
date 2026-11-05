@@ -1,3 +1,4 @@
+const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { const L = globalThis.__드러냄 || (globalThis.__드러냄 = []); L.push(String(곳) + ': ' + String((e && e.message) || e)); if (L.length > 200) L.shift(); });   // P1 없는 것도 보이게(docs/원칙.md)
 // T01 · 오늘 — 설정(왼쪽) · 테마(가운데, 작은 창) · 계정(오른쪽), 큰 상자 안 3:2 사진 + 유리 아이콘 + 판 상태 + 큰 행동, 바로 가기 두 행 (27차 시안 2026-10-01 햇살님 «맞아 이거야»)
 import { html, useState, useEffect, useRef } from '../../lib/preact-htm.js';
 import { store } from '../store.js';
@@ -51,7 +52,7 @@ export function TodayView({ openSpace }) {
       left=${html`<${NavButton} icon="gear" label="설정" onClick=${() => nav.push(html`<${SettingsView} />`)} />`}
       right=${html`<${NavButton} icon="personCircle" label="계정" onClick=${() => nav.push(html`<${AccountView} />`)} />`}>
     <${LargeTitle}>오늘<//>
-    <${Section} footer=${h.ruleFamily + (h.modeName ? ' · ' + h.modeName : '')}>
+    <${Section} footer=${h.ruleFamily + (h.modeName ? ' · ' + (h.modeName.startsWith(h.ruleFamily + ' · ') ? h.modeName.slice(h.ruleFamily.length + 3) : h.modeName) : '')}>
       <div class="hero2">
         <div class="tcover" style=${photo ? '' : `--tc:${theme.color}`}>
           ${photo ? html`<img class="bg" src=${photo} alt="" />` : html`<div class="ph"><${RoleArt} r=${store.artOf(theme.art) || theme.art} size=${220} /></div><div class="stars"></div>`}
@@ -61,7 +62,7 @@ export function TodayView({ openSpace }) {
         <${Primary} title=${hero[3]} onClick=${go} />
       </div>
     <//>
-    <${PlazaSection} />
+    <${PlazaSection} start=${async () => { const r = await store.dispatch('preparation.enter', { practice: false }); if (r.ok) openSpace({ prep: 'people' }); }} />
     <${Section} header="바로 가기">
       <${Row} onClick=${practice} disabled=${h.destination === 'resumeGame'}>
         <${Shortcut} icon="play" title="연습판" text=${h.destination === 'resumeGame' ? '진행 중인 판을 먼저 끝내요' : '기록 없이 흐름을 익혀요'} />
@@ -97,7 +98,7 @@ function ThemePill({ theme }) {
 }
 /* 참가자 초대 — 참가용 웹 주소 + 미리 가입 한마디(2026-10-10). 공유 창이 없는 브라우저는 복사 */
 const INVITE_URL = 'https://tunel.kr/1ndcapp/me/', INVITE_TEXT = '첫밤사망자클럽 참가 주소예요. 미리 가입해 두세요.';
-const invite = async () => { try { if (navigator.share) await navigator.share({ text: INVITE_TEXT, url: INVITE_URL }); else { await navigator.clipboard.writeText(INVITE_TEXT + '\n' + INVITE_URL); alert('참가 주소를 복사했어요'); } } catch (e) {} };
+const invite = async () => { try { if (navigator.share) await navigator.share({ text: INVITE_TEXT, url: INVITE_URL }); else { await navigator.clipboard.writeText(INVITE_TEXT + '\n' + INVITE_URL); alert('참가 주소를 복사했어요'); } } catch (e) { 드러냄('today.invite', e); } };
 const Shortcut = ({ icon, title, text }) => html`<div class="hstack shortcut" style="gap:12px;padding:4px 0">
   <span class="sym"><${Icon} name=${icon} size=${18} /></span><div><div class="shortcut-t">${title}</div><div class="sub">${text}</div></div></div>`;
 
@@ -110,8 +111,15 @@ function NameSheet({ open, title, value, onInput, go, goLabel, onClose }) {
       <${Section} footer="큰 화면 대기 화면에 크게 나와요. 비워 두면 날짜로 정해요."><div class="row"><input class="textin grow" id="pot-name" maxlength="40" placeholder="예: 어른이 놀이터 8회" value=${value} onInput=${e => onInput(e.currentTarget.value)} /></div><//>
     <//><//>`;
 }
+/* 광장 공지 — 큰 화면 체크인 대기에 뜬다, 120자(2026-11-02) */
+function NoticeSheet({ open, title, value, onInput, go, onClose }) {
+  return html`<${Sheet} open=${open} onClose=${onClose} detent="medium" label=${title}>
+    <${Page} title=${title} left=${html`<${NavButton} label="취소" onClick=${onClose} />`} right=${html`<${NavButton} label="저장" bold onClick=${go} />`}>
+      <${Section}><div class="row"><textarea class="textin grow" maxlength="120" rows="4" placeholder="공지" value=${value} onInput=${e => onInput(e.currentTarget.value)}></textarea></div><//>
+    <//><//>`;
+}
 const plazaCodeFrom = t => { const m = /[?&]j=([A-Za-z]{8})(?:&|#|$)/.exec(String(t || '')); if (m) return m[1].toUpperCase(); const u = String(t || '').toUpperCase().replace(/[^A-Z]/g, ''); return u.length === 8 ? u : ''; };
-function PlazaSection() {
+function PlazaSection({ start }) {   /* start — 체크인한 사람으로 판 시작(2026-11-02 햇살님 «거기서 판 시작») */
   const h = store.home, word = h.potKo || '광장', pot = h.pot;
   const [, re] = useState(0), [srv, setSrv] = useState(null), [code, setCode] = useState(''), [qr, setQr] = useState(''), [roster, setRoster] = useState([]);
   const [joined, setJoined] = useState([]), [scan, setScan] = useState(false), [msg, setMsg] = useState(null), [fixes, setFixes] = useState([]);   // fixes — 내 판에 들어온 정정 요청(0180)
@@ -130,14 +138,21 @@ function PlazaSection() {
     tick(); const t = setInterval(tick, 5000); return () => { dead = true; clearInterval(t); }; }, [logged, pot && pot.id]);   // 들어온 사람이 큰 화면에 빨리 뜨게 5초(전 20초)
   const close = async (force) => { const r = await store.dispatch('pot.close', force ? { force: true } : {}); if (!r.ok) return; const id = srv || ((await account.plaza('plaza_mine')) || {}).id; if (id) await account.plaza('plaza_close', { p_id: id }); setSrv(null); showCode(''); store.dispatch('display.plaza', {}); setRoster([]); };
   const here = roster.filter(r => !r.left);
-  const [renaming, setRenaming] = useState(null); const [drop, setDrop] = useState(false);
+  const [renaming, setRenaming] = useState(null); const [drop, setDrop] = useState(false), [noting, setNoting] = useState(null);
+  /* 진행자(나)는 빼고 체크인 명단을 «사람» 걸음 입력으로 채운다 — 앱 PrepDraft 와 같은 저장 칸(prep.draft) */
+  const fillFromRoster = async () => { const me = await account.plaza('my_profile'), myH = me && (me.handle || (me.value && me.value.handle)) || null;
+    const rows = here.filter(r => !(myH && r.handle === myH)), names = rows.map(r => r.nick || '@' + (r.handle || '')), members = rows.map(r => r.member_id || (r.account ? 'a:' + r.account : null));
+    while (names.length < 5) { names.push(''); members.push(null); }
+    try { localStorage.setItem('prep.draft', JSON.stringify({ names, members, levels: names.map(() => 2), pot: pot.id, practice: false, at: Date.now() })); } catch (e) { 드러냄('today.fillFromRoster', e); } };
   // 큰 화면 대기(참가 QR·광장 이름·들어온 사람) — 판 시작 전·자리 잡기 전까지 TV 에 뜬다(2026-10-06)
   const tvKey = code + '|' + (pot && pot.title || '') + '|' + here.map(r => r.nick).join(',');
   useEffect(() => { if (!code || !pot) return; store.dispatch('display.plaza', { code, title: pot.title || word, people: here.map(r => r.nick) }); }, [tvKey]);
   if (!pot && !logged && !account.plazaJoin) return null;   // 열기는 오늘 화면 큰 버튼(마당 먼저)
   return html`<${NameSheet} open=${renaming !== null} title=${word + ' 이름'} value=${renaming || ''} onInput=${setRenaming} goLabel="바꾸기" go=${async () => { const t = renaming; setRenaming(null); if (t && t.trim()) await store.dispatch('pot.rename', { title: t }); }} onClose=${() => setRenaming(null)} />
+  <${NoticeSheet} open=${noting !== null} title=${word + ' 공지'} value=${noting || ''} onInput=${setNoting} go=${async () => { const t = noting; setNoting(null); await store.dispatch('pot.note', { note: t || '' }); }} onClose=${() => setNoting(null)} />
   <${Section} header=${word}>
-    ${pot && !pot.practice ? html`<${Row} chevron onClick=${() => setRenaming(pot.title || '')}><${Labeled} label="이름" value=${pot.title || ''} /><//>` : ''}
+    ${pot && !pot.practice ? html`<${Row} chevron onClick=${() => setRenaming(pot.title || '')}><${Labeled} label="이름" value=${pot.title || ''} /><//>
+      <${Row} chevron onClick=${() => setNoting(pot.note || '')}><${Labeled} label="공지" value=${pot.note || '없음'} /><//>` : ''}
     ${pot ? html`
       ${pot.practice ? html`<div class="row"><${Labeled} label="연습" value="기록 안 남김" /></div>` : logged && html`
         ${qr ? html`<div class="row" style="flex-direction:column;align-items:center;gap:8px;padding:14px 0"><div style="width:180px;height:180px" aria-label=${word + ' 체크인 QR'} dangerouslySetInnerHTML=${{ __html: qr }}></div><div class="num" style="font-size:20px;font-weight:600;letter-spacing:.06em">${code}</div></div>`
@@ -145,6 +160,7 @@ function PlazaSection() {
         <div class="row"><${Labeled} label="체크인" value=${here.length + '명'} /></div>
         ${roster.length > 0 && html`<div class="row sub">${roster.map(r => r.nick + (r.left ? '(나감)' : '')).join(' · ')}</div>`}`}
       <div class="row"><${Labeled} label="판" value=${pot.games + '개'} /></div>
+      ${start && !pot.practice && h.destination === 'newPreparation' && here.length > 0 && html`<${Row} tint onClick=${async () => { await fillFromRoster(); start(); }}>체크인한 사람으로 판 시작<//>`}
       <${Row} danger onClick=${() => h.destination === 'resumeGame' ? setDrop(true) : close()}>${word} 닫기<//>
       <${ActionSheet} open=${drop} title=${`진행 중인 판을 버리고 ${word}을 닫을까요?`} onClose=${() => setDrop(false)} actions=${[{ label: '판 버리고 닫기', role: 'destructive', onClick: () => { setDrop(false); close(true); } }]} />`
     : null}

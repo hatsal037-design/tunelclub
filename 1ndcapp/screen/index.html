@@ -106,7 +106,7 @@ html:not([lang=ko]) .bcorner{white-space:normal;width:21cqw}   /* 다른 말은 
 .bcorner .b1{color:var(--fg);font-weight:600;font-size:1.15em;margin-bottom:.15em}
 .bcorner .b2{color:var(--fg);font-weight:600}
 .bcorner .b2 svg{width:1em;height:1em;vertical-align:-.15em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-right:.25em}
-.bcorner .bn{font-weight:600;margin-right:.4em}.bcorner .g{color:#007aff}.bcorner .e{color:#ff3b30}.bcorner .n{color:#af52de}
+.bcorner .bn{font-weight:600;margin-right:.4em}.bcorner .g{color:#007aff}.bcorner .e{color:#ff3b30}.bcorner .n{color:#34c759}
 
 /* ── 큰 화면 v5 — 애플 결(2026-10-25, js/screen_v5.js 가 그림). 옛 화면과 클래스 이름이 겹쳐 전부 .v5tv 아래로만 ── */
 .v5{position:fixed;inset:0;background:#000;overflow:hidden;z-index:3}
@@ -141,7 +141,7 @@ html:not([lang=ko]) .bcorner{white-space:normal;width:21cqw}   /* 다른 말은 
 .v5tv .v5leave{position:absolute;right:80px;top:984px;line-height:30px;font:inherit;font-size:23px;background:none;border:0;padding:0;color:var(--mute);text-decoration:underline;cursor:pointer}
 .v5tv .v5leave:focus-visible{outline:3px solid #007aff;outline-offset:3px}
 /* 판 사이 «지금 고른 모드»(2026-10-26 아침 선택 1-4, 시안/큰화면_모드정보_20261026/시안_v2 — cqw 를 1920 폭 px 로) — js/screen_v5.js drawMode */
-.v5tv.mi{--good:#007aff;--evil:#ff3b30;--neu:#af52de;word-break:keep-all;text-align:center}
+.v5tv.mi{--good:#007aff;--evil:#ff3b30;--neu:#34c759;word-break:keep-all;text-align:center}
 .v5tv.mi .mik{position:absolute;left:0;right:0;top:65px;font-size:25px;font-weight:600;color:var(--mute)}
 .v5tv.mi .mih{position:absolute;left:0;right:0;top:108px}.v5tv.mi .mih b{display:block;font-weight:700;font-size:77px;letter-spacing:-.02em;line-height:1.2}
 .v5tv.mi .mih .sub{display:block;font-size:31px;font-weight:600;margin-top:10px;color:var(--mute);font-variant-numeric:tabular-nums}.v5tv.mi .mih .tag{display:block;font-size:25px;margin-top:15px;color:var(--sec)}
@@ -331,7 +331,8 @@ function renderWaiting(p, arena, W, H) {
     + '<div><div style="font-size:' + 96 * u + 'px;font-weight:800;line-height:1.1;letter-spacing:-.01em">첫밤 사망자 <span style="color:#e8323c">클럽</span></div>'
     + '<div style="font-size:' + 44 * u + 'px;color:' + moon + ';margin-top:' + 10 * u + 'px">' + esc(w.title) + '</div>'
     + (w.date ? '<div style="font-size:' + 34 * u + 'px;color:' + cream + ';margin-top:' + 8 * u + 'px">' + (d => (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + '일월화수목금토'[d.getDay()] + '요일')(new Date(w.date + 'T12:00:00')) + '</div>' : '')   // 광장 연 날
-    + '<div style="font-size:' + 38 * u + 'px;color:rgba(246,238,228,.75);margin-top:' + 14 * u + 'px">들어온 사람 <b style="color:' + cream + '">' + n + '</b></div></div></div></div>';
+    + '<div style="font-size:' + 38 * u + 'px;color:rgba(246,238,228,.75);margin-top:' + 14 * u + 'px">들어온 사람 <b style="color:' + cream + '">' + n + '</b></div>'
+    + (w.notice ? '<div style="font-size:' + 34 * u + 'px;color:' + cream + ';max-width:' + W * 0.5 + 'px;margin-top:' + 16 * u + 'px;white-space:pre-line">' + esc(w.notice) + '</div>' : '') + '</div></div></div>';   // 광장 공지(2026-11-02)
   const side = TH * 0.25;
   h += '<div style="position:absolute;right:' + (W * 0.05 - left) + 'px;top:' + (TH * 0.07 - top) + 'px;display:flex;flex-direction:column;align-items:center;gap:' + 10 * u + 'px"><div style="width:' + side + 'px;height:' + side + 'px;background:#fff;border-radius:' + 14 * u + 'px;padding:' + 14 * u + 'px;box-sizing:border-box" aria-label="참가 QR">' + q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }) + '</div>'
     + '<div style="font-size:' + 32 * u + 'px;color:' + moon + '">찍고 참가</div></div>';
@@ -407,7 +408,7 @@ function renderEnded(p, arena, W, H) {
     if(p.shape!=='rect'&&!pt.mid)svg+='<path class="ld" style="stroke:#737373;stroke-width:1.3" d="M'+(pt.x+vx/len*d*.5)+','+(pt.y+vy/len*d*.5)+' L'+kx+','+ky+' H'+tx+'"/>';
     html+='<div data-k="s'+s.id+'" class="end-seat '+(s.dead?'dead':'')+'" style="left:'+pt.x+'px;top:'+pt.y+'px;width:'+d+'px;height:'+d+'px;font-size:'+fs*.65+'px">'+(art(r)||s.number)+'<span class="seat-badge number">'+s.number+'</span>'+(s.dead?'<span class="seat-badge death">×</span>':'')+(s.dead&&s.ghost?'<span class="seat-badge ghost">●</span>':'')+'</div>';
     const pos=p.shape==='rect'?'left:'+pt.x+'px;top:'+(pt.y+d*.5+5*k)+'px;transform:translateX(-50%)':pt.mid?'left:'+pt.x+'px;top:'+(pt.y+pt.mid*(d*.5+5*k))+'px;transform:translate(-50%,'+(pt.mid<0?'-100%':'0')+')': 'top:'+y+'px;transform:translateY(-50%);'+(right?'left:'+(tx+4*k):'right:'+(MW-tx+4*k))+'px';
-    const sideColor={good:'#007aff',evil:'#ff3b30',neutral:'#ff9500'}[r?.side]||'#737379';
+    const sideColor={good:'#007aff',evil:'#ff3b30',neutral:'#34c759'}[r?.side]||'#737379';
     html+='<div class="end-label" style="width:'+MW*.20+'px;white-space:normal;font-size:'+13*k+'px;'+pos+';text-align:'+(p.shape==='rect'||pt.mid?'center':right?'left':'right')+'">'+s.number+' · '+esc(name(s.id))+(r?'<div class="role" style="font-size:'+16*k+'px;color:'+sideColor+'">'+esc(r.role)+'</div><div style="font-size:'+13*k+'px;color:'+sideColor+'">'+esc(r.team)+'</div><small style="font-size:'+8*k+'px">'+esc((r.changes||[]).join(' · '))+'</small>':'')+'</div>';
   });
   const winner = p.ending?.winnerLabel;
