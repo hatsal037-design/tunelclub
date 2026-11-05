@@ -2867,5 +2867,13 @@
  "🃏 대역꾼이 있어요 — {r}에겐 대역꾼을 {r}로, {r}에겐 {r}로 섞어 소개하세요.": "🃏 Il y a une Doublure — présentez-la au {r} comme {r} et aux {r} comme {r}.",
  "😵 {r}은 가짜 {r}예요 — 진짜 {r}에게만 누군지 알려주세요.": "😵 {r} est un faux {r} — dites seulement au vrai {r} qui c’est.",
  "{r} — 오늘 밤 품은 {r}:": "{r} — {r} hôte de cette nuit :",
- "⏳ {n}: {p}{n}": "⏳ {n}: {p}{n}"
+ "⏳ {n}: {p}{n}": "⏳ {n}: {p}{n}",
+ "정치인(모리배) — 자기 진영 패배에 가장 크게 기여했나요?": "Politicien — a-t-il le plus contribué à la défaite de son camp ?",
+ "예 · 이긴 편에 합류": "Oui · rejoint le camp gagnant",
+ "아니오": "Non",
+ "{p}": "{p}",
+ "{n} {p}": "{n} {p}",
+ "{p} · 오늘 공개 주장함": "{p} · s’est déclaré publiquement aujourd’hui",
+ "⚖️ {p} 하늘의 벌로 처형됨.": "⚖️ {p} exécuté par châtiment divin.",
+ "☠️ {p} 저주로 사망 처리됨.": "☠️ {p} est mort de la malédiction."
 }

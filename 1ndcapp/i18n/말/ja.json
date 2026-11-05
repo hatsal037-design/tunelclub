@@ -713,5 +713,13 @@
  "rg.effItem": "⚖️ {r@role} — {l}",
  "rg.effPart": "{t@team} {d}",
  "rg.omBalMany": "{a}が原作の人数表（{n}人）より多いです",
- "rg.omBalFew": "{a}が原作の人数表（{n}人）より少ないです"
+ "rg.omBalFew": "{a}が原作の人数表（{n}人）より少ないです",
+ "sp.pol.ask": "政治家 — 自分の陣営の敗北に最も貢献しましたか？",
+ "sp.pol.yes": "はい・勝った側に加わる",
+ "sp.pol.no": "いいえ",
+ "bt.chipName": "{p}",
+ "bt.seatName": "{c} {p}",
+ "sp.claimBtn": "{p} · 今日公に主張した",
+ "dy.heavenDone": "⚖️ {p}は天罰で処刑されました。",
+ "dy.curseDone": "☠️ {p}は呪いで死亡しました。"
 }

@@ -691,5 +691,13 @@
  "rg.effItem": "⚖️ {r@role} — {l}",
  "rg.effPart": "{t@team} {d}",
  "rg.omBalMany": "{a}이 원작 인원표({n}명)보다 많아요",
- "rg.omBalFew": "{a}이 원작 인원표({n}명)보다 적어요"
+ "rg.omBalFew": "{a}이 원작 인원표({n}명)보다 적어요",
+ "sp.pol.ask": "정치인(모리배) — 자기 진영 패배에 가장 크게 기여했나요?",
+ "sp.pol.yes": "예 · 이긴 편에 합류",
+ "sp.pol.no": "아니오",
+ "bt.chipName": "{p}",
+ "bt.seatName": "{c} {p}",
+ "sp.claimBtn": "{p} · 오늘 공개 주장함",
+ "dy.heavenDone": "⚖️ {p} 하늘의 벌로 처형됨.",
+ "dy.curseDone": "☠️ {p} 저주로 사망 처리됨."
 }

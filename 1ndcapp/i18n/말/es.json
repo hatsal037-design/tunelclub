@@ -713,5 +713,13 @@
  "rg.effItem": "⚖️ {r@role} — {l}",
  "rg.effPart": "{t@team} {d}",
  "rg.omBalMany": "{a} supera la tabla original ({n})",
- "rg.omBalFew": "{a} está por debajo de la tabla original ({n})"
+ "rg.omBalFew": "{a} está por debajo de la tabla original ({n})",
+ "sp.pol.ask": "Político — ¿contribuyó más que nadie a la derrota de su bando?",
+ "sp.pol.yes": "Sí · se une al bando ganador",
+ "sp.pol.no": "No",
+ "bt.chipName": "{p}",
+ "bt.seatName": "{c} {p}",
+ "sp.claimBtn": "{p} · lo afirmó hoy en público",
+ "dy.heavenDone": "⚖️ {p} ejecutado por castigo divino.",
+ "dy.curseDone": "☠️ {p} murió por la maldición."
 }

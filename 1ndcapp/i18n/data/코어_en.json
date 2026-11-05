@@ -2867,5 +2867,13 @@
 "🃏 대역꾼이 있어요 — {r}에겐 대역꾼을 {r}로, {r}에겐 {r}로 섞어 소개하세요.": "🃏 There is a Mixer — introduce the Mixer to the {r} as a {r}, and to the {r} as the {r}.",
 "😵 {r}은 가짜 {r}예요 — 진짜 {r}에게만 누군지 알려주세요.": "😵 {r} is a fake {r} — tell only the real {r} who it is.",
 "{r} — 오늘 밤 품은 {r}:": "{r} — tonight's host {r}:",
-"⏳ {n}: {p}{n}": "⏳ {n}: {p}{n}"
+"⏳ {n}: {p}{n}": "⏳ {n}: {p}{n}",
+"정치인(모리배) — 자기 진영 패배에 가장 크게 기여했나요?": "Politician — did they contribute most to their own side's defeat?",
+"예 · 이긴 편에 합류": "Yes · joins the winning side",
+"아니오": "No",
+"{p}": "{p}",
+"{n} {p}": "{n} {p}",
+"{p} · 오늘 공개 주장함": "{p} · claimed publicly today",
+"⚖️ {p} 하늘의 벌로 처형됨.": "⚖️ {p} executed by divine punishment.",
+"☠️ {p} 저주로 사망 처리됨.": "☠️ {p} died from the curse."
 }

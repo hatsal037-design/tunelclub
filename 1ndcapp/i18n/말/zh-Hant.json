@@ -713,5 +713,13 @@
  "rg.effItem": "⚖️ {r@role} — {l}",
  "rg.effPart": "{t@team} {d}",
  "rg.omBalMany": "{a}多於原作人數表（{n}人）",
- "rg.omBalFew": "{a}少於原作人數表（{n}人）"
+ "rg.omBalFew": "{a}少於原作人數表（{n}人）",
+ "sp.pol.ask": "政客 — 是否對己方失敗貢獻最大？",
+ "sp.pol.yes": "是 · 加入獲勝方",
+ "sp.pol.no": "否",
+ "bt.chipName": "{p}",
+ "bt.seatName": "{c} {p}",
+ "sp.claimBtn": "{p} · 今天公開聲稱",
+ "dy.heavenDone": "⚖️ {p}因天罰被處決。",
+ "dy.curseDone": "☠️ {p}因詛咒死亡。"
 }

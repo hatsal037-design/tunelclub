@@ -713,5 +713,13 @@
  "rg.effItem": "⚖️ {r@role} — {l}",
  "rg.effPart": "{t@team} {d}",
  "rg.omBalMany": "{a} nhiều hơn bảng gốc ({n})",
- "rg.omBalFew": "{a} ít hơn bảng gốc ({n})"
+ "rg.omBalFew": "{a} ít hơn bảng gốc ({n})",
+ "sp.pol.ask": "Chính khách — góp phần nhiều nhất vào thất bại của phe mình?",
+ "sp.pol.yes": "Có · gia nhập phe thắng",
+ "sp.pol.no": "Không",
+ "bt.chipName": "{p}",
+ "bt.seatName": "{c} {p}",
+ "sp.claimBtn": "{p} · đã tuyên bố công khai hôm nay",
+ "dy.heavenDone": "⚖️ {p} bị xử tử bởi thiên phạt.",
+ "dy.curseDone": "☠️ {p} chết vì lời nguyền."
 }

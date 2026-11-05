@@ -52,7 +52,7 @@ var matchMedia = function(){ return { matches: false, addEventListener: function
 var screen = { width: 390, height: 844, orientation: { type: 'portrait-primary', addEventListener: function(){} } };
 var innerWidth = 390, innerHeight = 844, devicePixelRatio = 3;
 var requestAnimationFrame = function(f){ return setTimeout(f); }, cancelAnimationFrame = function(){};
-var alert = function(){}, confirm = function(){ return true; }, prompt = function(){ return ''; };
+var alert = function(){}, confirm = function(m){ 드러냄('dom_stub.confirm', new Error('코드 없는 확인: ' + String(m).slice(0, 40))); return true; }, prompt = function(){ return ''; };
 var addEventListener = function(){}, removeEventListener = function(){}, dispatchEvent = function(){};
 var getComputedStyle = function(){ return { getPropertyValue: function(){ return ''; } }; };
 var URL = { createObjectURL: function(){ return 'blob:'; }, revokeObjectURL: function(){} };

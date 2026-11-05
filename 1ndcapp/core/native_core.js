@@ -134,8 +134,6 @@ var NativeCore = (function () {
   /* 경고 묶음 html(div 여러 개) → 한 줄씩 글로 */
   /* 밤 결과 코드(prk) → 지금 말 글. 여러 조각이면 잇고, 앱 전용 열쇠(app)가 있으면 그것 · 팩 글의 <b>·<div> 만 벗기고 앞 그림 문자는 뗀다(옛 HTML 긁기와 같은 모양) */
   function prText(prk) { var ps = Array.isArray(prk) ? prk : [prk]; return ps.map(function (x) { return SAY(x.app || x.k, x.v); }).join(' ').replace(/<\/?(b|div)>/g, ' ').replace(/\s+/g, ' ').replace(/ ([·,.)])/g, '$1').trim().replace(/^[^\p{L}\p{N}'"(]+/u, ''); }
-  function htmlLines(html) { return String(html || '').split(/<\/div>/).map(textOf).filter(Boolean); }
-  function textOf(html) { return String(html || '').replace(/<button[\s\S]*?<\/button>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').replace(/ ([·,.)])/g, '$1').trim().replace(/^[^0-9A-Za-z가-힣'"(]+/, ''); }   // 웹 결과 문구 앞 이모지는 뗀다
   /* «지금 할 일» 한 문장 — 능력 종류·인원으로 (웹 pickHeadOf 와 같은 갈래). 긴 진행 대사(say)는 상세 안내로 보낸다 (2026-09-28 코덱스 검토 G01) */
   function doNow(a, cap, usable, resolved) {   // 글은 말 장치 팩 dn.* (2026-11-04 7단계)
     if (!usable) return SAY('dn.wakeCheck');
@@ -367,8 +365,8 @@ var NativeCore = (function () {
       boardPieces: spyFake ? spyFake.조각 : null,   // 거짓 판에 얹은 조각(종류·무게·자리·바꾼 것) — 기록·복기용
       bluffs: isRoleAny(o.real || c, ['sejak', 'spy', 'hobang', 'widow']) ? bluffKos() : null,   // 판 공개 화면 가운데 블러프(2026-10-01)
       warns: (function () { var w = []; try { w = [].concat.apply([], wzCardWarnItems(o).items.map(function (x) { return [prText(x)]; })).filter(Boolean);   /* 경고는 전부 코드 → 지금 말로(prText) (2026-11-06 화면긁기: 품은 사람·지연 사망도 코드) */ } catch (e) { 드러냄('native_core.nightCardRaw', e); } if (s.dead) { var kept = demonKeptMinion(owner); w.unshift(kept ? SAY('nc.warn.keptMinion', { r: kept.id }) : SAY('nc.warn.dead')); } return w; })(),   // 염매(비고모르티스)가 죽인 하수인은 죽어서도 능력을 부린다 (6-5)
-      actions: (function () { try { var fr = wz.pickRes && wz.pickRes.owner === owner ? wz.pickRes.html : '';   // «그래도 처리» — 무효·착호꾼으로 막힌 처리를 진행자 판단으로 밀고 나가기(웹 결과 줄의 단추)
-        return htmlItems(fr + fangguJumpHtml(owner) + wzOnceBtns(o) + ((c.tk || []).some(function (t) { return DELAY_KILL[t]; }) ? delayedHtml() : '') + (o.dk === 'lm' ? blHolderHtml(o) : '')).filter(function (x) { return x.call; }); } catch (e) { return []; } })(),   // 몸 없는 흉수(꼬마 괴물·업귀) — 하수인이 정한 «품은 사람» 옮기기
+      actions: (function () { try { var fr = wz.pickRes && wz.pickRes.owner === owner ? (wz.pickRes.acts || []) : [];   // «그래도 처리» — 무효·착호꾼으로 막힌 처리를 진행자 판단으로 밀고 나가기(웹 결과 줄의 단추)
+        return actItems([].concat(fr, fangguJumpActs(owner), wzOnceActs(o), (c.tk || []).some(function (t) { return DELAY_KILL[t]; }) ? delayedActs() : [], o.dk === 'lm' ? blHolderActs(o) : [])).filter(function (x) { return x.call; }); } catch (e) { 드러냄('native_core.actions', e); return []; } })(),   // 몸 없는 흉수(꼬마 괴물·업귀) — 하수인이 정한 «품은 사람» 옮기기
       allies: usable ? knownAllies(owner) : [],
       needsTargetsFirst: usable && !resolved && !short, canUndoTargets: !!(undoTgt && undoTgt.dk === o.dk && undoTgt.n === (state.nights || 1)), detail: c.ab + (c.say ? '\n\n' + SAY('nc.hostSay', { t: c.say }) : ''), stepKey: String(o.dk),
       resolved: resolved, result: result, answer: answer, ansBoard: ansBoard, ansPic: answer != null ? ansPic : null, ansCode: answer != null ? ansCode : null,
@@ -502,7 +500,7 @@ var NativeCore = (function () {
       var em = null; if (key === 'fn') { try { em = evilMeetSteps(); } catch (e) { 드러냄('native_core.stage', e); } }
       /* 밤 시작 알림 — 계승 대기·취함·중독 수·가짜 직업 미정·지연 사망 때가 된 사람(웹 시작 카드 아래 줄과 같게). 지연 사망은 «지금 사망 처리» 단추 */
       var introNotes = [], introActs = [];
-      try { introNotes = nightExtraK().concat(fakesWarnK()).map(prText); introActs = htmlItems(delayedHtml()); } catch (e) { 드러냄('native_core.stage', e); }   /* 알림은 코드로(2026-11-06 화면긁기), 지연 사망 단추만 아직 HTML 파싱 */   // 지연 사망은 안내+단추 한 묶음으로만(코덱스 2묶음 — 안내가 두 번 나오던 것)
+      try { introNotes = nightExtraK().concat(fakesWarnK()).map(prText); introActs = actItems(delayedActs()); } catch (e) { 드러냄('native_core.stage', e); }   /* 알림·지연 사망 단추 모두 코드로(2026-11-06 화면긁기) */   // 지연 사망은 안내+단추 한 묶음으로만(코덱스 2묶음 — 안내가 두 번 나오던 것)
       return { stage: 'intro', title: title, succession: succession(), notes: introNotes, actions: introActs, nextNight: !!ED().twoNights && (state.nights || 1) === 1,
         order: list.map(function (o) { var l = seatLabel(o.i); l.role = o.c ? o.c.ko : ''; return l; }),
         skipped: nightSkipped(list).map(function (x) { var l = seatLabel(x.i); l.role = x.c.ko;
@@ -662,16 +660,13 @@ var NativeCore = (function () {
 
   /* 웹 버튼 → 항목 목록. 허용한 호출(ALLOW)만 누를 수 있게 넘긴다 — 특수 승리·정치인·낮 알림의 즉시 처리 */
   var ALLOW = /^(?:(spGuess|spClaim|spBangToggle|spBangDo|spCult|spUndo|spPolitician|dayHeavenKill|dayCurseKill|markUsed|fangguJump)\((\d+|true|false)?\)|markSubUsed\(\d+,'[^'<>]{1,20}'\)|delayedKill\(\d+,'[^'<>]{1,20}'(?:,true)?\)|(?:pickApplyTokenV|pickCure|pickKill|pickRevive|pickJudge|pickTokenIf|pickTransform|pickMadness|pickAskDie|pickSwapIf|pickTransformIf|pickGamble)\(\d+(?:,'[^'<>]{1,40}'|,false){0,2},true\)|pickRec\(state\.nights\|\|1\)\[\d+\]=\[\d+\];pickKill\(\d+,false\)|blSetHolder\(\d+\)|pickSubTok\(\d+,\d+,'[^'<>]{1,20}'\))$/;   // 마지막 — 몽달이(killif) «조건 충족 → 사망 처리»   // markUsed·markSubUsed — 밤 카드 «1회 능력 사용함» (2026-09-29)
-  function htmlItems(html) {
-    var out = [], re = /<button([^>]*)>([\s\S]*?)<\/button>/g, last = 0, m;
-    while ((m = re.exec(html))) {
-      var before = textOf(html.slice(last, m.index)); if (before) out.push({ kind: 'text', text: before, label: null, call: null, on: false });
-      var oc = ((m[1].match(/onclick="([^"]*)"/) || [])[1] || '').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
-      out.push({ kind: 'button', text: null, label: textOf(m[2]).replace(/\s*✓$/, ''), call: ALLOW.test(oc) ? oc : null, on: /class="[^"]*\b(on|gold)\b/.test(m[1]) || /✓/.test(m[2]),
-        danger: /Kill\(|,true\)$/.test(oc) });   // 사람을 죽이거나 보호를 뚫는 단추 — 화면에서 위험 행동 모양으로(코덱스 5묶음)
-      last = re.lastIndex;
-    }
-    var tail = textOf(html.slice(last)); if (tail) out.push({ kind: 'text', text: tail, label: null, call: null, on: false }); return out;
+  /* 웹이 낸 단추 코드 → 항목. 글은 지금 말로(prText), 누를 수 있는 건 허용한 호출(ALLOW)만 — HTML 긁기 없음(2026-11-06) */
+  function actItems(list) {
+    return (list || []).map(function (a) {
+      if (a.kind === 'text') return { kind: 'text', text: prText({ k: a.k, v: a.v }), label: null, call: null, on: false };
+      return { kind: 'button', text: null, label: prText(a.label), call: ALLOW.test(a.call) ? a.call : null, on: !!a.on,
+        danger: /Kill\(|,true\)$/.test(a.call) };   // 사람을 죽이거나 보호를 뚫는 단추 — 화면에서 위험 행동 모양으로(코덱스 5묶음)
+    });
   }
   function voters(k) {   // 투표할 수 있는 사람 — uiDayVoteOpen 의 ok 와 같은 잣대 + 표 무게
     var D = dayRec(), n = D.noms[k], cm = CMAP(), cur = (n && n.voters) || [];
@@ -728,9 +723,10 @@ var NativeCore = (function () {
         return { k: k, seat: pr.seat, winner: pr.winner, winnerKo: winKoOf(pr.winner, pr.wg), text: SAY('ui.execWin', { s: seatText(pr.seat - 1), w: winKoOf(pr.winner, pr.wg) }) }; })(),   // 오리지널은 이긴 조직으로(마피아·삼합회)
       noExecReason: D.noms.some(function (o) { return o.done; }) ? null : G.reason,
       executed: D.noms.some(function (o) { return o.done; }),
-      notes: [].concat.apply([], (D.notes || []).map(function (h) { var c = D.noteK && D.noteK[h];   /* 코드가 있으면 글은 지금 말로, 단추는 HTML 에서 */
-        return c ? [{ kind: 'text', text: prText(c), label: null, call: null, on: false }].concat(htmlItems(h).filter(function (x) { return x.kind === 'button'; })) : htmlItems(h); })).concat(voterCount() !== alive ? [{ kind: 'text', text: SAY('ms.judgesOnly', { n: voterCount() }), label: null, call: null, on: false }] : []),   // 판사 모드 — 문턱이 생존 수보다 낮은 까닭(웹 dayBriefHtml)
-      special: htmlItems(spHtml()), verdict: verdict() };
+      notes: [].concat.apply([], (D.notes || []).map(function (h) { var c = D.noteK && D.noteK[h];   /* 글·단추 모두 코드(noteK·noteA) */
+        if (!c) { 드러냄('native_core.notes', new Error('코드 없는 낮 알림')); return []; }
+        return [{ kind: 'text', text: prText(c), label: null, call: null, on: false }].concat(actItems((D.noteA && D.noteA[h]) || [])); })).concat(voterCount() !== alive ? [{ kind: 'text', text: SAY('ms.judgesOnly', { n: voterCount() }), label: null, call: null, on: false }] : []),   // 판사 모드 — 문턱이 생존 수보다 낮은 까닭(웹 dayBriefHtml)
+      special: actItems(spActs()), verdict: verdict() };
     M.next = dayNext(M, D);
     return M;
   }
@@ -969,7 +965,7 @@ var NativeCore = (function () {
     var L = (state.log && state.log.winner) ? state.log : (state.lastLogId ? (logsAll().find(function (x) { return x.id === state.lastLogId; }) || null) : null);
     var win = state.practice ? null : ((L && L.winner) || wz.doneWin || null), ends = verdict().filter(function (x) { return x.level === 'end'; }).map(function (x) { return x.text; });
     return { winner: win, winGroup: (L && L.winGroup) || null, title: win ? winKoOf(win, L && L.winGroup) : SAY(state.practice ? 'ui.closedPractice' : 'ui.closed'), why: ends.length ? ends.join(' → ') : (L && L.note ? L.note : (win ? SAY('ms.rp.hostChose') : SAY('ms.rp.noWinner'))),
-      recorded: !!(L && L.winner), practice: !!state.practice, politician: htmlItems(state.practice ? '' : polHtml()),
+      recorded: !!(L && L.winner), practice: !!state.practice, politician: actItems(state.practice ? [] : polActs()),
       players: ((L && L.players) || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: p.side || '', won: p.won === true, dead: !!p.dead }; }),
       tvReveal: state.tvReveal !== false, tvReplay: typeof state.tvReplay === 'number' ? state.tvReplay : null, replayDays: endReplayDays() };   // 7 큰 화면 공개·복기 조작용
   }
@@ -1039,23 +1035,21 @@ var NativeCore = (function () {
   /* 처형·낮 즉사의 «보호 상태인데 그래도 죽일까요?» — 웹은 예면 죽이고, 아니면 «처형은 있었고 살아남음»으로 기록한다(execHappenedMark).
      아이폰은 확인 요청(token shield)으로 돌려보내고, ok_shield(그래도) / decline_shield(살아남음으로 기록) 둘 다 커밋한다. 다른 확인창(하루 2회 처형 등)은 이미 앞에서 물었으므로 예 */
   function shieldRun(p, fn) {
-    var asked = null, oc = confirm, G = /** @type {any} */ (globalThis), oh = G.ASK_HOOK;
+    var asked = null, G = /** @type {any} */ (globalThis), oh = G.ASK_HOOK;
     G.ASK_HOOK = function (code, m, v) { if (code === 'demonCause') return p.cause === 'demon';   /* 코드로 답한다 — 확인 글을 정규식으로 읽지 않는다(2026-11-04 구조 개선 7) */
       if (code === 'shield') { if (p.ok_shield) return true; if (p.decline_shield) return false; asked = asked || String(v.short || m); return false; }
       return true; };
-    confirm = function () { return true; };   // 앞에서 이미 물은 다른 확인(하루 2회 처형 등)은 예
-    try { fn(); } finally { confirm = oc; G.ASK_HOOK = oh; }
+    try { fn(); } finally { G.ASK_HOOK = oh; }   /* 글로만 묻는 확인은 dom_stub 이 예로 넘기고 드러낸다 */
     return asked ? { status: 'needsConfirmation', token: 'shield', revision: revision, reasonCode: 'shielded', choices: [asked] } : null;
   }
   /* 웹 확인창 가로채기 — 창구에선 confirm 이 늘 «예»라 보호가 무시될 수 있다. 질문은 확인 요청으로 돌려보내고, force 로 다시 오면 예 */
   function asking(p, fn) {
-    var asked = null, notes = [], oc = confirm, oa = alert, G = /** @type {any} */ (globalThis), oh = G.ASK_HOOK, ot = G.TELL_HOOK;
+    var asked = null, notes = [], oa = alert, G = /** @type {any} */ (globalThis), oh = G.ASK_HOOK, ot = G.TELL_HOOK;
     G.TELL_HOOK = function (code, v) { notes.push(prText({ k: code, v: v })); };   /* 알림은 코드로 받는다(tell) — 웹 알림 글을 긁지 않는다(2026-11-05) */
     var q = function (m) { if (p.force) return true; asked = asked || String(m); return false; };
     G.ASK_HOOK = function (code, m) { if (code === 'demonCause') return p.cause === 'demon'; return q(m); };   /* 코드로 — 사인은 명령 값으로 답한다 */
-    confirm = q;
     alert = function (m) { 드러냄('native_core.alert', new Error('코드 없는 알림: ' + String(m).slice(0, 40))); notes.push(String(m)); };   // 아직 tell 로 안 바꾼 알림 — 글 그대로 내고 드러낸다
-    try { fn(); } finally { confirm = oc; alert = oa; G.ASK_HOOK = oh; G.TELL_HOOK = ot; }
+    try { fn(); } finally { alert = oa; G.ASK_HOOK = oh; G.TELL_HOOK = ot; }
     return { asked: asked, notes: notes };
   }
 

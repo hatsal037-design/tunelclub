@@ -2867,5 +2867,13 @@
  "🃏 대역꾼이 있어요 — {r}에겐 대역꾼을 {r}로, {r}에겐 {r}로 섞어 소개하세요.": "🃏 Có Kẻ đóng thế — giới thiệu với {r} là {r}, với {r} là {r}.",
  "😵 {r}은 가짜 {r}예요 — 진짜 {r}에게만 누군지 알려주세요.": "😵 {r} là {r} giả — chỉ cho {r} thật biết đó là ai.",
  "{r} — 오늘 밤 품은 {r}:": "{r} — {r} chứa chấp đêm nay:",
- "⏳ {n}: {p}{n}": "⏳ {n}: {p}{n}"
+ "⏳ {n}: {p}{n}": "⏳ {n}: {p}{n}",
+ "정치인(모리배) — 자기 진영 패배에 가장 크게 기여했나요?": "Chính khách — góp phần nhiều nhất vào thất bại của phe mình?",
+ "예 · 이긴 편에 합류": "Có · gia nhập phe thắng",
+ "아니오": "Không",
+ "{p}": "{p}",
+ "{n} {p}": "{n} {p}",
+ "{p} · 오늘 공개 주장함": "{p} · đã tuyên bố công khai hôm nay",
+ "⚖️ {p} 하늘의 벌로 처형됨.": "⚖️ {p} bị xử tử bởi thiên phạt.",
+ "☠️ {p} 저주로 사망 처리됨.": "☠️ {p} chết vì lời nguyền."
 }
