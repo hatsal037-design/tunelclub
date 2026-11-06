@@ -404,7 +404,7 @@ var NativeCore = (function () {
     return { family: fam, families: hubs, modeID: state.edition, modes: modes, count: n, total: total,
       setups: (ed.setups || []).map(function (su, i) { return { index: i, name: su.name, diff: su.diff || '' }; }),
       /* 승리 조건 — 웹 새 판 «승리 조건» 고르기와 같은 목록. 판정은 바꾸지 않고 «이번 판 공지»에 읽어 줄 문장 */
-      win: (function () { var w = winPick(); return { mode: w.mode, text: w.text, options: WINPRESETS.map(function (x) { return { id: x.id, label: x.id === 'custom' ? '직접 입력' : winLabel(x) }; }) }; })(),
+      win: (function () { var w = winPick(); return { mode: w.mode, text: w.text, options: WINPRESETS.map(function (x) { return { id: x.id, label: x.id === 'custom' ? SAY('ng.winCustom') : winLabel(x) }; }) }; })(),
       roles: list, guide: prText(NG_TXT.guideK),   /* 새 판 화면 글은 앱이 말 팩으로 만든 값(NG_TXT) — DOM 을 긁지 않는다(2026-11-04 구조 개선 7) */
       summary: NG_TXT.summaryK.map(function (o) { return prText([o]); }).join(' '), composeWarns: composeRuleBreaks(ngCounts, n),   /* 모드 편성 제약을 어긴 손 구성 — 구성 칸에 경고만, 배정은 막지 않는다(재판정 6-7) */ notice: NG_TXT.noticeK.length ? [{ k: 'rg.n.title', v: { n: NG_TXT.noticeK.length } }].concat(NG_TXT.noticeK).map(function (o) { return prText(o); }).join(' ') : null,
       travelerNeed: need, travelerSeats: tv, seats: (state.seats || []).map(function (x, i) { return { index: i, number: i + 1, name: seatLabel(i).name }; }),
@@ -540,6 +540,9 @@ var NativeCore = (function () {
       if (line) (out[e.n] = out[e.n] || []).push(line); });
     return Object.keys(out).map(Number).sort(function (a, b) { return a - b; }).map(function (n) { return { n: n, lines: out[n] }; }); }
   /* knownAllies(악 동료) — core/자리.js 로 옮김(2026-11-03 재구조화 2단계) */
+  /* 한 판 칭호 이름 — 원본 tools/칭호_목록.py(H … 'act:열쇠') 에서 뽑아 넣은 것. 목록을 고치면 다시 뽑는다 */
+  var ACT_TITLE = {"save2": "기적의 의원", "save_chain": "연쇄 막음", "first_dead_win": "첫날 죽고 이긴", "evil_unnamed_win": "지명 0의 악", "evil_clean_win": "모두를 속인", "one_vote": "한 표 차", "lone_no": "혼자 반대한", "disaster": "대참사", "boss_day1_nom": "첫날의 사냥꾼", "bloodless_boss": "피 없는 왕", "repaid": "은혜 갚은", "last_one": "최후의 1인", "self_exec": "셀프 단두대", "three_noms": "세 번 산", "all_evil_exec_win": "전멸 승리", "revive2": "불사조", "perfect_accuser": "완벽한 고발자", "night1_boss": "첫밤의 혜안", "no_exec_win": "무혈 승리", "blocked3": "습격 0의 밤", "guarded_survivor": "지켜 낸 끝", "vote_final": "마지막 표의 주인", "silent_win": "말 없는 승리", "full_set": "종합 선물 세트", "friendly_fire3": "아군 학살자", "two_changes": "한 판 세 얼굴", "double_dead": "두 번 죽은", "boss_day1": "하루 천하", "twin_hunter": "쌍두의 사냥꾼", "ghost_judge": "무덤에서 온 심판", "usurper": "찬탈자", "turncoat_win": "배신의 대가", "traveler_judge": "지나가던 심판", "treason": "역모", "self_confess": "자수", "unan_survive": "만장일치의 생존자", "wolves": "늑대 사이의 양", "nick_job": "이름값", "three_numbers": "세 숫자가 맞은 밤", "lucky7": "럭키 세븐", "friday13": "13일의 금요일", "start_1234": "12:34", "exact_hour": "딱 한 시간", "void_game": "아무도 이기지 못한 밤", "new_moon_geumeum": "그믐에 그믐밤", "full_moon_boss": "보름달의", "winter_solstice": "가장 긴 밤", "summer_solstice": "가장 짧은 밤", "palindrome_day": "거꾸로 읽어도 같은 날", "cross_year": "해를 넘긴 판", "start_midnight": "자정의 종", "sunday_morning": "일요일 아침의"};
+  var ACT_COMMON = { vote_final: 1, self_exec: 1 };   /* 흔해서 사람 칭호로는 안 고르는 것 */
   /* 직업 그림 — 웹 CE() 와 같은 규칙: 목판화(ICON_BY_ID) → 코인 아트 → 이모지. 테마 스킨 직업은 이모지만 */
   function roleArt(c, mid) {
     var skin = typeof SKINS !== 'undefined' && (SKINS[mid] || []).indexOf(c.id) >= 0;
@@ -600,7 +603,7 @@ var NativeCore = (function () {
     if (tri) { links.push(['good', 'triad', 'enemy', B('link.enemy')]); links.push(['mafia', 'triad', 'enemy', B('link.unknownEnemy')]); }
     if (cr) { links.push(['crook', 'mafia', 'unknown', B('link.sameUnknown')]); if (tri) links.push(['crook', 'triad', 'unknown', null]); }
     var title = String(m.name || '').replace(/\s*\(.*\)\s*$/, '').replace(/\s*No\.\s*\d+$/, '');
-    return { kind: 'original-mafia', hub: '오리지널 마피아', title: title, n: n, sides: { good: sum(['good']), evil: sum(['mafia', 'triad', 'crook']), other: sum(['solo']) },
+    return { kind: 'original-mafia', hub: HUBKO('mafia'), title: title, n: n, sides: { good: sum(['good']), evil: sum(['mafia', 'triad', 'crook']), other: sum(['solo']) },
       judges: judges, groups: groups, flow: flow, links: links };
   }
   /* 판 사이 «지금 고른 모드» 정보(2026-10-26 햇살님 아침 선택 1-4 메모 «선택되어 있는 모드의 정보를 설명 페이지로») — 큰 화면 idle 장면에만 싣는다.
@@ -1131,7 +1134,16 @@ var NativeCore = (function () {
   function replayLog(a) { return logHub(replayLogRaw(a)); }
   var narrowMemo = {};
   var QUERIES = { home: home, 'preparation.board': board, 'game.current': nightCard, 'preparation.roles': roles, 'preparation.handoff': handoff, 'handoff.public': handoffPublic, 'plaza.cards': plazaCards, 'game.stage': function () { var st = stage();   /* 블러프 다시 보여주기(좌석 상세)가 첫밤 화면을 그대로 쓰게 — 어느 단계든 흉수 자리·같은 편(2026-11-03) */
-    if (st && st.bluffDemon === undefined) { try { var d = bluffDemonSeat(); st.bluffDemon = d; st.bluffAllies = d == null ? [] : knownAllies(d); } catch (e) { 드러냄('native_core.game.stage', e); } } return st; }, 'game.process': process, reference: reference, 'roles.art': function () { var mid = state.edition || 'basic'; return CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, mid); return { ko: c.ko, icon: r.icon, e: r.e }; }); }, 'game.day': day, 'display.public': displayPublic, 'game.winChoices': function () { return winChoices(state.edition); }, 'game.verdict': function () { return { items: verdict(), winner: endWinner() }; }, 'game.briefing': function () { return briefing(); }, 'game.result': result, 'game.replay': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; var R = GameReplay.build(L, { public: /^public:/.test(String(a || '')) }); if (R) R.승자글 = L.winner && L.winner !== 'void' ? winKoOf(L.winner, L.winGroup) : '판 끝'; return R; },   /* 승자 머리글 — 넘겨보기·PDF가 이 글 하나를 쓴다(2026-11-03) */
+    if (st && st.bluffDemon === undefined) { try { var d = bluffDemonSeat(); st.bluffDemon = d; st.bluffAllies = d == null ? [] : knownAllies(d); } catch (e) { 드러냄('native_core.game.stage', e); } } return st; }, 'game.process': process, reference: reference, 'roles.art': function () { var mid = state.edition || 'basic'; return CHARS().filter(function (c) { return c.team !== 'host'; }).map(function (c) { var r = roleArt(c, mid); return { ko: c.ko, icon: r.icon, e: r.e }; }); }, 'game.day': day, 'display.public': displayPublic, 'game.winChoices': function () { return winChoices(state.edition); }, 'game.verdict': function () { return { items: verdict(), winner: endWinner() }; }, 'game.briefing': function () { return briefing(); }, 'game.result': result, 'game.replay': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; var R = GameReplay.build(L, { public: /^public:/.test(String(a || '')) }); if (R) R.승자글 = L.winner && L.winner !== 'void' ? winKoOf(L.winner, L.winGroup) : '판 끝';
+      if (R) { try { R.흉수말 = CoreText.word(KO('team', 'demon', hubRepOf(allMods()[L.mid || L.mode] || {}))); } catch (e) { 드러냄('native_core.game.replay.demon', e); } }   /* 그 판 계열의 우두머리 말 — 지금 앱 계열이 아니라(복기 장, 2026-11-06) */
+      if (R) { var byId = {}; Object.keys(allMods()).forEach(function (mid) { (allMods()[mid].chars || []).forEach(function (c) { if (!byId[c.id]) byId[c.id] = [c, mid]; }); });   /* 사람마다 직업 그림 — 그 판의 모드가 지금 모드가 아니어도(복기 장, 2026-11-06) */
+        (R.사람 || []).forEach(function (q) { var pl = (L.players || []).find(function (x) { return x.seat === q.자리; }), x = pl && pl.roleId && byId[pl.roleId]; if (x) { var a = roleArt(x[0], x[1]); q.그림 = a.icon || null; q.이모지 = a.e || null; } }); }
+      if (R && typeof actFacts === 'function') { try { var AF = actFacts(L), ppl = R.사람 || [], cnt = {};   /* 한 판 칭호 — 칭호 목록(tools/칭호_목록.py «숨은 칭호 — 한 판의 일»)의 act:열쇠. 절반 넘게 받은 칭호는 «판 칭호»로 한 번만 */
+        ppl.forEach(function (q) { Object.keys(AF[q.자리] || {}).forEach(function (k) { if (ACT_TITLE[k]) cnt[k] = (cnt[k] || 0) + 1; }); });
+        R.판칭호 = Object.keys(cnt).filter(function (k) { return cnt[k] * 2 > ppl.length; }).map(function (k) { return ACT_TITLE[k]; });
+        ppl.forEach(function (q) { var ks = Object.keys(ACT_TITLE).filter(function (k) { return (AF[q.자리] || {})[k] && cnt[k] * 2 <= ppl.length && !ACT_COMMON[k]; }); q.칭호 = ks.length ? ACT_TITLE[ks.sort(function (a, b) { return cnt[a] - cnt[b]; })[0]] : null; });   /* 사람마다 하나 — 그 판에서 가장 드문 것 */
+      } catch (e) { 드러냄('native_core.game.replay', e); } }
+      return R; },   /* 승자 머리글 — 넘겨보기·PDF가 이 글 하나를 쓴다(2026-11-03) */
     'game.replayNarrow': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; var k = L.uuid || L.id; if (!(k in narrowMemo)) narrowMemo[k] = GameReplay.narrow(L); return narrowMemo[k]; }, 'day.voters': function (k) { return voters(+k); }, records: records, record: record, library: library, 'library.mode': libraryMode,
     /* 엔진 내부 관측: 공개 확정본의 생사·공개한 밤만. 큰 화면 전송 형식에는 추가하지 않는다. */
     'observation.public': function () { var P = pubState(pubEpoch()); return { through: P.announcedThrough || 0, dead: (P.seats || []).map(function (s) { return !!s.dead; }) }; },
