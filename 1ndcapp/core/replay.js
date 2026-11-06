@@ -56,12 +56,12 @@ var GameReplay = (function () {
       var succ = ev.filter(function (e) { return e.n === n && evType(e) === 'succession'; });
       out.밤.push({ 밤: n, 악행동: picks.filter(function (p) { return p.악; }), 선행동: picks.filter(function (p) { return !p.악; }), 죽음: deaths, 막힘: blocked, 정보: infos, 계승: succ.length });
       deaths.forEach(function (d) {
-        if (d.까닭 === 'demon' && !d.악 && (gotInfo[d.자리] || pointedEvil[d.자리] || d.정보직업)) scenes.push({ 순위: 3, 때: T('ui.nightN', { n: n }), 순: n * 2, 종류: T('rpl.kind.lostKey'), 톤: 'bad', 글: T(pointedEvil[d.자리] ? 'rpl.t.lostPointed' : gotInfo[d.자리] ? 'rpl.t.lostInfo' : 'rpl.t.lostRole', { p: d.이름, r: d.직업 }), 자리: [d.자리] });
+        if (d.까닭 === 'demon' && !d.악 && (gotInfo[d.자리] || pointedEvil[d.자리] || d.정보직업)) scenes.push({ 순위: 3, 때: whenNight(n), 순: n * 2, 종류: T('rpl.kind.lostKey'), 톤: 'bad', 글: T(pointedEvil[d.자리] ? 'rpl.t.lostPointed' : gotInfo[d.자리] ? 'rpl.t.lostInfo' : 'rpl.t.lostRole', { p: d.이름, r: d.직업 }), 자리: [d.자리] });
       });
-      blocked.forEach(function (b) { scenes.push({ 순위: 4, 때: T('ui.nightN', { n: n }), 순: n * 2, 종류: T('rpl.kind.blocked'), 톤: 'good', 글: b.막은 ? T('rpl.t.guarded', { p: b.이름, g: b.막은 }) : T('rpl.t.survived', { p: b.이름 }), 자리: [b.대상] }); });
-      infos.filter(function (x) { return x.거짓 && (x.까닭종류 ? x.까닭종류 !== 'other' : /중독|취/.test(x.까닭 || ''));   /* 코드 먼저, 옛 기록만 글자 */ }).forEach(function (x) { scenes.push({ 순위: 5, 때: T('ui.nightN', { n: n }), 순: n * 2, 종류: T('rpl.kind.blurred'), 톤: 'bad', 글: T('rpl.t.blurred', { p: x.이름, r: x.직업, w: x.까닭 }), 자리: [x.자리] }); });
+      blocked.forEach(function (b) { scenes.push({ 순위: 4, 때: whenNight(n), 순: n * 2, 종류: T('rpl.kind.blocked'), 톤: 'good', 글: b.막은 ? T('rpl.t.guarded', { p: b.이름, g: b.막은 }) : T('rpl.t.survived', { p: b.이름 }), 자리: [b.대상] }); });
+      infos.filter(function (x) { return x.거짓 && (x.까닭종류 ? x.까닭종류 !== 'other' : /중독|취/.test(x.까닭 || ''));   /* 코드 먼저, 옛 기록만 글자 */ }).forEach(function (x) { scenes.push({ 순위: 5, 때: whenNight(n), 순: n * 2, 종류: T('rpl.kind.blurred'), 톤: 'bad', 글: T('rpl.t.blurred', { p: x.이름, r: x.직업, w: x.까닭 }), 자리: [x.자리] }); });
       var heir = function (e) { return e.seat || Object.keys(P).map(Number).filter(function (s) { return P[s].이름 === e.대상; })[0] || null; };   // 계승 기록은 이름(대상)으로 남는다
-      succ.forEach(function (e) { var h = heir(e); scenes.push({ 순위: 5, 때: T('ui.nightN', { n: n }), 순: n * 2, 종류: T('rpl.kind.succ'), 톤: 'bad', 글: e.이전 ? T('rpl.t.succ', { p: e.대상 || '', a: e.이전, b: e.이후 || T('rpl.t.demonWord') }) : T('rpl.t.succPlain', { p: e.대상 || '' }), 자리: h ? [h] : [] }); });
+      succ.forEach(function (e) { var h = heir(e); scenes.push({ 순위: 5, 때: whenNight(n), 순: n * 2, 종류: T('rpl.kind.succ'), 톤: 'bad', 글: e.이전 ? T('rpl.t.succ', { p: e.대상 || '', a: e.이전, b: e.이후 || T('rpl.t.demonWord') }) : T('rpl.t.succPlain', { p: e.대상 || '' }), 자리: h ? [h] : [] }); });
       infos.forEach(function (x) { gotInfo[x.자리] = true; if (!x.거짓 && x.짚은악.length) pointedEvil[x.자리] = true; });
       succ.forEach(function (e) { var h = heir(e); if (h) team[h] = 'demon'; });   // 계승 — 이 뒤로는 새 흉수
       /* 낮 */
@@ -76,15 +76,20 @@ var GameReplay = (function () {
       if (start) out.흐름.push({ 밤: n, 산선: start.산선, 산악: start.산악 });
       if (noms.length || votes.length || execs.length || dayDeaths.length || start) out.낮.push({ 밤: n, 지명: noms, 투표: votes, 처형: execs, 죽음: dayDeaths });
       execs.forEach(function (x) {
-        if (x.악) scenes.push({ 순위: 2, 때: T('ui.dayN', { n: n }), 순: n * 2 + 1, 종류: T('rpl.kind.caught'), 톤: 'good', 글: T('rpl.t.exec', { p: x.이름, r: x.직업 }), 자리: [x.자리], 흉수: x.흉수 });
-        else scenes.push({ 순위: 5, 때: T('ui.dayN', { n: n }), 순: n * 2 + 1, 종류: T('rpl.kind.execGood'), 톤: 'bad', 글: T('rpl.t.exec', { p: x.이름, r: x.직업 }), 자리: [x.자리] });
+        if (x.악) scenes.push({ 순위: 2, 때: T('rpl.w.day', { n: n }), 순: n * 2 + 1, 종류: T('rpl.kind.caught'), 톤: 'good', 글: T('rpl.t.exec', { p: x.이름, r: x.직업 }), 자리: [x.자리], 흉수: x.흉수 });
+        else scenes.push({ 순위: 5, 때: T('rpl.w.day', { n: n }), 순: n * 2 + 1, 종류: T('rpl.kind.execGood'), 톤: 'bad', 글: T('rpl.t.exec', { p: x.이름, r: x.직업 }), 자리: [x.자리] });
       });
-      dayDeaths.filter(function (d) { return d.악; }).forEach(function (d) { scenes.push({ 순위: 2, 때: T('ui.dayN', { n: n }), 순: n * 2 + 1, 종류: T('rpl.kind.caught'), 톤: 'good', 글: T('rpl.t.died', { p: d.이름, r: d.직업 }), 자리: [d.자리] }); });
+      dayDeaths.filter(function (d) { return d.악; }).forEach(function (d) { scenes.push({ 순위: 2, 때: T('rpl.w.day', { n: n }), 순: n * 2 + 1, 종류: T('rpl.kind.caught'), 톤: 'good', 글: T('rpl.t.died', { p: d.이름, r: d.직업 }), 자리: [d.자리] }); });
     }
     /* 승부를 가른 장면 — 판의 마지막 처형·사망 */
     var last = ev.filter(function (e) { return evType(e) === 'execute' || evType(e) === 'death'; }).pop();
-    if (last && out.승자) scenes.push({ 순위: 1, 때: T(last.phase === 'day' ? 'ui.dayN' : 'ui.nightN', { n: last.n }), 순: last.n * 2 + (last.phase === 'day' ? 1 : 0), 종류: T('rpl.kind.decider'), 톤: 'good', 글: T('rpl.t.final', { p: name(last.seat), r: last.role, h: T(evType(last) === 'execute' ? 'ui.cause.exec' : 'ui.dead'), w: T(out.승자 === 'good' ? 'ui.win.good' : out.승자 === 'evil' ? 'ui.win.evil' : 'ui.gameOver') }), 자리: [last.seat] });
+    if (last && out.승자) scenes.push({ 순위: 1, 때: last.phase === 'day' ? T('rpl.w.day', { n: last.n }) : whenNight(last.n), 순: last.n * 2 + (last.phase === 'day' ? 1 : 0), 종류: T('rpl.kind.decider'), 톤: 'good', 글: T('rpl.t.final', { p: name(last.seat), r: last.role, h: T(evType(last) === 'execute' ? 'ui.cause.exec' : 'ui.dead'), w: T(out.승자 === 'good' ? 'ui.win.good' : out.승자 === 'evil' ? 'ui.win.evil' : 'ui.gameOver') }), 자리: [last.seat] });
     out.주요장면 = pickScenes(scenes);
+    (function () { var gone = {}, nn = {}; out.밤.forEach(function (x) { nn[x.밤] = x; }); var dd = {}; out.낮.forEach(function (x) { dd[x.밤] = x; });   /* 유령표 — 그 낮 투표 때 이미 죽은 투표자(죽은 사람도 규칙상 투표할 수 있음, AI 가 기록 오류로 읽지 않게, 2026-11-06) */
+      Object.keys(Object.assign({}, nn, dd)).map(Number).sort(function (a, b) { return a - b; }).forEach(function (k) {
+        (nn[k] ? nn[k].죽음 : []).forEach(function (d) { gone[d.자리] = 1; });
+        var d = dd[k]; if (!d) return; d.투표.forEach(function (v) { v.유령표 = v.투표자.filter(function (s) { return gone[s]; }); });
+        d.처형.forEach(function (x) { gone[x.자리] = 1; }); d.죽음.forEach(function (x) { gone[x.자리] = 1; }); }); })();
     out.통계 = stats(out, P, o.public);
     tell(out, L);   /* 문장 엔진 — 사람별 이야기·걸음 제목·한 줄 요약(규칙으로, 같은 판이면 같은 글, 2026-11-06 햇살님 «극도로 잘 짜인 코드로 흉내») */
     out.좁힌후보 = o.narrow ? narrowOf(L) : null;   // 무겁다(13명 판 2초대) — 화면은 game.replayNarrow 로 따로, 그린 뒤에
@@ -93,6 +98,8 @@ var GameReplay = (function () {
   }
 
   /* 문장 엔진 — 판 사실만으로 글을 짓는다(앱 계산값 없음). 절은 «이음꼴(.c)»과 «끝꼴(.e)» 두 벌, 우선순위로 최대 둘 + 결말 하나. 조사는 말 장치({x|을}) */
+  /* 장면 «때» — 장 제목과 같은 말(정보의 밤 / n일차 밤 / n일차 낮). 원본 밤 번호(밤 1 = 정보의 밤)와 섞여 한 칸씩 어긋나 보이던 것(2026-11-06 GPT 분석에서 발견) */
+  function whenNight(n) { return n <= 1 ? T('rpl.w.night0') : T('rpl.w.night', { n: n - 1 }); }
   function tell(out, L) {
     var P = {}; out.사람.forEach(function (p) { P[p.자리] = p; });
     var EV = function (s) { return !!EVIL[(P[s] || {}).편]; }, nm = function (s) { return (P[s] || {}).이름 || seatNm(s); };
