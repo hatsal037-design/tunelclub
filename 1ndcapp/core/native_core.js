@@ -628,7 +628,7 @@ var NativeCore = (function () {
       wins = lg ? [[SAY('mi.lg.goodWho'), SAY('mi.lg.goodIf')], [SAY('mi.lg.evilWho'), SAY('mi.lg.evilIf')]] : [[SAY('mi.std.goodWho'), SAY('mi.std.goodIf')], [SAY('mi.std.evilWho'), SAY('mi.std.evilIf')]];
     }
     var T = m.composeTable, ks = T ? Object.keys(T).map(Number).sort(function (a, b) { return a - b; }) : [], g = /(\d+)\s*~\s*(\d+)\s*(?:인|명)/.exec(m.guide || '');
-    var range = ks.length ? [ks[0], ks[ks.length - 1]] : m.botcRules ? [Math.min.apply(null, Object.keys(TEAM_SETUP).map(Number)), 15] : g ? [+g[1], +g[2]] : null;   // 시계탑은 16명부터 15 + 여행자
+    var range = ks.length ? [ks[0], ks[ks.length - 1]] : m.botcRules ? [Math.min.apply(null, Object.keys(TEAM_SETUP).map(Number)), 15] : Array.isArray(m.players) ? [m.players[0], m.players[1]] : g ? [+g[1], +g[2]] : null;   /* 모드 칸 players 먼저 — 안내 글은 «외지인 6~8명»을 인원으로 읽기도 했다(액운, 2026-11-07). 글은 칸 없는 파생 모드용 */   // 시계탑은 16명부터 15 + 여행자
     var gd = String(m.guide || '').split('※')[0].trim(), ss = gd.match(/.+?(?:\.|다\.)(?:\s|$)/g) || (gd ? [gd] : []), tag = ss.length ? ss[0].trim() : null;   // 모드 한 줄 — 안내 글 첫 문장(짧으면 둘째까지), 44자 넘으면 비움
     if (tag && tag.length < 8 && ss.length > 1) tag = ss.slice(0, 2).map(function (s) { return s.trim(); }).join(' ');
     var hubKo = HUBKO(m.hub || ''), title = String(m.name || '').replace(/\s*\(.*\)\s*$/, '').replace(new RegExp('^' + String(m.hub || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*·\\s*'), '');
@@ -969,7 +969,7 @@ var NativeCore = (function () {
     var win = state.practice ? null : ((L && L.winner) || wz.doneWin || null), ends = verdict().filter(function (x) { return x.level === 'end'; }).map(function (x) { return x.text; });
     return { winner: win, winGroup: (L && L.winGroup) || null, title: win ? winKoOf(win, L && L.winGroup) : SAY(state.practice ? 'ui.closedPractice' : 'ui.closed'), why: ends.length ? ends.join(' → ') : (L && L.note ? L.note : (win ? SAY('ms.rp.hostChose') : SAY('ms.rp.noWinner'))),
       recorded: !!(L && L.winner), practice: !!state.practice, politician: actItems(state.practice ? [] : polActs()),
-      players: ((L && L.players) || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: p.side || '', won: p.won === true, dead: !!p.dead }; }),
+      players: ((L && L.players) || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: playerSideCode(p),   /* 편 코드(good·evil·neutral) — 한국어 사본(p.side) 대신(2026-11-07) */ won: p.won === true, dead: !!p.dead }; }),
       tvReveal: state.tvReveal !== false, tvReplay: typeof state.tvReplay === 'number' ? state.tvReplay : null, replayDays: endReplayDays() };   // 7 큰 화면 공개·복기 조작용
   }
 
@@ -998,7 +998,7 @@ var NativeCore = (function () {
   function record(id) {
     var L = logsAll().find(function (x) { return x.id === id; }); if (!L) return null; logHub(L);
     var r = recordRow(L); r.note = L.note || '';
-    r.players = (L.players || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: p.side || '', won: p.won === true, dead: !!p.dead }; });
+    r.players = (L.players || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: playerSideCode(p),   /* 편 코드(good·evil·neutral) — 한국어 사본(p.side) 대신(2026-11-07) */ won: p.won === true, dead: !!p.dead }; });
     r.events = (L.events || []).map(eventLine).filter(Boolean); r.winChoices = winChoices(L.mode); return r;
   }
   function library() {
