@@ -6,3 +6,6 @@
 # supabase CLI 작업 파일
 .temp/
 supabase/.temp/
+
+# 회원 개인정보가 든 SQL — 공개 저장소에 올리지 않는다(2026-11-07)
+1ndclub/supabase/import_data.sql
