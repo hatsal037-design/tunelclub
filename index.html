@@ -804,7 +804,7 @@ footer .ft{font-size:10.5px;color:#A79E8F;letter-spacing:1px;line-height:1.8}
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="tunel.js?v=52"></script>
+<script src="tunel.js?v=54"></script>
 <script>
 /* ══ 탭 전환 + 좌우 스와이프 — 버튼도 같은 슬라이드로 넘어간다 ══ */
 (function(){
@@ -1047,11 +1047,11 @@ document.getElementById('pastMore').onclick = () => keepView(() => {
       <hr>
       <label class="flab" for="aNick">닉네임</label>
       <div class="fld2">
-        <input id="aNick" value="${m.nick}" maxlength="10" placeholder="닉네임 (한글 1~10자)" readonly>
+        <input id="aNick" value="${m.nick}" maxlength="12" placeholder="닉네임 (1~12자)" readonly>
         <button id="aRename">바꾸기</button>
       </div>
       <p class="err2" id="aErr"></p>
-      <p class="hint2">닉네임은 한 달에 한 번 바꿀 수 있어요.</p>
+      <p class="hint2">닉네임은 30일에 한 번 바꿀 수 있어요.</p>
       <label class="flab" for="aPay" style="margin-top:16px">입금자 실명</label>
       <div class="fld2">
         <input id="aPay" maxlength="20" placeholder="입금자 실명" autocomplete="name" readonly>
@@ -1121,12 +1121,12 @@ document.getElementById('pastMore').onclick = () => keepView(() => {
       applyPfp(null);
     };
 
-    /* 닉네임 — 서버가 한 달 제한을 강제하고(2026-09-29 6개월→한 달), 거절 사유를 그대로 보여준다 */
+    /* 닉네임 — 통합회원 닉(첫밤과 같은 것). 서버가 1~12자·30일 규칙을 강제하고 거절 사유를 그대로 보여준다 (2026-11-09 통합회원) */
     const err = document.getElementById('aErr'), nickIn = document.getElementById('aNick');
     nickIn.dataset.was = m.nick;
     unlockable(nickIn, document.getElementById('aRename'), async n => {
       err.style.display='none';
-      if(!await ask({ title:`닉네임을 «${n}»(으)로 바꿀까요?`, body:'바꾸면 한 달 동안 다시 바꿀 수 없어요.', ok:'바꾸기' })) return false;
+      if(!await ask({ title:`닉네임을 «${n}»(으)로 바꿀까요?`, body:'바꾸면 30일 동안 다시 바꿀 수 없어요.', ok:'바꾸기' })) return false;
       const { error } = await sb.rpc('rename_me', { p_nick: n });
       if(error){ err.textContent = error.message; err.style.display='block'; return false; }
       location.reload();   // 히어로·팝업·알림함이 새 닉네임으로

@@ -34,6 +34,7 @@ async function readPublic(build){
   }
   return r;
 }
+let _needsAsked = false;
 function sb(){
   if(!_sb){
     /* 페이지가 자기 클라이언트를 이미 만들었으면 그걸 쓴다 (window.__TNL_SB) —
@@ -190,6 +191,48 @@ const TUNEL = {
      1ndclub 의 로그인·로그아웃(js/auth.js)과 auth 이벤트가 함께 쓴다 (2026-08-26) */
   resetMe(){ _meP = null; },
 
+  /* 통합회원(첫밤사망자클럽 계정)에 빈 칸(닉·아이디·약관 동의)이 있으면 채우라고 한 번 띄운다.
+     «나중에»를 누르면 이 탭에서는 다시 안 묻는다. 규칙 판정은 서버(dangsan.*)가 한다 (2026-11-09 햇살님 «채우라고 해 줘») */
+  async askNeeds(){
+    let needs = [];
+    try{ if(sessionStorage.getItem('tnl.needs.later')) return; }catch(e){}
+    try{ const { data } = await sb().schema('dangsan').rpc('my_needs'); needs = Array.isArray(data) ? data : []; }catch(e){ return; }
+    if(!needs.length || document.getElementById('tnlNeeds')) return;
+    const me = await TUNEL.me().catch(() => null);
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const fld = 'display:block;width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;font:16px system-ui;margin-top:4px';
+    const box = document.createElement('div');
+    box.id = 'tnlNeeds';
+    box.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+    box.innerHTML = `<div style="background:#fff;color:#1d1b18;max-width:360px;width:100%;padding:20px;font:15px/1.5 system-ui">
+      <b style="font-size:17px">계정 채우기</b>
+      ${needs.includes('nick') ? `<label style="display:block;margin-top:14px">닉네임<input id="tnN" maxlength="12" value="${esc(me?.nick)}" style="${fld}"></label>` : ''}
+      ${needs.includes('handle') ? `<label style="display:block;margin-top:14px">아이디<input id="tnH" maxlength="30" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="영문 소문자·숫자·_·." style="${fld}"></label>` : ''}
+      ${needs.includes('agree') ? `<label style="display:flex;gap:8px;align-items:center;margin-top:14px"><input type="checkbox" id="tnA"> 만 14세 이상·약관 동의</label>
+        <div style="font-size:13px;margin-top:4px"><a href="/1ndcapp/terms.html" target="_blank">약관</a> · <a href="/1ndcapp/privacy.html" target="_blank">개인정보</a></div>` : ''}
+      <p id="tnE" style="color:#b3261e;font-size:13px;margin:10px 0 0;display:none"></p>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button id="tnLater" type="button" style="flex:1;min-height:44px;background:none;border:1px solid #ccc;font:inherit">나중에</button>
+        <button id="tnSave" type="button" style="flex:1;min-height:44px;background:#1d1b18;color:#fff;border:0;font:inherit">저장</button></div></div>`;
+    document.body.appendChild(box);
+    const err = t => { const e = box.querySelector('#tnE'); e.textContent = t; e.style.display = 'block'; };
+    box.querySelector('#tnLater').onclick = () => { try{ sessionStorage.setItem('tnl.needs.later', '1'); }catch(e){} box.remove(); };
+    box.querySelector('#tnSave').onclick = async () => {
+      const call = async (fn, args) => { const { data, error } = await sb().schema('dangsan').rpc(fn, args); if(error) throw error; if(data && data.ok === false) throw new Error(data.error || '저장하지 못했어요'); };
+      const n = box.querySelector('#tnN')?.value.trim(), h = box.querySelector('#tnH')?.value.trim().toLowerCase(), a = box.querySelector('#tnA');
+      if(needs.includes('nick') && !n) return err('닉네임을 적어 주세요.');
+      if(needs.includes('handle') && !h) return err('아이디를 적어 주세요.');
+      if(a && !a.checked) return err('만 14세 이상·약관 동의가 필요해요.');
+      try{
+        if(n && n !== me?.nick) await call('set_nickname', { p_nick: n });
+        if(h) await call('set_handle', { p_handle: h });
+        if(a) await call('set_profile_more', { p: { agreed: true } });
+      }catch(e){ return err(e.message || '저장하지 못했어요'); }
+      box.remove();
+      if(n && n !== me?.nick) location.reload();
+    };
+  },
+
   /* 노선 값을 미리 받아 두면 화면에서 동기로 쓸 수 있다 */
   lineSync(id){ const l = (_lines || []).find(x => x.id === id); return l ? TUNEL.lineOf(l) : null; },
 
@@ -210,6 +253,7 @@ const TUNEL = {
         const { data: m } = await sb().from('members')
           .select('id,nick,no,joined,role,is_admin').eq('id', mid).single();
         if(!m) _meP = null;
+        if(m && !_needsAsked){ _needsAsked = true; setTimeout(() => TUNEL.askNeeds(), 900); }   // 통합회원 빈 칸 채우기(2026-11-09)
         return m || null;
       }catch(e){ if(hadSession) _meP = null; return null; }   // 조회 실패는 굳히지 않는다
     })();
@@ -386,7 +430,8 @@ const TUNEL = {
     const when = tbd ? (m.data?.tbdtxt || '날짜 조율 중')
       : `${+m.d.slice(5,7)}/${+m.d.slice(8)} <small style="font-size:12px">(${m.dow||''})</small>`;
     const time = tbd ? '' : (m.s ? m.s + (m.e ? '~' + m.e : '') : '');
-    const href = opt.href ?? m.line_path;
+    /* 지난 첫밤 회차는 노선 첫 화면(게임 도감)이 아니라 그 회차 참석자로(2026-11-09 햇살님 «왜 도감으로 연결되지?») */
+    const href = opt.href ?? (past && m.line === 'botc' ? m.line_path + '?past=' + m.d + '#sched' : m.line_path);
     const place = m.place || '';
     const att = past && m.att_count ? ` · ${m.att_count}명` : '';
     const desc = xl && m.memo ? `<span class="tdesc">${m.memo}</span>` : '';

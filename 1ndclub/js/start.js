@@ -9,7 +9,9 @@ renderMe(); renderGames();
   else if(['sched','me','members'].includes(v)) setView(v,true);
 }
 /* ?join=1 — 인쇄물 QR 로 들어오면 가입(로그인) 창을 바로 연다. 이미 로그인했으면 그대로 (2026-09-26 햇살님 «큐알 링크 바로 가입 페이지로») */
-bootSession().then(()=>{ if(new URLSearchParams(location.search).has('join') && !acc) askNick('login'); }).catch(()=>{});
+bootSession().then(()=>{ const q=new URLSearchParams(location.search); if(q.has('join') && !acc) askNick('login');
+  /* ?past=YYYY-MM-DD — 허브 지난 일정 티켓에서 오면 그 회차 참석자를 바로 연다(2026-11-09) */
+  const pd=q.get('past'); if(pd && /^\d{4}-\d{2}-\d{2}$/.test(pd)) openPast(pd); }).catch(()=>{});
 /* 카카오 인가 복귀(?code=)는 supabase-js가 알아서 세션으로 바꿔준다 — 별도 처리 불필요 */
 
 /* ══ 티켓 공유 / 바로 신청 링크 ══

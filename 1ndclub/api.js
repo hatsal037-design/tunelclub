@@ -49,8 +49,8 @@ API.myMember = async function(){
   if(!mid) return null;
   return await API.get(mid);
 };
-API.signupMember = async function(nick, payname){
-  const { data, error } = await sb.rpc('signup_member', { p_nick: nick, p_payname: payname });
+API.signupMember = async function(nick, payname, handle, name, agree){
+  const { data, error } = await sb.rpc('signup_member', { p_nick: nick, p_payname: payname, p_handle: handle || null, p_name: name || null, p_agree: !!agree });
   throwErr(error, '가입에 실패했어요');
   return await API.get(data);
 };

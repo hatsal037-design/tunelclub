@@ -417,7 +417,7 @@ async function memSave(i){
   const n=document.getElementById('m_nick').value.trim();
   const p=document.getElementById('m_pay').value.trim();
   if(!n) return joinErr('닉네임을 적어주세요.');
-  if(!NICK_RE.test(n)) return joinErr('닉네임은 한글만 쓸 수 있어요 (1~10자).');
+  if(!NICK_RE.test(n)) return joinErr('닉네임은 1~12자로 적어 주세요.');
   busy('저장 중');
   try{
     await API.adminUpdate(m.uid, n, p);

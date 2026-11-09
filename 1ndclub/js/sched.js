@@ -157,7 +157,7 @@ function watchPastLoader(){
 async function openPast(d){
   const p = pastList().find(x=>x.d===d); if(!p) return;
   const mine = (p.people||[]).some(pIsMe);
-  if(!mine && !canRecord()) return;
+  if(!mine && !canRecord()){ ask(acc ? '참석한 회차만 참여자를 볼 수 있어요.' : '로그인하면 참석한 회차의 참여자를 볼 수 있어요.', null); return; }   /* 조용히 아무 일 없던 것(2026-11-09) */
   try{
     const uids = (p.people||[]).map(meetKeyOf).filter(k=>MEMBERS.some(m=>m.uid===k));
     await loadPfps(uids);

@@ -91,10 +91,16 @@ function kakaoOnboard(){
     <h2>거의 다 됐어요</h2>
     <div class="mdesc">카카오 인증 완료! 모임에서 쓸 정보만 정해주세요.<br>
       <span style="color:var(--sub);font-size:12px">카톡 이름·프로필은 가져오지 않아요. 닉네임은 여기서 정한 것만 씁니다.</span></div>
-    <div class="fld"><label>닉네임 (한글만)</label>
-      <input id="kkNick" placeholder="예: 투넬" autocomplete="off"></div>
+    <div class="fld"><label>닉네임</label>
+      <input id="kkNick" placeholder="1~12자" maxlength="12" autocomplete="off"></div>
+    <div class="fld"><label>아이디</label>
+      <input id="kkHandle" placeholder="영문 소문자·숫자·_·." maxlength="30" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+    <div class="fld"><label>이름 (선택)</label>
+      <input id="kkName" maxlength="30" autocomplete="off"></div>
     <div class="fld"><label>입금자 실명</label>
       <input id="kkPay" placeholder="계좌이체 할 때 이름" autocomplete="name"></div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-top:10px"><input type="checkbox" id="kkAgree"> 만 14세 이상·약관 동의</label>
+    <div style="font-size:12px;margin-top:6px"><a href="/1ndcapp/terms.html" target="_blank">약관</a> · <a href="/1ndcapp/privacy.html" target="_blank">개인정보</a></div>
     <div id="joinErr" style="display:none;color:var(--red-lite);font-size:12px;margin-top:9px;line-height:1.6"></div>
     <div class="notice" style="margin:13px 0 0">실명은 어디에도 보이지 않아요. 계좌이체를 받았을 때 닉네임과 맞춰 보는 데만 써요.</div>
     <div class="mbtns"><button class="mbtn" id="authBtn" onclick="kakaoJoin()">시작하기</button></div>
@@ -104,11 +110,15 @@ function kakaoOnboard(){
 async function kakaoJoin(){
   const n=document.getElementById('kkNick').value.trim();
   const pn=document.getElementById('kkPay').value.trim();
+  const h=document.getElementById('kkHandle').value.trim().toLowerCase();
+  const nm=document.getElementById('kkName').value.trim();
   if(!n) return joinErr('닉네임을 적어주세요.');
-  if(!NICK_RE.test(n)) return joinErr('닉네임은 한글만 쓸 수 있어요 (1~10자).');
+  if(!NICK_RE.test(n)) return joinErr('닉네임은 1~12자로 적어 주세요.');
+  if(!HANDLE_RE.test(h)) return joinErr('아이디는 영문 소문자·숫자·밑줄(_)·점(.)으로 30자까지예요.');
   if(!pn) return joinErr('입금자 실명을 적어 주세요.');
+  if(!document.getElementById('kkAgree').checked) return joinErr('만 14세 이상·약관 동의가 필요해요.');
   busy('가입 중');
-  try{ await afterAuth(await API.signupMember(n, pn)); welcomeChat(); }
+  try{ await afterAuth(await API.signupMember(n, pn, h, nm, true)); welcomeChat(); }
   catch(e){ joinErr(e.message); }
 }
 
@@ -165,7 +175,9 @@ function joinErr(m){
 }
 function busy(t){ const b=document.getElementById('authBtn'); if(b){ b.disabled=true; b.innerHTML=`<span class="spin"></span> ${t}`; } }
 
-const NICK_RE = /^[가-힣]{1,10}$/;   // 닉네임은 한글 1~10자만
+/* 닉·아이디는 통합회원(첫밤사망자클럽) 규칙 — 자세한 판정(겹침·금칙·30일)은 서버가 한다 (2026-11-09 «더 많은 쪽으로 통일») */
+const NICK_RE = /^(?=.*\S).{1,12}$/u;
+const HANDLE_RE = /^(?!\.)(?!.*\.\.)(?!.*\.$)[a-z0-9._]{1,30}$/;
 
 async function afterAuth(a){
   try{ TUNEL.resetMe(); }catch(e){}   /* 로그인·가입 직후 — 공용 모듈이 서버에 다시 묻게 (2026-08-26) */
