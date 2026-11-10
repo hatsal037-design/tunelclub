@@ -103,6 +103,7 @@ var ROUNDS = [
     mapq:'시디즈 더 프로그레시브 송파', cap:12, fee:'13,000원',
     note:'처음이어도 괜찮은 시계탑 · 신청은 문토에서', after:null,
     name:'12회차 정모',
+    apply:{ munto:'https://www.munto.kr/app/socialing?id=706983' },
     route:{ img:'img/place/botc_way_12.jpg', tip:'방이역 3번 출구에서 걸어서 12분, 젬스빌딩 1층 시디즈 매장 안쪽 커뮤니티룸이에요. 지상 1층이라 계단·엘리베이터 없이 바로 들어옵니다.\n헤매시면 톡 주세요.' } },
 
   { r:null, d:'2026-11-21', dow:'토', s:'14:00', e:'19:00', h:5, st:'soon',
