@@ -7,11 +7,11 @@
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -apple-system,"SF Pro Text","Apple SD Gothic Neo","Noto Sans KR",sans-serif;overflow:hidden}
 #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
-.tv{position:relative;width:100%;max-width:1120px;aspect-ratio:16/9;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.25);--bg:#f5f5f7;--fg:#1c1c1e;--mute:#8e8e93;--seat:#fff;--line:rgba(60,60,67,.24);background:var(--bg);color:var(--fg)}
+.tv{position:relative;width:100%;max-width:1120px;aspect-ratio:16/9;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.25);--bg:#f5f5f7;--fg:#1c1c1e;--mute:#5c5c61;--seat:#fff;--line:rgba(60,60,67,.4);background:var(--bg);color:var(--fg)}
 .tv.waiting{background:url(wait/dirt.jpg) center bottom/100% 34% no-repeat,#221a40 url(night.jpg) center/cover}   /* 대기 화면 — 첫밤 밤하늘 + 흙밭 */
 .tv.waiting #arena{overflow:visible}
 .tv.waiting .topline{visibility:hidden}   /* 대기 화면은 제목이 크게 있으니 위 줄을 비운다 */
-.tv.night{--bg:#0b0f1c;--fg:#f2f2f7;--mute:#8e8e9a;--seat:#1c2233;--line:rgba(235,235,245,.18)}
+.tv.night{--bg:#0b0f1c;--fg:#f2f2f7;--mute:#9e9ea8;--seat:#1c2233;--line:rgba(235,235,245,.32)}
 .tv svg.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .tv svg.ov path.ld{fill:none;stroke:var(--line);stroke-width:1.3}
 .st{position:absolute;transform:translate(-50%,-50%)}
@@ -35,7 +35,7 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
 .ring .track{stroke:rgba(120,120,128,.2)} .ring .bar{stroke:#ff9f0a;stroke-linecap:round}
 .ring.warn .bar{stroke:#ff3b30}
-.num{font-family:-apple-system,"SF Pro Display",system-ui,sans-serif;font-weight:200;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+.num{font-family:-apple-system,"SF Pro Display",system-ui,sans-serif;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
 .warn .num{color:#ff3b30}
 .mute{color:var(--mute);font-variant-numeric:tabular-nums}
 .box{position:absolute;transform:translate(-50%,-50%);text-align:center}
@@ -44,7 +44,7 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .chip{position:absolute;display:flex;flex-direction:column;gap:.15em;color:var(--fg)}
 .chip .lab{color:var(--mute);font-weight:500;letter-spacing:.02em}
 .chip .row{display:flex;align-items:baseline;gap:.5em}
-.chip .big{font-family:-apple-system,'SF Pro Display',system-ui;font-weight:300;font-variant-numeric:tabular-nums;line-height:1}
+.chip .big{font-family:-apple-system,'SF Pro Display',system-ui;font-weight:500;font-variant-numeric:tabular-nums;line-height:1}
 .box .dot,.chip .dot{display:inline-block;width:.42em;height:.42em;border-radius:50%;margin-right:.25em;vertical-align:.12em}
 
 .tv{max-width:none;border-radius:20px;container-type:inline-size}
@@ -61,7 +61,7 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .footer{position:absolute;bottom:2%;left:3%;right:3%;font-size:1.2cqw;color:#77777d;display:flex;justify-content:space-between}
 .centerlabel{color:#77777d;font-weight:500;font-size:1.45cqw;margin-bottom:.5em}
 .centername{font-size:2.1cqw;font-weight:600;letter-spacing:-.04em}
-.centerbig{font-size:5.3cqw;font-weight:250;line-height:1.1;font-variant-numeric:tabular-nums}
+.centerbig{font-size:5.3cqw;font-weight:500;line-height:1.1;font-variant-numeric:tabular-nums}
 .centersub{font-size:1.3cqw;color:#77777d;margin-top:.6em}
 
 .tv{width:min(100vw,177.78vh);max-width:none;border-radius:0;box-shadow:none}
@@ -78,7 +78,7 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .leave:focus-visible{outline:3px solid #007aff;outline-offset:3px}
 [hidden]{display:none!important}
 .end-map{position:absolute;inset:0}.end-map.split{right:49%}
-.end-seat{position:absolute;transform:translate(-50%,-50%);background:var(--seat);border:1px solid var(--line);border-radius:50%;display:grid;place-items:center}
+.end-seat{position:absolute;transform:translate(-50%,-50%);background:var(--seat);border:max(1px,.06cqw) solid var(--line);border-radius:50%;display:grid;place-items:center}
 .end-seat img,.replay-face img{width:88%;height:88%;object-fit:contain}
 .end-seat.dead img,.replay-face.dead img{filter:grayscale(1);opacity:.45}
 .seat-badge{position:absolute;background:var(--bg);border-radius:50%;padding:.08em .24em;line-height:1.15;font-weight:600;z-index:3}
@@ -90,14 +90,14 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .replay-tile{position:relative;background:white;border-radius:calc(16 * var(--u));padding:calc(30 * var(--u)) calc(14 * var(--u)) calc(16 * var(--u));text-align:center;min-width:0}
 .replay-seq{position:absolute;left:calc(14 * var(--u));top:calc(10 * var(--u));font-size:calc(13 * var(--u));color:var(--mute)}
 .replay-faces{display:flex;align-items:center;justify-content:space-evenly;gap:calc(12 * var(--u));margin:auto auto calc(10 * var(--u));max-width:100%}
-.replay-face{position:relative;flex:0 0 auto;width:calc(var(--face) * var(--u));height:calc(var(--face) * var(--u));border-radius:50%;background:white;border:1px solid var(--line);display:grid;place-items:center;font-size:calc(20 * var(--u))}
+.replay-face{position:relative;flex:0 0 auto;width:calc(var(--face) * var(--u));height:calc(var(--face) * var(--u));border-radius:50%;background:white;border:max(1px,.06cqw) solid var(--line);display:grid;place-items:center;font-size:calc(20 * var(--u))}
 .replay-face.executed img{filter:grayscale(1)}.evil-dot{position:absolute;right:0;top:0;width:calc(9 * var(--u));height:calc(9 * var(--u));border:2px solid white;border-radius:50%;background:#ff3b30}
 .action-icon{width:calc(28 * var(--u));height:calc(28 * var(--u));flex-shrink:0;vertical-align:-.15em}
 .replay-caption{font-size:calc(17 * var(--u));line-height:1.35;overflow-wrap:anywhere}.replay-caption .target{color:#737379}.replay-caption .dead-name{text-decoration:line-through}.replay-caption strong{font-weight:600}
 .replay-caption{word-break:keep-all;overflow-wrap:normal;font-weight:600}
 .caption-names{display:inline-block;max-width:100%}
 .caption-unit,.caption-result{display:inline-block;white-space:nowrap}
-.caption-dot{font-weight:400;color:#8e8e93}
+.caption-dot{font-weight:500;color:#6e6e73}
 /* 이번 판 안내(2026-10-24, 오리지널 마피아만 — 코어가 briefing 을 줄 때) — 룰 설명은 화면 전체, 넘기기 중엔 오른쪽 천, 낮엔 오른쪽 아래 구석. 그림은 js/briefing.js */
 #brief{position:absolute;inset:0;z-index:6}
 #bpanel{position:absolute;top:0;right:0;bottom:0;width:36%;z-index:5}
@@ -111,8 +111,8 @@ html:not([lang=ko]) .bcorner{white-space:normal;width:21cqw}   /* 다른 말은 
 /* ── 큰 화면 v5 — 애플 결(2026-10-25, js/screen_v5.js 가 그림). 옛 화면과 클래스 이름이 겹쳐 전부 .v5tv 아래로만 ── */
 .v5{position:fixed;inset:0;background:#000;overflow:hidden;z-index:3}
 .v5tv{position:absolute;left:0;top:0;height:1080px;transform-origin:0 0;overflow:hidden;font:15px/1.45 -apple-system,"SF Pro Text","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
-  --bg:#f5f5f7;--fg:#1c1c1e;--mute:#6e6e73;--line:rgba(60,60,67,.24);--sec:rgba(60,60,67,.6);--g2:#aeaeb2;--g5:#e5e5ea;--mat:#fff;--matl:rgba(0,0,0,.06);background:var(--bg);color:var(--fg)}
-.v5tv.night{--bg:#0b0f1c;--fg:#f2f2f7;--mute:#9a9aa6;--line:rgba(235,235,245,.2);--sec:rgba(235,235,245,.6);--g2:#636366;--g5:#2c2c2e;--mat:#1c1c1e;--matl:rgba(255,255,255,.08)}
+  font-weight:500;--bg:#f5f5f7;--fg:#1c1c1e;--mute:#55555a;--line:rgba(60,60,67,.4);--sec:rgba(60,60,67,.8);--g2:#8e8e93;--g5:#e5e5ea;--mat:#fff;--matl:rgba(0,0,0,.06);background:var(--bg);color:var(--fg)}
+.v5tv.night{--bg:#0b0f1c;--fg:#f2f2f7;--mute:#a8a8b2;--line:rgba(235,235,245,.32);--sec:rgba(235,235,245,.75);--g2:#7c7c80;--g5:#2c2c2e;--mat:#1c1c1e;--matl:rgba(255,255,255,.08)}
 .v5tv .t76{font-size:76px;line-height:96px}.v5tv .t48{font-size:48px;line-height:56px}.v5tv .t38{font-size:38px;line-height:46px}.v5tv .t31{font-size:31px;line-height:38px}.v5tv .t29{font-size:29px;line-height:36px}.v5tv .t25{font-size:25px;line-height:32px}.v5tv .t23{font-size:23px;line-height:30px}
 .v5tv svg.ov{position:absolute;inset:0;width:1920px;height:1080px;pointer-events:none}.v5tv svg.ov path.ld{fill:none;stroke:var(--line);stroke-width:1.5}
 .v5tv .st{position:absolute;transform:translate(-50%,-50%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-variant-numeric:tabular-nums;background:var(--mat);color:var(--fg);box-shadow:0 1px 4px rgba(0,0,0,.08),0 0 0 1px var(--matl)}

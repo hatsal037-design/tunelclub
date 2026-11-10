@@ -727,5 +727,8 @@
  "rpl.h.dayNone": "처형 없음",
  "rpl.sum": "{w} · 처형 적중 {a}/{b} · 밤 사망 {d} · 막음 {k}",
  "rpl.s.voteHit.c": "{t}의 처형에 손을 들었고",
- "rpl.s.voteMiss.c": "{t}의 처형에 손을 들었지만 선이었고"
+ "rpl.s.voteMiss.c": "{t}의 처형에 손을 들었지만 선이었고",
+ "ans.meet.allies": "같은 편: {s}",
+ "gt.nbPoison": "이웃 중독({r@role})",
+ "gt.worldFalse": "만물 거짓(미혹귀·보르톡스 판)"
 }

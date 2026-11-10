@@ -749,5 +749,8 @@
  "rpl.h.dayNone": "Không xử tử",
  "rpl.sum": "{w} · xử tử trúng {a}/{b} · chết đêm {d} · chặn {k}",
  "rpl.s.voteHit.c": "bỏ phiếu xử tử {t},",
- "rpl.s.voteMiss.c": "bỏ phiếu xử tử {t} nhưng là phe thiện,"
+ "rpl.s.voteMiss.c": "bỏ phiếu xử tử {t} nhưng là phe thiện,",
+ "ans.meet.allies": "Cùng phe: {s}",
+ "gt.nbPoison": "Bị đầu độc bởi hàng xóm ({r@role})",
+ "gt.worldFalse": "Mọi thứ đều sai (ván có Vortox)"
 }

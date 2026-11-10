@@ -749,5 +749,8 @@
  "rpl.h.dayNone": "処刑のない昼",
  "rpl.sum": "{w} · 処刑的中 {a}/{b} · 夜の死亡 {d} · 防御 {k}",
  "rpl.s.voteHit.c": "{t}の処刑に手を挙げ、",
- "rpl.s.voteMiss.c": "{t}の処刑に手を挙げたが善で、"
+ "rpl.s.voteMiss.c": "{t}の処刑に手を挙げたが善で、",
+ "ans.meet.allies": "同じ陣営: {s}",
+ "gt.nbPoison": "隣人の毒（{r@role}）",
+ "gt.worldFalse": "万物偽り（ヴォートックスの盤）"
 }

@@ -243,7 +243,7 @@
  "험담꾼": "Schwätzer",
  "내 양옆 마을 둘은 앓아누워 있다(중독).": "Die beiden Bürger neben dir sind krank (vergiftet).",
  "양옆 마을은 항상 '이웃 중독'.": "Benachbarte Bürger haben immer 'Nachbar vergiftet'.",
- "이웃 중독({r})": "Nachbar vergiftet ({r})",
+ "이웃 중독({r})": "Nachbarvergiftung ({r})",
  "간밤에는 아무도 죽지 않았습니다.": "Letzte Nacht ist niemand gestorben.",
  "진행: 밤엔 깨우지 않습니다({r} 판 용소 물결만 예외).": "Spielleiter: Nachts nicht wecken (außer Wellen im Drachenteich in einem {r}-Spiel).",
  "낮 {n}회 조언.": "Rat am Tag: {n} Einsätze.",
@@ -2911,5 +2911,7 @@
  "조용히 지나감": "Eine ruhige Nacht",
  "처형 없음": "Keine Hinrichtung",
  "{n}의 처형에 손을 들었고": "stimmte für die Hinrichtung von {n},",
- "{n}의 처형에 손을 들었지만 선이었고": "stimmte für die Hinrichtung von {n}, der gut war,"
+ "{n}의 처형에 손을 들었지만 선이었고": "stimmte für die Hinrichtung von {n}, der gut war,",
+ "같은 편: {n}": "Gleiche Seite: {n}",
+ "만물 거짓(미혹귀·보르톡스 판)": "Alles falsch (Vortox-Partie)"
 }

@@ -749,5 +749,8 @@
  "rpl.h.dayNone": "Sin ejecución",
  "rpl.sum": "{w} · ejecuciones al mal {a}/{b} · muertes nocturnas {d} · bloqueos {k}",
  "rpl.s.voteHit.c": "votó por ejecutar a {t},",
- "rpl.s.voteMiss.c": "votó por ejecutar a {t}, que era bueno,"
+ "rpl.s.voteMiss.c": "votó por ejecutar a {t}, que era bueno,",
+ "ans.meet.allies": "Mismo bando: {s}",
+ "gt.nbPoison": "Envenenamiento vecino ({r@role})",
+ "gt.worldFalse": "Todo falso (partida con Vortox)"
 }

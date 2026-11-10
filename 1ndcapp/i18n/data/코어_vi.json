@@ -2130,7 +2130,7 @@
  "악": "Ác",
  "중립": "Trung lập",
  "투표 중": "Đang bỏ phiếu",
- "이웃 중독({r})": "Hàng xóm bị đầu độc ({r})",
+ "이웃 중독({r})": "Bị đầu độc bởi hàng xóm ({r})",
  "1표": "1 phiếu",
  "{r} 사망 — 이제 하수인과 흉수에게 서로를 알려 주세요.": "{r} đã chết — bây giờ hãy cho Tay sai và Ma quỷ biết nhau.",
  "{r}에게 죽은 하수인 — 죽어서도 능력을 부려요.": "Tay sai bị {r} giết — vẫn dùng được khả năng sau khi chết.",
@@ -2911,5 +2911,7 @@
  "조용히 지나감": "Một đêm yên tĩnh",
  "처형 없음": "Không xử tử",
  "{n}의 처형에 손을 들었고": "bỏ phiếu xử tử {n},",
- "{n}의 처형에 손을 들었지만 선이었고": "bỏ phiếu xử tử {n} nhưng là phe thiện,"
+ "{n}의 처형에 손을 들었지만 선이었고": "bỏ phiếu xử tử {n} nhưng là phe thiện,",
+ "같은 편: {n}": "Cùng phe: {n}",
+ "만물 거짓(미혹귀·보르톡스 판)": "Mọi thứ đều sai (ván có Vortox)"
 }

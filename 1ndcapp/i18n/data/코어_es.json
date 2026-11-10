@@ -2130,7 +2130,7 @@
  "악": "Malo",
  "중립": "Neutral",
  "투표 중": "Votación",
- "이웃 중독({r})": "Vecino envenenado ({r})",
+ "이웃 중독({r})": "Envenenamiento vecino ({r})",
  "1표": "1 voto",
  "{r} 사망 — 이제 하수인과 흉수에게 서로를 알려 주세요.": "{r} ha muerto — ahora muestra a los Minions y al Demonio quiénes son entre sí.",
  "{r}에게 죽은 하수인 — 죽어서도 능력을 부려요.": "Minion muerto por {r} — sigue usando su habilidad después de la muerte.",
@@ -2911,5 +2911,7 @@
  "조용히 지나감": "Una noche tranquila",
  "처형 없음": "Sin ejecución",
  "{n}의 처형에 손을 들었고": "votó por ejecutar a {n},",
- "{n}의 처형에 손을 들었지만 선이었고": "votó por ejecutar a {n}, que era bueno,"
+ "{n}의 처형에 손을 들었지만 선이었고": "votó por ejecutar a {n}, que era bueno,",
+ "같은 편: {n}": "Mismo bando: {n}",
+ "만물 거짓(미혹귀·보르톡스 판)": "Todo falso (partida con Vortox)"
 }

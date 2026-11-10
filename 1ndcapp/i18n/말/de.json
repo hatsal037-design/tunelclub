@@ -750,5 +750,8 @@
  "rpl.h.dayNone": "Keine Hinrichtung",
  "rpl.sum": "{w} · Hinrichtungen Böser {a}/{b} · Nachttode {d} · Blocks {k}",
  "rpl.s.voteHit.c": "stimmte für die Hinrichtung von {t},",
- "rpl.s.voteMiss.c": "stimmte für die Hinrichtung von {t}, der gut war,"
+ "rpl.s.voteMiss.c": "stimmte für die Hinrichtung von {t}, der gut war,",
+ "ans.meet.allies": "Gleiche Seite: {s}",
+ "gt.nbPoison": "Nachbarvergiftung ({r@role})",
+ "gt.worldFalse": "Alles falsch (Vortox-Partie)"
 }

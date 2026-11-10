@@ -749,5 +749,8 @@
  "rpl.h.dayNone": "No execution",
  "rpl.sum": "{w} · executions on evil {a}/{b} · night deaths {d} · blocks {k}",
  "rpl.s.voteHit.c": "voted to execute {t},",
- "rpl.s.voteMiss.c": "voted to execute {t}, who was good,"
+ "rpl.s.voteMiss.c": "voted to execute {t}, who was good,",
+ "ans.meet.allies": "Same side: {s}",
+ "gt.nbPoison": "Neighbor poisoning ({r@role})",
+ "gt.worldFalse": "Everything false (Vortox game)"
 }

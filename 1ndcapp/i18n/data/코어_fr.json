@@ -243,7 +243,7 @@
  "험담꾼": "Commère",
  "내 양옆 마을 둘은 앓아누워 있다(중독).": "Les deux Habitants à côté de vous sont malades (empoisonnés).",
  "양옆 마을은 항상 '이웃 중독'.": "Les Habitants adjacents ont toujours « Voisin empoisonné ».",
- "이웃 중독({r})": "Voisin empoisonné ({r})",
+ "이웃 중독({r})": "Empoisonnement voisin ({r})",
  "간밤에는 아무도 죽지 않았습니다.": "Personne n’est mort hier soir.",
  "진행: 밤엔 깨우지 않습니다({r} 판 용소 물결만 예외).": "Animateur : Ne le réveillez pas la nuit (sauf Rides du bassin du dragon dans une partie {r}).",
  "낮 {n}회 조언.": "Conseils de jour : {n} utilisations.",
@@ -2911,5 +2911,7 @@
  "조용히 지나감": "Une nuit calme",
  "처형 없음": "Pas d’exécution",
  "{n}의 처형에 손을 들었고": "a voté l’exécution de {n},",
- "{n}의 처형에 손을 들었지만 선이었고": "a voté l’exécution de {n}, qui était bon,"
+ "{n}의 처형에 손을 들었지만 선이었고": "a voté l’exécution de {n}, qui était bon,",
+ "같은 편: {n}": "Même camp : {n}",
+ "만물 거짓(미혹귀·보르톡스 판)": "Tout est faux (partie avec Vortox)"
 }

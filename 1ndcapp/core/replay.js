@@ -8,6 +8,7 @@ var GameReplay = (function () {
   'use strict';
   var EVIL = { minion: 1, demon: 1, mafia: 1 };
   /* 화면 글은 말 장치로(2026-11-04 구조 개선 6) — 코어와 함께면 앱 SAY(화면 조회면 기기 언어), 복기만 따로 돌면 말 장치와 한국어 팩만으로 */
+  var RT = /** @type {any} */ (globalThis).RecText || { ans: function (e) { return e.답; }, role: function (e) { return e.직업 || e.role; }, roles: function (e) { return e.직업들 || []; }, why: function (e) { return e.까닭 || null; } };   // 기록 글 다시 만들기(코어 native_core) — 코어 없이 돌면 저장된 글
   function T(k, v) { if (typeof SAY === 'function') return SAY(k, v); var CT = /** @type {any} */ (globalThis).CoreText; if (!CT || !CT.packs || !CT.packs.ko) return '[' + k + ']';
     var P = CT.pack(k); return CT.say(P, k, v, CT.namers(P, { ko: CT.word, tw: function (t) { return typeof teamWord === 'function' ? teamWord(t) : t; } })); }
   function seatNm(n) { if (typeof seatNo === 'function') return seatNo(n); var CT = /** @type {any} */ (globalThis).CoreText; return CT && CT.packs && CT.packs.ko ? CT.seat(CT.pack('_seat'), n) : String(n); }
@@ -39,18 +40,18 @@ var GameReplay = (function () {
       /* 밤 */
       var picks = ev.filter(function (e) { return night(e) && evType(e) === 'night_pick'; }).map(function (e) {
         var t = (e.대상ref || []).map(function (r) { return r.seat; }); if (!t.length) t = seatsOf(e.대상);
-        return { 자리: e.seat, 이름: name(e.seat), 직업: e.role, 대상: t, 처리: e.처리 || null, 악: evil(e.seat), 흉수: team[e.seat] === 'demon' };
+        return { 자리: e.seat, 이름: name(e.seat), 직업: RT.role(e), 대상: t, 처리: e.처리 || null, 악: evil(e.seat), 흉수: team[e.seat] === 'demon' };
       });
-      var deaths = ev.filter(function (e) { return night(e) && evType(e) === 'death'; }).map(function (e) { return { 자리: e.seat, 이름: name(e.seat), 직업: e.role, 까닭: e.cause || null, 악: evil(e.seat), 정보직업: infoRole(e.roleId, L && L.mode) }; });
+      var deaths = ev.filter(function (e) { return night(e) && evType(e) === 'death'; }).map(function (e) { return { 자리: e.seat, 이름: name(e.seat), 직업: RT.role(e), 까닭: e.cause || null, 악: evil(e.seat), 정보직업: infoRole(e.roleId, L && L.mode) }; });
       var infos = ev.filter(function (e) { return night(e) && evType(e) === 'info_shown' && !e.종류; /* 카드로 준 정보만(동료·통보 같은 시점 기록은 빼고) */ }).map(function (e) {
-        return { 자리: e.누구, 이름: name(e.누구), 직업: e.직업, 답: (e.코드 && e.코드.type === 'char' && (e.직업들 || []).length) ? e.직업들.join('·') : e.답,   /* 직업을 알려 준 정보는 꼬리표(«직업») 대신 그 직업 이름(2026-11-06) */ 거짓: !!e.거짓, 까닭: e.까닭 || null, 까닭종류: e.까닭종류 || null, 짚은: (e.자리 || []).slice(), 짚은악: (e.자리 || []).filter(function (s) { return evil(s); }) };
+        return { 자리: e.누구, 이름: name(e.누구), 직업: RT.role(e), 답: (e.코드 && e.코드.type === 'char' && RT.roles(e).length) ? RT.roles(e).join('·') : RT.ans(e),   /* 직업을 알려 준 정보는 꼬리표(«직업») 대신 그 직업 이름(2026-11-06) */ 거짓: !!e.거짓, 까닭: e.거짓 ? RT.why(e) : (e.까닭 || null), 까닭종류: e.까닭종류 || null, 짚은: (e.자리 || []).slice(), 짚은악: (e.자리 || []).filter(function (s) { return evil(s); }) };
       });
       var blocked = [];
       picks.filter(function (p) { return p.흉수; }).forEach(function (p) {
         p.대상.forEach(function (t) {
           if (t === p.자리 || deaths.some(function (d) { return d.자리 === t; })) return;   // 자기 지목은 계승, 죽었으면 막힌 게 아니다
           var guard = picks.filter(function (g) { return !g.악 && g.대상.indexOf(t) >= 0 && isGuardWhat(g.처리); })[0];
-          blocked.push({ 대상: t, 이름: name(t), 까닭: guard ? T('rpl.block.guard') : T('rpl.block.other'), 막은: guard ? guard.이름 : null });
+          blocked.push({ 대상: t, 이름: name(t), 까닭: guard ? T('rpl.block.guard') : T('rpl.block.other'), 막은: guard ? guard.이름 : null, 막은자리: guard ? guard.자리 : null });   // 막은자리 — 사람별 묶음이 이름으로 다시 찾지 않게
         });
       });
       var succ = ev.filter(function (e) { return e.n === n && evType(e) === 'succession'; });
@@ -61,17 +62,17 @@ var GameReplay = (function () {
       blocked.forEach(function (b) { scenes.push({ 순위: 4, 때: whenNight(n), 순: n * 2, 종류: T('rpl.kind.blocked'), 톤: 'good', 글: b.막은 ? T('rpl.t.guarded', { p: b.이름, g: b.막은 }) : T('rpl.t.survived', { p: b.이름 }), 자리: [b.대상] }); });
       infos.filter(function (x) { return x.거짓 && (x.까닭종류 ? x.까닭종류 !== 'other' : /중독|취/.test(x.까닭 || ''));   /* 코드 먼저, 옛 기록만 글자 */ }).forEach(function (x) { scenes.push({ 순위: 5, 때: whenNight(n), 순: n * 2, 종류: T('rpl.kind.blurred'), 톤: 'bad', 글: T('rpl.t.blurred', { p: x.이름, r: x.직업, w: x.까닭 }), 자리: [x.자리] }); });
       var heir = function (e) { return e.seat || Object.keys(P).map(Number).filter(function (s) { return P[s].이름 === e.대상; })[0] || null; };   // 계승 기록은 이름(대상)으로 남는다
-      succ.forEach(function (e) { var h = heir(e); scenes.push({ 순위: 5, 때: whenNight(n), 순: n * 2, 종류: T('rpl.kind.succ'), 톤: 'bad', 글: e.이전 ? T('rpl.t.succ', { p: e.대상 || '', a: e.이전, b: e.이후 || T('rpl.t.demonWord') }) : T('rpl.t.succPlain', { p: e.대상 || '' }), 자리: h ? [h] : [] }); });
+      succ.forEach(function (e) { var h = heir(e); scenes.push({ 순위: 5, 때: whenNight(n), 순: n * 2, 종류: T('rpl.kind.succ'), 톤: 'bad', 글: e.이전 ? T('rpl.t.succ', { p: h ? name(h) : (e.대상 || ''), a: e.이전, b: e.이후 || T('rpl.t.demonWord') }) : T('rpl.t.succPlain', { p: h ? name(h) : (e.대상 || '') }), 자리: h ? [h] : [] }); });
       infos.forEach(function (x) { gotInfo[x.자리] = true; if (!x.거짓 && x.짚은악.length) pointedEvil[x.자리] = true; });
       succ.forEach(function (e) { var h = heir(e); if (h) team[h] = 'demon'; });   // 계승 — 이 뒤로는 새 흉수
       /* 낮 */
       var noms = ev.filter(function (e) { return day(e) && evType(e) === 'nominate'; }).map(function (e) { return { 지명자: e.bySeat || null, 대상: e.seat, 악: evil(e.seat), 지명자악: e.bySeat ? evil(e.bySeat) : null }; });
       var votes = ev.filter(function (e) { return day(e) && evType(e) === 'vote'; }).map(function (e) {
-        var t = Object.keys(P).map(Number).filter(function (s) { return P[s].이름 === e.대상; })[0] || null;
+        var t = e.대상seat || Object.keys(P).map(Number).filter(function (s) { return P[s].이름 === e.대상; })[0] || null;   /* 자리 번호 먼저, 옛 기록만 이름으로(2026-11-07) */
         return { 대상: t, 표: (e.투표자seats || []).length, 투표자: e.투표자seats || [], 악: t ? evil(t) : null };
       });
-      var execs = ev.filter(function (e) { return day(e) && evType(e) === 'execute' && !e.cancel; }).map(function (e) { return { 자리: e.seat, 이름: name(e.seat), 직업: e.role, 악: evil(e.seat), 흉수: team[e.seat] === 'demon' }; });
-      var dayDeaths = ev.filter(function (e) { return day(e) && evType(e) === 'death'; }).map(function (e) { return { 자리: e.seat, 이름: name(e.seat), 직업: e.role, 까닭: e.cause || null, 악: evil(e.seat) }; });
+      var execs = ev.filter(function (e) { return day(e) && evType(e) === 'execute' && !e.cancel; }).map(function (e) { return { 자리: e.seat, 이름: name(e.seat), 직업: RT.role(e), 악: evil(e.seat), 흉수: team[e.seat] === 'demon' }; });
+      var dayDeaths = ev.filter(function (e) { return day(e) && evType(e) === 'death'; }).map(function (e) { return { 자리: e.seat, 이름: name(e.seat), 직업: RT.role(e), 까닭: e.cause || null, 악: evil(e.seat) }; });
       var start = ev.filter(function (e) { return day(e) && evType(e) === 'day_start'; })[0];
       if (start) out.흐름.push({ 밤: n, 산선: start.산선, 산악: start.산악 });
       if (noms.length || votes.length || execs.length || dayDeaths.length || start) out.낮.push({ 밤: n, 지명: noms, 투표: votes, 처형: execs, 죽음: dayDeaths });
@@ -107,7 +108,7 @@ var GameReplay = (function () {
     var F = {}; var f = function (s) { return F[s] = F[s] || { save: [], point: [], saved: [], info: [], aimK: [], aimM: [], nomE: [], nomG: 0, nomd: 0, fate: null, voteE: [], voteG: [] }; };
     out.밤.forEach(function (x) {
       var d = when(x.밤), dead = {}; x.죽음.forEach(function (k) { dead[k.자리] = 1; if (!f(k.자리).fate) F[k.자리].fate = { k: 'died', d: d }; });
-      (x.막힘 || []).forEach(function (b) { f(b.대상).saved.push({ d: d, g: b.막은 || '' }); if (b.막은) { var g = out.사람.filter(function (p) { return p.이름 === b.막은; })[0]; if (g) f(g.자리).save.push({ d: d, t: b.이름 }); } });
+      (x.막힘 || []).forEach(function (b) { f(b.대상).saved.push({ d: d, g: b.막은 || '' }); if (b.막은자리 || b.막은) { var gs = b.막은자리 || (out.사람.filter(function (p) { return p.이름 === b.막은; })[0] || {}).자리; if (gs) f(gs).save.push({ d: d, t: b.이름 }); } });
       x.정보.forEach(function (i) { var o = { d: d, a: String(i.답 == null ? '' : i.답), fake: i.거짓 }; if (!i.거짓 && (i.짚은악 || []).length) f(i.자리).point.push(o); else f(i.자리).info.push(o); });
       x.악행동.forEach(function (a) { var ts = a.대상.filter(function (t) { return t !== a.자리; }); if (!ts.length) return; var k = ts.filter(function (t) { return dead[t]; }); (k.length ? f(a.자리).aimK : f(a.자리).aimM).push(k.length ? k : ts); });
     });

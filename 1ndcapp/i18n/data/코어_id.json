@@ -2130,7 +2130,7 @@
  "악": "Jahat",
  "중립": "Netral",
  "투표 중": "Pemungutan suara",
- "이웃 중독({r})": "Tetangga Diracuni ({r})",
+ "이웃 중독({r})": "Racun tetangga ({r})",
  "1표": "1 suara",
  "{r} 사망 — 이제 하수인과 흉수에게 서로를 알려 주세요.": "{r} telah mati — sekarang beri tahu para Minion dan Setan siapa satu sama lain.",
  "{r}에게 죽은 하수인 — 죽어서도 능력을 부려요.": "Minion yang dibunuh oleh {r} — tetap memakai kemampuannya meski sudah mati.",
@@ -2911,5 +2911,7 @@
  "조용히 지나감": "Malam yang tenang",
  "처형 없음": "Tanpa eksekusi",
  "{n}의 처형에 손을 들었고": "memilih mengeksekusi {n},",
- "{n}의 처형에 손을 들었지만 선이었고": "memilih mengeksekusi {n} yang ternyata baik,"
+ "{n}의 처형에 손을 들었지만 선이었고": "memilih mengeksekusi {n} yang ternyata baik,",
+ "같은 편: {n}": "Satu pihak: {n}",
+ "만물 거짓(미혹귀·보르톡스 판)": "Semua palsu (permainan Vortox)"
 }

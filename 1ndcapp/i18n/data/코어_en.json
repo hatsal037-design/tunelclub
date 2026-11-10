@@ -243,7 +243,7 @@
 "험담꾼": "Gossip",
 "내 양옆 마을 둘은 앓아누워 있다(중독).": "The two Villagers beside you are sick (poisoned).",
 "양옆 마을은 항상 '이웃 중독'.": "Adjacent Villagers always have 'Neighbor Poisoned'.",
-"이웃 중독({r})": "Neighbor Poisoned ({r})",
+"이웃 중독({r})": "Neighbor poisoning ({r})",
 "간밤에는 아무도 죽지 않았습니다.": "No one died last night.",
 "진행: 밤엔 깨우지 않습니다({r} 판 용소 물결만 예외).": "Host: Do not wake at night (except Dragon Pool Ripples in a {r} game).",
 "낮 {n}회 조언.": "Daytime advice: {n} uses.",
@@ -2911,5 +2911,7 @@
 "조용히 지나감": "A quiet night",
 "처형 없음": "No execution",
 "{n}의 처형에 손을 들었고": "voted to execute {n},",
-"{n}의 처형에 손을 들었지만 선이었고": "voted to execute {n}, who was good,"
+"{n}의 처형에 손을 들었지만 선이었고": "voted to execute {n}, who was good,",
+"같은 편: {n}": "Same side: {n}",
+"만물 거짓(미혹귀·보르톡스 판)": "Everything false (Vortox game)"
 }

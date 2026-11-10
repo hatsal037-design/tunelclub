@@ -438,7 +438,7 @@ var NativeCore = (function () {
     /* 시점 장부(2026-11-03): 본 카드는 넘길 때 남긴 shownCard. 직업이 바뀐 뒤 다시 보여 주는 건 새 카드를 알려 주는 순간이라 지금 카드로 —
        단 가짜 카드가 아직 없는 자리(판 중에 취객·망석중이 된 자리)는 앞 카드 그대로(진짜 직업이 폰으로 가지 않게) */
     var c = s.shownCard && (!cardStale(s, i) || fakesMissing().indexOf(i) >= 0) ? s.shownCard : shownCardOf(i); if (!c) return null;
-    var bl = []; ((state.log && state.log.events) || []).forEach(function (e) { if (evType(e) === 'info_shown' && e.단계 === 'meet' && e.누구 === i + 1 && (e.직업들 || []).length) bl = e.직업들; });   // 블러프 — 악팀 알려주기 때 본 것(받은 적 없으면 없음)
+    var bl = []; ((state.log && state.log.events) || []).forEach(function (e) { if (evType(e) === 'info_shown' && e.단계 === 'meet' && e.누구 === i + 1 && recRoles(e).length) bl = recRoles(e); });   // 블러프 — 악팀 알려주기 때 본 것(받은 적 없으면 없음)
     return { name: seatLabel(i).name, roleName: c.role, teamName: c.team, ability: c.ab, revealRule: c.rule || null, side: c.side || null,
       bluffs: bl.length ? bl : null, history: recheckHistory(i) };
   }
@@ -447,10 +447,10 @@ var NativeCore = (function () {
   function recheckHistory(i) { var L = state.log, out = {}, seat = i + 1;
     ((L && L.events) || []).forEach(function (e) { if (e.cancel || e.phase === 'day') return; var line = null;
       if (evType(e) === 'night_pick' && e.seat === seat) line = e.추측 ? SAY('ms.hist.guess', { t: e.추측 }) : (e.대상 && e.대상.length ? SAY('ms.hist.picked', { t: e.대상.join(', ') }) : null);
-      else if (evType(e) === 'info_shown' && e.누구 === seat && e.종류) line = SAY('ms.hist.told', { k: e.종류 === '동료' ? SAY(isOmMode() ? 'mt.title.org' : 'mt.title.evil') : SAY('ms.hist.notice'), t: e.답 });   // 시점 기록(동료·블러프·행세 통보) — 답 글에 다 들어 있다
+      else if (evType(e) === 'info_shown' && e.누구 === seat && e.종류) line = SAY('ms.hist.told', { k: (e.단계 === 'meet' || e.종류 === '동료') ? SAY(isOmMode() ? 'mt.title.org' : 'mt.title.evil') : SAY('ms.hist.notice'), t: recAns(e) });   /* 동료 = 단계 meet(코드), 종류 글은 옛 기록만 */   // 시점 기록(동료·블러프·행세 통보) — 답 글에 다 들어 있다
       else if (evType(e) === 'info_shown' && e.누구 === seat) { var parts = [];
-        if (e.답 != null && e.답 !== '진행자 판') parts.push(String(e.답)); if (e.답 === '진행자 판') parts.push(SAY('ms.hist.sawGrimoire'));
-        if (e.자리 && e.자리.length) parts.push(seatNos(e.자리)); if (e.직업들 && e.직업들.length) parts.push(e.직업들.join('·'));
+        if (e.답 != null && e.답 !== '진행자 판') parts.push(String(recAns(e))); if (e.답 === '진행자 판') parts.push(SAY('ms.hist.sawGrimoire'));
+        if (e.자리 && e.자리.length) parts.push(seatNos(e.자리)); if (recRoles(e).length) parts.push(recRoles(e).join('·'));
         if (parts.length) line = SAY('ms.hist.got', { t: parts.join(' · ') }); }
       if (line) (out[e.n] = out[e.n] || []).push(line); });
     return Object.keys(out).map(Number).sort(function (a, b) { return a - b; }).map(function (n) { return { n: n, lines: out[n] }; });   // side — 팀 글자 색(선·악). 가짜 카드면 보이는 직업의 편
@@ -477,6 +477,28 @@ var NativeCore = (function () {
   function fxKind(w) { w = String(w || ''); var m = /^token:(.+)$/.exec(w); return m ? { k: 'token', t: m[1] } : { k: /^kill/.test(w) ? 'kill' : /^void:/.test(w) ? 'void' : /^revive/.test(w) ? 'revive' : /^(transform|swap)/.test(w) ? 'change' : '', t: '' }; }
   function causeKoMap() { return { exec: SAY('ui.cause.exec'), demon: SAY('ui.cause.demon'), night: SAY('ui.cause.night'), day: SAY('ui.cause.day'), curse: SAY('ui.cause.curse'), succession: SAY('ui.cause.succession') }; }   // 사망 원인 글(진행자) 한 곳 — 공개용 기호는 pubCause
   function seatText(i) { var l = seatLabel(i); return seatNo(l.number) + ' ' + l.name; }   // «N번 이름» 한 곳
+  /* 기록 글 다시 만들기(2026-11-07 기록 글 칸 3단계) — 판 기록의 한국어 사본(답·직업·직업들) 대신 코드에서 화면 글을 만든다.
+     코드가 없는 옛 기록은 저장된 글 그대로. 복기(replay.js)도 globalThis.RecText 로 같은 함수를 쓴다. 시험: tests/기록글.test.js(코드로 만든 글 = 저장된 글) */
+  var recById = null;
+  function recRoleName(id) { if (!id) return null; var cm = CMAP(); if (cm[id]) return cm[id].ko;
+    if (!recById) { recById = {}; Object.keys(allMods()).forEach(function (m) { (allMods()[m].chars || []).forEach(function (c) { if (!recById[c.id]) recById[c.id] = c.ko; }); }); }
+    return recById[id] || null; }
+  function meetText(al, bnames) { var p = []; if (al.length) p.push(SAY('ans.meet.allies', { s: al.map(seatText).join(' · ') })); if (bnames.length) p.push(SAY('nc.ans.bluffs', { b: bnames.join(' · ') })); return p.join(' / '); }
+  function recAns(e) { var k = e && e.코드; if (!k) return e ? e.답 : null;
+    if (k.type === 'num') return String(k.value);
+    if (k.type === 'ox' || k.type === 'team' || k.type === 'dir') { var lb = ansLb({ type: k.type, value: k.value }); if (lb) return lb.label; }   // 예/아니오·선악·방향 — lk 는 질문 이름표일 수 있어 대답은 화면 답(uiAnsText) 규칙으로
+    if (k.lk) return SAY(k.lk, k.lv);   // 그 밖은 이름표가 곧 답
+    var lb2 = ansLb({ type: k.type, value: k.value }); if (lb2) return lb2.label;
+    if (k.type === 'meet') { var v = k.value || {}; return meetText(v.allies || [], (v.bluffs || []).map(recRoleName)); }
+    return e.답; }
+  function recRoleIds(e) { var k = e && e.코드; if (e && e.직업열쇠들) return e.직업열쇠들; if (!k) return null;
+    return k.type === 'char' ? [k.value] : k.type === 'dream' ? (k.value || []) : k.type === 'meet' ? ((k.value || {}).bluffs || []) : null; }
+  function recRoles(e) { var ids = recRoleIds(e); return ids && ids.length ? ids.map(recRoleName) : ((e && e.직업들) || []); }
+  function recRole(e) { return (e && e.roleId && recRoleName(e.roleId)) || (e && (e.직업 || e.role)) || null; }
+  /* 거짓 까닭 — 효과 코드(까닭코드)마다: 표식이면 표식 이름(코드 자체) · 이웃 중독·직업 탓·만물 거짓은 말 장치(관문 effectsOf 와 같은 글) */
+  function recWhy(e) { var cs = e && e.까닭코드; if (!cs || !cs.length) return (e && e.까닭) || null;
+    return cs.map(function (k) { return k.kind === 'neighbor' ? SAY('gt.nbPoison', { r: k.role }) : k.kind === 'role' ? SAY('gt.roleFalse', { r: k.role }) : k.kind === 'world' ? SAY('gt.worldFalse') : (k.tok || ''); }).join('·'); }
+  /** @type {any} */ (globalThis).RecText = { ans: recAns, role: recRole, roles: recRoles, roleName: recRoleName, why: recWhy };
   function nightTitle(n) { return (n || 1) === 1 ? SAY('ui.firstNight') : SAY('ui.nightN', { n: n }); }
   function seatLabel(i) { var x = state.seats[i]; return { index: i, number: i + 1, name: (x && x.name) || SAY('ui.seatDefault', { n: i + 1 }) }; }
   function succession() {
@@ -532,10 +554,10 @@ var NativeCore = (function () {
   /* 과정 «히스토리 보기»(2026-11-02 햇살님 «이전 밤 직업들이 골랐던 흐름과 답 모든 과정») — 진행자용이라 처리·거짓 답의 진짜 값까지 */
   function nightHistory() { var out = {}, ev = (state.log && state.log.events) || [];
     var fx = function (w) { var f = fxKind(w); return f.k === 'token' ? SAY('ui.fx.token', { t: f.t }) : ({ kill: 1, void: 1, revive: 1, change: 1 })[f.k] ? SAY('ui.fx.' + f.k) : ''; };
-    ev.forEach(function (e) { if (e.cancel || e.phase === 'day') return; var who = e.seat ? seatNo(e.seat) + ' ' + (e.name || '') + (e.role ? '(' + CoreText.word(e.role) + ')' : '') : '', line = null;
+    ev.forEach(function (e) { if (e.cancel || e.phase === 'day') return; var who = e.seat ? seatNo(e.seat) + ' ' + (e.name || '') + (recRole(e) ? '(' + CoreText.word(recRole(e)) + ')' : '') : '', line = null;
       if (evType(e) === 'night_pick') line = who + ' → ' + (e.추측 ? SAY('ui.guess', { t: e.추측 }) : (e.대상 || []).join(', ')) + (fx(e.처리) ? ' · ' + fx(e.처리) : '');
-      else if (evType(e) === 'info_shown') { var nm = state.seats[(e.누구 || 0) - 1]; line = SAY('ms.rc.got', { n: e.누구, p: (nm && nm.name) || '', r: e.직업 || '', t: e.답 != null ? e.답 : '' }) +
-        ((e.자리 || []).length ? ' · ' + seatNos(e.자리) : '') + ((e.직업들 || []).length ? ' · ' + e.직업들.join('·') : '') + (e.거짓 ? ' ' + (e.진짜 != null ? SAY('ms.rc.falseReal', { t: e.진짜 }) : SAY('ms.rc.false')) : ''); }
+      else if (evType(e) === 'info_shown') { var nm = state.seats[(e.누구 || 0) - 1]; line = SAY('ms.rc.got', { n: e.누구, p: (nm && nm.name) || '', r: recRole(e) || '', t: e.답 != null ? recAns(e) : '' }) +
+        ((e.자리 || []).length ? ' · ' + seatNos(e.자리) : '') + (recRoles(e).length ? ' · ' + recRoles(e).join('·') : '') + (e.거짓 ? ' ' + (e.진짜 != null ? SAY('ms.rc.falseReal', { t: e.진짜 }) : SAY('ms.rc.false')) : ''); }
       else if (evType(e) === 'death') line = SAY('ui.line.died', { p: who });
       if (line) (out[e.n] = out[e.n] || []).push(line); });
     return Object.keys(out).map(Number).sort(function (a, b) { return a - b; }).map(function (n) { return { n: n, lines: out[n] }; }); }
@@ -891,7 +913,7 @@ var NativeCore = (function () {
   function endReveal() {
     var cm = CMAP(), L = endLog(), ev = (L && L.events) || [];
     return (state.seats || []).map(function (x, i) { if (!x || !x.char || !cm[x.char] || cm[x.char].team === 'host') return null; var c = cm[x.char], ch = [];
-      ev.forEach(function (e) { if ((evType(e) === 'role_change' || evType(e) === 'succession') && (e.seat === i + 1 || (e.swapSeats || []).indexOf(i + 1) >= 0)) ch.push(evType(e) === 'succession' ? (e.role ? SAY('ui.ch.succ', { r: e.role }) : SAY('ui.ev.succession')) : (e.role ? SAY('ui.ch.changed', { r: e.role }) : SAY('ui.ev.role_change'))); });
+      ev.forEach(function (e) { if ((evType(e) === 'role_change' || evType(e) === 'succession') && (e.seat === i + 1 || (e.swapSeats || []).indexOf(i + 1) >= 0)) ch.push(evType(e) === 'succession' ? (recRole(e) ? SAY('ui.ch.succ', { r: recRole(e) }) : SAY('ui.ev.succession')) : (recRole(e) ? SAY('ui.ch.changed', { r: recRole(e) }) : SAY('ui.ev.role_change'))); });
       (x.rem || []).forEach(function (r) { var cv = tokConv(r); if (cv) ch.push(SAY('ms.rp.sideChanged', { t: r })); else if (['poison', 'drunk'].indexOf(tokState(r)) >= 0) ch.push(r); });   /* 중독·취함류는 등록부 상태로(옛: 이름이 «중독·취함»으로 시작) */
       var fk = (state.fakes || {})[i]; if (fk && cm[fk]) ch.push(SAY('ui.ch.fakeCard', { r: cm[fk].ko })); else if (c.drunkAs || (x.rem || []).indexOf('주정뱅이') >= 0) ch.push(SAY('ms.rp.wrongRole'));   // 가짜 카드는 state.fakes 에 있다(반증 검토 2-9)
       return { seatId: 's' + (i + 1), name: seatLabel(i).name, role: c.ko, team: sideKoOf(c), side: realEvil(x) ? 'evil' : (seatSide(x) === 'neutral' ? 'neutral' : 'good'), dead: !!x.dead, icon: roleArt(c, state.edition || 'basic').icon || null, changes: ch }; }).filter(Boolean);
@@ -912,7 +934,7 @@ var NativeCore = (function () {
     var fd = firstDayN(), dn = n + fd - 1;   // n = 쪽(0 정보의 밤), dn = 그 쪽 낮의 state.nights
     var L = endLog(), ev = ((L && L.events) || []).filter(function (e) { if (e.cancel) return false; return n === 0 ? (e.phase !== 'day' && e.n <= fd) : (e.phase === 'day' ? e.n === dn : e.n === dn + 1); }), night = [], day = [];
     var nm = function (k) { return seatLabel(k - 1).name; };
-    var who = function (e) { return (e.name || nm(e.seat)) + (e.role ? '(' + e.role + ')' : ''); };
+    var who = function (e) { var r = recRole(e); return (e.name || nm(e.seat)) + (r ? '(' + r + ')' : ''); };   /* 직업 이름 = roleId 에서(기록 글 3단계) */
     var sid = function (k) { return typeof k === 'number' && k > 0 ? 's' + k : null; };
     var clean = function (t) { return String(t || '').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').replace(/ \)/g, ')').trim(); };   // 그림 문자는 TV 글꼴에서 네모로 깨진다
     var cmR = CMAP(), evilPick = function (e) { var c = e.roleId && cmR[e.roleId]; return !!(c && (c.team === 'demon' || c.team === 'mafia')); };
@@ -930,16 +952,16 @@ var NativeCore = (function () {
     var lastNom = null;
     ev.forEach(function (e) { var out = e.phase === 'day' ? day : night, l = null;
       if (evType(e) === 'night_pick') { var a = actOf(e); l = { act: a, actor: sid(e.seat), targets: (e.대상ref || []).map(function (r) { return sid(r.seat); }).filter(Boolean), res: a === 'block' ? 'blocked' : a === 'attack' ? ((e.대상ref || []).some(function (r) { return diedNight[r.seat]; }) ? 'died' : 'blocked') : null,
-        key: a === 'attack' || a === 'change' || a === 'revive', text: who(e) + ' → ' + (e.대상 || []).join(', ').replace(/좌석 \d+ /g, '') }; }
+        key: a === 'attack' || a === 'change' || a === 'revive', text: who(e) + ' → ' + ((e.대상ref || []).length ? e.대상ref.map(function (r) { return nm(r.seat); }).join(', ') : (e.대상 || []).join(', ').replace(/좌석 \d+ /g, '')) };   /* 자리 번호(대상ref)에서 이름 — 글(«좌석 3 민트»)은 옛 기록만(2026-11-07) */ }
       else if (evType(e) === 'info_shown') { var seenL = (e.본 || []).map(function (x) { return { seatId: sid(x.자리), role: x.직업, evil: !!x.악 }; });   // 본 사람 — 공감능력자 이웃·요리사 쌍(악으로 센 사람 표시)
         var pointed = (e.자리 || []).map(sid).filter(Boolean);   // 답이 가리킨 자리(사서·세탁부·점쟁이 대상…) — 화살표로
         l = { act: e.거짓 ? 'false' : 'info', why: e.거짓 ? (e.까닭종류 || (/중독/.test(e.까닭 || '') ? 'poison' : /취|주정/.test(e.까닭 || '') ? 'drunk' : 'other')) : null,   /* 코드(까닭종류) 먼저, 코드 없는 옛 기록만 글자 */ arrow: false, actor: sid(e.누구), targets: seenL.length ? seenL.map(function (x) { return x.seatId; }) : pointed, seen: seenL, value: (pointed.length && (e.직업들 || []).length ? e.직업들.join('·') : clean(e.답)) + (e.거짓 ? ' · ' + SAY((e.까닭종류 ? e.까닭종류 === 'poison' : /중독/.test(e.까닭 || '')) ? 'ms.rp.falsePoison' : (e.까닭종류 ? e.까닭종류 === 'drunk' : /취|주정/.test(e.까닭 || '')) ? 'ms.rp.falseDrunk' : 'ms.rp.false') : ''),   /* 왜 거짓인지(2026-10-05 «독에 의해 잘못 간 정보도») */   /* 자리를 가리키는 답은 자리가 대상으로 그려지니 값엔 직업만(«요리사 (좌석 2·7 중 하나)» → «요리사») */ key: !!e.거짓,
-        text: (e.name || nm(e.누구)) + (e.직업 ? '(' + e.직업 + ')' : '') + ' ' + SAY('ms.rp.gotInfo', { t: clean(e.답) }) + (e.거짓 ? ' ' + SAY('ms.rp.wasFalse') : '') + (seenL.length ? ' · ' + SAY('ms.rp.seen') + ' ' + (e.본 || []).map(function (x) { return seatNo(x.자리) + ' ' + nm(x.자리) + '(' + CoreText.word(x.직업) + (x.악 ? '·악으로 셈' : '') + ')'; }).join(', ') : '') }; }
+        text: (e.name || nm(e.누구)) + (recRole(e) ? '(' + recRole(e) + ')' : '') + ' ' + SAY('ms.rp.gotInfo', { t: clean(recAns(e)) }) + (e.거짓 ? ' ' + SAY('ms.rp.wasFalse') : '') + (seenL.length ? ' · ' + SAY('ms.rp.seen') + ' ' + (e.본 || []).map(function (x) { return seatNo(x.자리) + ' ' + nm(x.자리) + '(' + CoreText.word(x.직업) + (x.악 ? '·악으로 셈' : '') + ')'; }).join(', ') : '') }; }
       else if (evType(e) === 'death') { if (attacked[e.seat] && e.phase !== 'day') return;   // 공격 줄이 이미 보여 준 죽음은 겹쳐 쓰지 않는다
         l = { act: 'death', actor: sid(e.seat), targets: [], res: 'died', key: true, text: SAY('ui.line.died', { p: who(e) }) }; }
       else if (evType(e) === 'nominate' && e.취소) l = { act: 'cancel', actor: null, targets: [sid(e.bySeat)].filter(Boolean), value: null, key: false, text: '' };   // 걷은 지명 — 합칠 때 앞선 지명 줄을 지운다(반증 검토 2-3, 기록의 bySeat 가 대상 자리)
       else if (evType(e) === 'nominate') { lastNom = e.seat; l = { act: 'nominate', actor: sid(e.bySeat), targets: [sid(e.seat)].filter(Boolean), value: null, key: false, text: SAY('ui.line.nom', { a: e.by || '', b: e.name || '' }) }; }
-      else if (evType(e) === 'vote') l = { act: 'vote', actor: sid(lastNom), targets: [sid(e.대상seat || lastNom)].filter(Boolean), value: SAY('ui.votes', { n: typeof e.표 === 'number' ? e.표 : (e.투표자 || []).length }), key: false, text: SAY('ui.line.votes', { p: e.대상 || '', n: (e.투표자 || []).length }) };
+      else if (evType(e) === 'vote') l = { act: 'vote', actor: sid(lastNom), targets: [sid(e.대상seat || lastNom)].filter(Boolean), value: SAY('ui.votes', { n: typeof e.표 === 'number' ? e.표 : (e.투표자 || []).length }), key: false, text: SAY('ui.line.votes', { p: e.대상seat ? nm(e.대상seat) : (e.대상 || ''), n: (e.투표자 || []).length }) };
       else if (evType(e) === 'execute') { var died = !e.무효;   // 그날 기록으로 — 판 끝 좌석 상태로 정하면 다음 날 재처형·되살림에 앞날 칸이 바뀌었다(반증 검토 2-5)
         l = { act: 'execute', actor: sid(e.seat), targets: [], res: died ? 'died' : 'survived', key: true, text: SAY('ui.line.exec', { p: who(e) }) }; }
       else if (evType(e) === 'succession' || evType(e) === 'role_change') { var sw = e.swapSeats || []; l = sw.length === 2 ? { act: 'change', actor: sid(sw[0]), targets: [sid(sw[1])].filter(Boolean), value: SAY('ui.swap'), key: true, text: nm(sw[0]) + ' ↔ ' + nm(sw[1]) + ' ' + SAY('ui.ev.' + evType(e)) }   // 맞바꾸기 — «좌석 undefined» 칸이 생기던 것
@@ -969,7 +991,7 @@ var NativeCore = (function () {
     var win = state.practice ? null : ((L && L.winner) || wz.doneWin || null), ends = verdict().filter(function (x) { return x.level === 'end'; }).map(function (x) { return x.text; });
     return { winner: win, winGroup: (L && L.winGroup) || null, title: win ? winKoOf(win, L && L.winGroup) : SAY(state.practice ? 'ui.closedPractice' : 'ui.closed'), why: ends.length ? ends.join(' → ') : (L && L.note ? L.note : (win ? SAY('ms.rp.hostChose') : SAY('ms.rp.noWinner'))),
       recorded: !!(L && L.winner), practice: !!state.practice, politician: actItems(state.practice ? [] : polActs()),
-      players: ((L && L.players) || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: playerSideCode(p),   /* 편 코드(good·evil·neutral) — 한국어 사본(p.side) 대신(2026-11-07) */ won: p.won === true, dead: !!p.dead }; }),
+      players: ((L && L.players) || []).map(function (p) { return { number: p.seat, name: p.name || '', role: recRoleName(p.finalRoleId || p.roleId) || p.finalRole || p.role, side: playerSideCode(p),   /* 편 코드(good·evil·neutral) — 한국어 사본(p.side) 대신(2026-11-07) */ won: p.won === true, dead: !!p.dead }; }),
       tvReveal: state.tvReveal !== false, tvReplay: typeof state.tvReplay === 'number' ? state.tvReplay : null, replayDays: endReplayDays() };   // 7 큰 화면 공개·복기 조작용
   }
 
@@ -985,7 +1007,7 @@ var NativeCore = (function () {
   }
   function eventLine(e) {
     var n = e.n || '', nm = e.name || '', t = evType(e);   // 사건 종류 코드(2026-11-04)
-    if (t === 'night_pick') return SAY('ui.el.pick', { n: n, p: nm + (e.role ? '(' + CoreText.word(e.role) + ')' : ''), t: (e.대상 || []).join(', ') });
+    if (t === 'night_pick') return SAY('ui.el.pick', { n: n, p: nm + (recRole(e) ? '(' + CoreText.word(recRole(e)) + ')' : ''), t: (e.대상 || []).join(', ') });
     if (t === 'nominate') return SAY('ui.el.nom', { n: n, a: e.by || SAY('ui.noNominator'), b: nm });
     if (t === 'vote') return SAY('ui.el.vote', { n: n, p: e.대상 || '', c: (e.투표자 || []).length });
     if (t === 'execute') return SAY(e.cancel ? 'ui.el.execCancel' : 'ui.el.exec', { n: n, p: nm });
@@ -993,12 +1015,12 @@ var NativeCore = (function () {
     if (t === 'succession') return SAY('ui.el.succ', { p: e.대상 || '', a: CoreText.word(e.이전 || ''), b: CoreText.word(e.이후 || ''), k: CoreText.word(e.종류 || '') || SAY('ui.ev.succession') });
     if (t === 'revive') return SAY('ui.el.revive', { p: nm });
     if (t === 'day_start' || t === 'night_start') return null;
-    return (e.type || t) + (nm ? ' ' + nm : '');   // 그 밖의 종류는 기록 이름 그대로(화면이 옛 번역으로)
+    return ((t && KO('ev', t)) || e.type || t) + (nm ? ' ' + nm : '');   // 그 밖의 종류 — 코드를 등록부 표기로(KO), 코드 없는 옛 기록만 글 그대로(2026-11-07)
   }
   function record(id) {
     var L = logsAll().find(function (x) { return x.id === id; }); if (!L) return null; logHub(L);
     var r = recordRow(L); r.note = L.note || '';
-    r.players = (L.players || []).map(function (p) { return { number: p.seat, name: p.name || '', role: p.finalRole || p.role, side: playerSideCode(p),   /* 편 코드(good·evil·neutral) — 한국어 사본(p.side) 대신(2026-11-07) */ won: p.won === true, dead: !!p.dead }; });
+    r.players = (L.players || []).map(function (p) { return { number: p.seat, name: p.name || '', role: recRoleName(p.finalRoleId || p.roleId) || p.finalRole || p.role, side: playerSideCode(p),   /* 편 코드(good·evil·neutral) — 한국어 사본(p.side) 대신(2026-11-07) */ won: p.won === true, dead: !!p.dead }; });
     r.events = (L.events || []).map(eventLine).filter(Boolean); r.winChoices = winChoices(L.mode); return r;
   }
   function library() {
@@ -1221,7 +1243,7 @@ var NativeCore = (function () {
   function logMeet(only) { if (!state.log) return; var N = state.nights || 1, ev = state.log.events || [], bl = bluffKos();
     evilRoster().forEach(function (o) { if (only && only.indexOf(o.i) < 0) return; var al = knownAllies(o.i), b = o.c.team === 'demon' && bluffDemonSeat() === o.i ? bl : [];
       if (!al.length && !b.length) return; if (ev.some(function (e) { return evType(e) === 'info_shown' && e.단계 === 'meet' && e.n === N && e.누구 === o.i + 1; })) return;
-      logEvent('정보 전달', { 단계: 'meet', 종류: '동료', 누구: o.i + 1, 직업: o.c.ko, roleId: o.c.id, 답: (al.length ? '같은 편: ' + al.map(seatText).join(' · ') : '') + (b.length ? (al.length ? ' / ' : '') + '블러프: ' + b.join(' · ') : ''),
+      logEvent('정보 전달', { 단계: 'meet', 종류: '동료', 누구: o.i + 1, 직업: o.c.ko, roleId: o.c.id, 답: meetText(al, b),   /* 말 장치(ans.meet.*) — 코드로 다시 만든 글과 같게 */
         자리: al.map(function (i) { return i + 1; }), 직업들: b, 악: al.length, 거짓: false,
         코드: { type: 'meet', value: { allies: al.slice(), bluffs: b.length ? (state.bluffIds || []).slice() : [] } } }); }); }   // 코드 — 같은 편 자리·블러프 직업 열쇠(두 벌 저장, 2026-11-04)   // 시점 장부(2026-11-03): 누가 누구를 동료로 봤나·흉수가 본 블러프 — 다시 보여주기는 이 줄을 읽는다
   function logDelivery(card) {

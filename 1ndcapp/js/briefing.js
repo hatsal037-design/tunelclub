@@ -6,10 +6,11 @@ const 드러냄 = globalThis.드러냄 || (globalThis.드러냄 = (곳, e) => { 
 import { ICON_PATHS } from './icons.js';
 
 const BASE = new URL('../', import.meta.url).href;
-const SRC = { tex: BASE + 'tex/tex-suede.png', serif: BASE + 'fonts/gowun-700.woff2', sans: BASE + 'fonts/pre-400.woff2', sansB: BASE + 'fonts/pre-700.woff2' };
+const SRC = { tex: BASE + 'tex/tex-suede.png', serif: BASE + 'fonts/gowun-700.woff2', sans: BASE + 'fonts/pre-400.woff2', sansM: BASE + 'fonts/pre-500.woff2', sansB: BASE + 'fonts/pre-700.woff2' };
 const art = id => BASE + 'art/' + id + '.webp';
 const face = s => `@font-face{font-family:"bf-serif";src:url(${s.serif}) format("woff2");font-weight:100 900;font-display:block}
-@font-face{font-family:"bf-sans";src:url(${s.sans}) format("woff2");font-weight:100 550;font-display:block}
+@font-face{font-family:"bf-sans";src:url(${s.sans}) format("woff2");font-weight:100 450;font-display:block}
+@font-face{font-family:"bf-sans";src:url(${s.sansM}) format("woff2");font-weight:451 550;font-display:block}
 @font-face{font-family:"bf-sans";src:url(${s.sansB}) format("woff2");font-weight:551 900;font-display:block}`;
 let faced = false;
 function fonts() { if (faced) return; faced = true; const st = document.createElement('style'); st.textContent = face(SRC); document.head.appendChild(st); }
@@ -18,7 +19,7 @@ function fonts() { if (faced) return; faced = true; const st = document.createEl
 const css = tex => `
 :host{display:block;line-height:normal;letter-spacing:normal;text-align:left;font-size:16px}
 .felt{--bg:#1a1a1d;--txt:#eeeae2;--txt2:#bdb8ae;--dim:#85817a;--gold:#b89a62;--gold-lit:#d9ba7e;--good:#8fb6dd;--evil:#e07a64;--neu:#9cc78a;
-  --hair:rgba(238,234,226,.14);--hairg:rgba(184,154,98,.5);--serif:"bf-serif","Gowun Batang",serif;--sans:"bf-sans","Pretendard",-apple-system,system-ui,sans-serif}
+  --hair:rgba(238,234,226,.2);--hairg:rgba(184,154,98,.5);--serif:"bf-serif","Gowun Batang",serif;--sans:"bf-sans","Pretendard",-apple-system,system-ui,sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
 .felt{background:url(${tex}) center/360px,var(--bg);background-blend-mode:soft-light;color:var(--txt);font-family:var(--sans);position:relative;overflow:hidden;container-type:inline-size;word-break:keep-all;overflow-wrap:anywhere}
 .bfc{width:400px;height:500px;flex:none;padding:26px 24px 18px;display:flex;flex-direction:column}
@@ -36,7 +37,7 @@ svg.wire line.unk{stroke:rgba(238,234,226,.35);stroke-dasharray:4 5}
 /* 가 · 큰 화면 룰 설명 — 영화 크레딧처럼 가운데, 세리프, 가는 놋쇠 선 */
 .A{position:absolute;inset:0}
 .A .kick{position:absolute;left:0;right:0;top:3.2cqw;display:flex;justify-content:center;align-items:center;gap:1.4cqw;font-size:1.15cqw;letter-spacing:.35em;color:var(--gold)}
-.A .kick::before,.A .kick::after{content:'';width:7cqw;border-top:1px solid var(--hairg)}
+.A .kick::before,.A .kick::after{content:'';width:7cqw;border-top:max(1px,.06cqw) solid var(--hairg)}
 .A .hd{position:absolute;left:0;right:0;top:5.6cqw;text-align:center}
 .A .hd b{display:block;font-family:var(--serif);font-weight:700;font-size:3.6cqw;letter-spacing:-.01em}
 .A .hd>span{display:block;font-size:1.55cqw;margin-top:.5cqw;color:var(--txt2)}
@@ -44,7 +45,7 @@ svg.wire line.unk{stroke:rgba(238,234,226,.35);stroke-dasharray:4 5}
 .A .vr{background:var(--hairg)}
 .A .fl h3{font-family:var(--serif);font-weight:700;font-size:2cqw;color:var(--gold-lit);margin:0 0 .6cqw;display:flex;align-items:center;gap:.6cqw}
 .A .fl h3 svg.i{font-size:1.6cqw}
-.A .fl .bs+.bs{margin-top:1.6cqw;padding-top:1.4cqw;border-top:1px solid var(--hair)}
+.A .fl .bs+.bs{margin-top:1.6cqw;padding-top:1.4cqw;border-top:max(1px,.06cqw) solid var(--hair)}
 .A .fl .it{font-size:1.65cqw;line-height:1.35;margin:.35cqw 0;display:flex;align-items:center;gap:.6cqw;color:var(--txt)}
 .A .fl .it .pic{font-size:3cqw;display:inline-flex;gap:.2cqw;align-items:center;flex:none}
 .A .fl .it .pic svg.i{font-size:1.5cqw;color:var(--txt2)}
@@ -63,14 +64,15 @@ svg.wire line.unk{stroke:rgba(238,234,226,.35);stroke-dasharray:4 5}
 .Pn{position:absolute;inset:0;padding:5cqw 6cqw;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
 .Pn .pin{width:100%}
 .Pn .kick{display:flex;justify-content:center;align-items:center;gap:3cqw;font-size:3.4cqw;letter-spacing:.35em;color:var(--gold)}
-.Pn .kick::before,.Pn .kick::after{content:'';width:12cqw;border-top:1px solid var(--hairg)}
+.Pn .kick::before,.Pn .kick::after{content:'';width:12cqw;border-top:max(1px,.06cqw) solid var(--hairg)}
 .Pn .hd b{display:block;font-family:var(--serif);font-weight:700;font-size:9.5cqw;margin-top:2cqw}
 .Pn .hd>span{display:block;font-size:4.2cqw;margin-top:1.4cqw;color:var(--txt2)}
 .Pn .pl{margin-top:5cqw}
 .Pn .pgr{padding:4cqw 0 4.2cqw}
-.Pn .pgr+.pgr{border-top:1px solid var(--hair)}
+.Pn .pgr+.pgr{border-top:max(1px,.06cqw) solid var(--hair)}
+.A,.Pn{font-weight:500}   /* TV 기준(2026-11-11) — 큰 화면 본문은 Medium 이상 */
 .Pn .gl{font-family:var(--serif);font-weight:700;font-size:6.4cqw}
-.Pn .gl .gs{font-family:var(--sans);font-weight:400;font-size:4.2cqw;color:var(--txt2)}
+.Pn .gl .gs{font-family:var(--sans);font-weight:500;font-size:4.2cqw;color:var(--txt2)}
 .Pn .coins{font-size:15cqw;flex-wrap:nowrap;justify-content:center;margin:2cqw 0 1.6cqw}
 .Pn .gw{font-family:var(--serif);font-weight:700;font-size:6.2cqw;line-height:1.3;word-break:keep-all}
 .Pn .gw svg.i{color:var(--gold);font-size:.8em;margin-right:.3em}

@@ -750,5 +750,8 @@
  "rpl.h.dayNone": "Pas d’exécution",
  "rpl.sum": "{w} · exécutions sur le mal {a}/{b} · morts la nuit {d} · blocages {k}",
  "rpl.s.voteHit.c": "a voté l’exécution de {t},",
- "rpl.s.voteMiss.c": "a voté l’exécution de {t}, qui était bon,"
+ "rpl.s.voteMiss.c": "a voté l’exécution de {t}, qui était bon,",
+ "ans.meet.allies": "Même camp : {s}",
+ "gt.nbPoison": "Empoisonnement voisin ({r@role})",
+ "gt.worldFalse": "Tout est faux (partie avec Vortox)"
 }

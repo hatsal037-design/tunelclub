@@ -749,5 +749,8 @@
  "rpl.h.dayNone": "沒有處決的白天",
  "rpl.sum": "{w} · 處決命中 {a}/{b} · 夜間死亡 {d} · 擋下 {k}",
  "rpl.s.voteHit.c": "投票處決了{t}，",
- "rpl.s.voteMiss.c": "投票處決{t}但那是善方，"
+ "rpl.s.voteMiss.c": "投票處決{t}但那是善方，",
+ "ans.meet.allies": "同一陣營：{s}",
+ "gt.nbPoison": "鄰座中毒（{r@role}）",
+ "gt.worldFalse": "萬物皆假（渦流局）"
 }
