@@ -167,6 +167,9 @@ const GAMES = [
     r:'조건에 맞는 물건을 먼저 집는다. 라운드마다 조건이 바뀌어 헷갈린다.' },
 
   // ── 전략 ──────────────────────────────────
+  { n:'시타델', min:2, max:8, t:45, cat:'strategy', lv:'중급', out:false, host:false, own:'임햇살', have:true,
+    d:'직업 카드를 몰래 골라 도시를 짓는 눈치 싸움.',
+    r:'라운드마다 직업 카드를 한 장씩 몰래 고른다. 암살자·도둑처럼 남의 차례를 노리는 직업이 있어 누가 무엇을 골랐는지 읽는 게 핵심. 금화를 모아 건물을 짓고, 도시를 먼저 완성한 뒤 점수가 가장 높은 사람이 이긴다.' },
   { n:'클루', bl:{"rate": 6.2, "weight": 1.64, "rank": 2215, "players": "2-6", "minutes": "40", "age": 8, "url": "https://boardlife.co.kr/game/8752", "bgg": "https://boardgamegeek.com/boardgame/130592/clue"}, img:'img/t/clue.jpg', min:2, max:6, t:20, cat:'strategy', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'누가, 어디서, 무엇으로. 추리 게임의 고전.',
     r:'질문과 소거로 범인·장소·흉기를 좁혀간다. 먼저 정확히 맞히면 승리.' },
