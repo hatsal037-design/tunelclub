@@ -288,6 +288,7 @@
  "ms.rp.wasFalse": "— it was false",
  "ms.rp.seen": "Seen",
  "ms.ask.night": "There's a vote that hasn't been executed. Move to night? One-night reminders will be cleared.",
+ "ms.ask.nightNoNom": "No one was nominated today. Move to night without an execution?",
  "ms.autoClose.judge": "Closed the untouched game by the win check.",
  "ms.autoClose.exec": "Closed the untouched game assuming seat {n} was executed.",
  "wn.twinGoodExec": "The good twin was executed → evil wins",
@@ -302,7 +303,7 @@
  "wn.masterGoodExec": "Schemer's extra day — a good player was executed → the evil team wins",
  "wn.masterNoExec": "No execution on the Schemer's extra day → {=town@tw} wins",
  "wn.masterExtra": "The {=demon@tw} was executed but the Schemer is alive — play one more day. The side of whoever is executed that day loses; if no one is executed, {=town@tw} wins.",
- "wn.successorAlive": "The {=demon@tw} is down, but a successor role (Momju / Scarlet Woman) is alive — check for succession.",
+ "wn.successorAlive": "The {=demon@tw} is down, but a successor role ({r@role}) is alive — check for succession.",
  "wn.demonsDead": "The {=demon@tw} is dead → the {=town@tw} win condition is met",
  "wn.dueokRule": "Dueoksini game — the only wins are \"all Dueoksini dead ({=town@tw})\" or \"all humans dead (Dueoksini)\".",
  "wn.dueokWin": "All humans (good) are dead → the Dueoksini win",
@@ -409,7 +410,7 @@
  "ms.rp.res.died": "Dead",
  "ms.rp.res.blocked": "Blocked",
  "ms.rp.res.survived": "Survived",
- "ui.firstNight": "First Night",
+ "ui.firstNight": "Dawn in the {pot@pot}",
  "ui.nightN": "Night {n}",
  "ui.dayN": "Day {n}",
  "ui.players": "{n} players",
@@ -432,7 +433,7 @@
  "ui.win.evil": "Evil wins",
  "ui.win.other": "Neutral wins",
  "ui.win.void": "Void · stopped",
- "ui.replay.night0": "Night of information",
+ "ui.replay.night0": "First Night",
  "ui.replay.dayN": "Day {n}",
  "ui.closedPractice": "Practice game closed",
  "ui.closed": "Game closed",
@@ -752,5 +753,6 @@
  "rpl.s.voteMiss.c": "voted to execute {t}, who was good,",
  "ans.meet.allies": "Same side: {s}",
  "gt.nbPoison": "Neighbor poisoning ({r@role})",
- "gt.worldFalse": "Everything false (Vortox game)"
+ "gt.worldFalse": "Everything false (Vortox game)",
+ "lb.char": "{r@role}"
 }

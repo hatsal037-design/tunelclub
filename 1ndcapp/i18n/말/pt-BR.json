@@ -288,6 +288,7 @@
  "ms.rp.wasFalse": "— era falsa",
  "ms.rp.seen": "Visto",
  "ms.ask.night": "Há uma votação não executada. Passar para a noite? Lembretes de uma noite serão removidos.",
+ "ms.ask.nightNoNom": "Ninguém foi indicado hoje. Passar para a noite sem execução?",
  "ms.autoClose.judge": "A partida intocada foi encerrada pela regra de vitória.",
  "ms.autoClose.exec": "A partida intocada foi encerrada supondo a execução do assento {n}.",
  "wn.twinGoodExec": "O gêmeo bom foi executado → o mal vence",
@@ -322,7 +323,7 @@
  "wn.moribaeNote": "Há um Oportunista — se foi quem mais contribuiu para a derrota de {=town@tw}, vence sozinho.",
  "wn.saintExec": "O Refém (Santo) morreu por execução → seu lado perde",
  "wn.shapeshiftNoDemon": "A mudança de forma não deixou {=demon@tw} em jogo → vitória de {=town@tw}",
- "wn.successorAlive": "{=demon@tw} caiu, mas um papel sucessor (Momju / Mulher Escarlate) está vivo — verifique a sucessão.",
+ "wn.successorAlive": "{=demon@tw} caiu, mas um papel sucessor ({r@role}) está vivo — verifique a sucessão.",
  "wn.twinsHold": "Os Gêmeos Nascidos (Gêmeo Maligno) estão vivos — o bem não pode vencer até que um deles morra.",
  "wn.vortoxNoExec": "Mihokgwi (Vortox) — sem execução ontem → o mal vence",
  "wn.vortoxWarn": "Partida com Mihokgwi (Vortox) — se hoje não houver execução, o mal vence. Confira se houve execução.",
@@ -409,7 +410,7 @@
  "ms.rp.res.died": "morto",
  "ms.rp.res.blocked": "Bloqueado",
  "ms.rp.res.survived": "Sobreviveu",
- "ui.firstNight": "Primeira noite",
+ "ui.firstNight": "Amanhecer na {pot@pot}",
  "ui.nightN": "Noite {n}",
  "ui.dayN": "Dia {n}",
  "ui.players": "{n} jogadores",
@@ -432,7 +433,7 @@
  "ui.win.evil": "O mal vence",
  "ui.win.other": "Neutro vence",
  "ui.win.void": "Anulado · interrompido",
- "ui.replay.night0": "Noite de informação",
+ "ui.replay.night0": "Primeira noite",
  "ui.replay.dayN": "Dia {n}",
  "ui.closedPractice": "Jogo de treino encerrado",
  "ui.closed": "Jogo encerrado",
@@ -752,5 +753,6 @@
  "rpl.s.voteMiss.c": "votou para executar {t}, que era do bem,",
  "ans.meet.allies": "Mesmo lado: {s}",
  "gt.nbPoison": "Envenenamento vizinho ({r@role})",
- "gt.worldFalse": "Tudo falso (partida com Vortox)"
+ "gt.worldFalse": "Tudo falso (partida com Vortox)",
+ "lb.char": "{r@role}"
 }

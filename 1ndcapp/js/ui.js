@@ -3,6 +3,14 @@ import { html, render, useState, useEffect, useRef } from '../lib/preact-htm.js'
 import { Icon } from './icons.js';
 import { store } from './store.js';
 
+/* 밤·낮 이름 — 폰 앱 NativeName 과 같은 말(2026-11-11 햇살님): 기록 표기 «새벽 · 밤 1», 진행 말투 «첫 번째 밤» */
+const ORD = ['첫', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열'];
+export const NightName = {
+  pot: () => (store.home && store.home.potKo) || '광장',
+  title: n => (n || 1) <= 1 ? NightName.pot() + '의 새벽' : '밤 ' + (n - 1),
+  spoken: n => { const k = (n || 1) - 1; return k >= 1 && k <= ORD.length ? ORD[k - 1] + ' 번째 밤' : NightName.title(n); },
+  spokenDay: d => (d || 1) <= ORD.length ? ORD[(d || 1) - 1] + ' 번째 낮' : '낮 ' + d,
+};
 export const cx = (...a) => a.filter(Boolean).join(' ');
 
 /** 화면 뼈대 — 위 막대(가운데 제목·좌우 단추) · 본문 스크롤 · 아래 막대(주 행동) */
@@ -42,8 +50,13 @@ export function CheckRow({ title, sub, on, onClick, art, disabled }) {
   <//>`;
 }
 
+export const primaryTap = { last: 0 };   // 화면이 바뀌면 버튼이 새로 생겨 막기가 풀린다 — 모든 주 버튼이 마지막 탭을 같이 본다(2바퀴 망가뜨림)
 export function Primary({ title, enabled = true, loading, onClick, cls }) {
-  return html`<button class=${cx('bprim', cls)} disabled=${!enabled || loading} onClick=${onClick} aria-label=${loading ? '저장 중' : title}>
+  /* 연타 막기 — 글자가 바뀐 직후·저장이 끝난 직후 0.4초 동안 탭을 버린다(폰 앱 NativePrimaryAction 과 같음, 2026-11-11 폴리싱 2) */
+  const at = useRef(0), was = useRef([title, loading]);
+  if (was.current[0] !== title || (was.current[1] && !loading)) at.current = Date.now();
+  was.current = [title, loading];
+  return html`<button class=${cx('bprim', cls)} disabled=${!enabled || loading} onClick=${e => { const now = Date.now(); if (now - at.current >= 400 && now - primaryTap.last >= 400) { primaryTap.last = now; onClick && onClick(e); } }} aria-label=${loading ? '저장 중' : title}>
     ${loading && html`<span class="spin"></span>`}<span>${loading ? '저장 중…' : title}</span></button>`;
 }
 export const Secondary = ({ title, enabled = true, onClick, danger }) => html`<button class=${cx('bsec', danger && 'danger')} disabled=${!enabled} onClick=${onClick}>${title}</button>`;

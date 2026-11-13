@@ -136,7 +136,7 @@ var GameReasoner = (function () {
       else if (eff === '직업공개' && r.답종류 === '직업' && byKo[r.값] && r.자리.length === 1) x = { k: '한자리', s: r.자리[0], X: byKo[r.값].id, 때: r.밤, 낮: false };
       if (x) { x.밤 = r.밤; x.사건 = r.사건; infos.push(x); } else unsupported.push(r.사건 || r.밤);
     });
-    /* 계승 — 흉수가 죽었는데 판이 이어졌으면 누가 이어받았나. 부정한 여자(살아 있고 죽기 전 5명 이상)가 먼저, 밤(넘겨주기)이면 산 하수인 누구든(진행자 재량) */
+    /* 계승 — 흉수가 죽었는데 판이 이어졌으면 누가 이어받았나. 주홍여인(살아 있고 죽기 전 5명 이상)가 먼저, 밤(넘겨주기)이면 산 하수인 누구든(진행자 재량) */
     function timelines(d, M) {
       var out = [];
       (function go(k, cur, dead, trans) {
@@ -148,7 +148,7 @@ var GameReasoner = (function () {
         var minAlive = Object.keys(M).map(Number).filter(function (m) { return !dead2[m]; });
         if (sw && aliveBefore >= 5) {
           heirs = [+sw];
-          /* 중독된 부정한 여자는 못 이어받는다 — 밤 넘겨주기이고 그 밤 독살자가 살아 있는 하수인이면, 독 대상이 부정한 여자인 같은 한 이력으로 다른 하수인도(코덱스 09:47 반례). 낮 처형은 그대로(중독이면 판이 끝났어야) */
+          /* 중독된 주홍여인은 못 이어받는다 — 밤 넘겨주기이고 그 밤 독살자가 살아 있는 하수인이면, 독 대상이 주홍여인인 같은 한 이력으로 다른 하수인도(코덱스 09:47 반례). 낮 처형은 그대로(중독이면 판이 끝났어야) */
           var pz0 = Object.keys(M).filter(function (m) { return M[m] === 'poisoner'; })[0];
           if (!e.낮 && pz0 && !dead[pz0] && +pz0 !== +sw) minAlive.forEach(function (m) { if (m !== +sw) go(k + 1, m, dead2, trans.concat([{ 자리: m, 밤: e.밤, 낮: false, 독SW: true }])); });
         }
@@ -258,7 +258,7 @@ var GameReasoner = (function () {
         var baron = roleSets[ri].indexOf('baron') >= 0, O = comp[1] + (baron ? 2 : 0), T = comp[0] - (baron ? 2 : 0);
         if (T < 0 || O > 4) continue;
         var swSeat = Object.keys(M).filter(function (m) { return M[m] === 'scarletwoman'; })[0] || '', tk = d + '|' + seatSets[si].join() + '|' + swSeat;
-        var TL = tlCache[tk] || (tlCache[tk] = timelines(d, M));   // 계승 흐름은 흉수·하수인 자리·부정한 여자 자리로만 갈린다
+        var TL = tlCache[tk] || (tlCache[tk] = timelines(d, M));   // 계승 흐름은 흉수·하수인 자리·주홍여인 자리로만 갈린다
         for (var ti = 0; ti < TL.length; ti++) for (var dk = 0; dk < (canDrunk && O > 0 && !(fix && fix.건강) ? 2 : 1); dk++) {
           if (fix && fix.취함 != null && !!fix.취함 !== !!dk) continue;
           total++;
@@ -269,7 +269,7 @@ var GameReasoner = (function () {
           if (W.t > T || W.o > O) { total--; continue; }
           W.imps = function (n) { return impsAt(d, tr, n); };
           var pz = Object.keys(M).filter(function (m) { return M[m] === 'poisoner'; })[0];
-          W.poisonAlive = function (n) { return !!pz && !deadAtDusk(+pz, n) && !tr.some(function (t) { return (t.자리 === +pz && (t.밤 < n || (t.밤 === n && !t.낮))) || (t.독SW && t.밤 === n); }); };   // 독살자가 흉수가 되는 순간 독이 풀린다(원작, 10/1 결정) — 그 밤 흉수 뒤 정보부터 참. 그 밤 독이 부정한 여자에게 갔으면 나는 아님
+          W.poisonAlive = function (n) { return !!pz && !deadAtDusk(+pz, n) && !tr.some(function (t) { return (t.자리 === +pz && (t.밤 < n || (t.밤 === n && !t.낮))) || (t.독SW && t.밤 === n); }); };   // 독살자가 흉수가 되는 순간 독이 풀린다(원작, 10/1 결정) — 그 밤 흉수 뒤 정보부터 참. 그 밤 독이 주홍여인에게 갔으면 나는 아님
           var cur = tr.length ? tr[tr.length - 1].자리 : d; W.need = !examples[cur];
           var w = dfs(W, 0);
           if (stop) break outer;

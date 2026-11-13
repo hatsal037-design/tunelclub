@@ -288,6 +288,7 @@
  "ms.rp.wasFalse": "— es war falsch",
  "ms.rp.seen": "Gesehen",
  "ms.ask.night": "Eine Abstimmung hat noch zu keiner Hinrichtung geführt. Zur Nacht wechseln? Markierungen, die nur eine Nacht gelten, werden entfernt.",
+ "ms.ask.nightNoNom": "Heute wurde niemand nominiert. Ohne Hinrichtung zur Nacht wechseln?",
  "ms.autoClose.judge": "Unberührtes Spiel per Siegprüfung geschlossen.",
  "ms.autoClose.exec": "Unberührtes Spiel beendet – Platz {n} gilt als hingerichtet.",
  "wn.twinGoodExec": "Der gute Zwilling wurde hingerichtet → das Böse gewinnt",
@@ -302,7 +303,7 @@
  "wn.masterGoodExec": "Zusätzlicher Tag des Schemers — ein guter Spieler wurde hingerichtet → das böse Team gewinnt",
  "wn.masterNoExec": "Keine Hinrichtung am zusätzlichen Tag des Schemers → {=town@tw} gewinnt",
  "wn.masterExtra": "{=demon@tw} wurde hingerichtet, aber der Schemer lebt — es geht einen Tag weiter. Die Seite des an diesem Tag Hingerichteten verliert; wird niemand hingerichtet, gewinnt {=town@tw}.",
- "wn.successorAlive": "{=demon@tw} ist tot, aber eine Nachfolgerrolle (Momju / Scharlachrote Frau) lebt — prüfe die Nachfolge.",
+ "wn.successorAlive": "{=demon@tw} ist tot, aber eine Nachfolgerrolle ({r@role}) lebt — prüfe die Nachfolge.",
  "wn.demonsDead": "{=demon@tw} ist tot → die Siegbedingung von {=town@tw} ist erfüllt",
  "wn.dueokRule": "Dueoksini-Spiel – die einzigen Siege sind „alle Dueoksini tot ({=town@tw})“ oder „alle Menschen tot (Dueoksini)“.",
  "wn.dueokWin": "Alle Menschen (Gut) sind tot → die Dueoksini gewinnen",
@@ -409,7 +410,7 @@
  "ms.rp.res.died": "Tot",
  "ms.rp.res.blocked": "Blockiert",
  "ms.rp.res.survived": "Überlebt",
- "ui.firstNight": "Erste Nacht",
+ "ui.firstNight": "Morgengrauen auf dem {pot@pot}",
  "ui.nightN": "Nacht {n}",
  "ui.dayN": "Tag {n}",
  "ui.players": "{n} Spieler",
@@ -432,7 +433,7 @@
  "ui.win.evil": "Das Böse gewinnt",
  "ui.win.other": "Neutral gewinnt",
  "ui.win.void": "Ungültig · abgebrochen",
- "ui.replay.night0": "Informationsnacht",
+ "ui.replay.night0": "Erste Nacht",
  "ui.replay.dayN": "Tag {n}",
  "ui.closedPractice": "Übungsspiel geschlossen",
  "ui.closed": "Spiel geschlossen",
@@ -753,5 +754,6 @@
  "rpl.s.voteMiss.c": "stimmte für die Hinrichtung von {t}, der gut war,",
  "ans.meet.allies": "Gleiche Seite: {s}",
  "gt.nbPoison": "Nachbarvergiftung ({r@role})",
- "gt.worldFalse": "Alles falsch (Vortox-Partie)"
+ "gt.worldFalse": "Alles falsch (Vortox-Partie)",
+ "lb.char": "{r@role}"
 }

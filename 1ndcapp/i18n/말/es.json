@@ -288,6 +288,7 @@
  "ms.rp.wasFalse": "— era falsa",
  "ms.rp.seen": "Visto",
  "ms.ask.night": "Hay una votación sin ejecutar. ¿Pasar a la noche? Se quitarán los recordatorios de una noche.",
+ "ms.ask.nightNoNom": "Hoy no se ha nominado a nadie. ¿Pasar a la noche sin ejecución?",
  "ms.autoClose.judge": "Se cerró la partida sin tocar según la regla de victoria.",
  "ms.autoClose.exec": "Se cerró la partida sin tocar suponiendo la ejecución del asiento {n}.",
  "wn.twinGoodExec": "Se ejecutó al gemelo bueno → gana el mal",
@@ -322,7 +323,7 @@
  "wn.moribaeNote": "Hay un Oportunista — si fue quien más contribuyó a la derrota de {=town@tw}, gana en solitario.",
  "wn.saintExec": "El Rehén (Santo) murió ejecutado → su bando pierde",
  "wn.shapeshiftNoDemon": "Con el cambio de forma no queda {=demon@tw} en la partida → victoria de {=town@tw}",
- "wn.successorAlive": "{=demon@tw} ha caído, pero sigue vivo un rol sucesor (Momju / Mujer Escarlata) — comprueba si hay sucesión.",
+ "wn.successorAlive": "{=demon@tw} ha caído, pero sigue vivo un rol sucesor ({r@role}) — comprueba si hay sucesión.",
  "wn.twinsHold": "Los Gemelos nacidos (Gemelo malvado) siguen vivos — el bien no puede ganar hasta que muera uno de ellos.",
  "wn.vortoxNoExec": "Mihokgwi (Vortox) — no hubo ejecución ayer → gana el mal",
  "wn.vortoxWarn": "Partida con Mihokgwi (Vortox) — si hoy no hay ejecución, gana el mal. Comprueba si hay ejecución.",
@@ -409,7 +410,7 @@
  "ms.rp.res.died": "Muerto",
  "ms.rp.res.blocked": "Bloqueado",
  "ms.rp.res.survived": "Sobrevivió",
- "ui.firstNight": "Primera noche",
+ "ui.firstNight": "Amanecer en la {pot@pot}",
  "ui.nightN": "Noche {n}",
  "ui.dayN": "Día {n}",
  "ui.players": "{n} jugadores",
@@ -432,7 +433,7 @@
  "ui.win.evil": "Gana el mal",
  "ui.win.other": "Gana el neutral",
  "ui.win.void": "Nula · detenida",
- "ui.replay.night0": "Noche de información",
+ "ui.replay.night0": "Primera noche",
  "ui.replay.dayN": "Día {n}",
  "ui.closedPractice": "Partida de práctica cerrada",
  "ui.closed": "Partida cerrada",
@@ -752,5 +753,6 @@
  "rpl.s.voteMiss.c": "votó por ejecutar a {t}, que era bueno,",
  "ans.meet.allies": "Mismo bando: {s}",
  "gt.nbPoison": "Envenenamiento vecino ({r@role})",
- "gt.worldFalse": "Todo falso (partida con Vortox)"
+ "gt.worldFalse": "Todo falso (partida con Vortox)",
+ "lb.char": "{r@role}"
 }

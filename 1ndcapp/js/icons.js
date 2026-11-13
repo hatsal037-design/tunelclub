@@ -20,6 +20,7 @@ const P = {
   chevronLeft: 'M15 5l-7 7 7 7',
   chevronRight: 'M9 5l7 7-7 7',
   chevronDown: 'M5 9l7 7 7-7',
+  chevronUp: 'M5 15l7-7 7 7',
   chevronBackCircle: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM13.5 8l-4 4 4 4',
   check: 'M5 12.5l4.5 4.5L19 7.5',
   checkCircle: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM8 12.3l2.8 2.8L16.2 9.5',

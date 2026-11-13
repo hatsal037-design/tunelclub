@@ -335,6 +335,7 @@ h1, h2, p { margin: 0; }
 .nobr { white-space: nowrap; }
 .rowx { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--gray4); color: var(--card); display: grid; place-items: center; }
 .rowx:active { background: var(--gray); }
+.rowx { position: relative; } .rowx::before { content: ''; position: absolute; inset: -12px; }   /* 모양은 22px 그대로, 눌리는 곳만 46px(2026-11-11 폴리싱 8) */
 
 /* 인원 줄의 경험 게이지 — 칸을 직접 선택하고 같은 줄에 설명을 띄운다. */
 .experience-list .card { overflow: visible; }
