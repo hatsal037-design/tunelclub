@@ -2951,5 +2951,8 @@
  "🪵 {r} <b>{p}</b>의 지명 — {n}는 {r}이 아님 → 사망.": "🪵 Indicação de {r} <b>{p}</b> — {n} não é o {r} → morre.",
  "🪵 {r} <b>{p}</b>의 지명 — {n}는 {r}가 아님 → 사망.": "🪵 Indicação de {r} <b>{p}</b> — {n} não é o {r} → morre.",
  "{r}이 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "{r} caiu, mas um papel sucessor ({r}) está vivo — verifique a sucessão.",
- "{r}가 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "{r} caiu, mas um papel sucessor ({r}) está vivo — verifique a sucessão."
+ "{r}가 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "{r} caiu, mas um papel sucessor ({r}) está vivo — verifique a sucessão.",
+ "첫 지명이 나온 뒤엔 쏠 수 없어요.": "Não é possível atirar depois da primeira indicação.",
+ "쏠 수 없는 자리예요.": "Esse assento não pode ser escolhido.",
+ "판이 끝났어요.": "A partida terminou."
 }

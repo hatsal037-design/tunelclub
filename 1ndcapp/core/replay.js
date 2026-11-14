@@ -14,7 +14,7 @@ var GameReplay = (function () {
   function seatNm(n) { if (typeof seatNo === 'function') return seatNo(n); var CT = /** @type {any} */ (globalThis).CoreText; return CT && CT.packs && CT.packs.ko ? CT.seat(CT.pack('_seat'), n) : String(n); }
   /* 사건 종류 코드 — 코어가 함께 올라와 있으면 그 접근자(evType), 복기만 따로 돌면 code 칸 → 옛 한국어 type 표(고정값 EVENT 와 같은 값) (2026-11-04 구조 개선 4) */
   /* 장면 톤(톤: good 마을에 좋은 일 · bad 나쁜 일) — 화면은 종류 글 대신 이 코드로 색을 정한다(2026-11-04 구조 개선 5) */
-  var EV_KO = { '밤 시작': 'night_start', '밤 지목': 'night_pick', '낮 시작': 'day_start', '사망': 'death', '부활': 'revive', '처형': 'execute', '지명': 'nominate', '투표': 'vote', '1회 능력 사용': 'once_used', '계승': 'succession', '토큰': 'token', '판 종료': 'finish', '판 시작': 'start', '역할 변경': 'role_change', '판세 개입': 'director', '앱 선택': 'app_pick', '정보 전달': 'info_shown', '되돌림': 'undo', '블러프 바꿈': 'bluff_reroll', '자동 마감': 'auto_close' };
+  var EV_KO = { '밤 시작': 'night_start', '밤 지목': 'night_pick', '낮 시작': 'day_start', '사망': 'death', '부활': 'revive', '처형': 'execute', '지명': 'nominate', '투표': 'vote', '1회 능력 사용': 'once_used', '계승': 'succession', '토큰': 'token', '판 종료': 'finish', '판 시작': 'start', '역할 변경': 'role_change', '판세 개입': 'director', '앱 선택': 'app_pick', '정보 전달': 'info_shown', '되돌림': 'undo', '블러프 바꿈': 'bluff_reroll', '자동 마감': 'auto_close', '슬레이어 쏘기': 'slay_shot' };
   function evType(e) { if (typeof globalThis.evType === 'function') return globalThis.evType(e); var c = e && e.code; if (c && c !== 'other') return c; return (e && EV_KO[e.type]) || 'other'; }
   /* 정보 직업 — 코어가 함께 올라와 있으면 그 판단(옛 기록엔 «정보 전달»이 없어 이걸로 «주요 인물»을 잡는다) */
   function infoRole(id, mode) { try {   // 그 판의 모드 직업표에서 — 지난 판은 지금 모드와 다를 수 있다

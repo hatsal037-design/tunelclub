@@ -2951,5 +2951,8 @@
  "🪵 {r} <b>{p}</b>의 지명 — {n}는 {r}이 아님 → 사망.": "🪵 Đề cử của {r} <b>{p}</b> — {n} không phải {r} → chết.",
  "🪵 {r} <b>{p}</b>의 지명 — {n}는 {r}가 아님 → 사망.": "🪵 Đề cử của {r} <b>{p}</b> — {n} không phải {r} → chết.",
  "{r}이 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "{r} đã ngã xuống hết, nhưng vai kế thừa ({r}) còn sống — hãy kiểm tra việc kế thừa.",
- "{r}가 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "{r} đã ngã xuống hết, nhưng vai kế thừa ({r}) còn sống — hãy kiểm tra việc kế thừa."
+ "{r}가 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "{r} đã ngã xuống hết, nhưng vai kế thừa ({r}) còn sống — hãy kiểm tra việc kế thừa.",
+ "첫 지명이 나온 뒤엔 쏠 수 없어요.": "Không thể bắn sau lần đề cử đầu tiên.",
+ "쏠 수 없는 자리예요.": "Không thể chọn ghế này.",
+ "판이 끝났어요.": "Ván đã kết thúc."
 }

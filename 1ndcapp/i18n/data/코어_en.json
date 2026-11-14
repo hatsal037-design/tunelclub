@@ -2951,5 +2951,8 @@
 "🪵 {r} <b>{p}</b>의 지명 — {n}는 {r}이 아님 → 사망.": "🪵 {r} <b>{p}</b>'s nomination — {n} is not the {r} → dies.",
 "🪵 {r} <b>{p}</b>의 지명 — {n}는 {r}가 아님 → 사망.": "🪵 {r} <b>{p}</b>'s nomination — {n} is not the {r} → dies.",
 "{r}이 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "The {r} is down, but a successor role ({r}) is alive — check for succession.",
-"{r}가 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "The {r} is down, but a successor role ({r}) is alive — check for succession."
+"{r}가 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "The {r} is down, but a successor role ({r}) is alive — check for succession.",
+"첫 지명이 나온 뒤엔 쏠 수 없어요.": "You can't shoot after the first nomination.",
+"쏠 수 없는 자리예요.": "That seat can't shoot or be shot.",
+"판이 끝났어요.": "The game is over."
 }

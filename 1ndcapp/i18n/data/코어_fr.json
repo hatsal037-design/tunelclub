@@ -2951,5 +2951,8 @@
  "🪵 {r} <b>{p}</b>의 지명 — {n}는 {r}이 아님 → 사망.": "🪵 Nomination de {r} <b>{p}</b> — {n} n’est pas le {r} → meurt.",
  "🪵 {r} <b>{p}</b>의 지명 — {n}는 {r}가 아님 → 사망.": "🪵 Nomination de {r} <b>{p}</b> — {n} n’est pas le {r} → meurt.",
  "{r}이 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "Le {r} est tombé, mais un rôle de successeur ({r}) est vivant — vérifiez la succession.",
- "{r}가 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "Le {r} est tombé, mais un rôle de successeur ({r}) est vivant — vérifiez la succession."
+ "{r}가 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "Le {r} est tombé, mais un rôle de successeur ({r}) est vivant — vérifiez la succession.",
+ "첫 지명이 나온 뒤엔 쏠 수 없어요.": "Impossible de tirer après la première nomination.",
+ "쏠 수 없는 자리예요.": "Ce siège ne peut pas être choisi.",
+ "판이 끝났어요.": "La partie est terminée."
 }

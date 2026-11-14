@@ -622,6 +622,25 @@ a.mention { color: var(--blue); text-decoration: none; background: none; padding
 .g5board .st.dead[data-k=m] { background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M14 2A10 10 0 1 0 22 15.5A8 8 0 0 1 14 2Z' fill='%23aeaeb2'/></svg>") center/46% no-repeat; }
 .g5board .st.dead[data-k=x] { background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10.5' fill='%23aeaeb2'/><path d='M8.2 8.2l7.6 7.6M15.8 8.2l-7.6 7.6' stroke='white' stroke-width='2.6' stroke-linecap='round'/></svg>") center/46% no-repeat; }
 .g5board .st.ring-e { box-shadow: inset 0 0 0 2px #ff3b30; } .g5board .st.ring-c { box-shadow: inset 0 0 0 2px #007aff; }
+/* 자리표 메모(2026-11-14 시안 A) — 의심 테두리(악 빨강 · 선 파랑 · 모름 점선) · 원 위 주장 직업 딱지 · 메모 칸 */
+.g5board .st.ring-ne { box-shadow: inset 0 0 0 2.5px #ff3b30; } .g5board .st.ring-ng { box-shadow: inset 0 0 0 2.5px #007aff; } .g5board .st.ring-nu { box-shadow: none; outline: 2px dashed #b0a070; outline-offset: -2px; }
+.g5board .ntag { position: absolute; transform: translate(-50%,-100%); background: #1c1c1e; color: #fff; border-radius: 6px; padding: 1px 5px; font-weight: 600; white-space: nowrap; pointer-events: none; line-height: 1.3; }
+.g5lb .ntagi { display: inline-block; margin-left: .3em; background: #1c1c1e; color: #fff; border-radius: 5px; padding: 0 4px; font-size: .78em; font-weight: 600; vertical-align: 1px; } .g5lb:not(.inl) .ntagi { display: table; margin: 1px auto 0; }
+.g5show { font: inherit; font-weight: 600; border: 0; border-radius: 10px; background: var(--fill, rgba(120,120,128,.16)); color: var(--fg); min-height: 44px; padding: 0 16px; margin-left: auto; }
+.g5roles { margin: 14px 0 0; } .g5roles .cap { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--sec); padding: 0 2px 6px; }
+.g5roles .strip { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: none; } .g5roles .strip::-webkit-scrollbar { display: none; }
+.g5roles .rc { flex: 0 0 64px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; color: var(--fg); font: inherit; font-size: 12px; min-height: 44px; }
+.g5roles .rc span { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .g5roles .rc span.e { color: #ff3b30; } .g5roles .rc small { color: var(--sec); font-size: 11px; }
+.mycov { display: flex; flex-direction: column; height: 100%; } .mycov .body { flex: 1; overflow: auto; padding: 24px; display: flex; flex-direction: column; justify-content: center; }
+.mycov .card1 { text-align: center; } .mycov h2 { font-size: 34px; margin: 8px 0 2px; } .mycov .tm { font-weight: 600; } .mycov p { margin: 12px 0 4px; line-height: 1.5; } .mycov .sub { color: var(--sec); font-size: 14px; }
+.mycov .blk { text-align: left; border-top: .5px solid var(--line); margin-top: 14px; padding-top: 8px; line-height: 1.5; } .mycov .blk .t { font-size: 12px; font-weight: 600; color: var(--sec); }
+.mycov .hid { display: flex; justify-content: center; color: var(--sec); } .mycov .foot { padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); }
+.mycov .foot .hold { width: 100%; }
+.g5hint { font-size: 13px; color: var(--sec); padding: 6px 16px 0; }
+.nsheet { padding-bottom: 16px; } .nrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 16px; } .nrow + .nrow { border-top: .5px solid var(--line); }
+.nrow select { font: inherit; color: var(--fg); background: transparent; border: 0; text-align: right; max-width: 60%; }
+.nseg { padding: 8px 12px; } .nbody { width: 100%; box-sizing: border-box; font: inherit; color: var(--fg); background: transparent; border: 0; padding: 12px 16px; resize: vertical; min-height: 72px; }
+.nbtn { font: inherit; background: none; border: 0; color: #007aff; min-height: 44px; padding: 0 8px; } .nbtn.b { font-weight: 600; } .nbtn:disabled { color: var(--sec); }
 .g5board .st.nom { box-shadow: 0 0 0 2px var(--bg), 0 0 0 5px #30B0C7; } .g5board .st.turn { box-shadow: 0 0 0 2px var(--bg), 0 0 0 5px #007aff; }
 .g5board .st .gh { position: absolute; right: -4%; bottom: -4%; width: 28%; height: 28%; border-radius: 50%; background: var(--fg); border: 2px solid var(--bg); }
 .g5board .st .ri { width: 62%; height: 62%; object-fit: contain; display: flex; align-items: center; justify-content: center; } .g5board .st.rev.dead { color: var(--sec); } .g5board .st.rev.dead .ri { opacity: .45; }

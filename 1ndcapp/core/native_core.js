@@ -470,7 +470,8 @@ var NativeCore = (function () {
   function plazaCards() { var began = firstNightBegun(), out = [];
     (state.seats || []).forEach(function (s, i) { if (!s || !s.char || !s.shownCard || (!began && cardStale(s, i))) return;
       var w = s.pid ? personById(s.pid) : null, k = w && (w.accountId || w.tunelId); if (!k) return; var c = s.shownCard;
-      out.push({ k: String(k), card: { id: c.id, role: c.role, team: c.team, side: c.side, ab: c.ab, rule: c.rule, n: i + 1 } }); });   // n = 지금 자리 번호(0328 — 참가 웹 «내 자리 n», 공개 자리판의 그 번호)
+      var hp = null; try { hp = handoffPublic(i); } catch (e) { 드러냄('native_core.plazaCards', e); }   // 진행자 «역할 다시 보여주기»와 같은 블러프·밤 기록(2026-11-15 햇살님 «그대로 재활용», 서버 0334)
+      out.push({ k: String(k), card: { id: c.id, role: c.role, team: c.team, side: c.side, ab: c.ab, rule: c.rule, n: i + 1, bluffs: hp && hp.bluffs || undefined, history: hp && hp.history && hp.history.length ? hp.history : undefined } }); });   // n = 지금 자리 번호(0328 — 참가 웹 «내 자리 n», 공개 자리판의 그 번호)
     return out; }
 
   /* 진행 단계 — 밤 시작 카드(idx 0) · 카드 · 새벽(마지막 뒤) · 낮 · 마감. 화면은 이것만 보고 무엇을 그릴지 고른다 */
@@ -754,7 +755,11 @@ var NativeCore = (function () {
       notes: [].concat.apply([], (D.notes || []).map(function (h) { var c = D.noteK && D.noteK[h];   /* 글·단추 모두 코드(noteK·noteA) */
         if (!c) { 드러냄('native_core.notes', new Error('코드 없는 낮 알림')); return []; }
         return [{ kind: 'text', text: prText(c), label: null, call: null, on: false }].concat(actItems((D.noteA && D.noteA[h]) || [])); })).concat(voterCount() !== alive ? [{ kind: 'text', text: SAY('ms.judgesOnly', { n: voterCount() }), label: null, call: null, on: false }] : []),   // 판사 모드 — 문턱이 생존 수보다 낮은 까닭(웹 dayBriefHtml)
-      special: actItems(spActs()), verdict: verdict() };
+      special: actItems(spActs()), verdict: verdict(),
+      /* 슬레이어 쏘기(2026-11-14 햇살님) — 이 모드 직업 목록에 낮 판정형 능력(사냥꾼·슬레이어)이 있으면 낮 화면 맨 위 «쏘기» 줄. 판에 없어도 보인다(누구나 흉내). 첫 지명 뒤엔 잠김 */
+      slay: (function () { var has = CHARS().some(function (c) { var R = pickRuleOf(c) || {}; return /^killif:/.test(R.act || '') && (R.when || []).indexOf('day') >= 0; });
+        if (!has || hubRep() === 'mafia') return null;
+        return { open: !(D.noms || []).length && !gameEnded(), shots: (D.slays || []).map(function (x) { return { by: seatLabel(x.by), target: seatLabel(x.t), hit: !!x.hit }; }) }; })() };
     M.next = dayNext(M, D);
     return M;
   }
@@ -1173,7 +1178,7 @@ var NativeCore = (function () {
         ppl.forEach(function (q) { var ks = Object.keys(ACT_TITLE).filter(function (k) { return (AF[q.자리] || {})[k] && cnt[k] * 2 <= ppl.length && !ACT_COMMON[k]; }); q.칭호 = ks.length ? ACT_TITLE[ks.sort(function (a, b) { return cnt[a] - cnt[b]; })[0]] : null; });   /* 사람마다 하나 — 그 판에서 가장 드문 것 */
       } catch (e) { 드러냄('native_core.game.replay', e); } }
       return R; },   /* 승자 머리글 — 넘겨보기·PDF가 이 글 하나를 쓴다(2026-11-03) */
-    'game.replayNarrow': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; var k = L.uuid || L.id; if (!(k in narrowMemo)) narrowMemo[k] = GameReplay.narrow(L); return narrowMemo[k]; }, 'day.voters': function (k) { return voters(+k); }, records: records, record: record, library: library, 'library.mode': libraryMode,
+    'game.replayNarrow': function (a) { var L = replayLog(a); if (!L || typeof GameReplay === 'undefined') return null; var k = L.uuid || L.id; if (!(k in narrowMemo)) narrowMemo[k] = GameReplay.narrow(L); return narrowMemo[k]; }, 'day.voters': function (k) { return voters(+k); }, 'day.slayPreview': function (a) { var ab = String(a || '').split(','), by = +ab[0], t = +ab[1], b = slayBlock(by, t); if (b) return { ok: false, code: b }; var r = slayCheck(by, t); return { ok: true, hit: r.hit, by: seatLabel(by), target: seatLabel(t) }; }, records: records, record: record, library: library, 'library.mode': libraryMode,
     /* 엔진 내부 관측: 공개 확정본의 생사·공개한 밤만. 큰 화면 전송 형식에는 추가하지 않는다. */
     'observation.public': function () { var P = pubState(pubEpoch()); return { through: P.announcedThrough || 0, dead: (P.seats || []).map(function (s) { return !!s.dead; }) }; },
     /* 배경 음악(2026-10-04 햇살님 «노래, 테마별로 과정별로») — 지금 틀어야 할 곡 이름. 파일은 assets/bgm/<계열>_<과정>.m4a(tools/진행음악). 판이 안 돌면 null */
@@ -1503,6 +1508,9 @@ var NativeCore = (function () {
       else if (p.confirmation !== undefined) return rej('invalidSelection', 'badConfirm');
       return COMMANDS['day.nominate'](action.payload);
     },
+    /* 슬레이어 쏘기 — 미리 보기(판을 안 바꾼다): 연출을 다 튼 뒤에 day.slay 로 반영한다(TV 가 연출보다 먼저 죽음을 보이지 않게) */
+    'day.slay': function (p) { var by = +p.by, t = +p.target; var b = slayBlock(by, t); if (b) return rej(b === 'slayLocked' ? 'notAllowedInPhase' : 'invalidSelection', b);
+      daySlay(by, t); return null; },
     'day.announce': function () { if (state.phase !== 'day') return rej('notAllowedInPhase', 'notDay'); var was = !!dayRec().announced; uiDayAnnounce(); var D0 = dayRec(); if (D0.announced && !was) { D0.announcedAt = Date.now(); try { D0.announcedDeaths = pubNightDeaths(state.nights || 1).map(function (o) { return o.i; }); } catch (e) { 드러냄('native_core.day.announce', e); } } else if (!D0.announced) { delete D0.announcedAt; delete D0.announcedDeaths; }   /* 발표한 사망자 — 모두의 시점 장부(2026-11-03) */ save(); return null; },   // 발표 시각 — TV 가 이름을 잠깐만 크게 보이는 기준(2026-10-04)
     'day.nominate': function (p) { if (state.phase !== 'day') return rej('notAllowedInPhase', 'notDay');
       var t = +p.target, D = dayRec(), m = day(), by = (p.by === null || p.by === undefined) ? null : +p.by;

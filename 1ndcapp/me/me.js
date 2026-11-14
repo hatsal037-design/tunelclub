@@ -5,7 +5,7 @@ import { html, render, useState, useEffect, useRef, useContext, createContext } 
 import { mountCards, setBriefTr, saveFiles } from '../js/briefing.js';
 import { Icon } from '../js/icons.js';
 import { NavStack, useNav, Back } from '../js/nav.js';
-import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton, Sheet, HoldButton } from '../js/ui.js';
+import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton, Sheet, HoldButton, Cover } from '../js/ui.js';
 import { QrScanner } from '../js/qrscan.js';
 import { APC, CUR, josa, ico, cycle, geo } from '../js/screen_v5.js';   // 지금 판 = 큰 화면 v5 를 세로로 접은 판(2026-10-26 v6d) — 순환 표시·기호·자리 배치는 큰 화면 것을 그대로
 
@@ -60,13 +60,28 @@ const live = { joined: [], status: {}, people: {}, skew: 0, ready: false, subs: 
     if (DEMO) { demoPlaza(this); this.ready = true; return this.emit(); }
     if (!auth.user) { this.joined = []; this.status = {}; this.ready = true; return this.emit(); }
     if (full || !this.ready) { const jr = await P.joined(); if (!(jr && jr.ok === false)) this.joined = rows(jr); const pp = {}; for (const x of this.joined) { const r = await P.plazaPeople(x.plaza); pp[x.plaza] = r && r.ok === false ? (this.people[x.plaza] || []) : rows(r); } this.people = pp; }
-    const st = {}; for (const x of this.joined) { const r = await P.plazaStatus(x.plaza); if (r && r.ok) { st[x.plaza] = { ...(r.state || {}), mine: r.mine || null }; if (r.now) this.skew = r.now - Date.now(); } else if (r && r.code === 'net' && this.status[x.plaza]) st[x.plaza] = this.status[x.plaza]; }
+    const st = {}; for (const x of this.joined) { const r = await P.plazaStatus(x.plaza); if (r && r.ok) { st[x.plaza] = { ...(r.state || {}), mine: r.mine || null, epoch: r.epoch || null }; if (r.now) this.skew = r.now - Date.now(); } else if (r && r.code === 'net' && this.status[x.plaza]) st[x.plaza] = this.status[x.plaza]; }
     this.status = st; this.ready = true; this.emit(); },
   slow() { return this.busy && Date.now() - this.busy < 20000; },
   start() { if (this.on) return; this.on = true;   // 보고 있는 동안만 — 다른 탭·화면 꺼짐이면 쉰다
     setInterval(() => { if (!document.hidden && this.joined.length && !DEMO && !this.slow()) this.refresh(); }, LIVE_MS);   // 앞 읽기가 안 끝났으면 건너뜀 — 느린 망에서 겹쳐 쌓이지 않게(20초 넘게 안 오면 걸린 것으로 보고 다시)
     setInterval(() => { if (!document.hidden && this.joined.length && !DEMO && !this.slow()) this.refresh(true); }, LIVE_MS * 6);   // 체크인 명단·나간 광장은 30초마다
     document.addEventListener('visibilitychange', () => { if (!document.hidden && this.joined.length) this.refresh(); }); } };
+/* 자리표 메모(2026-11-14 햇살님 «참가자 웹에도 메모» — 앱 SeatNotes.swift 와 같은 일, 서버 0333). 판 중엔 내 것만, 판 끝나면 그 판 사람 모두(복기) */
+const notes = { plaza: null, epoch: null, m: {}, err: null, subs: new Set(), emit() { this.subs.forEach(f => f()); },
+  async load(plaza) {
+    if (DEMO) { if (!Object.keys(this.m).length) this.m = { 6: { claim: 'om_detective', guess: 'om_mafia', lean: 'evil', body: '수사관이라는데 말이 너무 빠름', phase: 'd2', first: 'n1' }, 4: { lean: 'unknown' }, 1: { claim: 'om_doctor', lean: 'good' } }; this.plaza = plaza; return this.emit(); }   // 시안 확인용
+    const r = await P.noteMine(plaza); if (!r || r.ok === false) return;
+    const m = {}; (r.notes || []).forEach(n => { m[n.seat] = n; }); this.m = m; this.epoch = r.epoch || null; this.plaza = plaza; this.emit(); },
+  async put(plaza, seat, n) { const old = this.m[seat]; this.m = { ...this.m, [seat]: n }; this.emit(); if (DEMO) return;   // 화면엔 바로, 거절되면 되돌린다
+    const r = await P.notePut(plaza, seat, n);
+    if (r && r.ok) this.m = { ...this.m, [seat]: { ...n, phase: r.phase, first: (old && old.first) || r.phase } };
+    else { const m = { ...this.m }; if (old) m[seat] = old; else delete m[seat]; this.m = m; this.err = T({ ended: 'note.ended', no_game: 'note.no_game', forbidden: 'note.forbidden', closed: 'note.forbidden', too_many: 'note.too_many' }[r && r.code] || 'note.fail'); }
+    this.emit(); } };
+function useNotes() { const [, f] = useState(0); useEffect(() => { const g = () => f(x => x + 1); notes.subs.add(g); return () => notes.subs.delete(g); }, []); return notes; }
+const notePhase = p => { const m = /^([nd])(\d+)$/.exec(p || ''); return m ? T(m[1] === 'n' ? 'gnow.night' : 'gnow.day', { n: +m[2] }) : ''; };
+let MODE_ROLES = {}; const modeRoles = async id => MODE_ROLES[id] || (MODE_ROLES[id] = await fetch(`library/modes/${id}.json`).then(r => r.ok ? r.json() : null).then(m => (m && m.roles) || []).catch(() => []));
+function useModeRoles(id) { const [r, setR] = useState(MODE_ROLES[id] || []); useEffect(() => { if (id) modeRoles(id).then(setR); }, [id]); return r; }
 function useLive() { const [, f] = useState(0); useEffect(() => { const g = () => f(x => x + 1); live.subs.add(g); live.start(); return () => live.subs.delete(g); }, []); return live; }
 function useTick() { const [, f] = useState(0); useEffect(() => { const t = setInterval(() => f(x => x + 1), 1000); return () => clearInterval(t); }, []); }
 const phaseText = st => !st ? '' : st.night ? T('live.night', { n: st.night }) : st.day ? T('live.day', { n: st.day }) : st.scene === 'ended' ? T('live.ended') : T('live.prep');
@@ -81,7 +96,7 @@ function demoPlaza(L) {
   if (window.__demoStatus) { L.status = { demo: window.__demoStatus }; return; }   // 화면 확인용 — 헤드리스가 실제 현황 꼴을 넣어 찍는다(2026-10-26 v6d)
   L.status = { demo: wait ? { scene: 'prep' } : { scene: 'discussion', mode: '베이직 확장 No.1', modeId: 'om_ext', brief: window.__demoBrief || undefined, day: 2, timer: { state: 'running', endsAt: Date.now() + 83000 },
     seats: names.map((n, i) => ({ n: i + 1, name: n, dead: i === 2 || i === 6, rv: i === 2 ? 'criminal' : undefined })),
-    mine: { id: 'om_detective', role: '수사관', team: '시민 편 (선)', side: 'good', ab: '매밤: 한 명을 조사해 범죄자 그룹인지 확인한다. 브로커가 있으면 브로커는 시민으로 보인다.', rule: '처형되면 «시민»으로 공개' } } };
+    mine: { id: 'om_detective', history: [{ n: 1, lines: ['고른 사람: 9번 서준', '받은 답: 시민'] }, { n: 2, lines: ['고른 사람: 3번 민수', '받은 답: 범죄 조직'] }], role: '수사관', team: '시민 편 (선)', side: 'good', ab: '매밤: 한 명을 조사해 범죄자 그룹인지 확인한다. 브로커가 있으면 브로커는 시민으로 보인다.', rule: '처형되면 «시민»으로 공개' } } };
 }
 const openGame = () => window.dispatchEvent(new Event('me-game'));
 function PlazaTab() {
@@ -161,7 +176,7 @@ function GnowCycle({ st, left }) {
     ${!night && n > 0 && (cur != null || st.scene === 'ended') && html`<div class="g5nums">${num(alive, T('gnow.alive'))}${num(n - alive, T('gnow.dead'), true)}${hasG && num((st.seats || []).filter(x => x.dead && x.ghost).length, T('gnow.ghost'), true)}</div>`}`;
 }
 /* 자리판 — 큰 화면 geo()(배치표 screen_table.js)로 1080 무대에 놓고 폭에 맞춰 통째로 줄인다 */
-function GnowBoard({ st, mineN, onTap }) {
+function GnowBoard({ st, mineN, onTap, memo = {}, roleKo = {} }) {
   const seats = st.seats, n = seats.length, full = n <= 12, rv = st.scene === 'ended' && Array.isArray(st.reveal) ? Object.fromEntries(st.reveal.map(r => [r.n, r])) : null;
   const rect = st.shape === 'rect' && st.board && Array.isArray(st.board.cells);
   const p = { seats: seats.map(x => ({ id: 's' + x.n, number: x.n, name: x.name })), shape: rect ? 'rect' : 'round',
@@ -175,10 +190,11 @@ function GnowBoard({ st, mineN, onTap }) {
   const R0 = L.kind === 'c' ? h.R : 0, CX = L.kind === 'c' ? L.seats.reduce((a, q) => a + q.x, 0) / n : 0, CY = L.kind === 'c' ? L.seats.reduce((a, q) => a + q.y, 0) / n : 0;   // 원의 가운데(geo 의 cy 는 가운데 글 자리라 midDy 만큼 다르다)
   return html`<div class="g5board" style=${'width:' + W + 'px;height:' + H + 'px'}>
     ${L.gaps.map(g => html`<div class="st gp" style=${`left:${X(g.x)}px;top:${Y(g.y)}px;width:${d * .55}px;height:${d * .55}px`}></div>`)}
-    ${seats.map((x, i) => { const pt = L.seats[i]; if (!pt) return null; const r = rv && rv[x.n], cls = 'st' + (x.dead ? ' dead' : '') + (r ? ' rev' : '') + (x.rv === 'criminal' ? ' ring-e' : x.rv === 'citizen' ? ' ring-c' : '') + (x.n === nomT ? ' nom' : x.n === turn ? ' turn' : '');
+    ${seats.map((x, i) => { const pt = L.seats[i]; if (!pt) return null; const r = rv && rv[x.n], cls = 'st' + (x.dead ? ' dead' : '') + (r ? ' rev' : '') + (x.rv === 'criminal' ? ' ring-e' : x.rv === 'citizen' ? ' ring-c' : !r && memo[x.n] && memo[x.n].lean === 'evil' ? ' ring-ne' : !r && memo[x.n] && memo[x.n].lean === 'good' ? ' ring-ng' : !r && memo[x.n] && memo[x.n].lean === 'unknown' ? ' ring-nu' : '') + (x.n === nomT ? ' nom' : x.n === turn ? ' turn' : '');   /* 메모 의심 테두리 — 처형 공개가 먼저 */
+      const tg = !r && memo[x.n] && memo[x.n].claim ? html`<span class="ntag" style=${`left:${X(pt.x)}px;top:${Y(pt.y) - d / 2 - 2}px;font-size:${Math.max(9, Math.round(d * .22))}px`}>${D(roleKo[memo[x.n].claim] || memo[x.n].claim)}</span>` : null;
       const seat = html`<button type="button" class=${cls} data-k=${r ? '' : x.dead ? (x.cause === 'exec' ? 'x' : x.cause ? 'm' : '') : ''} aria-label=${x.n + ' ' + x.name + (x.dead ? ' · ' + T('live.dead') : '') + (r ? ' · ' + D(r.role) : '')} onClick=${() => onTap(x.n)}
         style=${`left:${X(pt.x)}px;top:${Y(pt.y)}px;width:${d}px;height:${d}px;font-size:${Math.round(d * .43)}px`}>${r ? (artOk(r.icon) ? html`<img class="ri" src=${'art/' + r.icon + '.webp'} alt="" />` : html`<span class="ri">${Array.from(D(r.role || ''))[0] || ''}</span>`) : x.dead ? '' : x.n}${x.dead && x.ghost && html`<span class="gh"></span>`}</button>`;
-      if (!full) return seat;
+      if (!full) return html`${seat}${tg}`;
       let pos, inl; const g0 = d / 2 + 4;
       if (L.kind === 'c') { const co = (pt.x - CX) / R0, si = (pt.y - CY) / R0, side = Math.abs(co) >= .3, g = side ? g0 + d * .3 : g0, ax = X(pt.x) + co * g, ay = Y(pt.y) + si * g; inl = side;
         if (!side) { const mw = Math.max(24, 2 * R0 * k * Math.sin(Math.PI / n) * .96); pos = `left:${ax - mw / 2}px;width:${mw}px;text-align:center;` + (si < 0 ? `bottom:${H - ay + 2}px` : `top:${ay + 2}px`); }
@@ -186,33 +202,101 @@ function GnowBoard({ st, mineN, onTap }) {
       else { const px = X(pt.x), py = Y(pt.y), mw = h.sx * k - 4; inl = pt.nm === 'left' || pt.nm === 'right';
         pos = pt.nm === 'above' ? `left:${px - mw / 2}px;width:${mw}px;text-align:center;bottom:${H - (py - g0) + 2}px` : pt.nm === 'below' ? `left:${px - mw / 2}px;width:${mw}px;text-align:center;top:${py + g0}px`
           : pt.nm === 'left' ? `left:0;width:${px - g0 - 1}px;text-align:right;top:${py - fs * .6}px` : `left:${px + g0}px;width:${W - (px + g0) - 1}px;text-align:left;top:${py - fs * .6}px`; }
-      return html`${seat}<div class=${'g5lb' + (x.dead ? ' dead' : '') + (inl ? ' inl' : '')} style=${'font-size:' + fs + 'px;' + pos}>${x.name}${mineN === x.n && html`<span class="my">${T('gnow.me')}</span>`}${r && html`<span class="rl" style=${'color:' + (SIDEC[r.side] || 'var(--sec)')}>${D(r.role)}</span>`}</div>`; })}
+      return html`${seat}<div class=${'g5lb' + (x.dead ? ' dead' : '') + (inl ? ' inl' : '')} style=${'font-size:' + fs + 'px;' + pos}>${x.name}${mineN === x.n && html`<span class="my">${T('gnow.me')}</span>`}${!r && memo[x.n] && memo[x.n].claim && html`<span class="ntagi">${D(roleKo[memo[x.n].claim] || memo[x.n].claim)}</span>`}${r && html`<span class="rl" style=${'color:' + (SIDEC[r.side] || 'var(--sec)')}>${D(r.role)}</span>`}</div>`; })}
   </div>`;
 }
 function GameNow({ close }) {
-  const nav = useNav(), L = useLive(), [peek, setPeek] = useState(false), [fold, setFold0] = useState(foldGet), [tap, setTap] = useState(null); useTick();
+  const nav = useNav(), L = useLive(), N = useNotes(), [peek, setPeek] = useState(false), [fold, setFold0] = useState(foldGet), [tap, setTap] = useState(null), [noteN, setNoteN] = useState(null), [myOpen, setMyOpen] = useState(false); useTick();
   const setFold = v => { setFold0(v); foldSet(v); };
   const j = L.joined[0], st0 = j && L.status[j.plaza], pp = j ? (L.people[j.plaza] || []) : [];
+  const roles = useModeRoles(st0 && st0.modeId), roleKo = Object.fromEntries(roles.map(r => [r.id, r.ko]));   // 훅은 일찍 돌아가기 전에(조건부 훅 금지)
+  useEffect(() => { if (j && st0 && st0.scene && st0.scene !== 'prep') notes.load(j.plaza); }, [j && j.plaza, st0 && st0.epoch]);   // 판이 바뀌면 그 판 메모로
   if (!j) return html`<${Page} title=${T('game.now')} left=${html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}><${Section}><${Row}><span class="sec">${T('empty.plaza')}</span><//><//><//>`;
   const st = { ...(st0 || {}), seats: (st0 && Array.isArray(st0.seats)) ? st0.seats : [], checkin: pp.length }, left = timerLeft(st.timer, L.skew), night = st.scene === 'night';
   const nameOf = n => { const x = st.seats.find(q => q.n === n); return x ? x.name || n + '번' : ''; };
   const guide = st.brief && (st.brief.groups || []).length, ended = st.scene === 'ended', open = ended || !fold, mineN = st.mine && st.mine.n;
   const me = mineN ? st.seats.find(q => q.n === mineN) : null, alive = st.seats.filter(q => !q.dead).length;
+  const memo = DEMO || N.epoch === st.epoch ? N.m : {};
   const sum = tap && st.seats.length > 12 ? tap + ' · ' + nameOf(tap) : ended ? T('gnow.reveal') : me ? T('gnow.my_seat', { n: me.n, s: me.dead ? T('gnow.dead') : T('gnow.alive') }) : T('gnow.seats_sum', { n: st.seats.length, a: alive });
   return html`<${Page} bg=${night ? 'g5n' : 'g5'} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} left=${html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}>
     <div class="g5">
       <div class="g5mid"><${GnowHead} st=${st} nameOf=${nameOf} left=${left} /></div>
       <${GnowCycle} st=${st} left=${left} />
       ${st.seats.length > 0 && html`<button type="button" class="g5row" aria-expanded=${open} disabled=${ended} onClick=${() => setFold(!fold)}><span class="lab">${T('gnow.seats')}</span><span class="val">${sum}</span>${!ended && html`<span class="tg">${fold ? '▸' : '▾'}</span>`}</button>
-        ${open && html`<${GnowBoard} st=${st} mineN=${mineN} onTap=${n => setTap(tap === n ? null : n)} />`}`}
-      ${st.mine && html`<div class="g5row g5me"><span class="lab">${T('plaza.my_role')}</span><span class="val" style=${peek ? 'color:' + (SIDEC[st.mine.side] || 'inherit') : ''}>${peek ? D(st.mine.role) : '•••'}</span>
-        <span class="hold-sm g5hold"><${HoldButton} label=${T('plaza.hold')} onChange=${setPeek} /></span>
+        ${open && !ended && html`<div class="g5hint">${T('note.hint')}</div>`}
+        ${open && html`<${GnowBoard} st=${st} mineN=${mineN} memo=${memo} roleKo=${roleKo} onTap=${n => { setTap(tap === n ? null : n); if (!ended) setNoteN(n); }} />`}`}
+      ${ended && st.epoch && html`<div class="g5flow"><div class="cap">${T('note.replay')}</div><${NoteReplay} plaza=${j.plaza} epoch=${st.epoch} roleKo=${roleKo} /></div>`}
+      <${NoteSheet} open=${noteN != null} plaza=${j.plaza} seat=${noteN} name=${noteN != null ? nameOf(noteN) : ''} roles=${roles} cur=${noteN != null ? memo[noteN] : null} onClose=${() => setNoteN(null)} />
+      <${Alert} open=${!!N.err} title=${N.err || ''} onClose=${() => { notes.err = null; notes.emit(); }} />
+      ${st.mine && html`<div class="g5row g5me"><span class="lab">${T('plaza.my_role')}</span><span class="val">•••</span>
+        <button type="button" class="g5show" onClick=${() => setMyOpen(true)}>${T('plaza.hold')}</button>
         <button type="button" class="g5lnk" onClick=${() => nav.push(html`<${RoleDetail} card=${st.mine} brief=${st.brief} modeId=${st.modeId} mine=${true} />`)}>${T('role.more')}</button></div>`}
+      ${st.mine && html`<${MyRoleCover} open=${myOpen} card=${st.mine} onClose=${() => setMyOpen(false)} />`}
+      ${st.seats.length > 0 && html`<${RoleStrip} st=${st} roles=${roles} />`}
       ${!night && Array.isArray(st.flow) && st.flow.length > 0 && html`<${GnowFlow} st=${st} nameOf=${nameOf} />`}
       ${(st.brief || st.modeId) && html`<div class="g5links">${st.brief && html`<button type="button" class="g5lnk" onClick=${() => nav.push(html`<${BriefView} b=${st.brief} modeId=${st.modeId} />`)}>${T('plaza.game_info')}</button>`}
-        <button type="button" class="g5lnk" onClick=${() => nav.push(guide ? html`<${RoleGuide} b=${st.brief} />` : html`<${ModeView} id=${st.modeId} />`)}>${T(guide ? 'role.inplay' : 'role.mode_all')}</button></div>`}
+        ${!st.seats.length && html`<button type="button" class="g5lnk" onClick=${() => nav.push(guide ? html`<${RoleGuide} b=${st.brief} />` : html`<${ModeView} id=${st.modeId} />`)}>${T(guide ? 'role.inplay' : 'role.mode_all')}</button>`}</div>`}
     </div>
   <//>`;
+}
+/* 그 판 직업을 바로(2026-11-15 햇살님 «더 직관적으로») — 안내가 있으면 이번 판(편 순서), 없으면 이 모드. 누르면 직업 자세히, 머리 «자세히»는 능력 글까지 */
+function RoleStrip({ st, roles }) {
+  const nav = useNav(), art = useArt(), guide = st.brief && (st.brief.groups || []).length;
+  const list = guide ? st.brief.groups.flatMap(g => (g.roles || []).map(r => ({ card: { id: r.id, role: r.name, team: g.name, side: gSide(g), ab: r.ability }, side: gSide(g), count: r.count || 1 })))
+    : roles.map(r => { const ev = ['minion', 'demon', 'mafia'].includes(r.team); return { card: { id: r.id, role: r.ko, team: r.teamKo, side: ev ? 'evil' : 'good', ab: r.ab }, side: ev ? 'evil' : null, count: 1, art: r }; });
+  if (!list.length) return null;
+  return html`<div class="g5roles"><div class="cap"><span>${T(guide ? 'role.inplay' : 'role.mode_all')}</span>
+      <button type="button" class="g5lnk" onClick=${() => nav.push(guide ? html`<${RoleGuide} b=${st.brief} />` : html`<${ModeView} id=${st.modeId} />`)}>${T('role.more')}</button></div>
+    <div class="strip">${list.map(x => html`<button type="button" class="rc" onClick=${() => nav.push(html`<${RoleDetail} card=${x.card} brief=${st.brief} modeId=${st.modeId} />`)}>
+      <${RoleArt} r=${x.art || art[x.card.role] || {}} size=${40} /><span class=${x.side === 'evil' ? 'e' : ''}>${D(x.card.role)}</span>${x.count > 1 && html`<small>×${x.count}</small>`}</button>`)}</div></div>`;
+}
+/* 내 직업 팝업(2026-11-15 햇살님 «한 번 더 팝업에 들어가서 누르면 보기로») — 앱 MyRoleCover·진행자 «역할 다시 보여주기»와 같은 틀: 누르는 동안 카드 + 블러프 + 밤마다 고른 사람·받은 답(서버 0334) */
+function MyRoleCover({ open, card, onClose }) {
+  const [on, setOn] = useState(false), art = useArt();
+  useEffect(() => { if (!open) setOn(false); }, [open]);
+  const night = n => n <= 1 ? T('mine.dawn', { p: T('place.plaza') }) : T('gnow.night', { n: n - 1 });
+  return html`<${Cover} open=${open}><div class="mycov">
+    <header class="navbar"><div class="nb-l"><button class="nbtn" onClick=${onClose}>${T('ui.close')}</button></div><div class="nb-t">${T('plaza.my_role')}</div><div class="nb-r"></div></header>
+    <div class="body">${on ? html`<div class="card1">
+        <${RoleArt} r=${art[card.role] || {}} size=${88} /><h2>${D(card.role)}</h2><div class="tm" style=${'color:' + (SIDEC[card.side] || 'var(--sec)')}>${D(card.team || '')}</div>
+        <p>${D(card.ab || '')}</p>${card.rule && html`<div class="sub">${D(card.rule)}</div>`}
+        ${Array.isArray(card.bluffs) && card.bluffs.length > 0 && html`<div class="blk"><div class="t">${T('mine.bluffs')}</div><div>${card.bluffs.map(D).join(' · ')}</div></div>`}
+        ${(card.history || []).map(h => html`<div class="blk"><div class="t">${night(h.n)}</div>${(h.lines || []).map(l => html`<div>${l}</div>`)}</div>`)}</div>`
+      : html`<div class="hid" aria-label=${T('mine.hold_long')}><${Icon} name="eyeSlash" size=${44} /></div>`}</div>
+    <div class="foot"><${HoldButton} label=${T('mine.hold_long')} onChange=${setOn} /></div></div><//>`;
+}
+/* 메모 칸 — 자리를 누르면 아래에서(시안 A 2번). 직업은 이번 모드 전체에서 편별로(판에 누가 있는지는 안 알려 준다) */
+function NoteSheet({ open, plaza, seat, name, roles, cur, onClose }) {
+  const [n, setN] = useState({});
+  useEffect(() => { if (open) setN({ ...(cur || {}) }); }, [open, seat]);
+  const teams = roles.reduce((a, r) => { (a[r.teamKo] = a[r.teamKo] || []).push(r); return a; }, {});
+  const pick = (k, label) => html`<label class="nrow"><span>${label}</span><select value=${n[k] || ''} onChange=${e => setN({ ...n, [k]: e.target.value || null })}>
+    <option value="">${T('note.pick')}</option>${Object.keys(teams).map(t => html`<optgroup label=${D(t)}>${teams[t].map(r => html`<option value=${r.id}>${D(r.ko)}</option>`)}</optgroup>`)}</select></label>`;
+  const same = JSON.stringify([n.claim || null, n.guess || null, n.lean || null, n.body || '']) === JSON.stringify([(cur || {}).claim || null, (cur || {}).guess || null, (cur || {}).lean || null, (cur || {}).body || '']);
+  return html`<${Sheet} open=${open} onClose=${onClose} detent="medium" label=${seat + ' ' + name}>
+    <header class="navbar"><div class="nb-l"><button class="nbtn" onClick=${onClose}>${T('ui.cancel')}</button></div><div class="nb-t">${seat} ${name}</div>
+      <div class="nb-r"><button class="nbtn b" disabled=${same} onClick=${() => { notes.put(plaza, seat, { claim: n.claim || null, guess: n.guess || null, lean: n.lean || null, body: (n.body || '').slice(0, 200) }); onClose(); }}>${T('note.done')}</button></div></header>
+    <div class="nsheet">
+      <${Section}>${pick('claim', T('note.claim'))}${pick('guess', T('note.guess'))}<//>
+      <${Section} header=${T('note.lean')}><div class="nseg"><${Segmented} value=${n.lean || ''} onChange=${v => setN({ ...n, lean: v })} options=${[['evil', T('note.evil')], ['unknown', T('note.unknown')], ['good', T('note.good')]]} /></div><//>
+      <${Section} header=${T('note.body')} footer=${n.first ? [T('note.first', { p: notePhase(n.first) }), n.phase ? T('note.last', { p: notePhase(n.phase) }) : ''].filter(Boolean).join(' · ') : ''}>
+        <textarea class="nbody" maxlength="200" rows="3" value=${n.body || ''} onInput=${e => setN({ ...n, body: e.target.value })} aria-label=${T('note.body')}></textarea><//>
+    </div>
+  <//>`;
+}
+/* 판 끝난 뒤 — 누가 언제 누구를 어떻게 봤나(시안 A 3번). 진행자 앱이 판 기록을 올릴 때까지 잠깐 기다린다 */
+function NoteReplay({ plaza, epoch, roleKo }) {
+  const [rows, setRows] = useState(null), [st, setSt] = useState('loading');
+  useEffect(() => { let live = true; (async () => { for (let i = 0; i < 6 && live; i++) {
+    const r = DEMO ? { ok: true, rows: [{ by: 1, byName: '햇살', seat: 6, name: '수아', lean: 'unknown', phase: 'n1' }, { by: 1, byName: '햇살', seat: 6, name: '수아', lean: 'evil', guess: 'om_mafia', phase: 'd2' }] } : await P.noteGame(plaza, epoch);
+    if (r && r.ok) { setRows(r.rows || []); setSt('ok'); return; } if (!r || r.code !== 'not_ended') { setSt('none'); return; } setSt('wait'); await new Promise(f => setTimeout(f, 10000)); } })(); return () => { live = false; }; }, [plaza, epoch]);
+  if (st === 'wait' || st === 'loading') return html`<div class="ev sec">${st === 'wait' ? T('note.wait') : '…'}</div>`;
+  if (st !== 'ok') return null;
+  if (!rows.length) return html`<div class="ev sec">${T('note.none')}</div>`;
+  const phases = [...new Set(rows.map(r => r.phase || ''))], lean = { evil: [T('note.evil'), RED], good: [T('note.good'), BLUE], unknown: [T('note.unknown'), 'var(--sec)'] };
+  return html`<div class="nrep">${phases.map(ph => html`<div class="pg"><div class="per">${notePhase(ph)}</div>${rows.filter(r => (r.phase || '') === ph).map(r => html`<div class="ev">
+    <span>${r.by} ${r.byName} → ${r.seat} ${r.name || ''}</span>
+    <span class="r" style=${r.lean ? 'color:' + lean[r.lean][1] : ''}>${[r.lean && lean[r.lean][0], r.claim && T('note.claim_s', { r: D(roleKo[r.claim] || r.claim) }), r.guess && T('note.guess_s', { r: D(roleKo[r.guess] || r.guess) }), r.body && '«' + r.body + '»'].filter(Boolean).join(' · ')}</span></div>`)}</div>`)}</div>`;
 }
 function GnowFlow({ st, nameOf }) {
   const inDay = /^(dawn|discussion|nomination|voting|confirmed|execution)$/.test(st.scene), cur = CUR[st.scene];

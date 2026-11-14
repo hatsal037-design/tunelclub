@@ -174,7 +174,11 @@ var 드러냄 = /** @type {any} */ (globalThis).드러냄 || (/** @type {any} */
       checkin: function (code) { return call('plaza_checkin', { p_code: code }); },
       joined: function () { return call('plaza_joined').then(function (r) { return r.ok ? set('joined', r.value || []) : r; }); },
       leave: function (plazaId) { return call('plaza_leave', { p_id: plazaId }); },
-      plazaStatus: function (plazaId) { return call('plaza_status_get', { p_plaza: plazaId }); },   // 광장 현황(0320) — 잠금화면 라이브 액티비티
+      plazaStatus: function (plazaId) { return call('plaza_status_get', { p_plaza: plazaId }); },
+      /* 자리표 메모(0333, 2026-11-14) — 판 중엔 내 것만, 판 끝나면 그 판에 앉은 사람 모두의 것(복기) */
+      noteMine: function (plazaId) { return call('seat_note_mine', { p_plaza: plazaId }); },
+      notePut: function (plazaId, seat, n) { n = n || {}; return call('seat_note_put', { p_plaza: plazaId, p_seat: seat, p_claim: n.claim || null, p_guess: n.guess || null, p_lean: n.lean || null, p_body: n.body || null }); },
+      noteGame: function (plazaId, epoch) { return call('seat_note_game', { p_plaza: plazaId, p_epoch: epoch }); },   // 광장 현황(0320) — 잠금화면 라이브 액티비티
 
       // ── 전적·정정 ──
       stats: function () { return call('my_stats'); },

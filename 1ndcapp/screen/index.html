@@ -556,7 +556,7 @@ async function poll1(g) {
     if (!linked) { linked = true; pairing = false; }
     deadline = Date.now() + (Date.parse(r.expires_at) - Date.parse(r.server_at));   // 서버 시각과의 차이를 빼고 TV 시계로 — 인터넷이 끊겨도 12시간이면 지운다
     clearTimeout(deadTimer); deadTimer = setTimeout(() => { if (g === gen) openRequest(); }, Math.max(0, deadline - Date.now()));
-    if (r.state && r.state.schema === 1 && (r.epoch !== known.epoch || known.rev === null || r.revision > known.rev)) { known = { epoch: r.epoch, rev: r.revision }; P = r.state; window.__at = Date.now(); if (window.__snd) window.__snd(P.audio || null); }
+    if (r.state && r.state.schema === 1 && (r.epoch !== known.epoch || known.rev === null || r.revision > known.rev)) { known = { epoch: r.epoch, rev: r.revision }; P = r.state; window.__at = Date.now(); if (window.__snd) window.__snd(P.audio || null); if (window.__fx) window.__fx(P.fx || null); }
     render(); listen(); return schedule(g, document.hidden ? 10000 : wsOk() ? 5000 : 2000);   // 신호를 듣는 동안은 5초에 한 번만 확인
   }
   if (r.status === 'waiting') return schedule(g, document.hidden ? 10000 : 2000);
@@ -577,7 +577,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && li
 setInterval(() => { tick(); if (linked && deadline && Date.now() > deadline) openRequest(); }, 250);
 try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}   // TV 가 꺼지지 않게(되는 브라우저에서만)
 start();
-</script><script type="module">import { screenSound } from '../js/screen_audio.js'; window.__snd = screenSound; if (P) screenSound(P.audio || null);</script><script type="module">import * as V5 from '../js/screen_v5.js'; window.V5 = V5; render(true);</script>
+</script><script type="module">import { screenSound } from '../js/screen_audio.js'; window.__snd = screenSound; if (P) screenSound(P.audio || null);</script><script type="module">import { screenFx } from '../js/screen_slay.js'; window.__fx = screenFx; if (P) screenFx(P.fx || null);   /* 슬레이어 쏘기 연출(2026-11-14) */</script><script type="module">import * as V5 from '../js/screen_v5.js'; window.V5 = V5; render(true);</script>
 <script type="module">import * as B from '../js/briefing.js'; window.BRIEF = B; render(true); document.fonts && document.fonts.addEventListener('loadingdone', () => render(true));   /* 이번 판 안내 — 글꼴이 들어오면 관계 선을 다시 잰다 */</script>
 <script type="module">import { startDomI18n } from '../js/i18n_dom.js'; startDomI18n(document.body).then(() => render(true));   /* 큰 화면도 TV 브라우저 언어가 영어면 영어로(2026-10-06) */</script>
 </body></html>
