@@ -871,7 +871,8 @@ var NativeCore = (function () {
       usage = { dayNumber: dayNo(n), nominatedBy: by, nominatedTargets: tg }; }
     var ending = null; if (ended) { var R = result(); ending = { kind: state.practice ? 'practice' : (R.winner && R.winner !== 'void') ? 'completed' : 'aborted', winnerLabel: R.winner && R.winner !== 'void' ? winKoOf(R.winner, R.winGroup) : null }; }   // 7 승리 진영 — 확정 공개 승리만, 선악 둘로 가두지 않음
     var body = { schema: 1, gameEpoch: P.epoch, handoff: turn, dayNumber: isDay ? dayNo(n) : null, nightNumber: began && !ended && !isDay ? n : null,
-      scene: scene, waiting: waiting, shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, board: pubBoard(), initialComposition: P.comp || null, timer: timer, nomination: nom,
+      scene: scene, waiting: waiting, join: !waiting && !ended && tvp && tvp.code && pot0 ? tvp.code : null,   /* 진행 내내 구석 QR(2026-11-15 햇살님 «처음 들어오고 닫아 버리는 경우» — 찍으면 체크인·«지금 판» 다시) */
+      shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, board: pubBoard(), initialComposition: P.comp || null, timer: timer, nomination: nom,
       neededVotes: nom ? G.need : null, results: results, execution: exec,
       morningAnnouncement: morning, pastExecutions: past, nominationUsage: usage, ending: ending,
       endReveal: ended && state.tvReveal !== false ? endReveal() : null, endReplay: ended && typeof state.tvReplay === 'number' ? endReplay(state.tvReplay) : null };

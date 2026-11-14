@@ -67,6 +67,7 @@ html,body{margin:0;height:100%;background:#000;color:#1c1c1e;font:15px/1.45 -app
 .tv{width:min(100vw,177.78vh);max-width:none;border-radius:0;box-shadow:none}
 .topline small{color:var(--mute)} .result{background:var(--seat);border-color:var(--line)} .result small,.centerlabel,.centersub,.footer{color:var(--mute)}
 .pair{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.2cqw;text-align:center}
+#joinqr{position:fixed;left:1.5vw;bottom:2.5vh;z-index:50;width:min(12vh,12vw);display:flex;flex-direction:column;align-items:center;gap:.6vh;pointer-events:none} #joinqr .q{background:#fff;padding:.8vh;border-radius:1vh;line-height:0;width:100%;box-sizing:border-box} #joinqr .q svg{width:100%;height:auto;display:block} #joinqr .c{font-size:min(1.7vh,1.7vw);font-weight:600;color:#fff;background:rgba(0,0,0,.55);border-radius:99px;padding:.2vh .8vh;white-space:nowrap}
 .pair .qr{background:#fff;padding:1.6cqw;border-radius:1.6cqw;line-height:0} .pair .qr svg{width:22cqw;height:22cqw;display:block}
 .pair .code{font:600 6cqw/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.12em}
 .pair .how{font-size:1.9cqw;color:var(--mute)} .pair .t{font-size:2.6cqw;font-weight:600}
@@ -441,8 +442,19 @@ function render(force) {
   if (!force && key === drawn) return; drawn = key;
   draw();
 }
+let joinDrawn = null;
+/* 진행 내내 구석 QR(2026-11-15 햇살님 «처음 들어오고 닫아 버리는 경우») — 찍으면 체크인(이미 했으면 그대로)하고 참가자 «지금 판»이 다시 열린다. 대기 화면의 큰 QR 과 같은 주소 */
+function drawJoin(p) {
+  let el = document.getElementById('joinqr'); const code = p && p.join && p.scene !== 'waiting' ? p.join : null;
+  if (!code) { if (el) el.hidden = true; return; }
+  if (!el) { el = document.createElement('div'); el.id = 'joinqr'; el.setAttribute('aria-label', '참가 QR'); document.body.appendChild(el); }
+  el.hidden = false; if (joinDrawn === code) return; joinDrawn = code;
+  const q = qrcode(0, 'M'); q.addData('https://tunel.kr/1ndcapp/me/?j=' + code); q.make();
+  el.innerHTML = '<div class="q">' + q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }) + '</div><div class="c">찍고 참가</div>';
+}
 function draw() {
-  const p = P && P.scene === 'idle' ? null : P, tv = $('tv');   // 광장이 닫혀 도는 판이 없으면(idle) 판 없는 화면과 같게
+  const p = P && P.scene === 'idle' ? null : P, tv = $('tv');
+  drawJoin(p);   // 광장이 닫혀 도는 판이 없으면(idle) 판 없는 화면과 같게
   tv.classList.remove('waiting');
   /* 이번 판 안내 — 룰 설명 단계면 화면 전체, 넘기기 중이면 오른쪽 천(자리는 왼쪽으로) */
   const BR = window.BRIEF, br = BR && p && p.scene === 'prep' && p.briefing, rules = !!(br && p.briefingStage === 'rules'), pan = !!(br && !rules && p.handoff);
