@@ -413,5 +413,14 @@
   "mine.bluffs": "블러프",
   "gnow.ph.night": "밤",
   "gnow.ph.vote": "투표",
-  "gnow.next": "다음"
+  "gnow.next": "다음",
+  "a2hs.title": "홈 화면에 두세요",
+  "a2hs.sub": "다음 판부터 아이콘 한 번이면 바로 열려요",
+  "a2hs.s1": "아래 막대의 공유 단추",
+  "a2hs.s2": "«홈 화면에 추가»",
+  "a2hs.s3": "오른쪽 위 «추가»",
+  "a2hs.login": "처음 한 번은 카카오 로그인을 다시 해요",
+  "a2hs.ok": "알겠어요",
+  "a2hs.later": "다음에",
+  "a2hs.install": "앱 설치"
 }

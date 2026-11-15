@@ -413,5 +413,14 @@
   "mine.bluffs": "Blefes",
   "gnow.ph.night": "Noite",
   "gnow.ph.vote": "Votação",
-  "gnow.next": "Próximo"
+  "gnow.next": "Próximo",
+  "a2hs.title": "Adicione à Tela de Início",
+  "a2hs.sub": "No próximo jogo, um toque no ícone já abre",
+  "a2hs.s1": "Toque em Compartilhar na barra inferior",
+  "a2hs.s2": "“Adicionar à Tela de Início”",
+  "a2hs.s3": "“Adicionar” no canto superior direito",
+  "a2hs.login": "Na primeira vez, você entra com o Kakao de novo",
+  "a2hs.ok": "Entendi",
+  "a2hs.later": "Depois",
+  "a2hs.install": "Instalar app"
 }

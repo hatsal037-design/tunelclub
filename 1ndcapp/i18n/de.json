@@ -413,5 +413,14 @@
  "mine.bluffs": "Bluffs",
  "gnow.ph.night": "Nacht",
  "gnow.ph.vote": "Abstimmung",
- "gnow.next": "Danach"
+ "gnow.next": "Danach",
+ "a2hs.title": "Zum Home-Bildschirm",
+ "a2hs.sub": "Beim nächsten Spiel öffnet ein Tipp aufs Symbol alles",
+ "a2hs.s1": "Unten auf „Teilen“ tippen",
+ "a2hs.s2": "„Zum Home-Bildschirm“",
+ "a2hs.s3": "Oben rechts „Hinzufügen“",
+ "a2hs.login": "Beim ersten Mal meldest du dich erneut mit Kakao an",
+ "a2hs.ok": "Verstanden",
+ "a2hs.later": "Später",
+ "a2hs.install": "App installieren"
 }

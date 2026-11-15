@@ -690,3 +690,15 @@ a.mention { color: var(--blue); text-decoration: none; background: none; padding
   .rp-page h2 { font-size: 22px; margin: 0 0 8px; }
 }
 textarea.textin { font: inherit; resize: none; padding: 8px 0; color: var(--label); }
+
+/* 지금 판 승차권 띠(광장 탭 맨 위, 2026-11-15 시안 ③) — 모서리 4 · 절취 점선 */
+.gband { display: flex; align-items: stretch; width: calc(100% - 32px); margin: 0 16px 16px; padding: 0; border: 0; border-radius: 4px; background: var(--card); color: var(--label); font: inherit; text-align: left; box-shadow: 0 .5px 0 var(--sep); min-height: 56px; }
+@media (min-width: 420px) { .gband { width: calc(100% - 40px); margin-left: 20px; margin-right: 20px; } }
+.gband .l { flex: 1; min-width: 0; padding: 10px 14px; } .gband .l small { display: block; color: var(--sec); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .gband .l b { font-size: 17px; }
+.gband .r { flex: none; display: flex; align-items: center; padding: 0 16px; border-left: 2px dashed var(--fill); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; } .gband .r em { font-style: normal; color: var(--blue); font-size: 17px; margin-left: 8px; }
+/* 홈 화면에 두기 안내(시안 ①) */
+.a2hs { padding: 20px 20px calc(20px + var(--safe-b)); text-align: center; } .a2hs .ic { border-radius: 15px; display: block; margin: 0 auto; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.a2hs h3 { margin: 12px 0 4px; font-size: 21px; } .a2hs .s { color: var(--sec); font-size: 15px; margin-bottom: 18px; }
+.a2steps { display: flex; flex-direction: column; gap: 12px; margin: 0 0 16px; text-align: left; } .a2st { display: flex; align-items: center; gap: 12px; font-size: 16px; }
+.a2st .k { width: 36px; height: 36px; border-radius: 9px; background: var(--fill); color: var(--blue); display: grid; place-items: center; flex: none; font-size: 18px; }
+.a2hs .lg { color: var(--sec); font-size: 13px; margin: 0 0 14px; } .a2hs .a2gap { height: 4px; } .a2hs .later { display: block; margin: 8px auto 0; min-height: 44px; }

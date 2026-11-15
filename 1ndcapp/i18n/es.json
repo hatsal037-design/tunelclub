@@ -413,5 +413,14 @@
   "mine.bluffs": "Faroles",
   "gnow.ph.night": "Noche",
   "gnow.ph.vote": "Votación",
-  "gnow.next": "Siguiente"
+  "gnow.next": "Siguiente",
+  "a2hs.title": "Añádela a la pantalla de inicio",
+  "a2hs.sub": "En la próxima partida, un toque en el icono la abre",
+  "a2hs.s1": "Toca Compartir en la barra inferior",
+  "a2hs.s2": "«Añadir a pantalla de inicio»",
+  "a2hs.s3": "«Añadir» arriba a la derecha",
+  "a2hs.login": "La primera vez tendrás que entrar con Kakao otra vez",
+  "a2hs.ok": "Entendido",
+  "a2hs.later": "Más tarde",
+  "a2hs.install": "Instalar app"
 }

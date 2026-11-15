@@ -106,17 +106,19 @@ function PlazaTab() {
   const checkin = async c => { const r = await P.checkin(c); const bad = msgOf(r) || (r && r.error);
     if (bad) { setMsg(bad); return; }
     window.dispatchEvent(new Event('me-reload'));   // 처음 온 사람은 체크인 때 계정이 생긴다(0323) — 다시 읽어야 빈 칸 채우기가 뜬다
-    await live.refresh(true); try { sessionStorage.removeItem('me.game.closed'); } catch {} openGame(); };   // 알림 창 없이 바로 «지금 판»
+    await live.refresh(true); try { sessionStorage.removeItem('me.game.closed'); } catch {} openGame(); window.dispatchEvent(new Event('me-a2hs')); };   // 알림 창 없이 바로 «지금 판»
   useEffect(() => { live.refresh(true); }, [on]);
   useEffect(() => { const c = window.Participant.codeFrom(location.href); if (c && on && !DEMO) { history.replaceState(null, '', location.pathname); checkin(c); } }, [on]);
   return html`<${Page} ...${useShell()}>
     <${LargeTitle}>${T('tab.plaza')}<//>
     ${!on ? html`${pending && html`<${Section}><${Row}><${Icon} name="house" size=${22} /><${RowLabel} title=${T('plaza.login_to_join')} text=${T('plaza.code_is', { c: pending })} /><//><//>`}<${LoginRows} />` : html`
       ${L.ready && !L.joined.length && html`<${Section}><${Row}><span class="sec">${T('empty.plaza')}</span><//><//>`}
+      ${(() => { const j = L.joined[0], st = j && L.status[j.plaza]; if (!st || !st.scene || st.scene === 'ended' || !(st.day || st.night)) return null; const l = timerLeft(st.timer, L.skew);   // 지금 판 승차권 띠(2026-11-15 햇살님 시안 ③) — 판 화면을 닫아도 맨 위에서 한 번에
+        return html`<button type="button" class="gband" onClick=${openGame}><span class="l"><small>${T('game.now')} · ${T('plaza.host_place', { host: j.host, place: T('place.plaza') })}</small><b>${phaseText(st)}</b></span>${l != null ? html`<span class="r">${mmss(l)}<em>›</em></span>` : html`<span class="r"><em>›</em></span>`}</button>`; })()}
       ${L.joined.map(j => { const st = L.status[j.plaza], pp = L.people[j.plaza] || [];
         return html`<${Section} header=${T('plaza.joined')}>
         <${Row}><${Icon} name="house" size=${22} /><${RowLabel} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} text=${T('plaza.until', { t: (j.ends_at || '').slice(0, 16).replace('T', ' ') })} /><//>
-        <${Row} chevron onClick=${openGame}><${RowLabel} title=${T('game.now')} /><span class="sec">${liveText(st, L.skew) || phaseText(st || {})}</span><//>
+        ${!(st && st.scene && st.scene !== 'ended' && (st.day || st.night)) && html`<${Row} chevron onClick=${openGame}><${RowLabel} title=${T('game.now')} /><span class="sec">${liveText(st, L.skew) || phaseText(st || {})}</span><//>`}
         ${pp.length > 0 && html`<${Row} chevron onClick=${() => nav.push(html`<${PeopleList} title=${T('plaza.people')} load=${async () => rows(await P.plazaPeople(j.plaza))} />`)}>
           <span style="display:flex;gap:4px">${pp.slice(0, 5).map(r => html`<${Avatar} r=${r} size=${28} />`)}</span><span class="sec">${T('plaza.count', { n: pp.length })}</span><//>`}
         <${Row} danger onClick=${async () => { await P.leave(j.plaza); live.refresh(true); }}>${T('plaza.leave')}<//><//>`; })}
@@ -813,6 +815,22 @@ async function setLang(account) {
    첫 진입: ?j= 면 참가 › 광장, ?u= 면 피드 › 사람, 그 밖엔 마지막 활동(처음이면 참가). 활동마다 마지막 탭을 기억한다. 계정·설정은 닫으면 보던 탭으로. */
 const SPACES = { play: [['plaza', 'tab.plaza', 'house', PlazaTab], ['library', 'tab.library', 'books', LibraryTab], ['notices', 'notice.title', 'bell', Notices]],
                  feed: [['feed', 'tab.feed', 'stack', FeedTab], ['people', 'tab.people', 'person', PeopleTab], ['notices', 'notice.title', 'bell', Notices]] };
+/* 홈 화면에 두기 안내(2026-11-15 햇살님 시안 ① · «로그인 한 줄도») — 처음 체크인한 뒤 한 번, 브라우저로 열었을 때만.
+   홈 화면 앱은 주소창이 없어 탭바가 흔들리지 않고, 아이콘을 누르면 체크인한 판이 바로 열린다(Shell 이 «지금 판»을 저절로 연다). 안드로이드는 설치 단추 하나 */
+const standalone = () => { try { return navigator.standalone === true || matchMedia('(display-mode: standalone)').matches; } catch { return false; } };
+let installEv = null; window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEv = e; });
+function A2hs({ open, onClose }) {
+  const done = () => { ls('me.a2hs', '1'); onClose(); };
+  const step = (k, t) => html`<div class="a2st"><span class="k">${k}</span><span>${t}</span></div>`;
+  return html`<${Sheet} open=${open} onClose=${done} detent="medium" label=${T('a2hs.title')}><div class="a2hs">
+    <img class="ic" src="icons/apple-touch-icon.png" alt="" width="64" height="64" />
+    <h3>${T('a2hs.title')}</h3><div class="s">${T('a2hs.sub')}</div>
+    ${installEv ? html`<div class="a2gap"></div><${Primary} title=${T('a2hs.install')} onClick=${async () => { const e = installEv; installEv = null; try { await e.prompt(); } catch (x) { globalThis.드러냄?.('a2hs.prompt', x); } done(); }} />`
+      : html`<div class="a2steps">${step('⬆︎', T('a2hs.s1'))}${step('＋', T('a2hs.s2'))}${step('✓', T('a2hs.s3'))}</div>`}
+    <div class="lg">${T('a2hs.login')}</div>
+    ${!installEv && html`<${Primary} title=${T('a2hs.ok')} onClick=${done} />`}
+    <button type="button" class="blink later" onClick=${done}>${T('a2hs.later')}</button></div><//>`;
+}
 const ls = (k, v) => { try { if (v !== undefined) localStorage.setItem(k, v); return localStorage.getItem(k); } catch { return null; } };
 const ShellCtx = createContext(null);
 export function useShell(extra) {   // 활동 첫 화면 머리 — Page 에 펼쳐 넣는다
@@ -838,6 +856,8 @@ function App() {
   useEffect(() => { const j = L.joined[0]; let closed = null; try { closed = sessionStorage.getItem(closedKey); } catch {}
     if (!over && j && closed !== j.plaza) setOver('game'); }, [L.joined.length && L.joined[0].plaza, over]);
   const closeGame = () => { try { if (L.joined[0]) sessionStorage.setItem(closedKey, L.joined[0].plaza); } catch {} setOver(null); };
+  const [a2, setA2] = useState(false);
+  useEffect(() => { const f = () => { if (!standalone() && (!DEMO || /[?&]a2hs=1/.test(location.search)) && ls('me.a2hs') !== '1') setTimeout(() => setA2(true), 800); }; window.addEventListener('me-a2hs', f); return () => window.removeEventListener('me-a2hs', f); }, []);
   const sh = { space, open: setOver, pick: setPicking };
   const cur = tabs[space];
   const all = [...SPACES.play.map(t => ['play', ...t]), ...SPACES.feed.map(t => ['feed', ...t])];
@@ -847,6 +867,7 @@ function App() {
     ${over === 'game' && html`<div class="tabpage" key="game"><${NavStack} root=${html`<${GameNow} close=${closeGame} />`} /></div>`}
     ${over === 'settings' && html`<div class="tabpage" key="settings"><${NavStack} root=${html`<${WebSettings} close=${() => setOver(null)} />`} /></div>`}
     ${!over && html`<nav class="tabs">${SPACES[space].map(([id, k, ic]) => html`<button class=${cur === id ? 'on' : ''} aria-current=${cur === id ? 'page' : undefined} onClick=${() => go(space, id)}><${Icon} name=${ic} size=${24} />${T(k)}</button>`)}</nav>`}
+    <${A2hs} open=${a2} onClose=${() => setA2(false)} />
     <${ActionSheet} open=${picking} title=${T('space.pick')} onClose=${() => setPicking(false)}
       actions=${[{ label: (space === 'play' ? '✓ ' : '') + T('space.play.long'), onClick: () => go('play') }, { label: (space === 'feed' ? '✓ ' : '') + T('space.social.long'), onClick: () => go('feed') }]} />
   </div><//>`;

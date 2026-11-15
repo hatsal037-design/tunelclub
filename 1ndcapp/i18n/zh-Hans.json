@@ -413,5 +413,14 @@
   "mine.bluffs": "诈称身份",
   "gnow.ph.night": "夜晚",
   "gnow.ph.vote": "投票",
-  "gnow.next": "接下来"
+  "gnow.next": "接下来",
+  "a2hs.title": "添加到主屏幕",
+  "a2hs.sub": "下一局起点一下图标就能打开",
+  "a2hs.s1": "点底部栏的分享按钮",
+  "a2hs.s2": "“添加到主屏幕”",
+  "a2hs.s3": "右上角“添加”",
+  "a2hs.login": "第一次需要重新用 Kakao 登录",
+  "a2hs.ok": "知道了",
+  "a2hs.later": "以后再说",
+  "a2hs.install": "安装应用"
 }

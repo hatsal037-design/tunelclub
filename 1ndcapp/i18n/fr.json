@@ -413,5 +413,14 @@
  "mine.bluffs": "Bluffs",
  "gnow.ph.night": "Nuit",
  "gnow.ph.vote": "Vote",
- "gnow.next": "Ensuite"
+ "gnow.next": "Ensuite",
+ "a2hs.title": "Ajoutez-la à l’écran d’accueil",
+ "a2hs.sub": "À la prochaine partie, un tap sur l’icône suffit",
+ "a2hs.s1": "Touchez Partager en bas",
+ "a2hs.s2": "« Sur l’écran d’accueil »",
+ "a2hs.s3": "« Ajouter » en haut à droite",
+ "a2hs.login": "La première fois, reconnectez-vous avec Kakao",
+ "a2hs.ok": "Compris",
+ "a2hs.later": "Plus tard",
+ "a2hs.install": "Installer l’app"
 }

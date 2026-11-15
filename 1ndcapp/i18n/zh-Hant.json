@@ -413,5 +413,14 @@
   "mine.bluffs": "詐稱身分",
   "gnow.ph.night": "夜晚",
   "gnow.ph.vote": "投票",
-  "gnow.next": "接下來"
+  "gnow.next": "接下來",
+  "a2hs.title": "加入主畫面",
+  "a2hs.sub": "下一局起點一下圖示就能打開",
+  "a2hs.s1": "點底部列的分享按鈕",
+  "a2hs.s2": "「加入主畫面」",
+  "a2hs.s3": "右上角「新增」",
+  "a2hs.login": "第一次需要重新用 Kakao 登入",
+  "a2hs.ok": "知道了",
+  "a2hs.later": "以後再說",
+  "a2hs.install": "安裝 App"
 }
