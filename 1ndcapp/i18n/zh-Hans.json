@@ -410,5 +410,8 @@
   "note.too_many": "本局笔记已达上限",
   "mine.dawn": "{p}的黎明",
   "mine.hold_long": "按住查看",
-  "mine.bluffs": "诈称身份"
+  "mine.bluffs": "诈称身份",
+  "gnow.ph.night": "夜晚",
+  "gnow.ph.vote": "投票",
+  "gnow.next": "接下来"
 }

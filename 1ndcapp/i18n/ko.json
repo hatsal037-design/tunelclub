@@ -410,5 +410,8 @@
   "note.too_many": "이 판에 적을 수 있는 만큼 다 적었어요",
   "mine.dawn": "{p}의 새벽",
   "mine.hold_long": "누르는 동안 보기",
-  "mine.bluffs": "블러프"
+  "mine.bluffs": "블러프",
+  "gnow.ph.night": "밤",
+  "gnow.ph.vote": "투표",
+  "gnow.next": "다음"
 }

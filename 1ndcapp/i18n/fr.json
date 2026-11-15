@@ -410,5 +410,8 @@
  "note.too_many": "Limite de notes atteinte pour cette partie",
  "mine.dawn": "Aube sur la {p}",
  "mine.hold_long": "Maintenir pour voir",
- "mine.bluffs": "Bluffs"
+ "mine.bluffs": "Bluffs",
+ "gnow.ph.night": "Nuit",
+ "gnow.ph.vote": "Vote",
+ "gnow.next": "Ensuite"
 }

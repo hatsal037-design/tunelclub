@@ -410,5 +410,8 @@
   "note.too_many": "You have reached the note limit for this game",
   "mine.dawn": "Dawn in the {p}",
   "mine.hold_long": "Hold to view",
-  "mine.bluffs": "Bluffs"
+  "mine.bluffs": "Bluffs",
+  "gnow.ph.night": "Night",
+  "gnow.ph.vote": "Vote",
+  "gnow.next": "Next"
 }

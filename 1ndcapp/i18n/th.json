@@ -410,5 +410,8 @@
   "note.too_many": "จดโน้ตครบจำนวนสูงสุดของเกมนี้แล้ว",
   "mine.dawn": "รุ่งเช้าที่{p}",
   "mine.hold_long": "กดค้างไว้เพื่อดู",
-  "mine.bluffs": "บทบาทหลอก"
+  "mine.bluffs": "บทบาทหลอก",
+  "gnow.ph.night": "กลางคืน",
+  "gnow.ph.vote": "โหวต",
+  "gnow.next": "ถัดไป"
 }

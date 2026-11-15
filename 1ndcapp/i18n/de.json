@@ -410,5 +410,8 @@
  "note.too_many": "Notizlimit für dieses Spiel erreicht",
  "mine.dawn": "Morgengrauen auf dem {p}",
  "mine.hold_long": "Gedrückt halten zum Ansehen",
- "mine.bluffs": "Bluffs"
+ "mine.bluffs": "Bluffs",
+ "gnow.ph.night": "Nacht",
+ "gnow.ph.vote": "Abstimmung",
+ "gnow.next": "Danach"
 }

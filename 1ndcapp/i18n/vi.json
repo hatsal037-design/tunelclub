@@ -410,5 +410,8 @@
   "note.too_many": "Đã đạt giới hạn ghi chú của ván này",
   "mine.dawn": "Bình minh ở {p}",
   "mine.hold_long": "Giữ để xem",
-  "mine.bluffs": "Vai giả"
+  "mine.bluffs": "Vai giả",
+  "gnow.ph.night": "Đêm",
+  "gnow.ph.vote": "Bỏ phiếu",
+  "gnow.next": "Tiếp theo"
 }

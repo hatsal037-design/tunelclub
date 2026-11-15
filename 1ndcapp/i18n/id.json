@@ -410,5 +410,8 @@
   "note.too_many": "Batas catatan untuk permainan ini sudah tercapai",
   "mine.dawn": "Fajar di {p}",
   "mine.hold_long": "Tahan untuk melihat",
-  "mine.bluffs": "Gertakan"
+  "mine.bluffs": "Gertakan",
+  "gnow.ph.night": "Malam",
+  "gnow.ph.vote": "Voting",
+  "gnow.next": "Berikutnya"
 }

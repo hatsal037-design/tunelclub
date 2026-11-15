@@ -10,7 +10,7 @@ import { narrTr } from './i18n_dom.js';   // 다른 말이면 순환 표시 글�
 const PH = ['밤', '아침', '토론', '지명', '투표', '처형'];
 const PHK = i => i === 1 ? '아침 발표' : PH[i];   // 1 = 아침(번호로, 2026-11-04)
 export const APC = { day: ['#5856D6', '#FF9500', '#32ADE6', '#007AFF', '#30B0C7', '#AF52DE'], night: ['#5E5CE6', '#FF9F0A', '#64D2FF', '#0A84FF', '#40C8E0', '#BF5AF2'] };
-const APF = [.2, .08, .34, .13, .14, .11], APCUM = APF.reduce((a, f) => (a.push(a[a.length - 1] + f), a), [0]);
+export const APF = [.2, .08, .34, .13, .14, .11], APCUM = APF.reduce((a, f) => (a.push(a[a.length - 1] + f), a), [0]);
 const TEAL = '#30B0C7', RED = '#ff3b30', BLUE = '#007aff', SIDEC = { good: '#007aff', evil: '#ff3b30', neutral: '#34c759' };
 export const josa = (w, a, b) => { w = String(w || ''); const c = w.charCodeAt(w.length - 1); return w + (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b); };   // 받침 있으면 «이»
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -49,7 +49,7 @@ function stad(hw, r) { const q = Math.PI * r / 2, L = 4 * hw + 2 * Math.PI * r, 
   const nrm = (x, y) => { if (Math.abs(x) <= hw) return [0, Math.sign(y)]; const c = Math.sign(x) * hw, dd = Math.hypot(x - c, y); return [(x - c) / dd, y / dd]; };
   return { L, pt, seg, nrm }; }
 /* g0 = 지금 칸 게이지(0~1, 잴 수 없는 구간은 null) */
-export function cycle(kind, cur, g0, night) { const C = APC[night ? 'night' : 'day'], nm = narrTr(PHK(cur));
+export function cycle(kind, cur, g0, night, L) { const C = APC[night ? 'night' : 'day'], phN = i => L ? L.ph[i] : narrTr(PHK(i)), nm = phN(cur);   // L = {ph:[6], next} — 참가 웹은 자기 화면 말(i18n)로 넘긴다(2026-11-15 영어 화면에 «토론»이 남음)
   if (kind !== 'card') { const T = stad(106, 54), L = T.L, sA = x => (x - .1) * L, w = 18, gap = 13; let g = '';
     PH.forEach((p, i) => { if (i !== cur) g += T.seg(sA(APCUM[i]) + gap, sA(APCUM[i + 1]) - gap, `stroke="${i < cur ? 'var(--g2)' : 'var(--g5)'}" stroke-width="${w}" stroke-linecap="round"`); });
     const a = sA(APCUM[cur]) + gap, b = sA(APCUM[cur + 1]) - gap;
@@ -63,7 +63,7 @@ export function cycle(kind, cur, g0, night) { const C = APC[night ? 'night' : 'd
     if (i !== cur) g += `<rect x="${a}" y="${y}" width="${w}" height="${h}" rx="7" fill="${i < cur ? 'var(--g2)' : 'var(--g5)'}"/>`;
     else if (g0 == null) g += `<rect x="${a}" y="${y}" width="${w}" height="${h}" rx="7" fill="${C[i]}"/>`;
     else g += `<rect x="${a}" y="${y}" width="${w}" height="${h}" rx="7" fill="${C[i]}" opacity=".25"/><rect x="${a}" y="${y}" width="${Math.max(h, w * g0)}" height="${h}" rx="7" fill="${C[i]}"/>`; });
-  const n = (cur + 1) % 6; g += `<text x="-190" y="72" font-size="27" fill="var(--sec)">다음</text>` + apIc(n, -120, 63, 26, 'var(--sec)', 'var(--mat)') + `<text x="-100" y="72" font-size="27" font-weight="600" fill="var(--sec)">${PHK(n)}</text>`;
+  const n = (cur + 1) % 6; g += `<text x="-190" y="72" font-size="27" fill="var(--sec)">${esc(L ? L.next : narrTr('다음'))}</text>` + apIc(n, -120, 63, 26, 'var(--sec)', 'var(--mat)') + `<text x="-100" y="72" font-size="27" font-weight="600" fill="var(--sec)">${esc(phN(n))}</text>`;
   return `<svg class="cyc" width="440" height="210" viewBox="-220 -105 440 210" style="overflow:visible">${g}</svg>`; }
 
 /* ── 시계(토론) — 남은 시간·막대는 tick 이 1초마다 고친다 ── */

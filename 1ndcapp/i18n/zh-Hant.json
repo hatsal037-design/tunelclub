@@ -410,5 +410,8 @@
   "note.too_many": "本局筆記已達上限",
   "mine.dawn": "{p}的黎明",
   "mine.hold_long": "按住查看",
-  "mine.bluffs": "詐稱身分"
+  "mine.bluffs": "詐稱身分",
+  "gnow.ph.night": "夜晚",
+  "gnow.ph.vote": "投票",
+  "gnow.next": "接下來"
 }

@@ -7,7 +7,7 @@ import { Icon } from '../js/icons.js';
 import { NavStack, useNav, Back } from '../js/nav.js';
 import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton, Sheet, HoldButton, Cover } from '../js/ui.js';
 import { QrScanner } from '../js/qrscan.js';
-import { APC, CUR, josa, ico, cycle, geo } from '../js/screen_v5.js';   // 지금 판 = 큰 화면 v5 를 세로로 접은 판(2026-10-26 v6d) — 순환 표시·기호·자리 배치는 큰 화면 것을 그대로
+import { APC, APF, CUR, josa, ico, geo } from '../js/screen_v5.js';   // 지금 판 = 큰 화면 v5 를 세로로 접은 판(2026-10-26 v6d) — 순환 표시·기호·자리 배치는 큰 화면 것을 그대로
 
 const URL_ = 'https://yguvfogtzazoawtclqvf.supabase.co', KEY = 'sb_publishable_KeezD9hmEnxSTEWA_w8x-A_Tgk3roUf';
 const sb = window.supabase.createClient(URL_, KEY);
@@ -142,9 +142,9 @@ const foldSet = v => { try { localStorage.setItem(FOLD_KEY, v ? '1' : '0'); } ca
 const artOk = i => typeof i === 'string' && /^[\w-]{1,60}$/.test(i);
 const Svg = ({ s, cls }) => html`<span class=${cls} dangerouslySetInnerHTML=${{ __html: s }}></span>`;   // 큰 화면 기호·순환 표시(고정 글만 — 서버 값 없음)
 const tw5 = (() => { let c; return (t, fs) => { c = c || document.createElement('canvas').getContext('2d'); c.font = '600 ' + fs + 'px -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif'; return c.measureText(String(t)).width; }; })();
-function GnowHead({ st, nameOf, left }) {
+function GnowHead({ st, nameOf, left, narrow }) {
   const s = st.scene, n = (st.seats || []).length, alive = (st.seats || []).filter(x => !x.dead).length, hd = (i, t, c) => html`<div class="g5hd">${i != null && html`<${Svg} s=${ico(i, 18, c || 'var(--sec)', 'var(--bg)')} />`}${t}</div>`;
-  const big = t => { const w = tw5(t, 34), fs = w > 340 ? Math.max(22, Math.floor(34 * 340 / w)) : 34; return html`<div class="g5big" style=${'font-size:' + fs + 'px'}>${t}</div>`; };
+  const big = t => { const M = narrow ? 200 : 340, w = tw5(t, 34), fs = w > M ? Math.max(20, Math.floor(34 * M / w)) : 34; return html`<div class="g5big" style=${'font-size:' + fs + 'px'}>${t}</div>`; };
   const sub = t => html`<div class="g5sub">${t}</div>`, dn = st.day ? T('gnow.day', { n: st.day }) + ' · ' : '';
   const ko = (document.documentElement.lang || 'ko') === 'ko', by = id => ko ? josa(nameOf(id), '이', '가') : nameOf(id);
   if (!n && (!s || s === 'idle' || s === 'waiting' || s === 'prep')) return html`${big(T('live.prep'))}${sub(T('game.wait', { n: st.checkin || 0 }))}`;
@@ -168,12 +168,27 @@ function GnowHead({ st, nameOf, left }) {
   if (st.day) return hd(null, dn.replace(/ · $/, ''));
   return null;
 }
-function GnowCycle({ st, left }) {
+/* 지금 판 위쪽 C2(2026-11-15 햇살님 «C2 시계 칸 넓게 + 세로선», 시안 시안/참가웹_지금판_압축_20261115/시안_C균형_v3.png)
+   왼쪽 넓은 칸 = 머리 글(시계·이름) · 세로선 · 오른쪽 = 살아 있음·죽음(·유령표) → 아래 가로 띠(여섯 단계, 지금 칸에 남은 시간 게이지). 숫자가 없는 장면(밤)은 머리 글만 가운데 */
+const PHL = () => [T('gnow.ph.night'), T('gnow.morning'), T('gnow.disc'), T('gnow.nom'), T('gnow.ph.vote'), T('gnow.exec')];   // 단계 이름 — 화면 말로(영어 화면에 «토론»이 남던 것)
+function strip(cur, g0, night) { const C = APC[night ? 'night' : 'day'], W = 358, ph = PHL(); let x = 0, g = '';
+  APF.forEach((f, i) => { const a = x * W + (i ? 2 : 0), w = f * W - (i && i < 5 ? 4 : 2), cx = a + w / 2, past = i < cur, now = i === cur;
+    g += `<g transform="translate(${cx - 9},0) scale(.75)">${ico(i, 24, now ? C[i] : past ? 'var(--g2)' : 'var(--sec)', 'var(--bg)').replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>`;
+    if (now) { g += g0 == null ? `<rect x="${a}" y="26" width="${w}" height="8" rx="4" fill="${C[i]}"/>` : `<rect x="${a}" y="26" width="${w}" height="8" rx="4" fill="${C[i]}" opacity=".25"/><rect x="${a}" y="26" width="${Math.max(8, w * g0)}" height="8" rx="4" fill="${C[i]}"/>`;
+      const lab = String(ph[i]).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])), lx = Math.max(40, Math.min(W - 40, cx));
+      g += `<text x="${lx}" y="52" font-size="12" font-weight="600" text-anchor="middle" fill="${C[i]}">${lab}</text>`; }
+    else g += `<rect x="${a}" y="26" width="${w}" height="8" rx="4" fill="${past ? 'var(--g2)' : 'var(--g5)'}"/>`;
+    x += f; });
+  return `<svg viewBox="0 0 ${W} 56" width="100%" style="display:block;overflow:visible">${g}</svg>`; }
+function GnowTop({ st, nameOf, left }) {
   const cur = CUR[st.scene], night = st.scene === 'night', n = (st.seats || []).length, alive = (st.seats || []).filter(x => !x.dead).length, hasG = (st.seats || []).some(x => x.ghost);
   const g0 = cur === 0 ? (typeof st.np === 'number' ? st.np : null) : cur === 2 && st.timer && st.timer.durationMs && left != null ? 1 - left / st.timer.durationMs : null;
   const num = (v, l, dim) => html`<div><b style=${dim ? 'color:var(--g2)' : ''}>${v}</b><span>${l}</span></div>`;
-  return html`${cur != null && html`<${Svg} cls="g5cyc" s=${cycle(st.cyc === 'card' ? 'card' : 'ring', cur, g0, night)} />`}
-    ${!night && n > 0 && (cur != null || st.scene === 'ended') && html`<div class="g5nums">${num(alive, T('gnow.alive'))}${num(n - alive, T('gnow.dead'), true)}${hasG && num((st.seats || []).filter(x => x.dead && x.ghost).length, T('gnow.ghost'), true)}</div>`}`;
+  const nums = !night && n > 0 && (cur != null || st.scene === 'ended');
+  return html`${nums ? html`<div class="g5split"><div class="g5mid g5l"><${GnowHead} st=${st} nameOf=${nameOf} left=${left} narrow /></div><i class="g5vl"></i>
+      <div class="g5nums g5r">${num(alive, T('gnow.alive'))}${num(n - alive, T('gnow.dead'), true)}${hasG && num((st.seats || []).filter(x => x.dead && x.ghost).length, T('gnow.ghost'), true)}</div></div>`
+    : html`<div class="g5mid"><${GnowHead} st=${st} nameOf=${nameOf} left=${left} /></div>`}
+    ${cur != null && html`<${Svg} cls="g5strip" s=${strip(cur, g0, night)} />`}`;
 }
 /* 자리판 — 큰 화면 geo()(배치표 screen_table.js)로 1080 무대에 놓고 폭에 맞춰 통째로 줄인다 */
 function GnowBoard({ st, mineN, onTap, memo = {}, roleKo = {} }) {
@@ -220,8 +235,7 @@ function GameNow({ close }) {
   const sum = tap && st.seats.length > 12 ? tap + ' · ' + nameOf(tap) : ended ? T('gnow.reveal') : me ? T('gnow.my_seat', { n: me.n, s: me.dead ? T('gnow.dead') : T('gnow.alive') }) : T('gnow.seats_sum', { n: st.seats.length, a: alive });
   return html`<${Page} bg=${night ? 'g5n' : 'g5'} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} left=${html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}>
     <div class="g5">
-      <div class="g5mid"><${GnowHead} st=${st} nameOf=${nameOf} left=${left} /></div>
-      <${GnowCycle} st=${st} left=${left} />
+      <${GnowTop} st=${st} nameOf=${nameOf} left=${left} />
       ${st.seats.length > 0 && html`<button type="button" class="g5row" aria-expanded=${open} disabled=${ended} onClick=${() => setFold(!fold)}><span class="lab">${T('gnow.seats')}</span><span class="val">${sum}</span>${!ended && html`<span class="tg">${fold ? '▸' : '▾'}</span>`}</button>
         ${open && !ended && html`<div class="g5hint">${T('note.hint')}</div>`}
         ${open && html`<${GnowBoard} st=${st} mineN=${mineN} memo=${memo} roleKo=${roleKo} onTap=${n => { setTap(tap === n ? null : n); if (!ended) setNoteN(n); }} />`}`}

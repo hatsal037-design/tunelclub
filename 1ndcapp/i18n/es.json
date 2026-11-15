@@ -410,5 +410,8 @@
   "note.too_many": "Llegaste al límite de notas de esta partida",
   "mine.dawn": "Amanecer en la {p}",
   "mine.hold_long": "Mantén pulsado para ver",
-  "mine.bluffs": "Faroles"
+  "mine.bluffs": "Faroles",
+  "gnow.ph.night": "Noche",
+  "gnow.ph.vote": "Votación",
+  "gnow.next": "Siguiente"
 }

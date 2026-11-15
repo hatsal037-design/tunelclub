@@ -410,5 +410,8 @@
   "note.too_many": "このゲームで書ける上限に達しました",
   "mine.dawn": "{p}の夜明け",
   "mine.hold_long": "押している間だけ表示",
-  "mine.bluffs": "ブラフ"
+  "mine.bluffs": "ブラフ",
+  "gnow.ph.night": "夜",
+  "gnow.ph.vote": "投票",
+  "gnow.next": "次"
 }
