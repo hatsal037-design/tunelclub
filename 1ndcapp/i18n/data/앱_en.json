@@ -750,5 +750,21 @@
  "오늘은 판이 없었어요": "No games today",
  "오늘 %lld판": "%lld games today",
  "%lld판": "Game %lld",
- "진행 중인 판을 먼저 끝내요": "Finish the game in progress first"
+ "진행 중인 판을 먼저 끝내요": "Finish the game in progress first",
+ "끼운 사진·영상·슬라이드는 이 폰을 TV에 연결했을 때(AirPlay·케이블) 큰 화면에 나와요. 아이폰 두 대 운용은 두 폰이 가까이 있으면 다 나와요(영상은 받는 폰으로 한 번 옮겨요). 웹 큰 화면은 판 화면만 나와요.": "Inserted photos, videos and slides appear on the big screen when this phone is connected to the TV (AirPlay · cable). In the two-iPhone setup everything appears when the phones are near each other (videos are copied to the receiving phone once). The web big screen shows only the game.",
+ "영상 받는 중 %lld%%": "Receiving video %lld%%",
+ "진행 방식": "Hosting style",
+ "음성 안내": "Voice guide",
+ "직접 읽기": "Read aloud",
+ "무음": "Silent",
+ "음성으로 나와요": "Played by voice",
+ "소리 내어 읽어 주세요": "Read this aloud",
+ "다시 듣기": "Play again",
+ "말없이 — 진행자만": "Silently — host only",
+ "깨울 사람: %@": "Wake: %@",
+ "폰 화면으로 %@ 보여 주기": "Show %@ on the phone",
+ "손으로 %@ 가리키기": "Point to %@",
+ "블러프 %lld개를 폰으로 보여 주기": "Show %lld bluffs on the phone",
+ "깨우고 잠깐 기다린 뒤 눈 감기": "Wake, wait a moment, then eyes closed",
+ "오늘은 처형 없이 넘어갈까요?": "End today without an execution?"
 }

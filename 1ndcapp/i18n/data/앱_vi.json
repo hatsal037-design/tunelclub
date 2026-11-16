@@ -1374,5 +1374,21 @@
  "오늘 즐거웠어요": "Hôm nay vui quá",
  "오늘은 판이 없었어요": "Hôm nay không có ván nào",
  "오늘 %lld판": "Hôm nay %lld ván",
- "%lld판": "Ván %lld"
+ "%lld판": "Ván %lld",
+ "끼운 사진·영상·슬라이드는 이 폰을 TV에 연결했을 때(AirPlay·케이블) 큰 화면에 나와요. 아이폰 두 대 운용은 두 폰이 가까이 있으면 다 나와요(영상은 받는 폰으로 한 번 옮겨요). 웹 큰 화면은 판 화면만 나와요.": "Ảnh, video và trang chiếu chèn hiện trên màn hình lớn khi điện thoại này nối TV (AirPlay · cáp). Chế độ hai iPhone hiện tất cả khi hai máy ở gần (video được chép sang máy nhận một lần). Màn hình lớn trên web chỉ hiện ván chơi.",
+ "영상 받는 중 %lld%%": "Đang nhận video %lld%%",
+ "진행 방식": "Cách dẫn",
+ "음성 안내": "Hướng dẫn giọng nói",
+ "직접 읽기": "Tự đọc",
+ "무음": "Im lặng",
+ "음성으로 나와요": "Phát bằng giọng nói",
+ "소리 내어 읽어 주세요": "Hãy đọc to",
+ "다시 듣기": "Nghe lại",
+ "말없이 — 진행자만": "Im lặng — chỉ người dẫn",
+ "깨울 사람: %@": "Gọi dậy: %@",
+ "폰 화면으로 %@ 보여 주기": "Cho xem %@ trên điện thoại",
+ "손으로 %@ 가리키기": "Chỉ tay vào %@",
+ "블러프 %lld개를 폰으로 보여 주기": "Cho xem %lld vai giả trên điện thoại",
+ "깨우고 잠깐 기다린 뒤 눈 감기": "Gọi dậy, chờ một chút rồi nhắm mắt",
+ "오늘은 처형 없이 넘어갈까요?": "Hôm nay bỏ qua không xử tử?"
 }

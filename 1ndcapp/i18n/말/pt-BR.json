@@ -757,5 +757,13 @@
  "ans.meet.allies": "Mesmo lado: {s}",
  "gt.nbPoison": "Envenenamento vizinho ({r@role})",
  "gt.worldFalse": "Tudo falso (partida com Vortox)",
- "lb.char": "{r@role}"
+ "lb.char": "{r@role}",
+ "mt.say.minionsOpen": "{m@w}: abram os olhos.",
+ "mt.say.seeEach": "Olhem uns para os outros.",
+ "mt.say.showDemon": "Quem estou mostrando é {d@w}.",
+ "mt.say.demonOpen": "{d@w}: abram os olhos.",
+ "mt.say.showMinion": "Quem estou mostrando é {m@w}.",
+ "mt.say.showMinions": "Quem estou mostrando são seus {m@w}.",
+ "mt.say.groupOpen": "{g@w}: abram os olhos.",
+ "mt.say.sameGroup": "Vocês são do mesmo grupo."
 }

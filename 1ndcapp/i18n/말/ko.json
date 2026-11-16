@@ -735,5 +735,13 @@
  "ans.meet.allies": "같은 편: {s}",
  "gt.nbPoison": "이웃 중독({r@role})",
  "gt.worldFalse": "만물 거짓(미혹귀·보르톡스 판)",
- "lb.char": "{r@role}"
+ "lb.char": "{r@role}",
+ "mt.say.minionsOpen": "{m@w}{m@w^는} 눈을 떠 주세요.",
+ "mt.say.seeEach": "서로 얼굴을 확인해 주세요.",
+ "mt.say.showDemon": "지금 보여 드리는 분이 {d@w}입니다.",
+ "mt.say.demonOpen": "{d@w}{d@w^는} 눈을 떠 주세요.",
+ "mt.say.showMinion": "지금 보여 드리는 분이 {m@w}입니다.",
+ "mt.say.showMinions": "지금 보여 드리는 분들이 {m@w}입니다.",
+ "mt.say.groupOpen": "{g@w}{g@w^는} 눈을 떠 주세요.",
+ "mt.say.sameGroup": "서로가 같은 조직입니다."
 }

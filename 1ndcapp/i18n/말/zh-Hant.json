@@ -757,5 +757,13 @@
  "ans.meet.allies": "同一陣營：{s}",
  "gt.nbPoison": "鄰座中毒（{r@role}）",
  "gt.worldFalse": "萬物皆假（渦流局）",
- "lb.char": "{r@role}"
+ "lb.char": "{r@role}",
+ "mt.say.minionsOpen": "{m@w}請睜眼。",
+ "mt.say.seeEach": "請互相確認。",
+ "mt.say.showDemon": "我現在指的人是{d@w}。",
+ "mt.say.demonOpen": "{d@w}請睜眼。",
+ "mt.say.showMinion": "我現在指的人是{m@w}。",
+ "mt.say.showMinions": "我現在指的人是{m@w}。",
+ "mt.say.groupOpen": "{g@w}請睜眼。",
+ "mt.say.sameGroup": "你們是同一組織。"
 }

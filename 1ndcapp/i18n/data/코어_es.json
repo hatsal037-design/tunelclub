@@ -2961,5 +2961,10 @@
  "공동 최다": "Empate en cabeza",
  "기준 충족": "Umbral alcanzado",
  "기준 미달": "Por debajo del umbral",
- "생존 {n}명": "{n} vivos"
+ "생존 {n}명": "{n} vivos",
+ "{r}는 눈을 떠 주세요.": "{r}: abrid los ojos.",
+ "서로 얼굴을 확인해 주세요.": "Miraos entre vosotros.",
+ "지금 보여 드리는 분이 {r}입니다.": "La persona que señalo es {r}.",
+ "지금 보여 드리는 분들이 {r}입니다.": "Las personas que te señalo son tus {r}.",
+ "서로가 같은 조직입니다.": "Sois del mismo grupo."
 }

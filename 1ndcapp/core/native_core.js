@@ -761,6 +761,12 @@ var NativeCore = (function () {
         if (!has || hubRep() === 'mafia') return null;
         return { open: !(D.noms || []).length && !gameEnded(), shots: (D.slays || []).map(function (x) { return { by: seatLabel(x.by), target: seatLabel(x.t), hit: !!x.hit }; }) }; })() };
     M.next = dayNext(M, D);
+    M.undo = (function () { if (!M.announced) return null;   /* 낮 하단 가운데 왼쪽 ↺ — 처형 없음·처형·결과 발표를 한 걸음씩 되돌린다(2026-11-16 햇살님 «되돌리기 버튼은 중앙버튼 왼쪽에 넣자 아이콘으로») */
+      if (D.noExec) return { cmd: 'day.noExec', how: 'undo' };
+      if (D.tieNone) return { cmd: 'day.tie', how: 'undo' };
+      var dn = null; (D.noms || []).forEach(function (o, k) { if (o.done) dn = k; });
+      if (dn === null) return null;
+      return D.noms[dn].said ? { cmd: 'day.announceExec', k: dn, how: 'undo' } : { cmd: 'day.executeUndo', k: dn }; })();
     return M;
   }
   /* 낮 하단 주 행동 — 지금 낮의 다음 할 일 하나(2026-11-02 햇살님 B-2 «실수할 수 없는 리듬과 유도»). 밤 카드 primaryTitle 과 같은 자리.
@@ -775,6 +781,7 @@ var NativeCore = (function () {
     if (M.tie && M.tie.state === 'open') return { kind: 'tieNone', title: SAY('ms.btn.tieNone'), cmd: 'day.tie', how: 'none' };
     var ex = M.mafia ? null : M.noms.filter(function (x) { return x.canExecute && !x.done; })[0];
     if (ex) return { kind: 'execute', title: SAY('ui.execSeat', { s: seatNo(ex.target.number) + ' ' + ex.target.name }), cmd: 'day.execute', k: ex.k, danger: true };
+    if (!D.noExec && !(M.tie && M.tie.state === 'none')) return { kind: 'noExec', title: SAY('rpl.h.dayNone'), cmd: 'day.noExec' };   // 처형할 사람이 없으면 «처형 없음»을 확인받은 뒤에야 밤(2026-11-16 햇살님 «처형없음 버튼 … 확인 한번더 … 그 다음 밤으로»)
     return { kind: 'night', title: SAY('ui.toNight'), cmd: 'phase.enterNight' };
   }
 
@@ -1239,15 +1246,20 @@ var NativeCore = (function () {
     if (gm) { var cm = CMAP(), by = {}, gs = [];
       state.seats.forEach(function (x, i) { if (!x.char || x.dead) return; var g = seatGroup(x, cm); if (!g || !groupMeets(g)) return; if (!by[g]) { by[g] = []; gs.push(g); } by[g].push(i); });
       gs.forEach(function (g) { var a = by[g], gk = groupKo(g);
-        steps.push(a.length > 1 ? { kind: 'mutual', who: a, learns: [], bluffs: [], say: SAY('mt.groupMutual', { g: gk, who: a }) }
-          : { kind: 'screen', who: a, learns: [], bluffs: [], say: SAY('mt.groupAlone', { g: gk, who: a }) }); }); }
+        steps.push(a.length > 1 ? { kind: 'mutual', who: a, learns: [], bluffs: [], say: SAY('mt.groupMutual', { g: gk, who: a }), aloud: [SAY('mt.say.groupOpen', { g: gk }), SAY('mt.say.sameGroup'), SAY('mt.closeConfirm')] }
+          : { kind: 'screen', who: a, learns: [], bluffs: [], say: SAY('mt.groupAlone', { g: gk, who: a }), aloud: [SAY('mt.say.groupOpen', { g: gk }), SAY('mt.close')] }); }); }
     else if (late || !poppyActive()) {
       var show = evilRoster().filter(function (o) { return !meetUnaware(o.c); }), MK = String(TKO('minion')).replace(/\s*\(.*\)\s*$/, ''), DK = String(TKO('demon')).replace(/\s*\(.*\)\s*$/, ''),   /* 읽을 말엔 괄호 풀이 없이 */
         mi = show.filter(function (o) { return o.c.team === 'minion' || o.c.team === 'mafia' || isConv(o.s); }).map(function (o) { return o.i; }),
         de = show.filter(function (o) { return o.c.team === 'demon'; }).map(function (o) { return o.i; }), bl = !late && bluffUsable() ? bluffKos() : [];
-      if (mi.length > 1) steps.push({ kind: 'mutual', who: mi, learns: de, bluffs: [], say: [SAY('mt.minionMutual', { m: MK, who: mi })].concat(de.length ? [SAY('mt.demonIs', { d: DK, who: de })] : [], [SAY('mt.closeConfirm')]).join(' ') });
-      else if (mi.length === 1) steps.push({ kind: 'screen', who: mi, learns: de, bluffs: [], say: SAY('mt.minionAlone', { m: MK, d: DK, who: mi }) });
-      if (de.length) steps.push({ kind: de.length > 1 ? 'mutual' : 'screen', who: de, learns: mi, bluffs: bl, say: [SAY('mt.demonOpen', { d: DK, who: de })].concat(de.length > 1 ? [SAY('mt.sameSide')] : [], mi.length ? [SAY(mi.length > 1 ? 'mt.theseAre' : 'mt.thisIs', { m: MK })] : [], bl.length ? [SAY('mt.bluffOk')] : [], [SAY('mt.close')]).join(' ') }); }
+      /* aloud — 소리 내어 읽거나 음성으로 틀 말(번호·이름 없음, 2026-11-16 햇살님 «읽으면 안 되고 … 음성안내») · 자리 번호는 화면의 «말없이» 칸(who·learns)만 */
+      if (mi.length > 1) steps.push({ kind: 'mutual', who: mi, learns: de, bluffs: [], say: [SAY('mt.minionMutual', { m: MK, who: mi })].concat(de.length ? [SAY('mt.demonIs', { d: DK, who: de })] : [], [SAY('mt.closeConfirm')]).join(' '),
+        aloud: [SAY('mt.say.minionsOpen', { m: MK }), SAY('mt.say.seeEach')].concat(de.length ? [SAY('mt.say.showDemon', { d: DK })] : [], [SAY('mt.closeConfirm')]) });
+      else if (mi.length === 1) steps.push({ kind: 'screen', who: mi, learns: de, bluffs: [], say: SAY('mt.minionAlone', { m: MK, d: DK, who: mi }),
+        aloud: [SAY('mt.say.minionsOpen', { m: MK })].concat(de.length ? [SAY('mt.say.showDemon', { d: DK })] : [], [SAY('mt.close')]) });
+      if (de.length) steps.push({ kind: de.length > 1 ? 'mutual' : 'screen', who: de, learns: mi, bluffs: bl,
+        aloud: [SAY('mt.say.demonOpen', { d: DK })].concat(de.length > 1 ? [SAY('mt.sameSide')] : [], mi.length ? [SAY(mi.length > 1 ? 'mt.say.showMinions' : 'mt.say.showMinion', { m: MK })] : [], bl.length ? [SAY('mt.bluffOk')] : [], [SAY('mt.close')]),
+        say: [SAY('mt.demonOpen', { d: DK, who: de })].concat(de.length > 1 ? [SAY('mt.sameSide')] : [], mi.length ? [SAY(mi.length > 1 ? 'mt.theseAre' : 'mt.thisIs', { m: MK })] : [], bl.length ? [SAY('mt.bluffOk')] : [], [SAY('mt.close')]).join(' ') }); }
     { var ci = chimaSeat(); if (!late && ci !== null && chimaFabled()) steps.forEach(function (x) { x.chima = SAY('mt.chimaShort', { s: [ci] }); }); }   // 악은 치마폭을 안다 — 걸음마다(하수인·흉수 모두), 읽는 말(say)과 따로 한 줄
     if (late) steps = steps.filter(function (x) { return x.learns.length || x.bluffs.length || x.kind === 'mutual'; });   /* 늦은 알려주기 — 알려 줄 게 없는 걸음(같은 편 없는 흉수 혼자)은 빼고, 다 빠지면 예전 한 줄 카드 */
     return { title: SAY(isOmMode() ? 'mt.title.org' : 'mt.title.evil'), steps: steps, warn: (em.warnK || []).map(prText) };
@@ -1524,6 +1536,7 @@ var NativeCore = (function () {
       var t = +p.target, D = dayRec(), m = day(), by = (p.by === null || p.by === undefined) ? null : +p.by;
       if (!m.targets.some(function (x) { return x.index === t; })) return rej('invalidSelection', 'cannotBeNominated');   // 웹 지명 대상·지명자 목록과 같은 잣대(죽은 사람·이미 지명된 사람 거름)
       if (by !== null && !m.nominators.some(function (x) { return x.index === by; })) return rej('invalidSelection', 'nominatorCannotNominate');
+      if (D.noExec) delete D.noExec;   // 처형 없음을 정한 뒤 다시 지명하면 풀린다
       nomBy = by; wz.nomTgt = t; var rr = shieldRun(p, function () { uiDayNomSubmit(); try { uiDayVoteCancel(); } catch (e) { 드러냄('native_core.day.nominate', e); } });
       if (!rr && hubRep() !== 'mafia') { var x = narrPick('nom.call'); if (x) speak(x.show.replace(/\{who\}/g, seatLabel(t).name).replace(/\{by\}/g, by === null ? '진행자' : seatLabel(by).name), 'day', 'nomCall', [{ clip: x.clip, say: x.say }]); }   // 지명 알림 낭독(2026-10-04) — 마피아는 «살린다·죽인다» 흐름이라 없음
       return rr; },
@@ -1570,7 +1583,11 @@ var NativeCore = (function () {
     'day.execAct': function (p) { var D = dayRec(), k = +p.k, o = D.noms[k]; if (!o || execActs(o, k, execGate()).indexOf(p.how) < 0) return rej('invalidSelection', 'noNominationToExecute');
       return shieldRun(p, function () { uiDayExecAct(k, p.how); }); },   // 망나니 반전·출두(6-13) — 통과는 보호 확인창이 그대로 뜬다
     'day.executeUndo': function (p) { var n = dayRec().noms[+p.k]; if (!n || !n.done) return rej('invalidSelection', 'noExecutionToUndo'); delete n.said; uiDayExecUndo(+p.k); return null; },
-    'day.announceExec': function (p) { var n = dayRec().noms[+p.k]; if (!n || !n.done) return rej('invalidSelection', 'noExecutionToAnnounce'); n.said = true; save(); return null; },
+    'day.announceExec': function (p) { var n = dayRec().noms[+p.k]; if (!n || !n.done) return rej('invalidSelection', 'noExecutionToAnnounce'); if (p.how === 'undo') delete n.said; else n.said = true; save(); return null; },
+    /* 처형 없음 확정(2026-11-16) — 처형할 사람이 없는 낮을 진행자가 확인한 표시. 밤으로는 그 뒤에만(dayNext). 새 지명이 들어오면 풀린다 */
+    'day.noExec': function (p) { if (state.phase !== 'day') return rej('notAllowedInPhase', 'notDay'); var D = dayRec();
+      if (p && p.how === 'undo') { if (!D.noExec) return rej('invalidSelection', 'noDecisionToUndo'); delete D.noExec; save(); return null; }
+      D.noExec = true; save(); return null; },   // 처형할 사람이 정해진 낮엔 화면이 이 단추를 안 띄운다(dayNext) — 코어는 막지 않고 «처형 먼저» 순서는 dayNext 가 지킨다
     'day.call': function (p) { var c = String(p.call || ''); if (!ALLOW.test(c)) return rej('invalidSelection', 'notAllowed'); return shieldRun(p, function () { eval(c); }); },   // 직접 eval — 이 자리의 범위에서 찾는다. 간접 eval 은 전역에서 찾아 웹(함수 안에 올린 코어)에선 «markUsed is not defined» 로 전부 거절됐다(2026-10-02 Fable 검토 A). 허용 정규식 ALLOW 를 지난 것만 온다
     /* 낮으로 되돌리기 — 둘째 밤부터, 이 밤에 아무것도 안 했을 때만(웹 wzUndoNight «← 낮으로»). 막히면 웹 안내를 그대로 */
     'phase.undoNight': function () { if (state.phase === 'day' || (state.nights || 1) <= 1) return rej('notAllowedInPhase', 'noDayToUndo');
@@ -1582,7 +1599,7 @@ var NativeCore = (function () {
     'phase.enterNight': function (p) { if (state.phase !== 'day') return rej('notAllowedInPhase', 'notDay');
       var D = dayRec(), pending = !(D.noms || []).some(function (n) { return n.done; }) && execGate().ok;   // 처형할 사람이 정해졌는데 안 했을 때만 묻는다 — 동수·문턱 미달은 원래 처형 없이 밤
       if (pending && !p.force) return { status: 'needsConfirmation', token: 'night', revision: revision, reasonCode: 'pendingDay', choices: [SAY('ms.ask.night')] };
-      if (!(D.noms || []).length && !D.tieVoid && !p.force) return { status: 'needsConfirmation', token: 'night', revision: revision, reasonCode: 'noNomination', choices: [SAY('ms.ask.nightNoNom')] };   // 지명이 한 번도 없던 낮 — 발표 직후 큰 버튼이 «밤으로»라 낮을 통째로 건너뛰던 것(폴리싱 1번, 2026-11-11)
+      if (!(D.noms || []).length && !D.tieVoid && !D.noExec && !p.force) return { status: 'needsConfirmation', token: 'night', revision: revision, reasonCode: 'noNomination', choices: [SAY('ms.ask.nightNoNom')] };   // 지명이 한 번도 없던 낮 — 발표 직후 큰 버튼이 «밤으로»라 낮을 통째로 건너뛰던 것(폴리싱 1번, 2026-11-11)
       wz.voteOpen = null; wzToNight(); return null; },
     /* 결과가 정해진 판을 12시간 안 건드렸으면 그 결과로 닫는다(2026-09-30 햇살님). 앱을 켤 때 부른다. force 는 시험용 */
     'game.autoClose': function (p) {

@@ -1374,5 +1374,21 @@
  "오늘 즐거웠어요": "Seru sekali hari ini",
  "오늘은 판이 없었어요": "Hari ini tidak ada permainan",
  "오늘 %lld판": "%lld permainan hari ini",
- "%lld판": "Permainan %lld"
+ "%lld판": "Permainan %lld",
+ "끼운 사진·영상·슬라이드는 이 폰을 TV에 연결했을 때(AirPlay·케이블) 큰 화면에 나와요. 아이폰 두 대 운용은 두 폰이 가까이 있으면 다 나와요(영상은 받는 폰으로 한 번 옮겨요). 웹 큰 화면은 판 화면만 나와요.": "Foto, video, dan slide sisipan tampil di layar besar saat ponsel ini terhubung ke TV (AirPlay · kabel). Mode dua iPhone menampilkan semuanya saat kedua ponsel berdekatan (video disalin sekali ke ponsel penerima). Layar besar web hanya menampilkan permainan.",
+ "영상 받는 중 %lld%%": "Menerima video %lld%%",
+ "진행 방식": "Cara memandu",
+ "음성 안내": "Panduan suara",
+ "직접 읽기": "Baca sendiri",
+ "무음": "Senyap",
+ "음성으로 나와요": "Diputar dengan suara",
+ "소리 내어 읽어 주세요": "Bacakan dengan keras",
+ "다시 듣기": "Putar lagi",
+ "말없이 — 진행자만": "Diam — hanya pemandu",
+ "깨울 사람: %@": "Bangunkan: %@",
+ "폰 화면으로 %@ 보여 주기": "Tunjukkan %@ di ponsel",
+ "손으로 %@ 가리키기": "Tunjuk %@",
+ "블러프 %lld개를 폰으로 보여 주기": "Tunjukkan %lld gertakan di ponsel",
+ "깨우고 잠깐 기다린 뒤 눈 감기": "Bangunkan, tunggu sebentar, lalu pejamkan mata",
+ "오늘은 처형 없이 넘어갈까요?": "Lanjut hari ini tanpa eksekusi?"
 }

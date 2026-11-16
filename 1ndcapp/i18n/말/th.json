@@ -757,5 +757,13 @@
  "ans.meet.allies": "ฝ่ายเดียวกัน: {s}",
  "gt.nbPoison": "พิษจากเพื่อนบ้าน ({r@role})",
  "gt.worldFalse": "ทุกอย่างเป็นเท็จ (เกมวอร์ท็อกซ์)",
- "lb.char": "{r@role}"
+ "lb.char": "{r@role}",
+ "mt.say.minionsOpen": "{m@w} ลืมตาได้",
+ "mt.say.seeEach": "มองหน้ากันให้ดี",
+ "mt.say.showDemon": "คนที่ชี้ให้ดูตอนนี้คือ{d@w}",
+ "mt.say.demonOpen": "{d@w} ลืมตาได้",
+ "mt.say.showMinion": "คนที่ชี้ให้ดูตอนนี้คือ{m@w}",
+ "mt.say.showMinions": "คนที่ชี้ให้ดูตอนนี้คือ{m@w}",
+ "mt.say.groupOpen": "{g@w} ลืมตาได้",
+ "mt.say.sameGroup": "พวกคุณอยู่องค์กรเดียวกัน"
 }

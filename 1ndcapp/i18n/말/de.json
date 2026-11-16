@@ -758,5 +758,13 @@
  "ans.meet.allies": "Gleiche Seite: {s}",
  "gt.nbPoison": "Nachbarvergiftung ({r@role})",
  "gt.worldFalse": "Alles falsch (Vortox-Partie)",
- "lb.char": "{r@role}"
+ "lb.char": "{r@role}",
+ "mt.say.minionsOpen": "{m@w}: bitte die Augen öffnen.",
+ "mt.say.seeEach": "Seht euch an.",
+ "mt.say.showDemon": "Die Person, die ich zeige, ist {d@w}.",
+ "mt.say.demonOpen": "{d@w}: bitte die Augen öffnen.",
+ "mt.say.showMinion": "Die Person, die ich zeige, ist {m@w}.",
+ "mt.say.showMinions": "Die Personen, die ich zeige, sind deine {m@w}.",
+ "mt.say.groupOpen": "{g@w}: bitte die Augen öffnen.",
+ "mt.say.sameGroup": "Ihr gehört zur selben Gruppe."
 }

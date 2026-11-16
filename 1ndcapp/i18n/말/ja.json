@@ -757,5 +757,13 @@
  "ans.meet.allies": "同じ陣営: {s}",
  "gt.nbPoison": "隣人の毒（{r@role}）",
  "gt.worldFalse": "万物偽り（ヴォートックスの盤）",
- "lb.char": "{r@role}"
+ "lb.char": "{r@role}",
+ "mt.say.minionsOpen": "{m@w}は目を開けてください。",
+ "mt.say.seeEach": "お互いの顔を確認してください。",
+ "mt.say.showDemon": "いま示す人が{d@w}です。",
+ "mt.say.demonOpen": "{d@w}は目を開けてください。",
+ "mt.say.showMinion": "いま示す人が{m@w}です。",
+ "mt.say.showMinions": "いま示す人たちが{m@w}です。",
+ "mt.say.groupOpen": "{g@w}は目を開けてください。",
+ "mt.say.sameGroup": "お互い同じ組織です。"
 }

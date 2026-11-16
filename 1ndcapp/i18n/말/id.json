@@ -757,5 +757,13 @@
  "ans.meet.allies": "Satu pihak: {s}",
  "gt.nbPoison": "Racun tetangga ({r@role})",
  "gt.worldFalse": "Semua palsu (permainan Vortox)",
- "lb.char": "{r@role}"
+ "lb.char": "{r@role}",
+ "mt.say.minionsOpen": "{m@w}, buka mata.",
+ "mt.say.seeEach": "Saling lihat.",
+ "mt.say.showDemon": "Yang saya tunjukkan adalah {d@w}.",
+ "mt.say.demonOpen": "{d@w}, buka mata.",
+ "mt.say.showMinion": "Yang saya tunjukkan adalah {m@w}.",
+ "mt.say.showMinions": "Yang saya tunjukkan adalah {m@w}.",
+ "mt.say.groupOpen": "{g@w}, buka mata.",
+ "mt.say.sameGroup": "Kalian satu kelompok."
 }

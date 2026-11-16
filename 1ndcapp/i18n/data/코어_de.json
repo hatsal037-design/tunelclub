@@ -2961,5 +2961,10 @@
  "공동 최다": "Gleichstand",
  "기준 충족": "Schwelle erreicht",
  "기준 미달": "Unter der Schwelle",
- "생존 {n}명": "{n} am Leben"
+ "생존 {n}명": "{n} am Leben",
+ "{r}는 눈을 떠 주세요.": "{r}: bitte die Augen öffnen.",
+ "서로 얼굴을 확인해 주세요.": "Seht euch an.",
+ "지금 보여 드리는 분이 {r}입니다.": "Die Person, die ich zeige, ist {r}.",
+ "지금 보여 드리는 분들이 {r}입니다.": "Die Personen, die ich zeige, sind deine {r}.",
+ "서로가 같은 조직입니다.": "Ihr gehört zur selben Gruppe."
 }

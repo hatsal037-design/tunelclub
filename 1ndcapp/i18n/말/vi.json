@@ -757,5 +757,13 @@
  "ans.meet.allies": "Cùng phe: {s}",
  "gt.nbPoison": "Bị đầu độc bởi hàng xóm ({r@role})",
  "gt.worldFalse": "Mọi thứ đều sai (ván có Vortox)",
- "lb.char": "{r@role}"
+ "lb.char": "{r@role}",
+ "mt.say.minionsOpen": "{m@w} hãy mở mắt.",
+ "mt.say.seeEach": "Hãy nhìn nhau.",
+ "mt.say.showDemon": "Người tôi đang chỉ là {d@w}.",
+ "mt.say.demonOpen": "{d@w} hãy mở mắt.",
+ "mt.say.showMinion": "Người tôi đang chỉ là {m@w}.",
+ "mt.say.showMinions": "Những người tôi đang chỉ là {m@w}.",
+ "mt.say.groupOpen": "{g@w} hãy mở mắt.",
+ "mt.say.sameGroup": "Các bạn cùng một tổ chức."
 }

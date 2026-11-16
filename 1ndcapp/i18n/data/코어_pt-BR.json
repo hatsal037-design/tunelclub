@@ -2961,5 +2961,10 @@
  "공동 최다": "Empate no topo",
  "기준 충족": "Limite atingido",
  "기준 미달": "Abaixo do limite",
- "생존 {n}명": "{n} vivos"
+ "생존 {n}명": "{n} vivos",
+ "{r}는 눈을 떠 주세요.": "{r}: abram os olhos.",
+ "서로 얼굴을 확인해 주세요.": "Olhem uns para os outros.",
+ "지금 보여 드리는 분이 {r}입니다.": "Quem estou mostrando é {r}.",
+ "지금 보여 드리는 분들이 {r}입니다.": "Quem estou mostrando são seus {r}.",
+ "서로가 같은 조직입니다.": "Vocês são do mesmo grupo."
 }

@@ -1378,5 +1378,21 @@
  "오늘 즐거웠어요": "¡Qué buen rato hoy!",
  "오늘은 판이 없었어요": "Hoy no hubo partidas",
  "오늘 %lld판": "%lld partidas hoy",
- "%lld판": "Partida %lld"
+ "%lld판": "Partida %lld",
+ "끼운 사진·영상·슬라이드는 이 폰을 TV에 연결했을 때(AirPlay·케이블) 큰 화면에 나와요. 아이폰 두 대 운용은 두 폰이 가까이 있으면 다 나와요(영상은 받는 폰으로 한 번 옮겨요). 웹 큰 화면은 판 화면만 나와요.": "Las fotos, vídeos y diapositivas insertados salen en la pantalla grande con este teléfono conectado a la TV (AirPlay · cable). Con dos iPhone cerca sale todo (los vídeos se copian una vez al teléfono receptor). La pantalla web solo muestra la partida.",
+ "영상 받는 중 %lld%%": "Recibiendo vídeo %lld%%",
+ "진행 방식": "Modo de dirigir",
+ "음성 안내": "Guía por voz",
+ "직접 읽기": "Leer en voz alta",
+ "무음": "Silencio",
+ "음성으로 나와요": "Se reproduce por voz",
+ "소리 내어 읽어 주세요": "Léelo en voz alta",
+ "다시 듣기": "Volver a oír",
+ "말없이 — 진행자만": "En silencio — solo quien dirige",
+ "깨울 사람: %@": "Despertar: %@",
+ "폰 화면으로 %@ 보여 주기": "Mostrar %@ en el móvil",
+ "손으로 %@ 가리키기": "Señalar a %@",
+ "블러프 %lld개를 폰으로 보여 주기": "Mostrar %lld faroles en el móvil",
+ "깨우고 잠깐 기다린 뒤 눈 감기": "Despertar, esperar un momento y cerrar ojos",
+ "오늘은 처형 없이 넘어갈까요?": "¿Seguimos hoy sin ejecución?"
 }

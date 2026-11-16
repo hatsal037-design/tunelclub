@@ -2961,5 +2961,10 @@
  "공동 최다": "Seri terbanyak",
  "기준 충족": "Ambang tercapai",
  "기준 미달": "Di bawah ambang",
- "생존 {n}명": "{n} hidup"
+ "생존 {n}명": "{n} hidup",
+ "{r}는 눈을 떠 주세요.": "{r}, buka mata.",
+ "서로 얼굴을 확인해 주세요.": "Saling lihat.",
+ "지금 보여 드리는 분이 {r}입니다.": "Yang saya tunjukkan adalah {r}.",
+ "지금 보여 드리는 분들이 {r}입니다.": "Yang saya tunjukkan adalah {r}.",
+ "서로가 같은 조직입니다.": "Kalian satu kelompok."
 }
