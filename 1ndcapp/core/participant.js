@@ -178,7 +178,8 @@ var 드러냄 = /** @type {any} */ (globalThis).드러냄 || (/** @type {any} */
       /* 자리표 메모(0333, 2026-11-14) — 판 중엔 내 것만, 판 끝나면 그 판에 앉은 사람 모두의 것(복기) */
       noteMine: function (plazaId) { return call('seat_note_mine', { p_plaza: plazaId }); },
       notePut: function (plazaId, seat, n) { n = n || {}; return call('seat_note_put', { p_plaza: plazaId, p_seat: seat, p_claim: n.claim || null, p_guess: n.guess || null, p_lean: n.lean || null, p_body: n.body || null }); },
-      noteGame: function (plazaId, epoch) { return call('seat_note_game', { p_plaza: plazaId, p_epoch: epoch }); },   // 광장 현황(0320) — 잠금화면 라이브 액티비티
+      noteGame: function (plazaId, epoch) { return call('seat_note_game', { p_plaza: plazaId, p_epoch: epoch }); },
+      replay: function (gameId, plazaId, epoch) { return call('game_replay', { p_game: gameId || null, p_plaza: plazaId || null, p_epoch: epoch || null }); },   // 참가자 복기(0335, 2026-11-16) — 공개용 복기 + 자리 메모   // 광장 현황(0320) — 잠금화면 라이브 액티비티
 
       // ── 전적·정정 ──
       stats: function () { return call('my_stats'); },

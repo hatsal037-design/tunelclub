@@ -2954,5 +2954,12 @@
  "{r}가 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "{r} đã ngã xuống hết, nhưng vai kế thừa ({r}) còn sống — hãy kiểm tra việc kế thừa.",
  "첫 지명이 나온 뒤엔 쏠 수 없어요.": "Không thể bắn sau lần đề cử đầu tiên.",
  "쏠 수 없는 자리예요.": "Không thể chọn ghế này.",
- "판이 끝났어요.": "Ván đã kết thúc."
+ "판이 끝났어요.": "Ván đã kết thúc.",
+ "지금": "Bây giờ",
+ "지명": "Đề cử",
+ "유력": "Dẫn đầu",
+ "공동 최다": "Đồng hạng cao nhất",
+ "기준 충족": "Đạt ngưỡng",
+ "기준 미달": "Dưới ngưỡng",
+ "생존 {n}명": "{n} còn sống"
 }

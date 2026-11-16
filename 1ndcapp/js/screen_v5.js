@@ -108,7 +108,7 @@ export function geo(p) { const n = p.seats.length, names = p.seats.map(s => s.na
   const out = (i, j, dflt) => i === 0 ? 'left' : i === c - 1 ? 'right' : dflt;
   const side = (i, j) => { const v = j === 0 ? NM.top : j === r - 1 ? NM.bottom : i === 0 ? NM.left : i === c - 1 ? NM.right : 'below'; return v === 'out' ? out(i, j, j === 0 ? 'above' : 'below') : v; };
   const gaps = cells.filter(k => !k.seatId).map(k => ({ x: x0 + k.col * h.sx, y: y0 + k.row * h.sy }));
-  return { kind: 'r', h, seats: at.map(k => ({ x: x0 + k.col * h.sx, y: y0 + k.row * h.sy, nm: side(k.col, k.row) })), gaps, cx: x0 + w / 2, cy: y0 + hh / 2, names }; }
+  return { kind: 'r', h, seats: at.map(k => ({ x: x0 + k.col * h.sx, y: y0 + k.row * h.sy, nm: side(k.col, k.row), c: k.col, r: k.row })), gaps, cx: x0 + w / 2, cy: y0 + hh / 2, names, rows: r, cols: c }; }
 const layOf = (h, p) => { const L = h.lay || {}; return { mode: L.mode || (p.shape !== 'rect' ? 'in' : 'in'), vy: L.vy || 550 }; };
 
 /* ── 정보 칸(애플 스포츠 «경기 흐름» 결) ── */
@@ -116,9 +116,14 @@ function poll(name, votes, need, alive, by, big) { const W = 396, C = TEAL, mx =
   return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span class="t31" style="font-weight:600">${esc(name)}</span><span style="white-space:nowrap">${votes == null ? '' : `<span class="${big ? 't48' : 't38'}" style="font-weight:600;color:${C}">${votes}</span>`}<span class="t25" style="color:var(--sec)"> ${votes == null ? '' : '/ '}필요 ${need}</span></span></div>
   <svg width="${W}" height="34" viewBox="0 0 ${W} 34" style="display:block;margin-top:6px"><rect x="0" y="6" width="${W}" height="14" rx="7" fill="var(--g5)"/>${votes ? `<rect x="0" y="6" width="${W * Math.min(1, votes / mx)}" height="14" rx="7" fill="${C}"/>` : ''}<line x1="${W * need / mx}" y1="0" x2="${W * need / mx}" y2="26" stroke="var(--fg)" stroke-width="2.5"/></svg>
   <div class="t23" style="color:var(--sec)">${by ? esc(josa(by, '이', '가')) + ' 지명 · ' : ''}${votes == null ? '투표 중' : '투표 확정'}</div>`; }
-function infoBlock(p, nameOf) { const n = p.seats.length, alive = p.seats.filter(s => !s.dead).length, ghost = p.seats.filter(s => s.dead && s.ghost).length, inDay = /^(dawn|discussion|nomination|voting|confirmed|execution)$/.test(p.scene);
+function infoBlock(p, nameOf, EVW = 410) {   // EVW — 흐름 줄 폭(넓은 판 가로 줄 배치는 .isec 400 − 줄 들여쓰기 = 370)
+ const n = p.seats.length, alive = p.seats.filter(s => !s.dead).length, ghost = p.seats.filter(s => s.dead && s.ghost).length, inDay = /^(dawn|discussion|nomination|voting|confirmed|execution)$/.test(p.scene);
   const st = (v, l, c = 'var(--fg)') => `<div><span class="t76" style="font-weight:600;color:${c};line-height:80px">${v}</span><span class="t23" style="color:var(--sec)">${l}</span></div>`;
-  const ev = (a, b, c) => `<div class="ev t29"><span>${a}</span><span class="t25" style="color:${c || 'var(--sec)'};white-space:nowrap">${b}</span></div>`;
+  const plain = x => String(x).replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const ev = (a, b, c) => tw(narrTr(plain(a)), 29, 500) + 16 + tw(narrTr(plain(b)), 25, 500) <= EVW - 6   // 한 줄에 안 들면 상태 글을 아래 줄로(아이폰 evFits 와 같게, 반증 검토)
+    ? `<div class="ev t29"><span>${a}</span><span class="t25" style="color:${c || 'var(--sec)'};white-space:nowrap">${b}</span></div>`
+    : (() => { const fa = k => { const w = tw(narrTr(plain(k)), 29, 500); return w > EVW - 6 ? `font-size:${(29 * Math.max(.72, (EVW - 6) / w)).toFixed(1)}px;` : ''; }, fb = k => { const w = tw(narrTr(plain(k)), 25, 500); return w > EVW - 6 ? `font-size:${(25 * Math.max(.72, (EVW - 6) / w)).toFixed(1)}px;` : ''; };   // px 로 — em 은 부모 줄(29px) 기준이라 상태 줄이 오히려 커졌다   // 줄마다 넘으면 0.72배까지 줄이고(아이폰 minimumScaleFactor 와 같게) 그래도 넘으면 줄임표
+      return `<div class="ev t29" style="display:block"><div style="${fa(a)}white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a}</div><div class="t25" style="${fb(b)}color:${c || 'var(--sec)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b}</div></div>`; })();
   const rv = id => { const s = p.seats.find(x => x.id === id); return s && s.reveal ? (s.reveal === 'criminal' ? [' · 범죄 조직', RED] : [' · 시민', BLUE]) : ['', null]; };
   const voteT = p.nomination && /^(voting|confirmed)$/.test(p.scene) ? p.nomination.targetId : null;
   const F = (p.flow || []).slice();   // 채팅처럼 — 오래된 것이 위, 새 것이 아래(2026-10-26 햇살님 «늘어나면 위로 올라가게, 올라가면 투명해지게»)
@@ -140,8 +145,11 @@ let flowN = -1;   // 판 흐름 줄 수 — 늘었을 때만 위로 미끄러지
 const flowGrew = F => { const n = F.reduce((a, f) => a + 1 + f.events.length, 0), up = flowN >= 0 && n > flowN; flowN = n; return up; };
 
 /* ── 가운데 글 ── */
-function midHtml(p, nameOf, night, clockK, inW) { const alive = p.seats.filter(s => !s.dead).length, hd = (i, t, c = 'var(--sec)') => `<div class="t25 v5hd" style="color:var(--sec)">${i == null ? '' : ico(i, 24, c, 'var(--bg)')}${t}</div>`;
-  const big = t => `<div class="v5name" style="font-size:${tw(t, 57, 700) > 560 ? 44 : 57}px">${esc(t)}</div>`, sub = t => `<div class="t25" style="color:var(--sec)">${t}</div>`;
+function midHtml(p, nameOf, night, clockK, inW, cap = Infinity) { const alive = p.seats.filter(s => !s.dead).length;
+  const fit25 = (t, extra) => { const w = tw(narrTr(String(t).replace(/<[^>]*>/g, '')), 25, 500) + extra; return w > cap ? `font-size:${(25 * Math.max(.6, cap / w)).toFixed(1)}px;` : ''; };   // 머리·아래 줄도 칸(cap) 안에서 0.6배까지(아이폰 minimumScaleFactor 와 같게)
+  const hd = (i, t, c = 'var(--sec)') => `<div class="t25 v5hd" style="${fit25(t, i == null ? 0 : 32)}color:var(--sec)">${i == null ? '' : ico(i, 24, c, 'var(--bg)')}${t}</div>`;
+  const big = t => { const f0 = tw(t, 57, 700) > 560 ? 44 : 57, w = tw(narrTr(t), f0, 700);   // 판 안이면 판 안 폭(cap) 안에서 줄인다 — 아침 발표 사망자 둘이 3·9시 자리를 덮었다(반증 검토)
+    return `<div class="v5name" style="font-size:${w > cap ? Math.max(Math.floor(f0 * (cap === 520 ? .5 : .4)), Math.floor(f0 * cap / w)) : f0}px">${esc(t)}</div>`; }, sub = t => `<div class="t25" style="${fit25(t, 0)}color:var(--sec)">${t}</div>`;
   const s = p.scene;
   if (s === 'night') { if (!p.nightNumber) return ''; const t = '밤 ' + p.nightNumber, w = tw(narrTr(t), 57, 700);   // 판 안 폭(inW, 자리 사이)을 넘는 말(영어 «Night 2» · 2열 사각 판)만 줄인다
     return `<div class="v5name" style="font-size:${w > inW ? Math.floor(57 * inW / w) : 57}px">${esc(t)}</div>`; }
@@ -173,29 +181,36 @@ export function drawV5(host, p, vw, vh) {
   let svg = '', bo = '';
   L.gaps.forEach(g => { bo += `<div class="st gp" style="left:${g.x}px;top:${g.y}px;width:${h.d * .55}px;height:${h.d * .55}px"></div>`; });
   const nomT = p.nomination && /^(nomination|voting|confirmed)$/.test(p.scene) ? p.nomination.targetId : null, turn = p.handoff && p.handoff.seatId;
+  // 지그재그(2026-11-16 햇살님 «지그재그로», 아이폰 PV5Layout 과 같게) — 사각 위·아래 줄에 옆 칸을 넘는 이름·직업 줄이 있으면 그 줄은 홀수 칸을 한 층 바깥에, 가는 선으로 잇는다
+  const rrOf = s => p.scene === 'ended' ? (p.endReveal || []).find(x => x.seatId === s.id) : null, zig = new Set();
+  const edge = pt => L.kind !== 'c' && (pt.r === 0 || pt.r === L.rows - 1);   // 지그재그는 맨 위·맨 아래 줄만 — 가운데 줄 옆 자리(r8x4 below)에 걸면 아래 자리 원 밑에 깔렸다(반증 검토)
+  const roleW = (r0, fs) => fs * .82 * 1.35 + tw(narrTr(r0.role), fs * .82, 600);   // 그려지는 글(번역)로 잰다 — 원문으로 재면 영어 «Washerwoman»이 겹쳤다(반증 검토)
+  if (L.kind !== 'c') L.seats.forEach((pt, i) => { const r0 = rrOf(p.seats[i]); if ((pt.nm === 'above' || pt.nm === 'below') && edge(pt) && (tw(narrTr(L.names[i]), h.fs, 600) > h.sx - 16 || (r0 && roleW(r0, h.fs) > h.sx - 16))) zig.add(pt.r); });
   L.seats.forEach((pt, i) => { const s = p.seats[i], cs = s.dead ? (s.cause === 'night' ? 'm' : 'x') : '', rv = s.reveal === 'criminal' ? ' ring-e' : s.reveal === 'citizen' ? ' ring-c' : '';
     const rr = p.scene === 'ended' ? (p.endReveal || []).find(x => x.seatId === s.id) : null;   // 끝난 판 직업 공개 — 자리엔 번호 대신 직업 그림(없으면 머리글자 한 자), 이름 옆엔 직업 아이콘·이름(편 색). 죽은 자리는 그림을 옅게(2026-10-26 햇살님 «자리표에 숫자 없어지고 거기에 직업 아이콘»)
     const art = rr ? (rr.icon && /^[\w-]+$/.test(rr.icon) ? `<img class="ri" src="../art/${encodeURIComponent(rr.icon)}.webp" alt="">` : `<span class="ri">${esc(Array.from(String(rr.role || ''))[0] || '')}</span>`) : '';
     bo += `<div class="st${s.dead ? ' dead' : ''}${rr ? ' rev' : ''}${rv}${s.id === nomT ? ' nom' : s.id === turn ? ' turn' : ''}" data-k="${rr ? '' : cs}" style="left:${pt.x}px;top:${pt.y}px;width:${h.d}px;height:${h.d}px;font-size:${Math.round(h.d * .43)}px">${rr ? art : s.dead ? '' : s.number}${s.dead && s.ghost ? '<span class="gh"></span>' : ''}</div>`;
-    const cls = 'lb' + (s.dead ? ' dead' : ''), fs = h.fs; let pos, al;
+    const cls = 'lb' + (s.dead ? ' dead' : ''), fs = h.fs; let pos, al, inl = false;
     if (L.kind === 'c') { const l = L.labels[i];
       if (l.mid) { al = 'al-c' + (l.mid < 0 ? ' up' : ''); pos = `left:${l.x}px;${l.mid < 0 ? `bottom:${1080 - (l.y - h.d / 2 - 18)}px` : `top:${l.y + h.d / 2 + 10}px`};transform:translateX(-50%)`; }
       else { svg += `<path class="ld" d="M${l.ex},${l.ey} L${l.kx},${l.ky} L${l.tx},${l.ky}"/>`; al = l.side > 0 ? 'al-l' : 'al-r'; pos = `top:${l.ky - fs * .6}px;` + (l.side > 0 ? `left:${l.tx + 8}px` : `right:${1920 - l.tx + 8}px`); } }
-    else { const g = h.d / 2 + 12;
-      if (pt.nm === 'above') { al = 'al-c up'; pos = `left:${pt.x}px;bottom:${1080 - (pt.y - g - 8)}px;transform:translateX(-50%)`; }
-      else if (pt.nm === 'below') { al = 'al-c'; pos = `left:${pt.x}px;top:${pt.y + g}px;transform:translateX(-50%)`; }
+    else { const g = h.d / 2 + 12, outer = edge(pt) && zig.has(pt.r) && pt.c % 2 === 1, ex = outer ? Math.round(fs * 1.24) * (rr ? 2 : 1) + 6 : 0;
+      inl = !edge(pt) && (pt.nm === 'below' || pt.nm === 'above') && rr && g + Math.round(fs * 1.24) * 2 > h.sy - h.d / 2 - 4;   // 가운데 줄 옆 자리 «이름 · 직업» 한 줄(r7x3·r8x4 끝난 판)
+      if (pt.nm === 'above') { al = 'al-c up'; pos = `left:${pt.x}px;bottom:${1080 - (pt.y - g - 8 - ex)}px;transform:translateX(-50%)`; if (outer) svg += `<path class="ld" d="M${pt.x},${pt.y - h.d / 2 - 4} L${pt.x},${pt.y - g - 8 - ex + 2}"/>`; }
+      else if (pt.nm === 'below') { al = 'al-c'; pos = `left:${pt.x}px;top:${pt.y + g + ex}px;transform:translateX(-50%)`; if (outer) svg += `<path class="ld" d="M${pt.x},${pt.y + h.d / 2 + 4} L${pt.x},${pt.y + g + ex - 2}"/>`; }
       else if (pt.nm === 'left') { al = 'al-r'; pos = `right:${1920 - (pt.x - g)}px;top:${pt.y - fs * .6}px`; }
       else { al = 'al-l'; pos = `left:${pt.x + g}px;top:${pt.y - fs * .6}px`; } }
-    const fit = rr && L.kind !== 'c' && al.startsWith('al-c') ? (() => { const av = h.sx - 16, w0 = fs * .82 * 1.4 + tw(rr.role, fs * .82, 600); return w0 > av ? `;font-size:${Math.max(.62, .82 * av / w0).toFixed(3)}em;max-width:${av}px;overflow:hidden;text-overflow:ellipsis` : ''; })() : '';   // 사각 위·아래 줄 — 직업 줄이 옆 칸을 넘으면 줄이고 끝은 줄임표(반증 2026-10-25, 20명 사각)
+    const fit = rr && edge(pt) && al.startsWith('al-c') ? (() => { const av = (zig.has(pt.r) ? 2 * h.sx : h.sx) - 16, w0 = roleW(rr, fs); return w0 > av ? `;font-size:${Math.max(.62, .82 * av / w0).toFixed(3)}em;max-width:${av}px;overflow:hidden;text-overflow:ellipsis` : ''; })() : '';   // 사각 위·아래 줄 — 직업 줄이 옆 칸을 넘으면 줄이고 끝은 줄임표(반증 2026-10-25, 20명 사각)
     const rl = rr ? `<span class="rl" style="color:${SIDEC[rr.side] || 'var(--sec)'}${fit}">${rr.icon && /^[\w-]+$/.test(rr.icon) ? `<img src="../art/${encodeURIComponent(rr.icon)}.webp" alt="">` : ''}${esc(rr.role)}</span>` : '';
-    bo += `<div class="${cls} ${al}" style="font-size:${fs}px;line-height:${Math.round(fs * 1.24)}px;${pos}"><span class="nm">${esc(L.names[i])}${rl}</span></div>`; });
+    const nf = edge(pt) && al.startsWith('al-c') ? (() => { const av = (zig.has(pt.r) ? 2 * h.sx : h.sx) - 16, w0 = tw(narrTr(L.names[i]), fs, 600); return w0 > av ? ` style="font-size:${Math.max(.62, av * .96 / w0).toFixed(3)}em;max-width:${av}px;overflow:hidden;text-overflow:ellipsis"` : ''; })() : '';   // 사각 위·아래 줄 이름도 직업 줄과 같은 규칙 — 옆 칸을 넘으면 줄이고(최소 0.62) 끝은 줄임표(2026-11-16 큰 화면 글자 점검, 아이폰 PV5Layout 과 같게)
+    bo += `<div class="${cls} ${al}" style="font-size:${fs}px;line-height:${Math.round(fs * 1.24)}px;${pos}"><span class="nm"${inl ? ' style="flex-direction:row;align-items:baseline;gap:.4em"' : ''}>${nf ? `<span class="nn"${nf}>${esc(L.names[i])}</span>` : esc(L.names[i])}${rl}</span></div>`; });
   if (nomT && p.nomination.byId) { const a = L.seats[p.seats.findIndex(s => s.id === p.nomination.byId)], b = L.seats[p.seats.findIndex(s => s.id === nomT)]; if (a && b) svg += nomArrow(a, b, L, h.d); }
   const inB = lay.mode === 'in' || lay.mode === 'row', rin = Math.min(...L.seats.map(q => Math.hypot(q.x - L.cx, q.y - L.cy))) - h.d / 2 - 30, clockK = inB ? Math.max(.62, Math.min(1, rin / 183)) : 1;
-  const midH = midHtml(p, nameOf, night, clockK, 2 * (rin + 14)), inMid = (inB || night) && midH;   // 밤 «밤 2»(R3)는 세로로 긴 사각 판(stack)도 판 가운데 — 밤엔 판 안이 비어 있다. 시계·글만 옆 칸으로
+  const midH = midHtml(p, nameOf, night, clockK, 2 * (rin + 14), inB ? (L.kind === 'c' ? 2 * (rin + 14) : (L.cols - 1) * h.sx - h.d - 32) : 520)   /* 판 밖(세로로 긴 판 옆 칸)은 상한 520 — 긴 이름이 4:3 화면 밖으로(아이폰과 같게) */, inMid = (inB || night) && midH;   // 밤 «밤 2»(R3)는 세로로 긴 사각 판(stack)도 판 가운데 — 밤엔 판 안이 비어 있다. 시계·글만 옆 칸으로
   let o = `<div id="bw" style="position:absolute;left:0;top:0;width:1920px;height:1080px"><svg class="ov">${svg}</svg>${bo}${inMid ? `<div class="mid" style="left:${L.cx}px;top:${L.cy}px">${midH}</div>` : ''}</div>`;
   if (midH && !inMid) o += `<div id="ck" class="blk" style="position:absolute"><div class="mid" style="position:static;transform:none">${midH}</div></div>`;
   const g0 = cur === 0 ? (p.nightProgress == null ? null : p.nightProgress) : cur === 2 && p.timer && p.timer.durationMs ? 1 - timerLeft(p.timer) / p.timer.durationMs : null;
-  if (hasInfo) o += `<div id="inf" class="blk${lay.mode === 'row' ? ' row' : ''}" style="position:absolute;width:440px">${cur != null ? `<div class="isec" id="v5cyc" style="text-align:center" data-g="${g0 == null ? '' : g0}">${cycle(p.cycle, cur, g0, night)}</div>` : ''}${night ? '' : infoBlock(p, nameOf)}</div>`;
+  if (hasInfo) o += `<div id="inf" class="blk${lay.mode === 'row' ? ' row' : ''}" style="position:absolute;width:440px">${cur != null ? `<div class="isec" id="v5cyc" style="text-align:center" data-g="${g0 == null ? '' : g0}">${cycle(p.cycle, cur, g0, night)}</div>` : ''}${night ? '' : infoBlock(p, nameOf, lay.mode === 'row' ? 370 : 410)}</div>`;
   o += `<button class="v5leave t23" type="button">연결 끊기</button>`;
   host.innerHTML = `<div class="v5tv${night ? ' night' : ''}" style="width:${W}px;transform:translate(${(vw - W * k) / 2}px,${(vh - 1080 * k) / 2}px) scale(${k})">${o}</div>`;
   if (window.__i18nFix) window.__i18nFix(host);   // 재기 전에 바꾼다(재고 나서 바뀌면 폭이 어긋난다)
@@ -211,7 +226,7 @@ function place(host, lay, W, hasInfo) {
   const bw = tv.querySelector('#bw'), ck = tv.querySelector('#ck'), inf = tv.querySelector('#inf');
   const B = box([...bw.querySelectorAll('.st,.lb .nm,.mid')]), T = ck ? box([ck]) : null;
   if (!hasInfo) {   // 정보 칸 없는 장면(준비) — 판(과 시계)을 가운데로
-    const ws = B.w + (T ? T.w + 80 : 0), bk = Math.min(1, (W - 160) / ws, 960 / B.h), x = (W - ws * bk) / 2;
+    const ex = T ? T.w + 80 : 0, bk = Math.min(1, Math.max(.3, (W - 160 - ex) / B.w), 960 / B.h), x = (W - (B.w * bk + ex)) / 2;   // 옆 가운데 글 칸을 먼저 빼고 판 배율(아이폰과 같게, 4:3 화면 오른쪽 밖으로 나가던 것)
     bw.style.transformOrigin = `${B.x}px ${B.y}px`; bw.style.transform = `translate(${x - B.x}px,${540 - B.h * bk / 2 - B.y}px) scale(${bk})`;
     if (ck) { ck.style.left = (x + B.w * bk + 80) + 'px'; ck.style.top = (540 - T.h / 2) + 'px'; } return; }
   let I = box([inf]);
@@ -225,7 +240,8 @@ function place(host, lay, W, hasInfo) {
   let blocks = [{ k: 'B', w: B.w, h: B.h }];
   if (lay.mode === 'col' && T) blocks.push({ k: 'T', w: T.w, h: T.h });
   if (lay.mode === 'stack' && T) blocks.push({ k: 'S', w: Math.max(T.w, I.w), h: T.h + 36 + I.h }); else blocks.push({ k: 'I', w: I.w, h: I.h });
-  let bk = 1; { const need = blocks.reduce((a, b) => a + b.w, 0) + 40 * (blocks.length + 1); if (need > W - 160 + 80) { bk = Math.max(.6, (W - 80 - 40 * (blocks.length + 1) - blocks.slice(1).reduce((a, b) => a + b.w, 0)) / B.w); blocks[0].w = B.w * bk; blocks[0].h = B.h * bk; } }
+  let bk = 1; { const need = blocks.reduce((a, b) => a + b.w, 0) + 40 * (blocks.length + 1); if (need > W - 160 + 80) { bk = Math.max(.5, (W - 80 - 40 * (blocks.length + 1) - blocks.slice(1).reduce((a, b) => a + b.w, 0)) / B.w); blocks[0].w = B.w * bk; blocks[0].h = B.h * bk; } }
+  if (B.h * bk > 940) { bk = Math.max(.6, 940 / B.h); blocks[0].w = B.w * bk; blocks[0].h = B.h * bk; }   // 높이로도 — 지그재그 두 층·직업 줄로 판이 길어지면 위아래 안전 여백을 넘었다(아이폰과 같게, 반증 검토)
   const free = (W - 160) - blocks.reduce((a, b) => a + b.w, 0), k = blocks.length, RW = .4;   // 오른쪽 끝 여백 = 왼쪽의 40%(2026-10-25 햇살님 «우측 여백을 좀 줄이자»)
   let edge = free / (k + RW), gap = edge; if (edge < 40) { edge = 0; gap = free / (k - 1); }
   let x = 80 + edge; const pos = {}; blocks.forEach(b => { pos[b.k] = { x, w: b.w, h: b.h }; x += b.w + gap; });

@@ -2954,5 +2954,12 @@
  "{r}가 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "{r} sudah tumbang, tetapi peran penerus ({r}) masih hidup — periksa apakah ada pewarisan.",
  "첫 지명이 나온 뒤엔 쏠 수 없어요.": "Tidak bisa menembak setelah nominasi pertama.",
  "쏠 수 없는 자리예요.": "Kursi ini tidak bisa dipilih.",
- "판이 끝났어요.": "Permainan sudah selesai."
+ "판이 끝났어요.": "Permainan sudah selesai.",
+ "지금": "Sekarang",
+ "지명": "Nominasi",
+ "유력": "Unggul",
+ "공동 최다": "Seri terbanyak",
+ "기준 충족": "Ambang tercapai",
+ "기준 미달": "Di bawah ambang",
+ "생존 {n}명": "{n} hidup"
 }

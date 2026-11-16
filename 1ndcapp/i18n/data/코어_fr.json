@@ -2954,5 +2954,12 @@
  "{r}가 모두 쓰러졌지만 계승 역할({r})이 살아 있어요 — 계승 여부를 확인하세요.": "Le {r} est tombé, mais un rôle de successeur ({r}) est vivant — vérifiez la succession.",
  "첫 지명이 나온 뒤엔 쏠 수 없어요.": "Impossible de tirer après la première nomination.",
  "쏠 수 없는 자리예요.": "Ce siège ne peut pas être choisi.",
- "판이 끝났어요.": "La partie est terminée."
+ "판이 끝났어요.": "La partie est terminée.",
+ "지금": "Maintenant",
+ "지명": "Nomination",
+ "유력": "En tête",
+ "공동 최다": "Égalité en tête",
+ "기준 충족": "Seuil atteint",
+ "기준 미달": "Sous le seuil",
+ "생존 {n}명": "{n} vivants"
 }

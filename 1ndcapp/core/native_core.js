@@ -78,7 +78,7 @@ var NativeCore = (function () {
   function potView() {
     var p = potNow(); if (!p) return null;   /* 조회는 순수하게 — 닫기는 명령(preparation.enter·pot.*)과 앱을 열 때만. 여기선 24시간 지난 광장을 «없음»으로만 보인다 */
     if (Date.now() >= potEndsAt(p) && !(state.log && state.log.potId === p.id && !state.practice && !gameEnded())) return null;
-    return { id: p.id, title: p.title || '', practice: !!p.practice, openedAt: p.openedAt, endsAt: potEndsAt(p), games: (p.gameIds || []).length, note: p.note || null };
+    return { id: p.id, title: p.title || '', practice: !!p.practice, openedAt: p.openedAt, endsAt: potEndsAt(p), games: (p.gameIds || []).length, note: p.note || null, wrap: !!p.wrap };   // wrap — 진행자가 «마무리»를 눌렀나(2026-11-16 큰 화면 6단계)
   }
   function home() {
     var h = homeState(), ed = ED();
@@ -831,7 +831,7 @@ var NativeCore = (function () {
       return { dead: dead, ghost: dead && ((s.rem || []).indexOf('유령표') >= 0 || (!s.dead && !villageType())), reveal: rv, cause: dead ? pubCause(i) : null }; });   // 죽은 척도 유령표를 받는다(fakeDeadMark, 유령표 쓰는 판) — 안 쓰는 판은 예전처럼 있음으로
     var seats = (state.seats || []).map(function (s, i) { var v = (P.seats && P.seats[i]) || { dead: false, ghost: false };
       return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost, reveal: v.reveal || null, cause: v.dead ? v.cause || pubCause(i) : null }; });   // 까닭도 공개 스냅샷에서(밤에 되살아나 바뀌어도 발표 전엔 그대로)
-    var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), tvw = localStorage.getItem(TVW_KEY), waiting = tvp && tvp.code && pot0 && (tvw === '1' ? (!began || ended) : tvw !== '0' && tvw !== '2' && !began) ? { code: tvp.code, title: (pot0 && pot0.title) || tvp.title || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: (tvp.people || []).slice(0, 20), notice: (pot0 && pot0.note) || null } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
+    var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), tvw = localStorage.getItem(TVW_KEY), waiting = pot0 && !pot0.practice && (tvw === '1' ? (!began || ended) : tvw !== '0' && tvw !== '2' && !began) ? { code: (tvp && tvp.code) || null, title: (pot0 && pot0.title) || (tvp && tvp.title) || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: ((tvp && tvp.people) || []).slice(0, 20), notice: (pot0 && pot0.note) || null } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
     var scene = waiting ? 'waiting' : !began ? 'prep' : ended ? 'ended' : !isDay ? 'night' : !announced ? 'dawn' : 'discussion';
     var lpot = (function () { try { return potsAll().reduce(function (m, x) { return !m || (x.openedAt || 0) > (m.openedAt || 0) ? x : m; }, null); } catch (e) { return null; } })();   // 가장 최근 광장 — 끝난 판은 기록이 보관으로 넘어가 판에서 광장을 못 찾는다
     var idle = !waiting && (((!began || ended) && ((!pot0 && !!(lpot && lpot.closedAt)) || (ended && tvw === '1'))) || (!began && tvw !== '0' && tvw !== '2'));   // 자리 잡기 전인데 대기 QR 이 없으면(광장이 없거나 체크인 코드가 아직 없음) 빈 자리 원 대신 빈 장면 — 큰 화면 기기의 대기 사진이 뜬다(2026-11-12 햇살님)   // 끝난 판에서 «한 판 더»(대기 표시 '1')를 눌렀는데 대기 QR 이 없으면 자리 잡기 전까지 같은 빈 장면(2026-10-26 햇살님 아침 선택 1-4 = ① — 지난 판 종료가 역할 나눌 때까지 다시 뜨던 것)   // 광장이 닫혔고 도는 판이 없으면 빈 화면 — 지난 판 종료·자리를 다시 띄우지 않는다(2026-10-25 햇살님 «닫은 광장에 이전 게임 화면이 나온다»)
@@ -895,8 +895,11 @@ var NativeCore = (function () {
     var br = ended ? null : briefing(); if (br) { body.briefing = br;   // 이번 판 안내(2026-10-24) — 구성은 원작 인원표라 공개, 직업·자리는 안 싣는다
       body.briefingStage = !began && !state.briefDone && (state.seats || []).some(function (x) { return x && x.char; }) && !(typeof state.rvPos === 'number' && state.rvPos >= 0) ? 'rules' : null;   // 직업을 나눴고 진행자가 «룰 설명 끝»을 누르기 전(넘기기를 이미 시작했어도 끝) = 룰 설명 단계
       if (isDay && br.judges) { var cmj = CMAP(); body.judgeVote = (state.seats || []).some(function (x) { var c = x && x.char ? cmj[x.char] : null; return c && (c.id === 'om_judge' || c.id === 'om_badjudge') && !pubDead(x); }); } }   // 7 — 끝나면 직업 공개가 먼저 크게(2026-10-06 햇살님 «처음에 직업 공개를 공통으로 크게»), 진행자가 끄거나 복기를 열면 그쪽
-    if (idle) { body.scene = 'idle'; body.seats = []; body.board = null; body.handoff = null; body.initialComposition = null; body.ending = null; body.endReveal = null; body.endReplay = null; body.pastExecutions = []; body.flow = []; delete body.briefing; delete body.briefingStage; delete body.judgeVote; }   // 지난 판 이름·직업이 남지 않게 비운다
-    body.mode = idle ? modeInfo() : null;   // 판 사이 «지금 고른 모드» 정보(2026-10-26 아침 선택 1-4) — 광장을 닫고 도는 판이 없을 때만. 판이 돌거나 광장이 열리면(대기·준비) 없음
+    if (idle || (waiting && ended)) { body.scene = idle ? 'idle' : 'waiting'; body.seats = []; body.board = null; body.handoff = null; body.initialComposition = null; body.ending = null; body.endReveal = null; body.endReplay = null; body.pastExecutions = []; body.flow = []; delete body.briefing; delete body.briefingStage; delete body.judgeVote; }   // 지난 판 이름·직업이 남지 않게 — 끝난 판 뒤 대기(«한 판 더»·결과 화면 나가기)도 같이(2026-11-16, 코드 없이도 대기가 뜨면서) 비운다
+    body.mode = idle ? modeInfo() : null;
+    if (pot0 && pot0.wrap && !pot0.practice && (!began || ended)) {   // 마무리 — 오늘 판 수와 판마다 이긴 쪽만(이름·직업 없음)
+      body.scene = 'wrap'; body.seats = []; body.board = null; body.handoff = null; body.initialComposition = null; body.ending = null; body.endReveal = null; body.endReplay = null; body.pastExecutions = []; body.flow = []; body.waiting = null; body.join = null; body.mode = null; delete body.briefing; delete body.briefingStage; delete body.judgeVote;
+      body.wrap = { title: pot0.title || '', date: (pot0.dates && pot0.dates[0]) || null, games: (pot0.games || []).map(function (g, i) { return { n: i + 1, mode: g.modeName || '', count: g.count || 0, winnerLabel: g.winner && g.winner !== 'void' ? winKoOf(g.winner, g.winGroup) : null }; }) }; }   // 판 사이 «지금 고른 모드» 정보(2026-10-26 아침 선택 1-4) — 광장을 닫고 도는 판이 없을 때만. 판이 돌거나 광장이 열리면(대기·준비) 없음
     var key = J(body); if (key !== P.last) { P.last = key; P.rev = (P.rev || 0) + 1; }   // 공개 내용이 같으면 revision 그대로
     pubSave(P); body.revision = P.rev; return body;
   }
@@ -1131,7 +1134,7 @@ var NativeCore = (function () {
       var r = state.rng; state.rng = null; try { return f0.apply(this, arguments); } finally { state.rng = r; } };
     if (nm === 'uuidV7') uuidV7 = g; else personNew = g; }, this);
   noticeHook = function (m) { effects.push({ kind: 'notice', text: String(m) }); };   // 앱 쪽 안내 한 줄을 화면 알림으로(기록 덜어 내기 등)
-  var REC_SKIP = { 'sync.markUploaded': 1, 'sync.merge': 1, 'display.plaza': 1, 'display.cycle': 1, 'display.leaveEnd': 1 };   // 판 밖 일(서버 동기화)은 적지 않는다
+  var REC_SKIP = { 'sync.markUploaded': 1, 'sync.merge': 1, 'display.plaza': 1, 'display.cycle': 1, 'display.leaveEnd': 1, 'display.wrap': 1 };   // 판 밖 일(서버 동기화)은 적지 않는다
   function recStore() { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k !== 'botc_logs' && k !== 'botc_pots') o[k] = localStorage.getItem(k); } return o; }
   /* 판 시작 때의 기록 요약(logsDigest) — 앉은 사람 것만. 다른 판 사람 이름은 남기지 않는다(직전 판 자리는 앉은 사람 아니면 '~번호') */
   function recDigest() { var d = logsDigest(), names = {}, keys = {};
@@ -1341,6 +1344,7 @@ var NativeCore = (function () {
       try { potAutoCloseCheck(); } catch (e) { 드러냄('native_core.preparation.enter', e); }   // 24시간 지난 광장은 여기서 닫는다
       var cur = potNow(); if (cur && cur.practice && !p.practice) { try { potClose('practice'); } catch (e) { 드러냄('native_core.preparation.enter', e); } cur = null; }
       if (!cur) potOpen(p.practice ? { practice: true } : undefined);
+      else if (cur.wrap) potUpdate(cur.id, function (x) { x.wrap = false; });   // 마무리를 띄운 뒤 한 판 더 — 큰 화면 마무리를 내린다
       return null; },
     'pot.open': function (p) { try { potAutoCloseCheck(); } catch (e) { 드러냄('native_core.pot.open', e); } if (potNow()) return rej('notAllowedInPhase', 'potAlreadyOpen', { pot: '그릇' }); var o = potOpen();
       var t = String((p && p.title) || '').trim().slice(0, 40); if (t && o) potUpdate(o.id, function (x) { x.title = t; x.titleEdited = true; });   // 열 때 이름을 정한다(2026-10-06 햇살님 «광장 열면 이름 정하게»)
@@ -1484,6 +1488,9 @@ var NativeCore = (function () {
       P.comp = c; pubSave(P); return null; },
     /* 큰 화면 — 토론 타이머가 코어(tm)가 아니라 화면 쪽에 있는 앱(웹·아이폰)이 시작·멈춤·재개·추가·끝·지움을 알린다. 허용한 칸만 받는다 */
     'display.leaveEnd': function () { if (firstNightBegun() && gameEnded()) localStorage.setItem(TVW_KEY, '1'); return null; },   // 결과 화면을 나가면(«오늘로 돌아가기») 큰 화면도 지난 판을 내린다 — 광장이 열려 있으면 대기, 없으면 빈 장면(2026-11-12 햇살님 «결과 화면 나가면 내림»)
+    /* 마무리(2026-11-16 큰 화면 6단계) — 광장을 닫기 전 «오늘 즐거웠어요 + 오늘 결과». 끼울 자리 D. 도는 판이 있으면 못 띄운다 */
+    'display.wrap': function (p) { var o = potNow(); if (!o || o.practice) return rej('notAllowedInPhase', 'potNotOpen', { pot: '그릇' }); var on = !!(p && p.on);
+      if (on && inGame() && !gameEnded()) return rej('notAllowedInPhase', 'gameInProgress'); potUpdate(o.id, function (x) { x.wrap = on; }); return null; },
     'display.cycle': function (p) { localStorage.setItem(TVC_KEY, p && p.style === 'card' ? 'card' : 'ring'); return null; },   // 큰 화면 순환 표시 — 링 | 카드(진행자 설정)
     'display.plaza': function (p) {   // 진행자 화면이 광장 체크인 코드·이름·들어온 사람 닉네임을 넣는다(null 이면 걷는다)
       if (!p || !p.code) { localStorage.removeItem(TVP_KEY); return null; }
@@ -1591,6 +1598,7 @@ var NativeCore = (function () {
     },
     'display.endReveal': function (p) { if (!(firstNightBegun() && gameEnded())) return rej('notAllowedInPhase', 'afterGameOnly'); state.tvReveal = !!p.on; return null; },
     'display.endReplay': function (p) { if (!(firstNightBegun() && gameEnded())) return rej('notAllowedInPhase', 'afterGameOnly');
+      if ((p.phase === 'night' || p.phase === 'day') && p.n !== undefined) { var fd0 = firstDayN(), n0 = +p.n; p = { day: p.phase === 'day' ? n0 - fd0 + 1 : Math.max(0, n0 - fd0) }; }   // 복기 걸음(밤 n·낮 n, state.nights 번호) → 큰 화면 쪽 — 쪽 나누기는 코어 한 곳에서(스피드 판 첫 낮 2, 2026-11-16 큰 화면 개편 4단계)
       if (p.day === null || p.day === undefined) { delete state.tvReplay; return null; } var d = +p.day, t = endReplayDays(); if (!(d >= 0 && d <= t)) return rej('invalidSelection', 'noDayRecord'); state.tvReplay = d; return null; },
     'game.finish': function (p) { if (gameEnded()) return rej('notAllowedInPhase', 'gameAlreadyOver');
       wzFinish(); if (wz.mode === 'done') return null;

@@ -7,9 +7,9 @@
       if (ko.indexOf('{') < 0) { exact[ko] = core[ko]; return; }
       if (!ko.replace(/\{[pnrl]\}/g, '').trim()) return;   // «{r}» 처럼 빈칸뿐인 틀은 같은 길이의 진짜 틀을 가린다(2026-10-24)
       var slots = [], pat = '^' + ko.replace(/\{([pnrl])\}|[.*+?^$()|[\]\\{}]/g, function (m, c) { if (c) { slots.push(c); return c === 'n' ? '(\\d+)' : c === 'l' ? '([^.!?\\n]+?)' : '([^.!?\\n·]+?)';   /* 빈칸은 문장을 넘지 않는다 — 짧은 틀이 여러 문장 내레이션을 통째로 삼키던 것 */ } return '\\' + m; }) + '$';
-      tmpls.push({ re: new RegExp(pat), en: core[ko], slots: slots, len: pat.length });
+      tmpls.push({ re: new RegExp(pat), en: core[ko], slots: slots, len: pat.length, lit: ko.replace(/\{[pnrl]\}/g, '').length });
     });
-    tmpls.sort(function (a, b) { return b.len - a.len; });
+    tmpls.sort(function (a, b) { return a.lit !== b.lit ? b.lit - a.lit : b.len - a.len; });   // 빈칸 밖 글자가 많은 틀부터 — «{p} {n}표»가 «필요 {n}표»를 가리던 것(앱 CoreText.swift 와 같게, 2026-11-16 반증 검토)
     data = data || {};
     function word(v) { if (data[v] != null || exact[v] != null) return data[v] || exact[v]; if (/^\d+번(, \d+번)*$/.test(v)) return (v.match(/\d+/g) || []).map(function (n) { return String(exact.__seat || '#{n}').replace('{n}', n); }).join(exact.__sep || ', ');   /* 자리 목록 «1번, 3번» → 그 말의 자리 꼴(팩 _seat·_sep, 없으면 #1, #3) */ return v.indexOf('·') > 0 ? v.split('·').map(function (x) { return data[x] || exact[x] || x; }).join(', ') : v; }   // «마피아·대부» 목록은 낱말마다(2026-11-04 말 장치 목록 빈칸)
     function whole(s) {

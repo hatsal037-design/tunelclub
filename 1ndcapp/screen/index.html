@@ -302,7 +302,7 @@ function renderWaiting(p, arena, W, H) {
   $('ribbon').innerHTML = ''; $('composition').textContent = ''; $('phase').textContent = ''; $('legend').hidden = true;
   const tv = $('tv'); tv.classList.add('night', 'waiting');
   const T = tv.getBoundingClientRect(), A = arena.getBoundingClientRect(), top = A.top - T.top, TH = T.height, left = A.left - T.left;
-  const w = p.waiting, u = TH / 1080, q = qrcode(0, 'M'); q.addData('https://tunel.kr/1ndcapp/me/?j=' + w.code); q.make();
+  const w = p.waiting, u = TH / 1080, q = w.code ? qrcode(0, 'M') : null; if (q) { q.addData('https://tunel.kr/1ndcapp/me/?j=' + w.code); q.make(); }   // 코드가 없으면 QR 칸 뺌(2026-11-16)
   const cream = '#f6eee4', moon = '#f0d79a', ground = TH * 0.70 - top, img = (src, st) => '<img src="wait/' + src + '" alt="" style="position:absolute;' + st + '">';
   let h = '';
   // 하늘: 초승달 · 거미줄(왼쪽 위 구석) · 마른가지와 까마귀(왼쪽, 흙에 꽂힘)
@@ -332,10 +332,10 @@ function renderWaiting(p, arena, W, H) {
     + '<div><div style="font-size:' + 96 * u + 'px;font-weight:800;line-height:1.1;letter-spacing:-.01em">첫밤 사망자 <span style="color:#e8323c">클럽</span></div>'
     + '<div style="font-size:' + 44 * u + 'px;color:' + moon + ';margin-top:' + 10 * u + 'px">' + esc(w.title) + '</div>'
     + (w.date ? '<div style="font-size:' + 34 * u + 'px;color:' + cream + ';margin-top:' + 8 * u + 'px">' + (d => (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + '일월화수목금토'[d.getDay()] + '요일')(new Date(w.date + 'T12:00:00')) + '</div>' : '')   // 광장 연 날
-    + '<div style="font-size:' + 38 * u + 'px;color:rgba(246,238,228,.75);margin-top:' + 14 * u + 'px">들어온 사람 <b style="color:' + cream + '">' + n + '</b></div>'
+    + (w.code ? '<div style="font-size:' + 38 * u + 'px;color:rgba(246,238,228,.75);margin-top:' + 14 * u + 'px">들어온 사람 <b style="color:' + cream + '">' + n + '</b></div>' : '')   // 체크인이 없으면 셀 사람도 없다(2026-11-16)
     + (w.notice ? '<div style="font-size:' + 34 * u + 'px;color:' + cream + ';max-width:' + W * 0.5 + 'px;margin-top:' + 16 * u + 'px;white-space:pre-line">' + esc(w.notice) + '</div>' : '') + '</div></div></div>';   // 광장 공지(2026-11-02)
   const side = TH * 0.25;
-  h += '<div style="position:absolute;right:' + (W * 0.05 - left) + 'px;top:' + (TH * 0.07 - top) + 'px;display:flex;flex-direction:column;align-items:center;gap:' + 10 * u + 'px"><div style="width:' + side + 'px;height:' + side + 'px;background:#fff;border-radius:' + 14 * u + 'px;padding:' + 14 * u + 'px;box-sizing:border-box" aria-label="참가 QR">' + q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }) + '</div>'
+  if (q) h += '<div style="position:absolute;right:' + (W * 0.05 - left) + 'px;top:' + (TH * 0.07 - top) + 'px;display:flex;flex-direction:column;align-items:center;gap:' + 10 * u + 'px"><div style="width:' + side + 'px;height:' + side + 'px;background:#fff;border-radius:' + 14 * u + 'px;padding:' + 14 * u + 'px;box-sizing:border-box" aria-label="참가 QR">' + q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }) + '</div>'
     + '<div style="font-size:' + 32 * u + 'px;color:' + moon + '">찍고 참가</div></div>';
   arena.innerHTML = '<div style="position:absolute;inset:0;overflow:visible">' + h + '</div>';
   arena.querySelector('[aria-label="참가 QR"] svg')?.setAttribute('style', 'width:100%;height:100%;display:block');
@@ -452,6 +452,16 @@ function drawJoin(p) {
   const q = qrcode(0, 'M'); q.addData('https://tunel.kr/1ndcapp/me/?j=' + code); q.make();
   el.innerHTML = '<div class="q">' + q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }) + '</div><div class="c">찍고 참가</div>';
 }
+/* 마무리 — «오늘 즐거웠어요 + 오늘 결과»(판마다 몇째·모드·인원·이긴 쪽만). 아이폰 WrapView 와 같은 내용 */
+function renderWrap(w) {
+  const tv = $('tv'); tv.classList.add('night'); tv.classList.remove('round'); $('phase').textContent = ''; $('ribbon').innerHTML = ''; $('composition').textContent = ''; $('legend').hidden = true;
+  const sub = [w.title, w.date || ''].filter(Boolean).join(' · '), two = w.games.length > 6;
+  const rows = w.games.map(g => '<div style="display:flex;gap:1.2em;align-items:baseline;font-size:2.2vh"><b style="opacity:.55;min-width:3em">' + g.n + '판</b><span style="flex:1">' + esc(g.mode) + ' <small style="opacity:.55">' + g.count + '명</small></span><b style="color:#f0d79a">' + esc(g.winnerLabel || '—') + '</b></div>').join('');
+  $('arena').innerHTML = '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.6vh;color:#f6eee4;text-align:center">'
+    + '<div style="font-size:11vh;font-weight:700">오늘 즐거웠어요</div><div style="font-size:3.6vh;opacity:.7">' + esc(sub) + '</div>'
+    + (w.games.length ? '<div style="font-size:4vh;color:#f0d79a;margin-top:2vh">오늘 ' + w.games.length + '판</div><div style="display:grid;grid-template-columns:' + (two ? '1fr 1fr' : '1fr') + ';gap:1.6vh 5vw;width:' + (two ? '80vw' : '46vw') + ';text-align:left">' + rows + '</div>' : '<div style="font-size:4vh;opacity:.6">오늘은 판이 없었어요</div>')
+    + '</div>';
+}
 function draw() {
   const p = P && P.scene === 'idle' ? null : P, tv = $('tv');
   drawJoin(p);   // 광장이 닫혀 도는 판이 없으면(idle) 판 없는 화면과 같게
@@ -464,6 +474,7 @@ function draw() {
   const V = window.V5, md = !!(V && V.drawMode && P && P.scene === 'idle' && P.mode), v5 = md || !!(V && p && V.usesV5(p)); $('v5').hidden = !v5;   // 큰 화면 v5(애플 결, 2026-10-25) — 게임 장면은 새 무대에, 대기·직업 공개·복기·안내는 옛 그림
   if (md) { V.drawMode($('v5'), P.mode, innerWidth, innerHeight); return; }   // 판 사이 «지금 고른 모드»(2026-10-26 아침 선택 1-4) — 광장을 닫고 판이 없을 때
   if (v5) { V.drawV5($('v5'), p, innerWidth, innerHeight); if (window.__i18nFix) window.__i18nFix($('v5')); return; }
+  if (p && p.scene === 'wrap' && p.wrap) { renderWrap(p.wrap); return; }   // 마무리(2026-11-16 큰 화면 6단계)
   if (!p) { tv.classList.remove('night', 'round'); $('phase').textContent = linked ? '연결됐어요' : ''; $('ribbon').innerHTML = ''; $('composition').textContent = ''; $('legend').hidden = true;
     $('arena').innerHTML = linked ? '<div class="box" style="left:50%;top:50%"><div class="centername">새 판 준비 중</div></div>' : ''; return; }
   const night = p.scene === 'night'; tv.classList.toggle('night', night); tv.classList.toggle('round', p.shape !== 'rect'); $('legend').hidden = !p.seats.some(s => s.dead && s.ghost);
