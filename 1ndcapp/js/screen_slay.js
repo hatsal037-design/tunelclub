@@ -11,7 +11,7 @@ export function screenFx(fx, fresh) {
   if (seen === null) { seen = fx.id; return; }
   if (fx.id <= seen) return;
   seen = fx.id;
-  if (fx.k === 'slay') play(fx);
+  if (fx.k === 'slay' && !(window.__rshot && window.__rshot(fx))) play(fx);   // 2026-11-20 — 진짜 자리판 위 쏘기 연출(screen_fx.js)이 받으면 그것, 판을 못 읽으면 옛 그림
 }
 
 function play(fx) {

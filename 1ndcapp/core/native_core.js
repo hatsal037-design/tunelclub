@@ -39,7 +39,7 @@ var NativeCore = (function () {
   function dressFor(m, rep) {
     if (!m || rep !== 'classic' || hubRepOf(m) === 'classic') return null;
     if (dressMemo[m.id]) return dressMemo[m.id];
-    var cl = {}; Object.keys(allMods()).forEach(function (k) { var x = allMods()[k]; if (hubRepOf(x) !== 'classic') return; (x.chars || []).forEach(function (c) { var u = uidOf(c.id); if (u && !cl[u]) cl[u] = c; }); });
+    var cl = {}; Object.keys(allMods()).forEach(function (k) { var x = allMods()[k]; if (hubRepOf(x) !== 'classic') return; (x.chars || []).forEach(function (c) { var u = uidOf(c.id); if (u && (!cl[u] || (/^il_/.test(c.id) && !/^il_/.test(cl[u].id)))) cl[u] = c; }); });   // 우리 이름(il_)이 있으면 그 이름·글을 입는다(2026-11-17)
     var pairs = [], ab = {};
     if (MODE_CLASSIC_NAME[m.id]) pairs.push([m.name, MODE_CLASSIC_NAME[m.id]]);   // 판 이름도
     (m.chars || []).forEach(function (c) { var t = cl[uidOf(c.id)], nm = t ? t.ko : CLASSIC_NEW[c.id]; if (nm && nm !== c.ko) pairs.push([c.ko, nm]); if (t && c.ab && t.ab && c.ab !== t.ab) ab[c.ab] = t.ab; });
@@ -387,7 +387,7 @@ var NativeCore = (function () {
   /* P03 역할 — 구성 초안은 웹과 같은 ngCounts(메모리). 인원·모드가 바뀌면 자동 구성으로 다시 시작(openNewGame 과 같은 규칙) */
   function ensureNg() { var n = (state.seats || []).length || 8; if (typeof ngFor === 'undefined' || ngFor !== ngKey() || ngTarget !== n) { ngTarget = Math.max(5, Math.min(20, n)); ngCounts = autoCompose(ngTarget); ngFor = ngKey(); } }
   /* 지금 고른 테마 목록 — 모드가 그 목록에 있으면 state.theme, 아니면 모드의 첫 목록(2026-10-08 모드를 테마 목록으로 나눔) */
-  function curShelf() { var ed = ED(), t = state.theme; return t && shelfPlayable(ed, t) ? t : modeShelves(ed).filter(function (x) { return SHELF_SOON.indexOf(x) < 0; })[0] || ed.hub || '당산나무'; }
+  function curShelf() { var ed = ED(), t = state.theme; return t && shelfPlayable(ed, t) ? t : modeShelves(ed).filter(function (x) { return shelfPlayable(ed, x); })[0] || ed.hub || '당산나무'; }   // 고를 수 있는 목록만(우리 이름판 «준비 중» 목록은 건너뜀, 2026-11-17)
   function roles() {
     ensureNg(); renderNewGame();
     var n = ngTarget, ed = ED(), M = allMods(), hubs = [], fam = curShelf();
@@ -442,8 +442,25 @@ var NativeCore = (function () {
        단 가짜 카드가 아직 없는 자리(판 중에 취객·망석중이 된 자리)는 앞 카드 그대로(진짜 직업이 폰으로 가지 않게) */
     var c = s.shownCard && (!cardStale(s, i) || fakesMissing().indexOf(i) >= 0) ? s.shownCard : shownCardOf(i); if (!c) return null;
     var bl = []; ((state.log && state.log.events) || []).forEach(function (e) { if (evType(e) === 'info_shown' && e.단계 === 'meet' && e.누구 === i + 1 && recRoles(e).length) bl = recRoles(e); });   // 블러프 — 악팀 알려주기 때 본 것(받은 적 없으면 없음)
-    return { name: seatLabel(i).name, roleName: c.role, teamName: c.team, ability: c.ab, revealRule: c.rule || null, side: c.side || null,
-      bluffs: bl.length ? bl : null, history: recheckHistory(i) };
+    var flip = sideFlipped(s);   // 창귀·전향 — 직업은 그대로 편만 악으로(2026-11-20 햇살님 «카드 글자도 악 진영으로»). 합류(그룹에 들어감)는 편이 바뀌는 게 아니라 뺀다
+    return { name: seatLabel(i).name, roleName: c.role, teamName: flip ? SAY('ms.rp.sideChanged', { t: SAY('ui.side.evil') }) : c.team, ability: c.ab, revealRule: c.rule || null, side: flip ? 'evil' : (c.side || null),
+      bluffs: bl.length ? bl : null, history: recheckHistory(i), change: cardChange(i, c) };
+  }
+  /* 바뀜(2026-11-20 햇살님 시안 연출_바뀜폰3) — 이 사람이 마지막으로 본 카드와 지금 보여 줄 카드의 차이. 진행자 «역할 다시 보여주기»가 연출을 먼저 튼다.
+     succ 계승(흉수 자리를 이음 — 이은 흉수 자리 번호) · swap 직업 바뀜(맞바꾸기·둔갑) · conv 편이 바뀜(창귀·전향·합류 — 직업 그대로). 본 카드가 없거나 앞 카드 그대로 보여 주면(가짜 카드 없는 자리) null */
+  function sideFlipped(s) { return !!s && (s.rem || []).some(function (r) { var k = tokConv(r); return k === 'creep' || k === 'convert'; }); }
+  function cardChange(i, c) {
+    var s = state.seats[i], old = s && s.shownCard; if (!old) return null;
+    if (c !== old && (old.char !== s.char || old.shown !== c.shown)) {   // c === old — 앞 카드 그대로 보여 주는 자리(가짜 카드 없음)는 직업 바뀜을 알리지 않는다
+      var suc = null; ((state.log && state.log.events) || []).forEach(function (e) { if (!e.cancel && evType(e) === 'succession' && e.seat === i + 1 && !e.토큰) suc = e; });
+      if (suc && c.side === 'evil') {
+        var from = null; (state.seats || []).forEach(function (x, j) { var xc = x && x.char ? CMAP()[x.char] : null; if (j !== i && x && x.dead && xc && xc.team === 'demon' && (from === null || (x.causeN || 0) >= (state.seats[from].causeN || 0))) from = j; });
+        return { kind: 'succ', fromRole: old.role, fromSeat: from === null ? null : from + 1 };
+      }
+      return { kind: 'swap', fromRole: old.role, fromSeat: null };
+    }
+    if (sideFlipped(s) && !old.conv) return { kind: 'conv', fromRole: old.role, fromSeat: null, sideKo: SAY('ui.side.evil') };
+    return null;
   }
   /* 다시 보여주기 «밤마다 본 것»(2026-11-02 햇살님 «그 밤에 보여 줬던 기록 다시 볼 수 있게») — 이 자리가 밤에 고른 사람·추측과 받은 답만.
      처리(중독·보호 같은 효과)·진짜 답·직업 이름은 싣지 않는다 — 그 사람이 그 밤에 알게 된 것 그대로(취했으면 받은 거짓 답 그대로) */
@@ -464,14 +481,15 @@ var NativeCore = (function () {
      취객·망석중·신들린이류는 믿는 직업의 팁이 나오고, 진짜 직업은 카드 어디에도 없다(3-0 ①, 2026-10-26 햇살님 «게임 흐름 그대로 — 화면으로 정체가 안 새게») */
   function shownCardOf(i) { var s = state.seats[i], cm = CMAP(); if (!s || !s.char) return null; var f = (state.fakes || {})[i] || s.char, sh = cm[f]; if (!sh) return null;
     return { id: sh.id, role: sh.ko, team: sideKoOf(sh), side: ((FIXED.TEAM || {})[sh.team] || {}).side || null, ab: sh.ab || '', rule: omRevealRule(f) || null, char: s.char, shown: f }; }
-  function snapCard(i) { if (fakesMissing().indexOf(i) >= 0) return; var c = shownCardOf(i); if (c) state.seats[i].shownCard = c; }   /* 가짜 카드가 아직 없는 취객·망석중·신들린이 자리(판 중에 둔갑·맞바꾸기로 된 자리 등)는 남기지 않는다 — 앞 카드 그대로, 진짜 직업은 폰으로 안 간다(3-0 ①) */
+  function snapCard(i) { if (fakesMissing().indexOf(i) >= 0) return; var c = shownCardOf(i); if (c) { if (sideFlipped(state.seats[i])) c.conv = true; state.seats[i].shownCard = c; } }   // conv — 이 카드를 볼 때 이미 편이 넘어가 있었나(바뀜 연출이 «편이 바뀜»을 한 번만)   /* 가짜 카드가 아직 없는 취객·망석중·신들린이 자리(판 중에 둔갑·맞바꾸기로 된 자리 등)는 남기지 않는다 — 앞 카드 그대로, 진짜 직업은 폰으로 안 간다(3-0 ①) */
   function cardStale(s, i) { var c = s.shownCard; return !c || c.char !== s.char || c.shown !== ((state.fakes || {})[i] || s.char); }
   /* 광장에 올릴 카드 — 사람 열쇠(계정 또는 투넬 회원 번호)가 있는 자리만. 첫밤 전에 다시 배정한 자리의 옛 카드는 빼고 */
   function plazaCards() { var began = firstNightBegun(), out = [];
     (state.seats || []).forEach(function (s, i) { if (!s || !s.char || !s.shownCard || (!began && cardStale(s, i))) return;
       var w = s.pid ? personById(s.pid) : null, k = w && (w.accountId || w.tunelId); if (!k) return; var c = s.shownCard;
       var hp = null; try { hp = handoffPublic(i); } catch (e) { 드러냄('native_core.plazaCards', e); }   // 진행자 «역할 다시 보여주기»와 같은 블러프·밤 기록(2026-11-15 햇살님 «그대로 재활용», 서버 0334)
-      out.push({ k: String(k), card: { id: c.id, role: c.role, team: c.team, side: c.side, ab: c.ab, rule: c.rule, n: i + 1, bluffs: hp && hp.bluffs || undefined, history: hp && hp.history && hp.history.length ? hp.history : undefined } }); });   // n = 지금 자리 번호(0328 — 참가 웹 «내 자리 n», 공개 자리판의 그 번호)
+      var fl = c.conv && sideFlipped(s);   // 편이 바뀐 걸 진행자가 보여 준 뒤 — 참가자 «내 직업»도 같은 말(2026-11-20)
+      out.push({ k: String(k), card: { id: c.id, role: c.role, team: fl ? SAY('ms.rp.sideChanged', { t: SAY('ui.side.evil') }) : c.team, side: fl ? 'evil' : c.side, ab: c.ab, rule: c.rule, n: i + 1, bluffs: hp && hp.bluffs || undefined, history: hp && hp.history && hp.history.length ? hp.history : undefined } }); });   // n = 지금 자리 번호(0328 — 참가 웹 «내 자리 n», 공개 자리판의 그 번호)
     return out; }
 
   /* 진행 단계 — 밤 시작 카드(idx 0) · 카드 · 새벽(마지막 뒤) · 낮 · 마감. 화면은 이것만 보고 무엇을 그릴지 고른다 */
@@ -571,6 +589,7 @@ var NativeCore = (function () {
   var ACT_COMMON = { vote_final: 1, self_exec: 1 };   /* 흔해서 사람 칭호로는 안 고르는 것 */
   /* 직업 그림 — 웹 CE() 와 같은 규칙: 목판화(ICON_BY_ID) → 코인 아트 → 이모지. 테마 스킨 직업은 이모지만 */
   function roleArt(c, mid) {
+    if (/^il_/.test(c.id) && !(typeof JOB_ART !== 'undefined' && JOB_ART.has(c.id))) return roleArt({ id: c.id.slice(3), e: c.e, team: c.team, ko: c.ko }, mid);   // 우리 이름판 직업 — 확정 그림이 없으면 같은 직업(시계탑 원본)의 그림 (2026-11-17)
     var skin = typeof SKINS !== 'undefined' && (SKINS[mid] || []).indexOf(c.id) >= 0;
     if (!skin && typeof SKINS !== 'undefined') { var om = Object.keys(SKINS).find(function (k) { return (SKINS[k] || []).indexOf(c.id) >= 0; }); if (om) { mid = om; skin = true; } }   // 같은 직업(같은 열쇠)이면 다른 판의 그림도(2026-10-08 — 임프가 트러블 브루잉 밖에선 이모지로 나오던 것)
     var ic = !skin && typeof ICON_BY_ID !== 'undefined' ? ICON_BY_ID[c.id] : null;
@@ -866,9 +885,19 @@ var NativeCore = (function () {
     var turn = null; if (!began && typeof state.rvPos === 'number' && (state.seats || []).some(function (x) { return x && x.char; })) {
       var ord = handoffOrder(), k = state.rvPos + 1; turn = { seatId: k < ord.length ? sid(ord[k]) : null, seen: Math.min(k, ord.length), total: ord.length }; }
     /* 2026-10-04 햇살님 선택(docs/공용화면_추가정보_구상_v1.md 끝 표 · 그리기계약_v2) — 넷 다 공개 사실만, 발표 전엔 null */
+    /* 돌아온 사람(2026-11-19, 큰 화면 «되살아남» 연출 · 계약 그리기계약_v2 «부활은 실제 발표된 명단, 원인 없음») — 이번 밤 전에 죽었고(사망·처형, 되살림 빼고)
+       이번 밤에 되살린 기록(밤 지목 처리 revive 의 대상 · 진행자 «부활»)이 있으며 지금 공개상 살아 있는 자리. 같은 밤에 죽었다 살아난 자리는 넣지 않는다 */
+    function pubNightRevivals(n) {
+      var dead = {}, back = {};
+      ((state.log && state.log.events) || []).forEach(function (e) { if (e.cancel) return;
+        var ty = evType(e), rv = fxKind(e.처리).k === 'revive', tg = rv ? (e.대상ref || []).map(function (r) { return r.seat; }) : ty === 'revive' ? [e.seat] : [];
+        if (e.n < n) { if (ty === 'death' || (ty === 'execute' && !e.무효)) dead[e.seat] = 1; tg.forEach(function (k) { delete dead[k]; }); }
+        else if (e.n === n && e.phase !== 'day') tg.forEach(function (k) { back[k] = 1; }); });
+      return Object.keys(back).map(Number).filter(function (k) { return dead[k] && state.seats[k - 1] && !pubDead(state.seats[k - 1]); }).sort(function (a, b) { return a - b; }).map(function (k) { return k - 1; });
+    }
     var morning = null; if (isDay && announced) {   // 1 아침 발표 — 발표를 누른 뒤에만, 이름만(사인 없음). at = 발표 시각(TV 가 잠깐만 크게 보이는 기준)
       var dead = pubNightDeaths(n).map(function (o) { return sid(o.i); });   // 공개 생사 — 아침 낭독(dayNarr)과 같은 명단
-      morning = { id: 'm' + n, dayNumber: dayNo(n), deaths: dead, revivals: [], wails: pubNightDeaths(n).filter(function (o) { return gokbiWail(o.i); }).map(function (o) { return sid(o.i); }), at: D.announcedAt || null }; }   // wails — 곡소리(곡비가 흉수에게 죽음 — 사인 공개, 6-15). 발표 대본 dayNarr 와 같은 잣대
+      morning = { id: 'm' + n, dayNumber: dayNo(n), deaths: dead, revivals: pubNightRevivals(n).map(sid), wails: pubNightDeaths(n).filter(function (o) { return gokbiWail(o.i); }).map(function (o) { return sid(o.i); }), at: D.announcedAt || null }; }   // wails — 곡소리(곡비가 흉수에게 죽음 — 사인 공개, 6-15). 발표 대본 dayNarr 와 같은 잣대
     var past = [];   // 2 마지막 처형 하나 — 오늘보다 앞선 낮 중 가장 최근(«처형 없는 낮»이 지난 처형을 덮지 않는다)
     if (began) { var days = state.days || {}; Object.keys(days).map(Number).filter(function (d) { return d < n || (ended && d <= n); }).sort(function (a, b) { return b - a; }).some(function (d) {
       var e = execOf(d); if (!e) return false;
@@ -1045,14 +1074,14 @@ var NativeCore = (function () {
   function library() {
     var M = allMods(), hubs = {};
     Object.keys(M).forEach(function (id) { if (id === 'compendium') return; var m = M[id], P = edPlayable(m);
-      modeShelves(m).forEach(function (h) { (hubs[h] = hubs[h] || []).push({ id: id, name: shelfName(m, h), players: P.set && P.set.length ? SAY('ui.playersRange', { a: P.set[0], b: P.set[P.set.length - 1] }) : '', roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).length,
+      modeShelves(m).forEach(function (h) { (hubs[h] = hubs[h] || []).push({ id: id, name: shelfName(m, h), soon: SHELF_SOON.indexOf(h) < 0 && !shelfPlayable(m, h), players: P.set && P.set.length ? SAY('ui.playersRange', { a: P.set[0], b: P.set[P.set.length - 1] }) : '', roles: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).length,
         roleNames: (m.chars || []).filter(function (c) { return c.team !== 'host'; }).map(function (c) { return c.ko; }) }); }); });   // 직업 이름으로도 찾게(«무당» → 무당이 나오는 모드) · 모드는 보이는 테마 목록마다(둘 다면 두 곳)
     /* 같은 제목의 확장판은 원래 모드 아래로 묶는다(2026-10-02 햇살님 «확장개념은 묶기 같은장르 같은제목 끼리») — «우물가 — 두레박» → parent=우물가, short=두레박.
        당산나무 계열만: 클래식은 «클래식 — …»이 제목이 아니라 계열 이름이라 묶지 않는다. 화면은 parent 가 있는 모드를 그 모드 밑에 접어 둔다 */
     (hubs['당산나무'] || []).forEach(function (m, _, L) { var cut = m.name.indexOf(' — '); if (cut < 0) return; var key = m.name.slice(0, cut);
       var base = L.find(function (b) { return b.name.indexOf(' — ') < 0 && (b.name.indexOf(key) === 0 || b.name.replace(/^당산나무 /, '').indexOf(key) === 0); });
       if (base) { m.parent = base.id; m.short = m.name.slice(cut + 3); } });
-    var own = function (h) { return function (a, b) { var x = (allMods()[a.id] || {}).hub === h ? 0 : 1, y = (allMods()[b.id] || {}).hub === h ? 0 : 1; return x - y; }; };   // 그 계열 본래 판이 먼저, 옮겨 온 판은 뒤
+    var own = function (h) { return function (a, b) { var x = ((allMods()[a.id] || {}).hub === h ? 0 : 1) + (a.soon ? 2 : 0), y = ((allMods()[b.id] || {}).hub === h ? 0 : 1) + (b.soon ? 2 : 0); return x - y; }; };   // «준비 중»(우리 이름판 아직)은 맨 뒤 (2026-11-17)   // 그 계열 본래 판이 먼저, 옮겨 온 판은 뒤
     return { hubs: Object.keys(hubs).map(function (h) { return { name: h, modes: hubs[h].slice().sort(own(h)), soon: SHELF_SOON.indexOf(h) >= 0 }; }) };   // soon — 게임이 아직 없는 테마, 열어 보기만
   }
   function libraryMode(id) {
@@ -1430,7 +1459,7 @@ var NativeCore = (function () {
       if (t) setTheme(t.rep, { sure: true }); else switchEdition(id, { quiet: true, force: true }); ensureNg(); return null; },
     'roles.setMode': function (p) { if (inGame()) return rej('notAllowedInPhase', 'lockedAfterFirstNight');
       if (!allMods()[p.id]) return rej('invalidSelection', 'modeNotFound');
-      if (!modeShelves(allMods()[p.id]).some(function (x) { return SHELF_SOON.indexOf(x) < 0; })) return rej('invalidSelection', 'themeNotReady');   // 판타지·우주 목록만 있는 모드는 열어 보기만
+      if (!p.soonOk && !modeShelves(allMods()[p.id]).some(function (x) { return shelfPlayable(allMods()[p.id], x); })) return rej('invalidSelection', 'themeNotReady');   // soonOk — 규칙 기준선 도구(tools/엔진/답표·특수표)만: 준비 중·목록에서 내린 판도 같은 길로 고른다   // 판타지·우주 목록만 있는 모드 · 우리 이름판 «준비 중»(2026-11-17)은 열어 보기만
       if (hasRoles() && !p.force) return clearAsk();
       switchEdition(p.id, { quiet: true, force: true }); ensureNg(); return null; },
     'roles.auto': function () { ensureNg(); ngCounts = autoCompose(ngTarget); return null; },

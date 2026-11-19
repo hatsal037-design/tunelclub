@@ -168,5 +168,12 @@
  "그렇다": "Yes",
  "아니다": "No",
  "시계 방향": "Clockwise",
- "반시계 방향": "Counterclockwise"
+ "반시계 방향": "Counterclockwise",
+ "범죄 조직": "Criminal Organization",
+ "시민": "Citizen",
+ "되살아남": "Revived",
+ "명중": "Hit",
+ "빗나감": "Missed",
+ "%lld명 사망": "%lld dead",
+ "편이 바뀜": "Side changed"
 }

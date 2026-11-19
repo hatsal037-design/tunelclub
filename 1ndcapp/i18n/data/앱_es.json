@@ -1394,5 +1394,12 @@
  "손으로 %@ 가리키기": "Señalar a %@",
  "블러프 %lld개를 폰으로 보여 주기": "Mostrar %lld faroles en el móvil",
  "깨우고 잠깐 기다린 뒤 눈 감기": "Despertar, esperar un momento y cerrar ojos",
- "오늘은 처형 없이 넘어갈까요?": "¿Seguimos hoy sin ejecución?"
+ "오늘은 처형 없이 넘어갈까요?": "¿Seguimos hoy sin ejecución?",
+ "범죄 조직": "Organización criminal",
+ "시민": "Ciudadano",
+ "되살아남": "Revivido",
+ "명중": "Acierto",
+ "빗나감": "Fallo",
+ "%lld명 사망": "%lld muertos",
+ "편이 바뀜": "Cambio de bando"
 }

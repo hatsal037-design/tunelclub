@@ -11,7 +11,7 @@ const pick = () => { let a = null; try { a = localStorage.getItem('1ndc_lang'); 
   return LANGS.includes(l) ? l : 'en'; };
 export const LANG_NAMES = { ko: '한국어', en: 'English', ja: '日本語', es: 'Español', 'zh-Hans': '简体中文', 'zh-Hant': '繁體中文', th: 'ไทย', vi: 'Tiếng Việt', id: 'Bahasa Indonesia', 'pt-BR': 'Português (Brasil)', de: 'Deutsch', fr: 'Français' };
 /* 진행 낭독이 쓰는 말과 번역(2026-10-12) — 한국어면 그대로 */
-export let narrLang = 'ko', narrTr = s => s;
+export let narrLang = 'ko', narrTr = s => s, appTr = s => s;   // appTr = 아이폰 앱 카탈로그만 — 큰 화면 결과 글자를 아이폰과 같은 말로(2026-11-20)
 export async function startDomI18n(root) {
   const lang = pick(); document.documentElement.lang = lang;
   if (lang === 'ko' || !root) return;
@@ -21,6 +21,7 @@ export async function startDomI18n(root) {
   if (root && root.id === 'app') try { const speak = await fetch(BASE + 'i18n/말/' + lang + '.json').then(r => r.ok ? r.text() : null); const C = await import('./core.js'); C.setLang(lang, speak, JSON.stringify(Object.assign(Object.fromEntries(Object.entries(core).filter(([k]) => !k.includes('{'))), data)));   /* 낱말 사전 = 자료 사전 먼저, 없으면 코어 사전 낱말(클래식 직업 이름 «사서», 2026-11-05) */ const S = await import('./store.js'); S.store.refresh(); } catch (e) { console.warn('화면 말', e); }   // 진행 웹(#app)만 — 큰 화면은 코어가 없다. 코어가 조회 글을 이 말로(말 팩) — 못 받으면 한국어 글을 아래 옛 번역이 받는다   // 진행_ = 진행 낭독 문장(2026-10-12)
   /* 앱 카탈로그의 %lld·%@ 열쇠도 틀로({n}·{p}) — 화면에 숫자가 끼워진 채 오므로 */
   const tm = {}; for (const k in app) tm[k.replace(/%(\d\$)?(lld|ld|d)/g, '{n}').replace(/%(\d\$)?@/g, '{p}')] = app[k].replace(/%(\d)\$(?:lld|ld|d|@)/g, '{#$1}').replace(/%(lld|ld|d)/g, '{n}').replace(/%@/g, '{p}');   // %2$lld → {#2}: 번역 어순이 바뀌어도 그 자리 값(2026-10-06 코덱스 재현 «Turn 10 of 2»)
+  appTr = window.CoreText.make(Object.assign({}, tm), data);
   const tr = window.CoreText.make(Object.assign(tm, narr, core), data); narrLang = lang; narrTr = tr;   setBriefTr(tr);   // 이번 판 안내는 섀도 루트라 따로(2026-10-24)
   const HAN = /[가-힣]/, ATTR = ['placeholder', 'aria-label', 'title'];
   const fix = n => {
