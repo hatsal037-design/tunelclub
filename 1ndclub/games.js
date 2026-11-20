@@ -27,7 +27,7 @@
 
 const GAMES = [
   // ── 마피아류 ──────────────────────────────
-  { n:'시계탑에 흐른 피', bl:{"rate": 8.0, "weight": 3.05, "rank": 43, "players": "6-21", "minutes": "30-120", "age": 15, "url": "https://boardlife.co.kr/game/15664", "bgg": "https://boardgamegeek.com/boardgame/240980/blood-on-the-clocktower"}, img:'img/t/botc.jpg', min:6, max:21, t:90, cat:'mafia', lv:'고급', out:false, host:true, own:'', have:true,
+  { n:'시계탑에 흐른 피', bl:{"rate": 8.0, "weight": 3.05, "rank": 43, "players": "6-21", "minutes": "30-120", "age": 15, "url": "https://boardlife.co.kr/game/15664", "bgg": "https://boardgamegeek.com/boardgame/240980/blood-on-the-clocktower"}, img:'img/t/botc.jpg', min:6, max:20, t:90, cat:'mafia', lv:'고급', out:false, host:true, own:'임햇살', have:true,
     d:'마피아류의 끝판왕. 시계탑에 흐르는 피라고도 불러요. 죽어도 판에 남아 끝까지 함께합니다.',
     r:'밤엔 악마가 한 명을 데려가고, 낮엔 토론과 처형으로 악마를 찾습니다. 죽어도 자리를 지키며 계속 말할 수 있고, 투표만 평생 한 번(유령표) 남아요. 정보를 얻는 역할이 스무 종 넘게 나오는데, 중독이나 취함 때문에 그 정보가 거짓일 수 있어서 누구 말을 믿을지가 승부를 가릅니다. 진행자가 판 전체를 조율하며 굴러가는 게임이라, 처음엔 진행자만 룰을 알면 됩니다.' },
   { n:'오리지널 마피아', img:'img/t/mafia.jpg', min:6, max:16, t:30, cat:'mafia', lv:'초보', out:true, host:true, own:'임햇살', have:true,
@@ -72,7 +72,7 @@ const GAMES = [
       { h:'이기는 조건', p:'시간이 끝나면 투표로 스파이를 지목합니다. 맞히면 시민 승리. 스파이는 정체가 들키기 전에 장소를 맞히면 승리합니다.' },
       { h:'우리 모임에서는', p:'20분이면 한 판이라 몸풀기로 자주 씁니다. 늦게 오신 분이 있어도 다음 판에 바로 합류할 수 있어요.' },
     ] },
-  { n:'사보타지', man:[{t:'설명서', f:'manual/saboteur.pdf'}], bl:{"rate": 6.9, "weight": 1.32, "rank": 935, "players": "3-10", "minutes": "30", "age": 8, "url": "https://boardlife.co.kr/game/1270"}, img:'img/t/saboteur.jpg', min:3, max:10, t:30, cat:'mafia', lv:'초보', out:false, host:false, own:'', have:true,
+  { n:'사보타지', man:[{t:'설명서', f:'manual/saboteur.pdf'}], bl:{"rate": 6.9, "weight": 1.32, "rank": 935, "players": "3-10", "minutes": "30", "age": 8, "url": "https://boardlife.co.kr/game/1270"}, img:'img/t/saboteur.jpg', min:3, max:10, t:30, cat:'mafia', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'금을 캐는 광부 사이에 길을 막는 방해꾼이 섞여 있다.',
     r:'터널 카드를 이어 금까지 길을 낸다. 광부는 도착하면 승리, 방해꾼은 막으면 승리. 서로 정체를 모른 채 진행.' },
   { n:'한밤의 늑대인간', bl:{"rate": 7.4, "weight": 1.38, "rank": 328, "players": "3-10", "minutes": "10", "age": 8, "url": "https://boardlife.co.kr/game/2500", "bgg": "https://boardgamegeek.com/boardgame/147949/one-night-ultimate-werewolf"}, img:'img/t/onuw.jpg', min:3, max:10, t:10, cat:'mafia', lv:'초보', out:false, host:false, own:'임햇살', have:true,
@@ -99,6 +99,21 @@ const GAMES = [
       { h:'우리 모임에서는', p:'1탄으로 몸을 풀고, 익숙해진 테이블에 2탄 역할을 한두 장씩 끼워 넣는 방식으로 돌립니다.' },
     ] },
 
+  { n:'가짜 예술가 뉴욕에 가다', bl:{"rate": 7, "weight": 1.1, "rank": 803, "players": "5-10", "minutes": "20", "age": 8, "url": "https://boardlife.co.kr/game/3928"}, min:5, max:10, t:20, cat:'mafia', lv:'초보', out:false, host:true, own:'채연주', have:true,
+    d:'한 장 그림에 한 줄씩 보태며 제시어를 모르는 가짜를 찾는 게임',
+    r:'출제자가 제시어를 적어 돌리고, 가짜 한 명만 제시어를 모른다. 모두 돌아가며 한 그림에 선을 두 바퀴 긋고 가짜를 지목한다. 가짜가 안 잡히거나, 잡혀도 제시어를 맞히면 가짜가 이긴다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'머더미스터리 - 구두룡 저택의 살인', bl:{"rate": 7, "weight": 2.0, "rank": 723, "players": "7-9", "minutes": "120-180", "age": 15, "url": "https://boardlife.co.kr/game/12223"}, min:7, max:9, t:150, cat:'mafia', lv:'중급', out:false, host:false, own:'채연주', have:true,
+    d:'크툴루 풍 저택 살인 사건을 맡은 인물이 되어 추리하는 머더미스터리',
+    r:'각자 인물 소책자를 받아 자기 비밀과 목표를 읽고, 단서 카드를 조사하며 대화로 정보를 모은다. 마지막에 범인을 투표하고, 정답과 각자의 개인 목표 달성으로 결과를 가린다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'머더미스터리 - 몇 번이고 푸른달에 불을 붙였다', bl:{"rate": 7.7, "weight": null, "rank": 159, "players": "6-7", "minutes": "150", "age": 15, "url": "https://boardlife.co.kr/game/12224"}, min:6, max:7, t:150, cat:'mafia', lv:'중급', out:false, host:false, own:'채연주', have:true,
+    d:'인물을 맡아 대화와 단서로 사건의 진상을 밝히는 머더미스터리',
+    r:'각자 인물 소책자로 자기 비밀과 목표를 확인한 뒤, 단서를 조사하고 서로 묻고 숨기며 정보를 모은다. 마지막 투표로 범인을 지목하고 각자 목표 달성 여부로 결과를 본다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'머더미스터리 - 웬디, 어른이 되렴', bl:{"rate": 8.2, "weight": 2.29, "rank": 16, "players": "4-5", "minutes": "120", "age": 15, "url": "https://boardlife.co.kr/game/16070"}, min:4, max:5, t:120, cat:'mafia', lv:'중급', out:false, host:false, own:'채연주', have:true,
+    d:'실험 시설에서 멈춘 안드로이드 웬디 사건을 푸는 소규모 머더미스터리',
+    r:'각자 맡은 인물의 정보를 읽고 시설 곳곳의 단서 카드를 조사한다. 토론으로 진실을 맞춰 가고, 마지막에 범인을 투표한다. 인물마다 따로 숨긴 목표가 있다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'뱅!', bl:{"rate": 7, "weight": 2.25, "rank": 818, "players": "4-7", "minutes": "20-40", "age": 10, "url": "https://boardlife.co.kr/game/475"}, min:4, max:7, t:40, cat:'mafia', lv:'초보', out:true, host:false, own:'채연주', have:true,
+    d:'서부극 총잡이가 되어 숨은 역할로 싸우는 정체 숨기기 카드게임',
+    r:'보안관만 정체를 밝히고 부관·무법자·배신자는 숨긴다. 거리 안의 상대에게 뱅 카드를 쏘고 빗나감 카드로 막으며, 체력이 0이 되면 탈락한다. 보안관 편은 무법자·배신자를, 무법자는 보안관을, 배신자는 혼자 남는 것을 노린다.' },   // 2026-11-20 보유목록에서 추가
   // ── 파티 ──────────────────────────────────
   { n:'장난꾸러기 호박벌', man:[{t:'설명서', f:'manual/cheating-bumblebee.pdf'}], bl:{"rate": 6.6, "weight": 1.26, "players": "3-5", "minutes": "20-25", "age": 7, "url": "https://boardlife.co.kr/game/9583", "bgg": "https://boardgamegeek.com/boardgame/300956/cheating-bumblebee"}, img:'img/t/schummel-hummel.jpg', min:3, max:5, t:20, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'반칙이 공식적으로 허용되는 카드 게임. 몰래 버리고 시치미 떼기.',
@@ -137,18 +152,30 @@ const GAMES = [
     d:'10분짜리 단어 게임. 대기 시간 메우기에 최적.',
     r:'제시된 조건에 맞는 단어를 먼저 잡는다. 순발력과 어휘력 싸움.' },
 
-  { n:'장난꾸러기 나방', man:[{t:'설명서', f:'manual/cheating-moth.pdf'}], min:3, max:5, t:20, cat:'party', lv:'초보', out:false, host:false, own:'', have:true,
+  { n:'장난꾸러기 나방', man:[{t:'설명서', f:'manual/cheating-moth.pdf'}], min:3, max:5, t:20, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'반칙이 허용되는 카드 게임. 호박벌의 친척, 이번엔 나방을 몰래 버린다.',
     r:'앞 카드보다 숫자가 정확히 1 크거나 작은 카드를 내며 손패를 먼저 비우면 승리. 행동 카드로 서로 견제하고, 감시 벌레 몰래 카드를 숨겨 버려도 된다 — 걸리면 벌칙.' },
-  { n:'팬텀 잉크', man:[{t:'설명서', f:'manual/phantom-ink.pdf'}, {t:'2~3인용', f:'manual/phantom-ink-2-3p.pdf'}], min:4, max:8, t:15, cat:'party', lv:'초보', out:false, host:false, own:'', have:true,
+  { n:'팬텀 잉크', man:[{t:'설명서', f:'manual/phantom-ink.pdf'}, {t:'2~3인용', f:'manual/phantom-ink-2-3p.pdf'}], min:4, max:8, t:15, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'유령이 한 글자씩 적어 주는 단서로 정답을 맞히는 팀 대결.',
     r:'팀의 영매가 유령에게 질문하면 유령은 답을 한 글자씩 적는다. 알 것 같으면 멈추고 추측한다. 상대 팀도 같은 글자를 보고 있어서, 적게 보고 먼저 맞히는 쪽이 이긴다.' },
-  { n:'야단법석 달리기', man:[{t:'설명서', f:'manual/magical-athlete.pdf'}], min:2, max:6, t:30, cat:'party', lv:'초보', out:false, host:false, own:'', have:true,
+  { n:'야단법석 달리기', man:[{t:'설명서', f:'manual/magical-athlete.pdf'}], min:2, max:6, t:30, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'선수마다 판을 뒤집는 능력을 가진 엉망진창 달리기 경주. (원제 Magical Athlete)',
     r:'주사위를 굴려 내 선수를 그만큼 움직인다. 선수마다 규칙을 깨는 특수 능력이 있어 매 경주가 난장판. 여러 번 경주해 점수를 가장 많이 모은 사람이 우승.' },
-  { n:'스컬킹', min:2, max:8, t:30, cat:'party', lv:'초보', out:false, host:false, own:'', have:false,
+  { n:'스컬킹', min:2, max:8, t:30, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'이번 라운드에 몇 판 딸지 예측하는 해적 트릭테이킹.',
     r:'라운드마다 손패 수가 하나씩 늘고, 각자 딸 트릭 수를 동시에 예측한다. 정확히 맞히면 점수, 틀리면 감점. 스컬킹·해적·머메이드가 서로를 잡는 특수 카드로 판이 뒤집힌다.' },
+  { n:'워드캡처 티키타카', bl:{"rate": 6.8, "weight": 1.8, "rank": 1119, "players": "3-6", "minutes": "10-20", "age": 6, "url": "https://boardlife.co.kr/game/16141"}, min:3, max:6, t:15, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
+    d:'주제 카드를 보고 조건에 맞는 단어를 먼저 외치는 순발력 단어게임',
+    r:'가운데 주제 카드를 한 장 뒤집으면 모두 주제와 글자 조건에 맞는 단어를 외친다. 혼자 외친 단어는 점수, 다른 사람과 겹치면 감점이다. 카드가 떨어지면 점수가 높은 사람이 이긴다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'챠오챠오', bl:{"rate": 6.3, "weight": 1.09, "rank": 2022, "players": "2-4", "minutes": "30", "age": 10, "url": "https://boardlife.co.kr/game/2308"}, min:2, max:4, t:30, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
+    d:'숨긴 주사위 눈을 말하며 다리 건너기를 겨루는 블러핑 게임',
+    r:'통 안에서 주사위를 몰래 굴리고 1~4 중 숫자를 말해 그만큼 말을 다리 위로 옮긴다. X가 나오면 무조건 거짓말해야 한다. 남이 의심해 거짓이 드러나면 말이 떨어지고, 진실이면 의심한 사람 말이 떨어진다. 말 셋을 먼저 건너게 하면 이긴다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'캐치 스케치 + 마술모자 확장', bl:{"rate": 7.2, "weight": 1.0, "rank": 570, "players": "3-6", "minutes": "20", "age": 10, "url": "https://boardlife.co.kr/game/15017"}, min:3, max:6, t:20, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
+    d:'모두 같은 제시어를 빨리 그려 술래가 맞히게 하는 스피드 그림게임',
+    r:'술래를 뺀 모두가 같은 제시어를 동시에 그리고, 빨리 끝낸 순서대로 그림을 공개한다. 술래가 맞히면 술래와 그 그림 주인이 점수를 얻고, 틀리면 다음 그림으로 넘어간다. 마술모자 확장은 지팡이 토큰을 먼저 잡은 사람이 그림 일부를 지우는 변형 규칙을 더한다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'텔레스트레이션', bl:{"rate": 7.9, "weight": 1.8, "rank": 68, "players": "4-8", "minutes": "30", "age": 12, "url": "https://boardlife.co.kr/game/969"}, min:4, max:8, t:30, cat:'party', lv:'초보', out:false, host:false, own:'채연주', have:true,
+    d:'그림과 글로 이어 전하며 말이 엉뚱하게 바뀌는 걸 즐기는 그림 전달 게임',
+    r:'각자 스케치북 첫 장에 받은 단어를 그림으로 그려 옆으로 넘긴다. 받은 사람은 그림을 보고 단어를 적고, 다음 사람은 그 단어를 다시 그린다. 한 바퀴 돌면 펼쳐 보며 어떻게 바뀌었는지 함께 본다.' },   // 2026-11-20 보유목록에서 추가
   // ── 순발력 ────────────────────────────────
   { n:'타코캣고트치즈피자', man:[{t:'설명서', f:'manual/tacocat.pdf'}], bl:{"rate": 6.8, "weight": 1.04, "rank": 1108, "players": "2-8", "minutes": "10-30", "age": 8, "url": "https://boardlife.co.kr/game/12352"}, img:'img/t/tacocat.jpg', min:3, max:8, t:10, cat:'quick', lv:'초보', out:false, host:false, own:'채연주', have:true,
     d:'10분. 시끄럽고, 아무도 지루할 틈이 없다.',
@@ -166,6 +193,18 @@ const GAMES = [
     d:'주문을 외우며 물건을 집는 마법 테마 순발력 게임.',
     r:'조건에 맞는 물건을 먼저 집는다. 라운드마다 조건이 바뀌어 헷갈린다.' },
 
+  { n:'스위트 & 스파이시', bl:{"rate": 6.7, "weight": 1.25, "rank": 1315, "players": "2-6", "minutes": "15", "age": 8, "url": "https://boardlife.co.kr/game/16114"}, min:2, max:6, t:15, cat:'quick', lv:'초보', out:false, host:false, own:'채연주', have:true,
+    d:'카드를 뒤집어 내며 숫자와 맛을 속이는 블러핑 카드게임',
+    r:'카드를 뒷면으로 내며 앞 카드보다 높은 숫자와 같은 맛이라고 선언하거나 패스한다. 누군가 거짓이라고 의심하면 카드를 열어 틀린 쪽이 쌓인 카드를 가져간다. «스파이시»의 가족용 판.' },   // 2026-11-20 보유목록에서 추가
+  { n:'유령대소동', bl:{"rate": 6.5, "weight": 1.13, "rank": 1708, "players": "2-8", "minutes": "20", "age": 8, "url": "https://boardlife.co.kr/game/367"}, min:2, max:8, t:20, cat:'quick', lv:'초보', out:false, host:false, own:'채연주', have:true,
+    d:'카드 그림을 보고 맞는 물건을 먼저 낚아채는 순발력 게임',
+    r:'유령·의자·병·책·쥐 다섯 물건을 가운데 두고 카드를 한 장 뒤집는다. 카드에 제 색으로 그려진 물건이 있으면 그것을, 없으면 색도 모양도 카드에 안 나온 물건을 먼저 잡는다. 맞게 잡은 사람이 카드를 가져간다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'익스플로딩 키튼', bl:{"rate": 6.8, "weight": 1.08, "rank": 1178, "players": "2-4", "minutes": "5-10", "age": 7, "url": "https://boardlife.co.kr/game/5273"}, min:2, max:5, t:10, cat:'quick', lv:'초보', out:true, host:false, own:'채연주', have:true,
+    d:'폭발 고양이 카드를 피해 끝까지 살아남는 카드게임',
+    r:'차례마다 카드를 내고 싶은 만큼 낸 뒤 더미에서 한 장 뽑는다. 폭발 고양이를 뽑았는데 해제 카드가 없으면 탈락한다. 건너뛰기·공격·미래 보기 같은 카드로 위험을 넘기며 마지막 한 명이 이긴다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'해적 드럼통', min:2, max:4, t:5, cat:'quick', lv:'초보', out:true, host:false, own:'채연주', have:true,
+    d:'통에 칼을 꽂다가 해적이 튀어 오르면 지는 운 게임',
+    r:'돌아가며 해적이 든 통 구멍 하나를 골라 칼을 꽂는다. 어느 구멍이 해적을 튀어 오르게 하는지는 매번 숨겨져 있다. 해적을 튀게 한 사람이 진다.' },   // 2026-11-20 보유목록에서 추가
   // ── 전략 ──────────────────────────────────
   { n:'시타델', min:2, max:8, t:45, cat:'strategy', lv:'중급', out:false, host:false, own:'임햇살', have:true,
     d:'직업 카드를 몰래 골라 도시를 짓는 눈치 싸움.',
@@ -207,9 +246,21 @@ const GAMES = [
     d:'둘이 남았을 때의 최후 수단.',
     r:'설명 생략.' },
 
-  { n:'티츄', man:[{t:'설명서', f:'manual/tichu.pdf'}, {t:'추가룰', f:'manual/tichu-variants.pdf'}], bl:{"rate": 7.821, "weight": 2.34, "rank": 85, "players": "4", "minutes": "60", "age": 10, "url": "https://boardlife.co.kr/game/478"}, min:4, max:4, t:60, cat:'strategy', lv:'중급', out:false, host:false, own:'', have:true,
+  { n:'티츄', man:[{t:'설명서', f:'manual/tichu.pdf'}, {t:'추가룰', f:'manual/tichu-variants.pdf'}], bl:{"rate": 7.821, "weight": 2.34, "rank": 85, "players": "4", "minutes": "60", "age": 10, "url": "https://boardlife.co.kr/game/478"}, min:4, max:4, t:60, cat:'strategy', lv:'중급', out:false, host:false, own:'채연주', have:true,
     d:'2:2 팀으로 겨루는 클라이밍 카드 게임의 명작.',
     r:'앞사람과 같은 종류·같은 장수로 더 높은 조합을 내며 손패를 먼저 비운다. 새·개·봉황·용 특수 카드와 «티츄» 선언으로 점수를 크게 걸고, 팀 점수 1,000점을 먼저 모으면 승리.' },
+  { n:'다빈치 코드 플러스', bl:{"rate": 6.4, "weight": null, "rank": 1879, "players": "2-4", "minutes": "10-30", "age": 8, "url": "https://boardlife.co.kr/game/18625"}, min:2, max:4, t:20, cat:'strategy', lv:'초보', out:true, host:false, own:'채연주', have:true,
+    d:'숨긴 숫자 타일을 추리해 맞히는 다빈치 코드의 확장 판',
+    r:'각자 숫자 타일을 작은 수부터 정렬해 세워 두고, 차례에 타일 하나를 가져온 뒤 남의 타일 숫자를 지목해 맞힌다. 맞히면 그 타일이 공개되고 계속할 수 있으며, 틀리면 방금 가져온 타일을 공개한다. 타일이 모두 공개된 사람은 탈락한다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'마작', bl:{"rate": 7.9, "weight": 2.96, "rank": 67, "players": "4", "minutes": "120", "age": 8, "url": "https://boardlife.co.kr/game/3120"}, min:4, max:4, t:120, cat:'strategy', lv:'고급', out:false, host:false, own:'채연주', have:true,
+    d:'패 136장으로 정해진 조합을 먼저 완성하는 전통 게임',
+    r:'패를 하나 가져오고 하나 버리기를 반복하며 몸통 네 개와 머리 하나(같은 패 두 장)를 먼저 맞추면 화료한다. 남이 버린 패로 조합을 만들 수도 있고, 완성한 패의 역에 따라 점수를 주고받는다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'티키 토플', bl:{"rate": 6.9, "weight": 1.29, "rank": 898, "players": "2-4", "minutes": "20", "age": 10, "url": "https://boardlife.co.kr/game/3974"}, min:2, max:4, t:20, cat:'strategy', lv:'초보', out:false, host:false, own:'채연주', have:true,
+    d:'줄 선 티키 토템 순서를 카드로 바꿔 내 비밀 목표를 맞추는 게임',
+    r:'각자 몰래 받은 목표 카드에 앞세우고 싶은 티키 셋이 적혀 있다. 차례마다 티키를 앞으로 올리기, 맨 뒤로 보내기, 맨 뒤 티키 없애기 카드를 써 줄 순서를 바꾼다. 티키가 셋 남으면 목표 순위대로 점수를 받는다.' },   // 2026-11-20 보유목록에서 추가
+  { n:'렉시오', bl:{"rate": 7.4, "weight": 2.24, "rank": 351, "players": "3-5", "minutes": "20", "age": 8, "url": "https://boardlife.co.kr/game/5738"}, min:3, max:5, t:20, cat:'strategy', lv:'초보', out:false, host:false, own:'임햇살', have:true,
+    d:'포커 족보로 숫자 타일을 내며 먼저 손을 비우는 클라이밍 게임',
+    r:'숫자 타일을 나눠 받고, 앞사람보다 높은 같은 꼴(한 장·두 장·세 장·다섯 장 족보)을 내거나 패스한다. 모두 패스하면 마지막에 낸 사람이 새로 시작한다. 먼저 다 낸 사람이 이기고, 남은 타일 수만큼 점수를 주고받는다.' },   // 2026-11-20 보유목록에서 추가
   // ── 협력 ──────────────────────────────────
   { n:'더 갱', man:[{t:'설명서', f:'manual/the-gang.pdf'}], img:'img/t/the-gang.jpg', min:3, max:6, t:20, cat:'coop', lv:'중급', out:false, host:false, own:'채연주', have:true,
     d:'말 없이 포커 서열을 맞추는 협력 게임.',
@@ -220,6 +271,9 @@ const GAMES = [
   { n:'사건의재구성', bl:{"rate": 6.9, "weight": 2.06, "rank": 904, "players": "1-4", "minutes": "60-90", "age": 14, "url": "https://boardlife.co.kr/game/9665", "bgg": "https://boardgamegeek.com/boardgame/239188/chronicles-crime"}, img:'img/t/crime-scene.jpg', min:1, max:4, t:75, cat:'coop', lv:'고급', out:false, host:false, own:'채연주', have:true,
     d:'실제 사건 파일을 파고드는 본격 추리. 시간이 오래 걸린다.',
     r:'증거 자료를 읽고 추론해 사건을 재구성한다. 정답을 맞히는 방식. 4시간 회차에는 부담.' },
+  { n:'테이크 타임', bl:{"rate": 7.8, "weight": 1.25, "rank": 103, "players": "2-4", "minutes": "30", "age": 10, "url": "https://boardlife.co.kr/game/21360"}, min:2, max:4, t:30, cat:'coop', lv:'중급', out:false, host:false, own:'채연주', have:true,
+    d:'말을 아끼며 시계판에 카드를 놓아 조건을 맞추는 협력 퍼즐 카드게임',
+    r:'시계판 여섯 칸에 각자 숫자 카드를 뒷면으로 내려놓되 무엇을 냈는지 말로 알릴 수 없다. 다 놓으면 시곗바늘 칸부터 열어 각 칸 합이 시계 방향으로 커지는지 등 조건을 확인한다. 장마다 새 시계와 특수 규칙이 나온다.' },   // 2026-11-20 보유목록에서 추가
 ];
 
 /* 카테고리 */
