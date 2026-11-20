@@ -298,7 +298,7 @@
       items.push(text(60, 52, 700, 42, d(g.mode), { weight: 600, color: withA(c, 0.85) }));
       items = items.concat(counter(i, n, c));
       if (host) items.push({ t: 'icon', name: 'theater', x: 370, y: 330, size: 260, color: c });
-      else items.push({ t: 'art', role: g.role || '', x: 290, y: 270, size: 420, color: c });
+      else items.push({ t: 'art', role: g.role || '', mode: g.mode || '', x: 290, y: 270, size: 420, color: c });
       items.push(text(60, 730, W - 120, 85, host ? t('space.host') : d(g.role), { weight: 700, align: 'center', color: c, fit: true }));
       if (!host && g.won != null) items.push(text(60, 845, W - 120, 60, g.won ? t('game.won') : t('game.lost'), { weight: 800, align: 'center', color: g.won ? gd : withA(c, 0.6) }));
       items.push(text(60, 1010 - lift, W - 120, 38, plazaLine(p), { weight: 600, align: 'center', color: c }));

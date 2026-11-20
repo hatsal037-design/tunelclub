@@ -175,5 +175,6 @@
  "명중": "Hit",
  "빗나감": "Missed",
  "%lld명 사망": "%lld dead",
- "편이 바뀜": "Side changed"
+ "편이 바뀜": "Side changed",
+ "합류": "Joined"
 }

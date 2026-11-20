@@ -264,7 +264,7 @@ function RoleStrip({ st, roles }) {
   return html`<div class="g5roles"><div class="cap"><span>${T(guide ? 'role.inplay' : 'role.mode_all')}</span>
       <button type="button" class="g5lnk" onClick=${() => nav.push(guide ? html`<${RoleGuide} b=${st.brief} />` : html`<${ModeView} id=${st.modeId} />`)}>${T('role.more')}</button></div>
     <div class="strip">${list.map(x => html`<button type="button" class="rc" onClick=${() => nav.push(html`<${RoleDetail} card=${x.card} brief=${st.brief} modeId=${st.modeId} />`)}>
-      <${RoleArt} r=${x.art || art[x.card.role] || {}} size=${40} /><span class=${x.side === 'evil' ? 'e' : ''}>${D(x.card.role)}</span>${x.count > 1 && html`<small>×${x.count}</small>`}</button>`)}</div></div>`;
+      <${RoleArt} r=${x.art || artOf(art, x.card.role, x.card.id)} size=${40} /><span class=${x.side === 'evil' ? 'e' : ''}>${D(x.card.role)}</span>${x.count > 1 && html`<small>×${x.count}</small>`}</button>`)}</div></div>`;
 }
 /* 내 직업 팝업(2026-11-15 햇살님 «한 번 더 팝업에 들어가서 누르면 보기로») — 앱 MyRoleCover·진행자 «역할 다시 보여주기»와 같은 틀: 누르는 동안 카드 + 블러프 + 밤마다 고른 사람·받은 답(서버 0334) */
 function MyRoleCover({ open, card, onClose }) {
@@ -274,7 +274,7 @@ function MyRoleCover({ open, card, onClose }) {
   return html`<${Cover} open=${open}><div class="mycov">
     <header class="navbar"><div class="nb-l"><button class="nbtn" onClick=${onClose}>${T('ui.close')}</button></div><div class="nb-t">${T('plaza.my_role')}</div><div class="nb-r"></div></header>
     <div class="body">${on ? html`<div class="card1">
-        <${RoleArt} r=${art[card.role] || {}} size=${88} /><h2>${D(card.role)}</h2><div class="tm" style=${'color:' + (SIDEC[card.side] || 'var(--sec)')}>${D(card.team || '')}</div>
+        <${RoleArt} r=${artOf(art, card.role, card.id)} size=${88} /><h2>${D(card.role)}</h2><div class="tm" style=${'color:' + (SIDEC[card.side] || 'var(--sec)')}>${D(card.team || '')}</div>
         <p>${D(card.ab || '')}</p>${card.rule && html`<div class="sub">${D(card.rule)}</div>`}
         ${Array.isArray(card.bluffs) && card.bluffs.length > 0 && html`<div class="blk"><div class="t">${T('mine.bluffs')}</div><div>${card.bluffs.map(D).join(' · ')}</div></div>`}
         ${(card.history || []).map(h => html`<div class="blk"><div class="t">${night(h.n)}</div>${(h.lines || []).map(l => html`<div>${l}</div>`)}</div>`)}</div>`
@@ -341,13 +341,13 @@ function RoleDetail({ card, brief, modeId, mine }) {
   const others = briefRoles(brief);
   return html`<${Page} title=${mine ? T('plaza.my_role') : D(card.role)} left=${html`<${Back} />`}>
     <${Section}><div class="row" style="flex-direction:column;align-items:center;gap:6px;padding:20px 16px;text-align:center">
-      <${RoleArt} r=${art[card.role] || {}} size=${72} /><div style="font-size:22px;font-weight:700">${D(card.role)}</div>
+      <${RoleArt} r=${artOf(art, card.role, card.id)} size=${72} /><div style="font-size:22px;font-weight:700">${D(card.role)}</div>
       ${card.team && html`<div class=${card.side === 'evil' ? 'red' : card.side === 'good' ? 'blue' : 'sec'}>${D(card.team)}</div>`}
       <div>${D(card.ab)}</div>${card.rule && html`<div class="sec" style="font-size:14px">${card.rule}</div>`}</div><//>
     ${tp && (tp.feat || []).length > 0 && html`<${Section} header=${T('role.feat')}>${tp.feat.map(s => html`<${Row}><span>${s}</span><//>`)}<//>`}
     ${tp && (tp.tip || []).length > 0 && html`<${Section} header=${T('role.tip')}>${tp.tip.map(s => html`<${Row}><span>${s}</span><//>`)}<//>`}
     ${mine && (others.length ? html`<${Section} header=${T('role.inplay')}>${others.map(r => html`<${Row} chevron onClick=${() => nav.push(html`<${RoleDetail} card=${{ id: r.id, role: r.name, team: r.group, side: r.side, ab: r.ability }} />`)}>
-        <${RoleArt} r=${art[r.name] || {}} size=${32} /><${RowLabel} title=${D(r.name) + (r.count > 1 ? ' ×' + r.count : '')} text=${D(r.group || '')} /><//>`)}<//>`
+        <${RoleArt} r=${r.icon ? r : artOf(art, r.name, r.id)} size=${32} /><${RowLabel} title=${D(r.name) + (r.count > 1 ? ' ×' + r.count : '')} text=${D(r.group || '')} /><//>`)}<//>`
       : modeId && html`<${Section}><${Row} chevron onClick=${() => nav.push(html`<${ModeView} id=${modeId} />`)}>${T('role.mode_all')}<//><//>`)}
   <//>`;
 }
@@ -356,7 +356,7 @@ function RoleGuide({ b }) {
   const nav = useNav(), art = useArt();
   return html`<${Page} title=${T('role.inplay')} left=${html`<${Back} />`}>
     ${(b.groups || []).filter(g => (g.roles || []).length).map(g => html`<${Section} header=${D(g.name)}>${g.roles.map(r => html`<${Row} chevron onClick=${() => nav.push(html`<${RoleDetail} card=${{ id: r.id, role: r.name, team: g.name, side: gSide(g), ab: r.ability }} />`)}>
-      <${RoleArt} r=${art[r.name] || {}} size=${36} /><div class="rl"><div><b>${D(r.name)}</b>${r.count > 1 ? html` <span class="sec">×${r.count}</span>` : null}</div><div class="sub">${D(r.ability)}</div></div><//>`)}<//>`)}
+      <${RoleArt} r=${r.icon ? r : artOf(art, r.name, r.id)} size=${36} /><div class="rl"><div><b>${D(r.name)}</b>${r.count > 1 ? html` <span class="sec">×${r.count}</span>` : null}</div><div class="sub">${D(r.ability)}</div></div><//>`)}<//>`)}
   <//>`;
 }
 
@@ -449,6 +449,8 @@ async function sheets(m) {
 
 /* ── 피드(0294) — 한 장 = 사람 한 명 × 광장 하나: 판마다 직업·승패, 좋아요. 앱 소셜 공간 SocialSpace.swift 와 같다(2026-10-07) ── */
 const day = s => { const d = new Date(s || ''); return isNaN(d) ? (s || '').slice(0, 10) : d.toLocaleDateString(document.documentElement.lang || 'ko', { month: 'long', day: 'numeric', weekday: 'short' }); };
+/* 그림 찾기 — #코드 먼저, 다음 «모드 이름|직업 이름», 마지막 이름(이름은 모드를 넘어 겹친다, 2026-11-20) */
+const artOf = (art, role, id, mode) => (art && ((id && art['#' + id]) || (mode && art[mode + '|' + role]) || art[role])) || {};
 let ART = null; const artMap = async () => ART || (ART = await fetch('library/art.json').then(r => r.json()).catch(() => ({})));   // 직업 그림 이름표(자료_빌드.cjs)
 const plazaLine = p => T('plaza.host_place', { host: p.host || '', place: T('place.plaza') }) + (p.title ? ' · ' + p.title : '');
 /* 장 그리기 — 공용 엔진(core/postcard.js)이 준 그리기 목록을 비율대로 그리기만 한다(2026-10-07 «어느 시스템에 심어도 같은 결과»).
@@ -502,7 +504,7 @@ function CardPage({ page, interactive = true }) {
     ${page.items.map((it, k) => it.t === 'text' ? html`<${CardText} key=${k} it=${it} interactive=${interactive} />`
       : it.t === 'grad' ? html`<${Layers} key=${k} list=${[it]} />`
       : it.t === 'rect' ? html`<div key=${k} class="cr" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.w)};height:${u(it.h)};background:${rgba(it.c)}`}></div>`
-      : it.t === 'art' ? html`<div key=${k} class="ca" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.size)};height:${u(it.size)};color:${rgba(it.color)}`}>${(() => { const a = (art || {})[it.role]; return a && a.icon ? html`<${RoleArt} r=${a} size=${200} />` : html`<span>${(a && a.e) || ''}</span>`; })()}</div>`
+      : it.t === 'art' ? html`<div key=${k} class="ca" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.size)};height:${u(it.size)};color:${rgba(it.color)}`}>${(() => { const a = artOf(art, it.role, null, it.mode); return a && a.icon ? html`<${RoleArt} r=${a} size=${200} />` : html`<span>${(a && a.e) || ''}</span>`; })()}</div>`
       : it.t === 'icon' && it.name === 'theater' ? html`<div key=${k} class="ca" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.size)};height:${u(it.size)};color:${rgba(it.color)}`}><${Icon} name="theater" size=${200} stroke=${1.2} /></div>`
       : it.t === 'face' ? html`<${CardFace} key=${k} it=${it} tag=${tag} setTag=${setTag} interactive=${interactive} />`
       : it.t === 'sub' ? html`<div key=${k} class="cs" style=${`left:${u(it.x)};top:${u(it.y)};width:${u(it.w)};height:${u(it.h)};border-radius:${u(it.radius)}`}><${CardPage} page=${it.page} interactive=${interactive} /></div>` : null)}

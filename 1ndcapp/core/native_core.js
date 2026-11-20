@@ -447,7 +447,8 @@ var NativeCore = (function () {
       bluffs: bl.length ? bl : null, history: recheckHistory(i), change: cardChange(i, c) };
   }
   /* 바뀜(2026-11-20 햇살님 시안 연출_바뀜폰3) — 이 사람이 마지막으로 본 카드와 지금 보여 줄 카드의 차이. 진행자 «역할 다시 보여주기»가 연출을 먼저 튼다.
-     succ 계승(흉수 자리를 이음 — 이은 흉수 자리 번호) · swap 직업 바뀜(맞바꾸기·둔갑) · conv 편이 바뀜(창귀·전향·합류 — 직업 그대로). 본 카드가 없거나 앞 카드 그대로 보여 주면(가짜 카드 없는 자리) null */
+     succ 계승(흉수 자리를 이음 — 이은 흉수 자리 번호) · swap 직업 바뀜(맞바꾸기·둔갑) · conv 편이 바뀜(창귀·전향 — 직업 그대로) · join 조직에 합류(늑대인간 — 편은 그대로, 들어간 조직 이름). 본 카드가 없거나 앞 카드 그대로 보여 주면(가짜 카드 없는 자리) null */
+  function joinedGroup(s) { return !!s && (s.rem || []).some(function (r) { return tokConv(r) === 'join'; }); }
   function sideFlipped(s) { return !!s && (s.rem || []).some(function (r) { var k = tokConv(r); return k === 'creep' || k === 'convert'; }); }
   function cardChange(i, c) {
     var s = state.seats[i], old = s && s.shownCard; if (!old) return null;
@@ -457,9 +458,12 @@ var NativeCore = (function () {
         var from = null; (state.seats || []).forEach(function (x, j) { var xc = x && x.char ? CMAP()[x.char] : null; if (j !== i && x && x.dead && xc && xc.team === 'demon' && (from === null || (x.causeN || 0) >= (state.seats[from].causeN || 0))) from = j; });
         return { kind: 'succ', fromRole: old.role, fromSeat: from === null ? null : from + 1 };
       }
-      return { kind: 'swap', fromRole: old.role, fromSeat: null };
+      var last = null; ((state.log && state.log.events) || []).forEach(function (e) { if (!e.cancel && evType(e) === 'role_change' && (e.seat === i + 1 || (e.swapSeats || []).indexOf(i + 1) >= 0)) last = e; });   // 이 자리의 마지막 직업 바뀜
+      var pal = last && last.방식 === 'swap' && last.swapSeats ? last.swapSeats.filter(function (n) { return n !== i + 1; })[0] : null;
+      return { kind: 'swap', fromRole: old.role, fromSeat: pal || null };   // 맞바꾸기면 상대 자리 번호(2026-11-20 햇살님 시안 B «상대 자리 보임»), 둔갑이면 null
     }
     if (sideFlipped(s) && !old.conv) return { kind: 'conv', fromRole: old.role, fromSeat: null, sideKo: SAY('ui.side.evil') };
+    if (joinedGroup(s) && !old.join) return { kind: 'join', fromRole: old.role, fromSeat: null, sideKo: groupKo(seatGroup(s, CMAP())) };   // 합류(2026-11-20 햇살님 «합류 연출 따로») — 편이 아니라 조직에 들어감, 큰 글자 = 들어간 조직 이름
     return null;
   }
   /* 다시 보여주기 «밤마다 본 것»(2026-11-02 햇살님 «그 밤에 보여 줬던 기록 다시 볼 수 있게») — 이 자리가 밤에 고른 사람·추측과 받은 답만.
@@ -481,7 +485,7 @@ var NativeCore = (function () {
      취객·망석중·신들린이류는 믿는 직업의 팁이 나오고, 진짜 직업은 카드 어디에도 없다(3-0 ①, 2026-10-26 햇살님 «게임 흐름 그대로 — 화면으로 정체가 안 새게») */
   function shownCardOf(i) { var s = state.seats[i], cm = CMAP(); if (!s || !s.char) return null; var f = (state.fakes || {})[i] || s.char, sh = cm[f]; if (!sh) return null;
     return { id: sh.id, role: sh.ko, team: sideKoOf(sh), side: ((FIXED.TEAM || {})[sh.team] || {}).side || null, ab: sh.ab || '', rule: omRevealRule(f) || null, char: s.char, shown: f }; }
-  function snapCard(i) { if (fakesMissing().indexOf(i) >= 0) return; var c = shownCardOf(i); if (c) { if (sideFlipped(state.seats[i])) c.conv = true; state.seats[i].shownCard = c; } }   // conv — 이 카드를 볼 때 이미 편이 넘어가 있었나(바뀜 연출이 «편이 바뀜»을 한 번만)   /* 가짜 카드가 아직 없는 취객·망석중·신들린이 자리(판 중에 둔갑·맞바꾸기로 된 자리 등)는 남기지 않는다 — 앞 카드 그대로, 진짜 직업은 폰으로 안 간다(3-0 ①) */
+  function snapCard(i) { if (fakesMissing().indexOf(i) >= 0) return; var c = shownCardOf(i); if (c) { if (sideFlipped(state.seats[i])) c.conv = true; if (joinedGroup(state.seats[i])) c.join = true; state.seats[i].shownCard = c; } }   // conv — 이 카드를 볼 때 이미 편이 넘어가 있었나(바뀜 연출이 «편이 바뀜»을 한 번만)   /* 가짜 카드가 아직 없는 취객·망석중·신들린이 자리(판 중에 둔갑·맞바꾸기로 된 자리 등)는 남기지 않는다 — 앞 카드 그대로, 진짜 직업은 폰으로 안 간다(3-0 ①) */
   function cardStale(s, i) { var c = s.shownCard; return !c || c.char !== s.char || c.shown !== ((state.fakes || {})[i] || s.char); }
   /* 광장에 올릴 카드 — 사람 열쇠(계정 또는 투넬 회원 번호)가 있는 자리만. 첫밤 전에 다시 배정한 자리의 옛 카드는 빼고 */
   function plazaCards() { var began = firstNightBegun(), out = [];
