@@ -765,5 +765,14 @@
  "mt.say.showMinion": "Người tôi đang chỉ là {m@w}.",
  "mt.say.showMinions": "Những người tôi đang chỉ là {m@w}.",
  "mt.say.groupOpen": "{g@w} hãy mở mắt.",
- "mt.say.sameGroup": "Các bạn cùng một tổ chức."
+ "mt.say.sameGroup": "Các bạn cùng một tổ chức.",
+ "pk.linked": "🧵 Đã buộc {a@pk} và {b@pk} bằng sợi dây sinh mệnh.",
+ "pk.seatSwapSet": "🪑 {a@pk} ↔ {b@pk} — đổi chỗ khi ngày tiếp theo bắt đầu.",
+ "note.demon.vagabond": "🪑 Ảo thuật gia lang thang đã đổi chỗ hôm nay là {s@pk} — hãy báo.",
+ "nc.curseVoid": "Đang say hoặc trúng độc — vô hiệu, lời nguyền không kích hoạt.",
+ "wn.duel": "Trận quyết đấu — {n} người còn lại bỏ phiếu xử tử một người",
+ "wn.duelGood": "Trận quyết đấu xử tử {=demon@tw} → {=town@tw} thắng",
+ "wn.duelEvil": "Trận quyết đấu không xử tử được {=demon@tw} → phe ác thắng",
+ "nc.ans.curse": "Bạn đã nhận lời nguyền — nếu nói tên vai trò của mình, bạn chết vào đêm đó (vai trò giữ nguyên)",
+ "dy.seatSwap": "🪑 Ảo thuật gia lang thang — cho {a@pk} và {b@pk} đổi chỗ (số theo ghế)."
 }

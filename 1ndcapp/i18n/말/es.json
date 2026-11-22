@@ -765,5 +765,14 @@
  "mt.say.showMinion": "La persona que señalo es {m@w}.",
  "mt.say.showMinions": "Las personas que te señalo son tus {m@w}.",
  "mt.say.groupOpen": "{g@w}: abrid los ojos.",
- "mt.say.sameGroup": "Sois del mismo grupo."
+ "mt.say.sameGroup": "Sois del mismo grupo.",
+ "pk.linked": "🧵 {a@pk} y {b@pk} unidos por un hilo de vida.",
+ "pk.seatSwapSet": "🪑 {a@pk} ↔ {b@pk}: cambian de asiento al empezar el próximo día.",
+ "note.demon.vagabond": "🪑 El mago errante que cambió los asientos hoy es {s@pk}: díselo.",
+ "nc.curseVoid": "Borracho o envenenado: sin efecto, la maldición no se activa.",
+ "wn.duel": "Duelo final: los {n} restantes votan para ejecutar a uno",
+ "wn.duelGood": "El duelo ejecutó al {=demon@tw} → gana {=town@tw}",
+ "wn.duelEvil": "El duelo no ejecutó al {=demon@tw} → gana el mal",
+ "nc.ans.curse": "Recibiste la maldición: si dices el nombre de tu rol, mueres esa noche (tu rol no cambia)",
+ "dy.seatSwap": "🪑 Mago errante: haz que {a@pk} y {b@pk} cambien de asiento (los números se quedan en las sillas)."
 }

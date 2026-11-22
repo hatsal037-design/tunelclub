@@ -2966,5 +2966,16 @@
  "서로 얼굴을 확인해 주세요.": "Miraos entre vosotros.",
  "지금 보여 드리는 분이 {r}입니다.": "La persona que señalo es {r}.",
  "지금 보여 드리는 분들이 {r}입니다.": "Las personas que te señalo son tus {r}.",
- "서로가 같은 조직입니다.": "Sois del mismo grupo."
+ "서로가 같은 조직입니다.": "Sois del mismo grupo.",
+ "🧵 {r} · {r} 생명줄로 묶었어요.": "🧵 {r} y {r} unidos por un hilo de vida.",
+ "🪑 {r} ↔ {r} — 다음 낮이 시작될 때 자리를 맞바꿔요.": "🪑 {r} ↔ {r}: cambian de asiento al empezar el próximo día.",
+ "🪑 오늘 자리를 바꾼 방랑마술사는 {r}이에요 — 알려 주세요.": "🪑 El mago errante que cambió los asientos hoy es {r}: díselo.",
+ "취함·중독 상태라 무효예요 — 저주가 걸리지 않아요.": "Borracho o envenenado: sin efecto, la maldición no se activa.",
+ "걀레른 결전 — 남은 {n}명이 투표로 한 명을 처형해요": "Duelo final: los {n} restantes votan para ejecutar a uno",
+ "결전에서 {r}을 처형 → {r} 승리": "El duelo ejecutó al {r} → gana {r}",
+ "결전에서 {r}를 처형 → {r} 승리": "El duelo ejecutó al {r} → gana {r}",
+ "결전에서 {r}을 처형하지 못했어요 → 악 승리": "El duelo no ejecutó al {r} → gana el mal",
+ "결전에서 {r}를 처형하지 못했어요 → 악 승리": "El duelo no ejecutó al {r} → gana el mal",
+ "저주를 받았어요 — 내 직업 이름을 말하면 그날 밤 죽어요(직업은 그대로)": "Recibiste la maldición: si dices el nombre de tu rol, mueres esa noche (tu rol no cambia)",
+ "🪑 방랑마술사 — {r} ↔ {r} 두 사람이 서로 자리를 바꿔 앉게 해 주세요(번호는 의자를 따라가요).": "🪑 Mago errante: haz que {r} y {r} cambien de asiento (los números se quedan en las sillas)."
 }

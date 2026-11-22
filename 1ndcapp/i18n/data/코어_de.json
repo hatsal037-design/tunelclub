@@ -2966,5 +2966,16 @@
  "서로 얼굴을 확인해 주세요.": "Seht euch an.",
  "지금 보여 드리는 분이 {r}입니다.": "Die Person, die ich zeige, ist {r}.",
  "지금 보여 드리는 분들이 {r}입니다.": "Die Personen, die ich zeige, sind deine {r}.",
- "서로가 같은 조직입니다.": "Ihr gehört zur selben Gruppe."
+ "서로가 같은 조직입니다.": "Ihr gehört zur selben Gruppe.",
+ "🧵 {r} · {r} 생명줄로 묶었어요.": "🧵 {r} und {r} mit einer Lebenslinie verbunden.",
+ "🪑 {r} ↔ {r} — 다음 낮이 시작될 때 자리를 맞바꿔요.": "🪑 {r} ↔ {r} — tauschen zu Beginn des nächsten Tages die Plätze.",
+ "🪑 오늘 자리를 바꾼 방랑마술사는 {r}이에요 — 알려 주세요.": "🪑 Der Wandermagier, der heute die Plätze tauschte, ist {r} — teile es mit.",
+ "취함·중독 상태라 무효예요 — 저주가 걸리지 않아요.": "Betrunken oder vergiftet — keine Wirkung, der Fluch greift nicht.",
+ "걀레른 결전 — 남은 {n}명이 투표로 한 명을 처형해요": "Letzter Showdown — die {n} Übrigen stimmen ab und richten einen hin",
+ "결전에서 {r}을 처형 → {r} 승리": "Im Showdown wurde der {r} hingerichtet → {r} gewinnt",
+ "결전에서 {r}를 처형 → {r} 승리": "Im Showdown wurde der {r} hingerichtet → {r} gewinnt",
+ "결전에서 {r}을 처형하지 못했어요 → 악 승리": "Der {r} wurde im Showdown nicht hingerichtet → das Böse gewinnt",
+ "결전에서 {r}를 처형하지 못했어요 → 악 승리": "Der {r} wurde im Showdown nicht hingerichtet → das Böse gewinnt",
+ "저주를 받았어요 — 내 직업 이름을 말하면 그날 밤 죽어요(직업은 그대로)": "Du hast den Fluch erhalten — sagst du deinen Rollennamen, stirbst du in jener Nacht (deine Rolle bleibt)",
+ "🪑 방랑마술사 — {r} ↔ {r} 두 사람이 서로 자리를 바꿔 앉게 해 주세요(번호는 의자를 따라가요).": "🪑 Wandermagier — lass {r} und {r} die Plätze tauschen (Nummern bleiben bei den Stühlen)."
 }

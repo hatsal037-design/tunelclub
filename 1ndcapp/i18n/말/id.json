@@ -765,5 +765,14 @@
  "mt.say.showMinion": "Yang saya tunjukkan adalah {m@w}.",
  "mt.say.showMinions": "Yang saya tunjukkan adalah {m@w}.",
  "mt.say.groupOpen": "{g@w}, buka mata.",
- "mt.say.sameGroup": "Kalian satu kelompok."
+ "mt.say.sameGroup": "Kalian satu kelompok.",
+ "pk.linked": "🧵 {a@pk} dan {b@pk} diikat dengan benang nyawa.",
+ "pk.seatSwapSet": "🪑 {a@pk} ↔ {b@pk} — bertukar kursi saat hari berikutnya dimulai.",
+ "note.demon.vagabond": "🪑 Penyihir pengembara yang menukar kursi hari ini adalah {s@pk} — beri tahu.",
+ "nc.curseVoid": "Mabuk atau keracunan — tidak berlaku, kutukan tidak aktif.",
+ "wn.duel": "Duel terakhir — {n} pemain tersisa memilih satu untuk dieksekusi",
+ "wn.duelGood": "Duel mengeksekusi {=demon@tw} → {=town@tw} menang",
+ "wn.duelEvil": "Duel tidak mengeksekusi {=demon@tw} → jahat menang",
+ "nc.ans.curse": "Kamu menerima kutukan — kalau menyebut nama peranmu, kamu mati malam itu (peranmu tetap)",
+ "dy.seatSwap": "🪑 Penyihir pengembara — minta {a@pk} dan {b@pk} bertukar kursi (nomor tetap di kursi)."
 }

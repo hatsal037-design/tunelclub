@@ -100,7 +100,7 @@ var NativeCore = (function () {
 
   /* 오늘 밤 죽은 사람 — 아침 발표 전까지 참가자 화면엔 산 사람으로(보이기·고르기 둘 다). 원작도 밤 죽음은 아침까지 비밀 (2026-09-29 햇살님 확정) */
   function diedTonight(s) { return !!(s && s.dead) && state.phase !== 'day' && s.cause !== 'exec' && s.cause !== 'day' && (s.causeN || 0) === (state.nights || 1); }
-  function pickDis(x, R) { var tn = diedTonight(x.s); return R.dead === 'dead' ? (!x.s.dead || tn) : (!!x.s.dead && !tn); }   // 부활류는 죽은 사람만 — 오늘 밤 죽은 사람은 산 사람 취급
+  function pickDis(x, R) { var tn = diedTonight(x.s); if (R.dead === 'any') return false; return R.dead === 'dead' ? (!x.s.dead || tn) : (!!x.s.dead && !tn); }   // 부활류는 죽은 사람만 — 오늘 밤 죽은 사람은 산 사람 취급
   function board() {
     var rect = state.layout === 'rect', seats = (state.seats || []).map(function (s, i) {
       /* 진행자 판 — 죽음·유령표·표식을 칸 위에 바로(웹 renderSquare 의 사망 흑백·표식 딱지). status 는 명단 줄 한 줄 요약 */
@@ -126,7 +126,7 @@ var NativeCore = (function () {
   }
 
   /* 밤 카드의 능력 종류 — pickPanel 과 같은 방식으로 act 를 읽는다. 연결한 종류만 SUPPORTED */
-  var SUPPORTED = { token: 1, kill: 1, info: 1, record: 1, cure: 1, revive: 1, swap: 1, reveal: 1, killif: 1, tokenif: 1, joinif: 1, guess: 1, guesses: 1, transform: 1, madness: 1, askdie: 1, swapif: 1, transformif: 1, gamble: 1 };   // 판정형 셋(6-20 A)
+  var SUPPORTED = { token: 1, kill: 1, info: 1, record: 1, cure: 1, revive: 1, swap: 1, reveal: 1, killif: 1, tokenif: 1, joinif: 1, guess: 1, guesses: 1, transform: 1, madness: 1, askdie: 1, swapif: 1, transformif: 1, gamble: 1, link: 1, seat_swap: 1 };   // link·seat_swap — 아트로니아·방랑마술사(2026-11-20)   // 판정형 셋(6-20 A)
   function actOf(c) {
     var R = pickRuleOf(c) || {}, act = R.act || 'record';
     return { R: R, kind: act.split(':')[0].split('|')[0], arg: act.split('|')[0].split(':').slice(1).join(':'), opt: act.split('|')[1] || '' };
@@ -282,7 +282,7 @@ var NativeCore = (function () {
         .map(function (x) { return { id: x.id, ko: x.ko }; });
       roleTitle = SAY(guessy ? 'nc.rt.guess' : a.kind === 'transform' ? 'nc.rt.transform' : a.kind === 'transformif' ? 'nc.rt.transformif' : 'nc.rt.madness');
     }
-    var seatsAlive = a.kind === 'guesses' ? pickCands(c, owner).filter(function (x) { return !x.s.dead || diedTonight(x.s); }).map(function (x) { return { index: x.i, number: x.i + 1, name: seatLabel(x.i).name }; }) : null;
+    var seatsAlive = a.kind === 'guesses' ? pickCands(c, owner).filter(function (x) { return R.dead === 'any' || !x.s.dead || diedTonight(x.s); })   /* 범죄학자(dead any)는 죽은 사람도(2026-11-20) */.map(function (x) { return { index: x.i, number: x.i + 1, name: seatLabel(x.i).name }; }) : null;
     var enabledN = targets.filter(function (t) { return !t.disabledReason; }).length;
     var short = usable && !resolved && a.kind !== 'guesses' && enabledN < minPick;   // 고를 대상이 모자람 — «선택 안 함»과 다르다(01 G01). 웹처럼 넘길 수 있게
     var missId = miss && CMAP()[miss] ? miss : '';
@@ -341,6 +341,8 @@ var NativeCore = (function () {
     /* 참가자에게 보여줄 답 — 웹이 답 화면으로 넘기던 능력들(딱따기꾼 알림·남사당 적중 수·구미호 행세 직업) */
     if (resolved && !answer && !falseReason) { try {
       if (a.kind === 'reveal') { answer = SAY('nc.ans.reveal', { p: seatText(owner), r: c.id }); ansCode = { type: 'reveal', value: { seats: [owner], char: c.id } }; ansBoard = { seats: [owner], roles: [c.ko], head: '', side: ((FIXED.TEAM || {})[c.team] || {}).side || null }; }
+      else if (a.kind === 'token' && POL(c, 'curseVessel')) { answer = SAY('nc.ans.curse'); ansCode = { type: 'curse', value: { seats: pickGet(owner) } }; }   /* 저주 넘기기 — 받은 사람을 깨워 보여 줄 카드(2026-11-20) */
+      else if (a.kind === 'guesses' && F.거짓.length) { answer = SAY('nc.ans.giveFalse', { why: F.거짓 }); ansCode = { type: 'giveFalse', value: { why: F.거짓.slice() } }; }   /* 취함·중독·만물 거짓이면 맞은 수 대신 «거짓 답»(진행자가 숫자를 고름) — 2026-11-20 설계 검증에서 추측이 늘 진짜 수를 주던 것, 남사당·저글러·범죄학자 모두(햇살님 «같이 바꿈») */
       else if (a.kind === 'guesses') { var G = (state.guesses || {})[owner] || []; answer = SAY('nc.ans.correct', { n: G.filter(function (g) { return state.seats[g.seat] && state.seats[g.seat].char === g.char; }).length }); ansCode = { type: 'guesses', value: { right: G.filter(function (g) { return state.seats[g.seat] && state.seats[g.seat].char === g.char; }).length, of: G.length } }; ansPic = { kind: 'num', v: G.filter(function (g) { return state.seats[g.seat] && state.seats[g.seat].char === g.char; }).length, of: G.length, about: [] }; }
       else if (a.kind === 'madness') { var mt = pickGet(owner)[0], ma = (state.madAs || {})[mt]; if (ma && CMAP()[ma.role]) { answer = SAY('nc.ans.madness', { r: ma.role }); ansCode = { type: 'madness', value: { seats: [mt], char: ma.role } }; ansBoard = { seats: [mt], roles: [CMAP()[ma.role].ko], head: SAY('nc.head.madness'), side: ((FIXED.TEAM || {})[CMAP()[ma.role].team] || {}).side || null }; } }
     } catch (e) { 드러냄('native_core.nightCardRaw', e); } }
@@ -711,7 +713,7 @@ var NativeCore = (function () {
   }
 
   /* 웹 버튼 → 항목 목록. 허용한 호출(ALLOW)만 누를 수 있게 넘긴다 — 특수 승리·정치인·낮 알림의 즉시 처리 */
-  var ALLOW = /^(?:(spGuess|spClaim|spBangToggle|spBangDo|spCult|spUndo|spPolitician|dayHeavenKill|dayCurseKill|markUsed|fangguJump)\((\d+|true|false)?\)|markSubUsed\(\d+,'[^'<>]{1,20}'\)|delayedKill\(\d+,'[^'<>]{1,20}'(?:,true)?\)|(?:pickApplyTokenV|pickCure|pickKill|pickRevive|pickJudge|pickTokenIf|pickTransform|pickMadness|pickAskDie|pickSwapIf|pickTransformIf|pickGamble)\(\d+(?:,'[^'<>]{1,40}'|,false){0,2},true\)|pickRec\(state\.nights\|\|1\)\[\d+\]=\[\d+\];pickKill\(\d+,false\)|blSetHolder\(\d+\)|pickSubTok\(\d+,\d+,'[^'<>]{1,20}'\))$/;   // 마지막 — 몽달이(killif) «조건 충족 → 사망 처리»   // markUsed·markSubUsed — 밤 카드 «1회 능력 사용함» (2026-09-29)
+  var ALLOW = /^(?:(spGuess|spClaim|spBangToggle|spBangDo|spCult|spUndo|spPolitician|dayHeavenKill|dayCurseKill|markUsed|fangguJump)\((\d+|true|false)?\)|markSubUsed\(\d+,'[^'<>]{1,20}'\)|delayedKill\(\d+,'[^'<>]{1,20}'(?:,true)?\)|(?:pickApplyTokenV|pickCure|pickKill|pickRevive|pickJudge|pickTokenIf|pickTransform|pickMadness|pickAskDie|pickSwapIf|pickTransformIf|pickGamble|pickLink|pickSeatSwap)\(\d+(?:,'[^'<>]{1,40}'|,false){0,2},true\)|pickRec\(state\.nights\|\|1\)\[\d+\]=\[\d+\];pickKill\(\d+,false\)|blSetHolder\(\d+\)|pickSubTok\(\d+,\d+,'[^'<>]{1,20}'\))$/;   // 마지막 — 몽달이(killif) «조건 충족 → 사망 처리»   // markUsed·markSubUsed — 밤 카드 «1회 능력 사용함» (2026-09-29)
   /* 웹이 낸 단추 코드 → 항목. 글은 지금 말로(prText), 누를 수 있는 건 허용한 호출(ALLOW)만 — HTML 긁기 없음(2026-11-06) */
   function actItems(list) {
     return (list || []).map(function (a) {
@@ -782,7 +784,9 @@ var NativeCore = (function () {
       /* 슬레이어 쏘기(2026-11-14 햇살님) — 이 모드 직업 목록에 낮 판정형 능력(사냥꾼·슬레이어)이 있으면 낮 화면 맨 위 «쏘기» 줄. 판에 없어도 보인다(누구나 흉내). 첫 지명 뒤엔 잠김 */
       slay: (function () { var has = CHARS().some(function (c) { var R = pickRuleOf(c) || {}; return /^killif:/.test(R.act || '') && (R.when || []).indexOf('day') >= 0; });
         if (!has || hubRep() === 'mafia') return null;
-        return { open: !(D.noms || []).length && !gameEnded(), shots: (D.slays || []).map(function (x) { return { by: seatLabel(x.by), target: seatLabel(x.t), hit: !!x.hit }; }) }; })() };
+        return { open: !(D.noms || []).length && !gameEnded(), shots: (D.slays || []).map(function (x) { return { by: seatLabel(x.by), target: seatLabel(x.t), hit: !!x.hit }; }) }; })(),
+      duel: (function () { var du = (state.special || {}).duel; if (!du) return null;   /* 걀레른 파국 → 결전(2026-11-20, core/바뀐능력.js) */
+        return { pool: du.pool.map(seatLabel), round: du.round, died: (du.died || []).map(seatLabel), blocked: (du.blocked || []).map(function (b) { return seatLabel(b.i); }), result: du.result || null, exec: du.exec === undefined ? null : seatLabel(du.exec) }; })() };
     M.next = dayNext(M, D);
     M.undo = (function () { if (!M.announced) return null;   /* 낮 하단 가운데 왼쪽 ↺ — 처형 없음·처형·결과 발표를 한 걸음씩 되돌린다(2026-11-16 햇살님 «되돌리기 버튼은 중앙버튼 왼쪽에 넣자 아이콘으로») */
       if (D.noExec) return { cmd: 'day.noExec', how: 'undo' };
@@ -915,8 +919,12 @@ var NativeCore = (function () {
       shape: state.layout === 'rect' ? 'rect' : 'round', seats: seats, board: pubBoard(), initialComposition: P.comp || null, timer: timer, nomination: nom,
       neededVotes: nom ? G.need : null, results: results, execution: exec,
       morningAnnouncement: morning, pastExecutions: past, nominationUsage: usage, ending: ending,
+      seatSwap: state.seatSwapShow ? { id: 'w' + state.seatSwapShow.id, a: sid(state.seatSwapShow.a), b: sid(state.seatSwapShow.b), names: state.seatSwapShow.names } : null,   /* 방랑마술사 자리 바뀜 — 바뀌기 전 이름(2026-11-20) */
+      duel: (state.special || {}).duel ? { id: 'g' + state.special.duel.n, pool: state.special.duel.pool.map(sid), died: (state.special.duel.died || []).map(sid), result: state.special.duel.result || null } : null,   /* 걀레른 파국·결전 */
       endReveal: ended && state.tvReveal !== false ? endReveal() : null, endReplay: ended && typeof state.tvReplay === 'number' ? endReplay(state.tvReplay) : null };
-    if (body.endReplay) { var deadAt = replayDeadAtStart(state.tvReplay); body.seats = seats.map(function (x) { var c = Object.assign({}, x); c.dead = !!deadAt[+String(x.id).slice(1)]; return c; }); }   // 복기 쪽마다 그날 시작 때 생사(2026-11-02 햇살님 «복기 시점에 살아 있는 직업은 살아 있게, 넘기면 그때 죽게»)
+    if (body.endReplay) { var deadAt = replayDeadAtStart(state.tvReplay), Lr = endLog(), Mr = (Lr && Lr.moves) || [], fdr = firstDayN(), ptr = state.tvReplay === 0 ? [fdr, 'night'] : [state.tvReplay + fdr - 1, 'day'], who0 = {};
+      seats.forEach(function (x, f) { who0[chairThen(Mr, ptr[0], ptr[1], f)] = f; });   /* 그 쪽의 때 그 의자에 앉아 있던 사람(방랑마술사 자리 바꿈 전이면 되돌려, 2026-11-20) */
+      body.seats = seats.map(function (x, c) { var f = who0[c] === undefined ? c : who0[c], src = seats[f], o = Object.assign({}, x); o.name = src.name; o.dead = !!deadAt[f + 1]; return o; }); }   // 복기 쪽마다 그날 시작 때 생사(2026-11-02 햇살님 «복기 시점에 살아 있는 직업은 살아 있게, 넘기면 그때 죽게»)
     /* 2026-10-25 큰 화면 v5(애플 결) — 판 흐름 · 밤 진행 · 순환 표시. 다 공개된 사실만 */
     var flow = []; if (began) {   // 판 흐름 — 발표한 밤의 사망 · 지난 낮(과 발표한 오늘)의 처형 · 오늘 지명. 오래된 것부터
       var thr = ended ? n : (P.announcedThrough || 0), days2 = state.days || {};
@@ -987,7 +995,8 @@ var NativeCore = (function () {
     var L = endLog(), ev = ((L && L.events) || []).filter(function (e) { if (e.cancel) return false; return n === 0 ? (e.phase !== 'day' && e.n <= fd) : (e.phase === 'day' ? e.n === dn : e.n === dn + 1); }), night = [], day = [];
     var nm = function (k) { return seatLabel(k - 1).name; };
     var who = function (e) { var r = recRole(e); return (e.name || nm(e.seat)) + (r ? '(' + r + ')' : ''); };   /* 직업 이름 = roleId 에서(기록 글 3단계) */
-    var sid = function (k) { return typeof k === 'number' && k > 0 ? 's' + k : null; };
+    var M0 = (L && L.moves) || [], pt = n === 0 ? [fd, 'night'] : [dn, 'day'];   /* 방랑마술사 자리 바꿈 — 그 쪽의 때 자리로(복기는 그때 자리, 2026-11-20) */
+    var sid = function (k) { return typeof k === 'number' && k > 0 ? 's' + (chairThen(M0, pt[0], pt[1], k - 1) + 1) : null; };
     var clean = function (t) { return String(t || '').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').replace(/ \)/g, ')').trim(); };   // 그림 문자는 TV 글꼴에서 네모로 깨진다
     var cmR = CMAP(), evilPick = function (e) { var c = e.roleId && cmR[e.roleId]; return !!(c && (c.team === 'demon' || c.team === 'mafia')); };
     var actOf = function (e) { var f = fxKind(e.처리);
@@ -1106,7 +1115,7 @@ var NativeCore = (function () {
     var causeKo = causeKoMap();
     return { index: i, number: i + 1, name: seatLabel(i).name, role: c ? c.ko : '', teamKo: c ? sideKoOf(c) : '', ability: c ? c.ab : '', revealRule: (c && omRevealRule(x.char)) || null,
       dead: !!x.dead, cause: x.dead ? (causeKo[x.cause] || x.cause || '') : null, sideKind: c && c.team === 'traveler' ? 'traveler' : c && c.team === 'neutral' && !isOmMode() ? 'neutral' : null, side: c && c.team === 'traveler' ? (x.side || null) : c && c.team === 'neutral' && !isOmMode() ? (x.lean || null) : null,   // 여행자 편(판정에 반영)·중립 편들기(기록용) — 웹 좌석 시트와 같게
-      canRemove: (state.seats || []).length > 5, isDay: state.phase === 'day', askCause: state.phase !== 'day' && !x.dead && deathCauseMatters(i) && !firstNightNoDemonKill(),
+      canRemove: (state.seats || []).length > 5, isDay: state.phase === 'day', curse: state.phase === 'day' && curseHolder(i) ? { said: (x.rem || []).indexOf(CURSE_GO) >= 0 } : null,   /* 저주의 그릇·저주 받은 사람 — 낮 «직업 이름을 말함»(2026-11-20) */ askCause: state.phase !== 'day' && !x.dead && deathCauseMatters(i) && !firstNightNoDemonKill(),
       tokens: items.map(function (t) { return { id: t, label: TK(t), on: (x.rem || []).indexOf(t) >= 0 }; }) };
   }
   /* 처형·낮 즉사의 «보호 상태인데 그래도 죽일까요?» — 웹은 예면 죽이고, 아니면 «처형은 있었고 살아남음»으로 기록한다(execHappenedMark).
@@ -1584,6 +1593,10 @@ var NativeCore = (function () {
       return COMMANDS['day.execute'](Object.assign({}, p, { k: k, ok_execGate: true })); },
     'day.nomRemove': function (p) { var k = +p.k, n = dayRec().noms[k]; if (!n) return rej('invalidSelection', 'nominationNotFound'); if (n.done) return rej('notAllowedInPhase', 'cannotDeleteExecuted'); dayNomRemove(k); return null; },   // 잘못 넣은 지명 지우기(2026-10-05) — 유령표는 돌려준다
     'day.verdictUndo': function (p) { var n = dayRec().noms[+p.k]; if (!n || n.done || !n.saved) return rej('invalidSelection', 'noResultToUndo'); dayNomRemove(+p.k); return null; },
+    /* 저주의 그릇 — 낮에 직업 이름을 말함(취소) · 걀레른 결전 확정(2026-11-20, core/바뀐능력.js) */
+    'day.curseSaid': function (p) { if (state.phase !== 'day') return rej('notAllowedInPhase', 'notDay'); var r = curseSaid(+p.seat); if (r === 'no') return rej('invalidSelection', 'pickOne'); if (r === 'void') effects.push({ kind: 'notice', text: SAY('nc.curseVoid') }); save(); return null; },
+    'day.curseUnsay': function (p) { curseUnsay(+p.seat); save(); return null; },
+    'day.duel': function (p) { if (!duelResolve({ seat: p.seat === undefined || p.seat === null ? undefined : +p.seat, tie: Array.isArray(p.tie) ? p.tie.map(Number) : undefined })) return rej('invalidSelection', 'pickOne'); save(); return null; },
     'day.tie': function (p) { if (state.phase !== 'day') return rej('notAllowedInPhase', 'notDay');
       var D = dayRec(), G = execGate();
       if (p.how === 'undo') { if (!D.tieNone) return rej('invalidSelection', 'noDecisionToUndo'); delete D.tieNone; save(); return null; }
@@ -1728,6 +1741,8 @@ var NativeCore = (function () {
       else if (k === 'cure') pickCure(owner, a.arg);
       else if (k === 'revive') pickRevive(owner);
       else if (k === 'swap') pickSwap(owner);
+      else if (k === 'link') pickLink(owner);
+      else if (k === 'seat_swap') pickSeatSwap(owner);
       else if (k === 'reveal') pickReveal(owner);
       else if (k === 'killif') pickJudge(owner, a.arg);
       else if (k === 'tokenif') { var ct = a.arg.split(':'); pickTokenIf(owner, ct[0], ct[1]); }

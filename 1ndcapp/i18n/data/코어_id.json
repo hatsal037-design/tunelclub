@@ -2966,5 +2966,16 @@
  "서로 얼굴을 확인해 주세요.": "Saling lihat.",
  "지금 보여 드리는 분이 {r}입니다.": "Yang saya tunjukkan adalah {r}.",
  "지금 보여 드리는 분들이 {r}입니다.": "Yang saya tunjukkan adalah {r}.",
- "서로가 같은 조직입니다.": "Kalian satu kelompok."
+ "서로가 같은 조직입니다.": "Kalian satu kelompok.",
+ "🧵 {r} · {r} 생명줄로 묶었어요.": "🧵 {r} dan {r} diikat dengan benang nyawa.",
+ "🪑 {r} ↔ {r} — 다음 낮이 시작될 때 자리를 맞바꿔요.": "🪑 {r} ↔ {r} — bertukar kursi saat hari berikutnya dimulai.",
+ "🪑 오늘 자리를 바꾼 방랑마술사는 {r}이에요 — 알려 주세요.": "🪑 Penyihir pengembara yang menukar kursi hari ini adalah {r} — beri tahu.",
+ "취함·중독 상태라 무효예요 — 저주가 걸리지 않아요.": "Mabuk atau keracunan — tidak berlaku, kutukan tidak aktif.",
+ "걀레른 결전 — 남은 {n}명이 투표로 한 명을 처형해요": "Duel terakhir — {n} pemain tersisa memilih satu untuk dieksekusi",
+ "결전에서 {r}을 처형 → {r} 승리": "Duel mengeksekusi {r} → {r} menang",
+ "결전에서 {r}를 처형 → {r} 승리": "Duel mengeksekusi {r} → {r} menang",
+ "결전에서 {r}을 처형하지 못했어요 → 악 승리": "Duel tidak mengeksekusi {r} → jahat menang",
+ "결전에서 {r}를 처형하지 못했어요 → 악 승리": "Duel tidak mengeksekusi {r} → jahat menang",
+ "저주를 받았어요 — 내 직업 이름을 말하면 그날 밤 죽어요(직업은 그대로)": "Kamu menerima kutukan — kalau menyebut nama peranmu, kamu mati malam itu (peranmu tetap)",
+ "🪑 방랑마술사 — {r} ↔ {r} 두 사람이 서로 자리를 바꿔 앉게 해 주세요(번호는 의자를 따라가요).": "🪑 Penyihir pengembara — minta {r} dan {r} bertukar kursi (nomor tetap di kursi)."
 }

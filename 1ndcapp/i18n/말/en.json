@@ -765,5 +765,14 @@
  "mt.say.showMinion": "The one I am showing you is {m@w}.",
  "mt.say.showMinions": "The ones I am showing you are your {m@w}.",
  "mt.say.groupOpen": "{g@w}, open your eyes.",
- "mt.say.sameGroup": "You are in the same group."
+ "mt.say.sameGroup": "You are in the same group.",
+ "pk.linked": "🧵 Bound {a@pk} and {b@pk} with a lifeline.",
+ "pk.seatSwapSet": "🪑 {a@pk} ↔ {b@pk} — they swap seats when the next day starts.",
+ "note.demon.vagabond": "🪑 The wandering magician who swapped seats today is {s@pk} — tell the demon.",
+ "nc.curseVoid": "Drunk or poisoned — no effect, the curse does not trigger.",
+ "wn.duel": "Final showdown — the {n} remaining players vote to execute one",
+ "wn.duelGood": "The showdown executed the {=demon@tw} → {=town@tw} wins",
+ "wn.duelEvil": "The showdown did not execute the {=demon@tw} → evil wins",
+ "nc.ans.curse": "You received the curse — if you say your job name, you die that night (your job stays the same)",
+ "dy.seatSwap": "🪑 Wandering magician — have {a@pk} and {b@pk} swap seats (numbers stay with the chairs)."
 }

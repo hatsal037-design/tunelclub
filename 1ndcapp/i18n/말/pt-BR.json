@@ -765,5 +765,14 @@
  "mt.say.showMinion": "Quem estou mostrando é {m@w}.",
  "mt.say.showMinions": "Quem estou mostrando são seus {m@w}.",
  "mt.say.groupOpen": "{g@w}: abram os olhos.",
- "mt.say.sameGroup": "Vocês são do mesmo grupo."
+ "mt.say.sameGroup": "Vocês são do mesmo grupo.",
+ "pk.linked": "🧵 {a@pk} e {b@pk} ligados por um fio da vida.",
+ "pk.seatSwapSet": "🪑 {a@pk} ↔ {b@pk} — trocam de lugar quando o próximo dia começar.",
+ "note.demon.vagabond": "🪑 O mago errante que trocou os lugares hoje é {s@pk} — conte.",
+ "nc.curseVoid": "Bêbado ou envenenado — sem efeito, a maldição não ativa.",
+ "wn.duel": "Duelo final — os {n} restantes votam para executar um",
+ "wn.duelGood": "O duelo executou o {=demon@tw} → {=town@tw} vence",
+ "wn.duelEvil": "O duelo não executou o {=demon@tw} → o mal vence",
+ "nc.ans.curse": "Você recebeu a maldição — se disser o nome do seu papel, morre naquela noite (seu papel continua o mesmo)",
+ "dy.seatSwap": "🪑 Mago errante — peça para {a@pk} e {b@pk} trocarem de lugar (os números ficam nas cadeiras)."
 }

@@ -2966,5 +2966,16 @@
  "서로 얼굴을 확인해 주세요.": "Hãy nhìn nhau.",
  "지금 보여 드리는 분이 {r}입니다.": "Người tôi đang chỉ là {r}.",
  "지금 보여 드리는 분들이 {r}입니다.": "Những người tôi đang chỉ là {r}.",
- "서로가 같은 조직입니다.": "Các bạn cùng một tổ chức."
+ "서로가 같은 조직입니다.": "Các bạn cùng một tổ chức.",
+ "🧵 {r} · {r} 생명줄로 묶었어요.": "🧵 Đã buộc {r} và {r} bằng sợi dây sinh mệnh.",
+ "🪑 {r} ↔ {r} — 다음 낮이 시작될 때 자리를 맞바꿔요.": "🪑 {r} ↔ {r} — đổi chỗ khi ngày tiếp theo bắt đầu.",
+ "🪑 오늘 자리를 바꾼 방랑마술사는 {r}이에요 — 알려 주세요.": "🪑 Ảo thuật gia lang thang đã đổi chỗ hôm nay là {r} — hãy báo.",
+ "취함·중독 상태라 무효예요 — 저주가 걸리지 않아요.": "Đang say hoặc trúng độc — vô hiệu, lời nguyền không kích hoạt.",
+ "걀레른 결전 — 남은 {n}명이 투표로 한 명을 처형해요": "Trận quyết đấu — {n} người còn lại bỏ phiếu xử tử một người",
+ "결전에서 {r}을 처형 → {r} 승리": "Trận quyết đấu xử tử {r} → {r} thắng",
+ "결전에서 {r}를 처형 → {r} 승리": "Trận quyết đấu xử tử {r} → {r} thắng",
+ "결전에서 {r}을 처형하지 못했어요 → 악 승리": "Trận quyết đấu không xử tử được {r} → phe ác thắng",
+ "결전에서 {r}를 처형하지 못했어요 → 악 승리": "Trận quyết đấu không xử tử được {r} → phe ác thắng",
+ "저주를 받았어요 — 내 직업 이름을 말하면 그날 밤 죽어요(직업은 그대로)": "Bạn đã nhận lời nguyền — nếu nói tên vai trò của mình, bạn chết vào đêm đó (vai trò giữ nguyên)",
+ "🪑 방랑마술사 — {r} ↔ {r} 두 사람이 서로 자리를 바꿔 앉게 해 주세요(번호는 의자를 따라가요).": "🪑 Ảo thuật gia lang thang — cho {r} và {r} đổi chỗ (số theo ghế)."
 }

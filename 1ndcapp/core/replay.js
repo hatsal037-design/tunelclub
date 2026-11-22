@@ -14,7 +14,7 @@ var GameReplay = (function () {
   function seatNm(n) { if (typeof seatNo === 'function') return seatNo(n); var CT = /** @type {any} */ (globalThis).CoreText; return CT && CT.packs && CT.packs.ko ? CT.seat(CT.pack('_seat'), n) : String(n); }
   /* 사건 종류 코드 — 코어가 함께 올라와 있으면 그 접근자(evType), 복기만 따로 돌면 code 칸 → 옛 한국어 type 표(고정값 EVENT 와 같은 값) (2026-11-04 구조 개선 4) */
   /* 장면 톤(톤: good 마을에 좋은 일 · bad 나쁜 일) — 화면은 종류 글 대신 이 코드로 색을 정한다(2026-11-04 구조 개선 5) */
-  var EV_KO = { '밤 시작': 'night_start', '밤 지목': 'night_pick', '낮 시작': 'day_start', '사망': 'death', '부활': 'revive', '처형': 'execute', '지명': 'nominate', '투표': 'vote', '1회 능력 사용': 'once_used', '계승': 'succession', '토큰': 'token', '판 종료': 'finish', '판 시작': 'start', '역할 변경': 'role_change', '판세 개입': 'director', '앱 선택': 'app_pick', '정보 전달': 'info_shown', '되돌림': 'undo', '블러프 바꿈': 'bluff_reroll', '자동 마감': 'auto_close', '슬레이어 쏘기': 'slay_shot' };
+  var EV_KO = { '밤 시작': 'night_start', '밤 지목': 'night_pick', '낮 시작': 'day_start', '사망': 'death', '부활': 'revive', '처형': 'execute', '지명': 'nominate', '투표': 'vote', '1회 능력 사용': 'once_used', '계승': 'succession', '토큰': 'token', '판 종료': 'finish', '판 시작': 'start', '역할 변경': 'role_change', '판세 개입': 'director', '앱 선택': 'app_pick', '정보 전달': 'info_shown', '되돌림': 'undo', '블러프 바꿈': 'bluff_reroll', '자동 마감': 'auto_close', '슬레이어 쏘기': 'slay_shot', '능력 사건': 'ability_event' };
   function evType(e) { if (typeof globalThis.evType === 'function') return globalThis.evType(e); var c = e && e.code; if (c && c !== 'other') return c; return (e && EV_KO[e.type]) || 'other'; }
   /* 정보 직업 — 코어가 함께 올라와 있으면 그 판단(옛 기록엔 «정보 전달»이 없어 이걸로 «주요 인물»을 잡는다) */
   function infoRole(id, mode) { try {   // 그 판의 모드 직업표에서 — 지난 판은 지금 모드와 다를 수 있다
@@ -24,6 +24,8 @@ var GameReplay = (function () {
   function isGuardWhat(w) { var m = /^token:(.+)$/.exec(String(w || '')); if (!m) return false; if (typeof tokCls === 'function') return tokCls(m[1]) === 'protect'; return /보호/.test(m[1]); }
   function seatsOf(list) { return (list || []).map(function (l) { var m = String(l).match(/좌석 (\d+)/); return m ? +m[1] : null; }).filter(function (x) { return x; }); }
 
+  /* 방랑마술사 자리 바꿈(2026-11-20) — 기록은 사람을 따라 옮겨 «지금 자리»로 남는다. 그때(n, phase) 그 사람이 앉아 있던 자리로 되돌린다(core/바뀐능력.js chairThen 과 같은 셈) */
+  function chairThen(moves, n, phase, k) { return (moves || []).filter(function (m) { return n < m.n || (n === m.n && phase !== 'day'); }).sort(function (x, y) { return y.n - x.n; }).reduce(function (c, m) { return c === m.a ? m.b : (c === m.b ? m.a : c); }, k); }
   function build(L, o) {
     o = o || {};
     var P = {}, ev = (L && L.events) || [], N = 0;
@@ -31,6 +33,7 @@ var GameReplay = (function () {
     var team = {}; Object.keys(P).forEach(function (k) { team[k] = P[k].편; });   // 계승으로 바뀌는 지금 편(밤을 지나며 갱신)
     var evil = function (s) { return !!EVIL[team[s]]; }, name = function (s) { return P[s] ? P[s].이름 : seatNm(s); };
     var nights = Math.max(1, (L && L.nights) || 1); ev.forEach(function (e) { if (e.n > nights) nights = e.n; });
+    var MV = (L && L.moves) || [], layout = function (n, ph) { if (!MV.length) return undefined; var m = {}; Object.keys(P).forEach(function (f) { m[f] = chairThen(MV, n, ph, +f - 1) + 1; }); return m; };   /* 그 밤·낮의 배치 — 자리표가 사람을 그때 자리에 그린다 */
     var gotInfo = {}, pointedEvil = {};   // 그 전까지 정보를 받았나 · 참 정보로 악을 짚었나 — «주요 인물»
     var out = { 승자: (L && L.winner) || null, 인원: Object.keys(P).length, 모드: (L && L.modeName) || '', 사람: Object.keys(P).map(Number).sort(function (a, b) { return a - b; }).map(function (s) { return { 자리: s, 이름: P[s].이름, 직업: P[s].직업, 편: P[s].편 }; }), 밤: [], 낮: [], 주요장면: [], 통계: {}, 흐름: [] };   // 사람 — 판이 끝난 뒤라 직업 공개
     var scenes = [];
@@ -55,7 +58,7 @@ var GameReplay = (function () {
         });
       });
       var succ = ev.filter(function (e) { return e.n === n && evType(e) === 'succession'; });
-      out.밤.push({ 밤: n, 악행동: picks.filter(function (p) { return p.악; }), 선행동: picks.filter(function (p) { return !p.악; }), 죽음: deaths, 막힘: blocked, 정보: infos, 계승: succ.length });
+      out.밤.push({ 밤: n, 배치: layout(n, 'night'), 악행동: picks.filter(function (p) { return p.악; }), 선행동: picks.filter(function (p) { return !p.악; }), 죽음: deaths, 막힘: blocked, 정보: infos, 계승: succ.length });
       deaths.forEach(function (d) {
         if (d.까닭 === 'demon' && !d.악 && (gotInfo[d.자리] || pointedEvil[d.자리] || d.정보직업)) scenes.push({ 순위: 3, 때: whenNight(n), 순: n * 2, 종류: T('rpl.kind.lostKey'), 톤: 'bad', 글: T(pointedEvil[d.자리] ? 'rpl.t.lostPointed' : gotInfo[d.자리] ? 'rpl.t.lostInfo' : 'rpl.t.lostRole', { p: d.이름, r: d.직업 }), 자리: [d.자리] });
       });
@@ -75,7 +78,7 @@ var GameReplay = (function () {
       var dayDeaths = ev.filter(function (e) { return day(e) && evType(e) === 'death'; }).map(function (e) { return { 자리: e.seat, 이름: name(e.seat), 직업: RT.role(e), 까닭: e.cause || null, 악: evil(e.seat) }; });
       var start = ev.filter(function (e) { return day(e) && evType(e) === 'day_start'; })[0];
       if (start) out.흐름.push({ 밤: n, 산선: start.산선, 산악: start.산악 });
-      if (noms.length || votes.length || execs.length || dayDeaths.length || start) out.낮.push({ 밤: n, 지명: noms, 투표: votes, 처형: execs, 죽음: dayDeaths });
+      if (noms.length || votes.length || execs.length || dayDeaths.length || start) out.낮.push({ 밤: n, 배치: layout(n, 'day'), 지명: noms, 투표: votes, 처형: execs, 죽음: dayDeaths });
       execs.forEach(function (x) {
         if (x.악) scenes.push({ 순위: 2, 때: T('rpl.w.day', { n: n }), 순: n * 2 + 1, 종류: T('rpl.kind.caught'), 톤: 'good', 글: T('rpl.t.exec', { p: x.이름, r: x.직업 }), 자리: [x.자리], 흉수: x.흉수 });
         else scenes.push({ 순위: 5, 때: T('rpl.w.day', { n: n }), 순: n * 2 + 1, 종류: T('rpl.kind.execGood'), 톤: 'bad', 글: T('rpl.t.exec', { p: x.이름, r: x.직업 }), 자리: [x.자리] });

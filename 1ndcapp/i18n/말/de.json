@@ -766,5 +766,14 @@
  "mt.say.showMinion": "Die Person, die ich zeige, ist {m@w}.",
  "mt.say.showMinions": "Die Personen, die ich zeige, sind deine {m@w}.",
  "mt.say.groupOpen": "{g@w}: bitte die Augen öffnen.",
- "mt.say.sameGroup": "Ihr gehört zur selben Gruppe."
+ "mt.say.sameGroup": "Ihr gehört zur selben Gruppe.",
+ "pk.linked": "🧵 {a@pk} und {b@pk} mit einer Lebenslinie verbunden.",
+ "pk.seatSwapSet": "🪑 {a@pk} ↔ {b@pk} — tauschen zu Beginn des nächsten Tages die Plätze.",
+ "note.demon.vagabond": "🪑 Der Wandermagier, der heute die Plätze tauschte, ist {s@pk} — teile es mit.",
+ "nc.curseVoid": "Betrunken oder vergiftet — keine Wirkung, der Fluch greift nicht.",
+ "wn.duel": "Letzter Showdown — die {n} Übrigen stimmen ab und richten einen hin",
+ "wn.duelGood": "Im Showdown wurde der {=demon@tw} hingerichtet → {=town@tw} gewinnt",
+ "wn.duelEvil": "Der {=demon@tw} wurde im Showdown nicht hingerichtet → das Böse gewinnt",
+ "nc.ans.curse": "Du hast den Fluch erhalten — sagst du deinen Rollennamen, stirbst du in jener Nacht (deine Rolle bleibt)",
+ "dy.seatSwap": "🪑 Wandermagier — lass {a@pk} und {b@pk} die Plätze tauschen (Nummern bleiben bei den Stühlen)."
 }

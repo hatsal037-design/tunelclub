@@ -743,5 +743,14 @@
  "mt.say.showMinion": "지금 보여 드리는 분이 {m@w}입니다.",
  "mt.say.showMinions": "지금 보여 드리는 분들이 {m@w}입니다.",
  "mt.say.groupOpen": "{g@w}{g@w^는} 눈을 떠 주세요.",
- "mt.say.sameGroup": "서로가 같은 조직입니다."
+ "mt.say.sameGroup": "서로가 같은 조직입니다.",
+ "pk.linked": "🧵 {a@pk} · {b@pk} 생명줄로 묶었어요.",
+ "pk.seatSwapSet": "🪑 {a@pk} ↔ {b@pk} — 다음 낮이 시작될 때 자리를 맞바꿔요.",
+ "note.demon.vagabond": "🪑 오늘 자리를 바꾼 방랑마술사는 {s@pk}이에요 — 알려 주세요.",
+ "nc.curseVoid": "취함·중독 상태라 무효예요 — 저주가 걸리지 않아요.",
+ "wn.duel": "걀레른 결전 — 남은 {n}명이 투표로 한 명을 처형해요",
+ "wn.duelGood": "결전에서 {=demon@tw|을} 처형 → {=town@tw} 승리",
+ "wn.duelEvil": "결전에서 {=demon@tw|을} 처형하지 못했어요 → 악 승리",
+ "nc.ans.curse": "저주를 받았어요 — 내 직업 이름을 말하면 그날 밤 죽어요(직업은 그대로)",
+ "dy.seatSwap": "🪑 방랑마술사 — {a@pk} ↔ {b@pk} 두 사람이 서로 자리를 바꿔 앉게 해 주세요(번호는 의자를 따라가요)."
 }

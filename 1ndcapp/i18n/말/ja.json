@@ -765,5 +765,14 @@
  "mt.say.showMinion": "いま示す人が{m@w}です。",
  "mt.say.showMinions": "いま示す人たちが{m@w}です。",
  "mt.say.groupOpen": "{g@w}は目を開けてください。",
- "mt.say.sameGroup": "お互い同じ組織です。"
+ "mt.say.sameGroup": "お互い同じ組織です。",
+ "pk.linked": "🧵 {a@pk}と{b@pk}を命の糸で結びました。",
+ "pk.seatSwapSet": "🪑 {a@pk} ↔ {b@pk} — 次の昼の始まりに席を入れ替えます。",
+ "note.demon.vagabond": "🪑 今日席を入れ替えた放浪の魔術師は{s@pk}です — 伝えてください。",
+ "nc.curseVoid": "酔い・毒の状態なので無効です — 呪いはかかりません。",
+ "wn.duel": "最終決戦 — 残った{n}人が投票で一人を処刑します",
+ "wn.duelGood": "決戦で{=demon@tw}を処刑 → {=town@tw}の勝利",
+ "wn.duelEvil": "決戦で{=demon@tw}を処刑できませんでした → 悪の勝利",
+ "nc.ans.curse": "呪いを受けました — 自分の職業名を言うとその夜に死にます(職業はそのまま)",
+ "dy.seatSwap": "🪑 放浪の魔術師 — {a@pk}と{b@pk}に席を入れ替えてもらってください(番号は椅子に残ります)。"
 }

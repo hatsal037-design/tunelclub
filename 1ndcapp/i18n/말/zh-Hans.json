@@ -765,5 +765,14 @@
  "mt.say.showMinion": "我现在指的人是{m@w}。",
  "mt.say.showMinions": "我现在指的人是{m@w}。",
  "mt.say.groupOpen": "{g@w}请睁眼。",
- "mt.say.sameGroup": "你们是同一组织。"
+ "mt.say.sameGroup": "你们是同一组织。",
+ "pk.linked": "🧵 已用生命线连结 {a@pk} 和 {b@pk}。",
+ "pk.seatSwapSet": "🪑 {a@pk} ↔ {b@pk} — 下个白天开始时交换座位。",
+ "note.demon.vagabond": "🪑 今天交换座位的流浪魔术师是 {s@pk} — 请告知。",
+ "nc.curseVoid": "处于醉酒·中毒状态，无效 — 诅咒不会生效。",
+ "wn.duel": "最终决战 — 剩下的 {n} 人投票处决一人",
+ "wn.duelGood": "决战处决了{=demon@tw} → {=town@tw}获胜",
+ "wn.duelEvil": "决战未能处决{=demon@tw} → 邪恶获胜",
+ "nc.ans.curse": "你受到了诅咒 — 说出自己的职业名，当晚就会死(职业不变)",
+ "dy.seatSwap": "🪑 流浪魔术师 — 请 {a@pk} 和 {b@pk} 交换座位(号码跟着椅子)。"
 }
