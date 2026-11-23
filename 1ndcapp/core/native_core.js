@@ -822,7 +822,19 @@ var NativeCore = (function () {
   function pubState(epoch) { var P = {}; try { P = JSON.parse(localStorage.getItem(PUB_KEY) || 'null') || {}; } catch (e) { 드러냄('native_core.pubState', e); }
     return P.epoch === epoch ? P : { epoch: epoch, rev: P.rev || 0 }; }   // 판이 바뀌면 스냅샷·구성은 비우고 revision 은 이어서
   function pubSave(P) { localStorage.setItem(PUB_KEY, J(P)); }
-  function pubEpoch() { return firstNightBegun() && state.log ? (state.log.uuid || state.log.id || null) : null; }
+  /* 판을 끝내면 state.log 가 보관으로 넘어가 비는데, 끝난 화면은 그 판의 번호를 그대로 실어야 한다 —
+     참가자 복기·메모 복기가 이 번호로 서버의 판을 찾는다(2026-11-24 다듬기: 끝나면 null → «none»이라 영영 못 찾음). */
+  /* 판 도중 자리를 빼면 뒤 자리 순번이 하나씩 당겨진다. 공개 스냅샷은 순번으로 적혀 있어 같이 당기지 않으면
+     큰 화면에서 산 사람이 죽은 걸로, 죽은 사람이 산 걸로 나오고 «판 흐름»의 지난 사망·처형 이름이 판 끝까지 어긋났다(2026-11-24 재현).
+     뺀 사람의 지난 사망은 흐름에서 빠지고, 뺀 사람의 처형 기록은 그 낮 «처형 없음»처럼 비운다(가리킬 자리가 없다). */
+  function pubSeatRemoved(i) { try {
+    var P = pubState(pubEpoch()), FZ = P.fz || {};
+    if (Array.isArray(P.seats)) P.seats.splice(i, 1);
+    Object.keys(FZ).forEach(function (k) { var v = FZ[k];
+      if (k.charAt(0) === 'n' && Array.isArray(v)) FZ[k] = v.map(function (id) { var j = +String(id).slice(1) - 1; return j === i ? null : 's' + ((j > i ? j - 1 : j) + 1); }).filter(Boolean);
+      else if (k.charAt(0) === 'd' && v && typeof v.t === 'number') FZ[k] = v.t === i ? null : (v.t > i ? Object.assign({}, v, { t: v.t - 1 }) : v); });
+    pubSave(P); } catch (e) { 드러냄('native_core.pubSeatRemoved', e); } }
+  function pubEpoch() { if (!firstNightBegun()) return null; var L = state.log || endLog(); return L ? (L.uuid || L.id || null) : null; }
   /* 조회는 마지막 확정본만 읽는다. 부팅 준비와 성공 명령이 공개 본문·스냅샷을 함께 갱신한다.
      조회 중 dayRec·execGate를 부르거나 저장하지 않아, 연결 화면을 읽는 횟수가 판에 영향을 주지 않는다. */
   function displayPublic() {
@@ -865,7 +877,7 @@ var NativeCore = (function () {
       return { dead: dead, ghost: dead && ((s.rem || []).indexOf('유령표') >= 0 || (!s.dead && !villageType())), reveal: rv, cause: dead ? pubCause(i) : null }; });   // 죽은 척도 유령표를 받는다(fakeDeadMark, 유령표 쓰는 판) — 안 쓰는 판은 예전처럼 있음으로
     var seats = (state.seats || []).map(function (s, i) { var v = (P.seats && P.seats[i]) || { dead: false, ghost: false };
       return { id: sid(i), number: i + 1, name: s.name || '', dead: v.dead, ghost: v.ghost, reveal: v.reveal || null, cause: v.dead ? v.cause || pubCause(i) : null }; });   // 까닭도 공개 스냅샷에서(밤에 되살아나 바뀌어도 발표 전엔 그대로)
-    var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), tvw = localStorage.getItem(TVW_KEY), waiting = pot0 && !pot0.practice && (tvw === '1' ? (!began || ended) : tvw !== '0' && tvw !== '2' && !began) ? { code: (tvp && tvp.code) || null, title: (pot0 && pot0.title) || (tvp && tvp.title) || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: ((tvp && tvp.people) || []).slice(0, 20), notice: (pot0 && pot0.note) || null } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
+    var tvp = tvPlaza(), pot0 = (function () { try { return potNow(); } catch (e) { return null; } })(), tvw = localStorage.getItem(TVW_KEY), waiting = pot0 && !pot0.practice && (tvw === '1' ? (!began || ended) : tvw !== '0' && tvw !== '2' && !began) ? { code: (tvp && tvp.code) || null, title: (pot0 && pot0.title) || (tvp && tvp.title) || '', date: (pot0 && pot0.dates && pot0.dates[0]) || null, people: ((tvp && tvp.people) || []).slice(0, 20), count: (tvp && typeof tvp.count === 'number') ? tvp.count : ((tvp && tvp.people) || []).length, notice: (pot0 && pot0.note) || null } : null;   // 이름은 열린 광장 것을 바로(이름을 바꾸면 그 자리에서), 날짜는 광장 연 날
     var scene = waiting ? 'waiting' : !began ? 'prep' : ended ? 'ended' : !isDay ? 'night' : !announced ? 'dawn' : 'discussion';
     var lpot = (function () { try { return potsAll().reduce(function (m, x) { return !m || (x.openedAt || 0) > (m.openedAt || 0) ? x : m; }, null); } catch (e) { return null; } })();   // 가장 최근 광장 — 끝난 판은 기록이 보관으로 넘어가 판에서 광장을 못 찾는다
     var idle = !waiting && (((!began || ended) && ((!pot0 && !!(lpot && lpot.closedAt)) || (ended && tvw === '1'))) || (!began && tvw !== '0' && tvw !== '2'));   // 자리 잡기 전인데 대기 QR 이 없으면(광장이 없거나 체크인 코드가 아직 없음) 빈 자리 원 대신 빈 장면 — 큰 화면 기기의 대기 사진이 뜬다(2026-11-12 햇살님)   // 끝난 판에서 «한 판 더»(대기 표시 '1')를 눌렀는데 대기 QR 이 없으면 자리 잡기 전까지 같은 빈 장면(2026-10-26 햇살님 아침 선택 1-4 = ① — 지난 판 종료가 역할 나눌 때까지 다시 뜨던 것)   // 광장이 닫혔고 도는 판이 없으면 빈 화면 — 지난 판 종료·자리를 다시 띄우지 않는다(2026-10-25 햇살님 «닫은 광장에 이전 게임 화면이 나온다»)
@@ -1183,7 +1195,7 @@ var NativeCore = (function () {
       var r = state.rng; state.rng = null; try { return f0.apply(this, arguments); } finally { state.rng = r; } };
     if (nm === 'uuidV7') uuidV7 = g; else personNew = g; }, this);
   noticeHook = function (m) { effects.push({ kind: 'notice', text: String(m) }); };   // 앱 쪽 안내 한 줄을 화면 알림으로(기록 덜어 내기 등)
-  var REC_SKIP = { 'sync.markUploaded': 1, 'sync.merge': 1, 'display.plaza': 1, 'display.cycle': 1, 'display.leaveEnd': 1, 'display.wrap': 1 };   // 판 밖 일(서버 동기화)은 적지 않는다
+  var REC_SKIP = { 'sync.markUploaded': 1, 'sync.merge': 1, 'display.plaza': 1, 'display.cycle': 1, 'display.leaveEnd': 1, 'display.wrap': 1, 'display.voting': 1 };   // 판 밖 일(서버 동기화)은 적지 않는다
   function recStore() { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k !== 'botc_logs' && k !== 'botc_pots') o[k] = localStorage.getItem(k); } return o; }
   /* 판 시작 때의 기록 요약(logsDigest) — 앉은 사람 것만. 다른 판 사람 이름은 남기지 않는다(직전 판 자리는 앉은 사람 아니면 '~번호') */
   function recDigest() { var d = logsDigest(), names = {}, keys = {};
@@ -1487,7 +1499,8 @@ var NativeCore = (function () {
     /* 판에서 빼기 — 퇴장한 손님(사망과 다름). 웹 좌석 시트 «빼기»(removeSeat): 기록·지목은 seatRemoved 가 좌석 번호를 따라 옮긴다. 5자리 아래로는 못 뺀다 */
     'seat.remove': function (p) { var i = +p.seat; if (!state.seats[i]) return rej('invalidSelection', 'seatNotFound'); if (state.seats.length <= 5) return rej('invalidSelection', 'minFiveSeats');
       var c0 = null; try { c0 = current(); } catch (e) { 드러냄('native_core.seat.remove', e); } var dk = c0 ? c0.o.dk : null;
-      var keep = editing; editing = -1; try { asking({ force: true }, function () { removeSeat(i); }); } finally { editing = keep; }
+      var keep = editing, n0 = state.seats.length; editing = -1; try { asking({ force: true }, function () { removeSeat(i); }); } finally { editing = keep; }
+      if (state.seats.length === n0 - 1) pubSeatRemoved(i);   // 공개 스냅샷(자리 순번으로 적힌 생사·지난 사망·처형)도 한 칸 당긴다
       if (dk !== null && dk !== i && state.phase !== 'day') { try { follow(typeof dk === 'number' ? (dk > i ? dk - 1 : dk) : dk); } catch (e) { 드러냄('native_core.seat.remove', e); } }   // 보던 카드를 지킨다(앞 사람을 빼도 한 칸 건너뛰지 않게) — 보던 사람을 뺐으면 다음 카드로 자연히
       return null; },
     'seat.setSide': function (p) { var i = +p.seat, x = state.seats[i], c = x && x.char && CMAP()[x.char]; if (!c || ['good', 'evil'].indexOf(p.side) < 0) return rej('invalidSelection', 'pickSide');
@@ -1549,7 +1562,8 @@ var NativeCore = (function () {
     'display.plaza': function (p) {   // 진행자 화면이 광장 체크인 코드·이름·들어온 사람 닉네임을 넣는다(null 이면 걷는다)
       if (!p || !p.code) { localStorage.removeItem(TVP_KEY); return null; }
       if (!/^[A-Z]{8}$/.test(String(p.code))) return rej('invalidSelection', 'notCheckinCode');
-      localStorage.setItem(TVP_KEY, J({ code: String(p.code), title: String(p.title || '').slice(0, 40), people: (Array.isArray(p.people) ? p.people : []).map(function (x) { return String(x || '').slice(0, 30); }).slice(0, 20) }));   // 한 판 최대 20명
+      localStorage.setItem(TVP_KEY, J({ code: String(p.code), title: String(p.title || '').slice(0, 40), people: (Array.isArray(p.people) ? p.people : []).map(function (x) { return String(x || '').slice(0, 30); }).slice(0, 20),   // 비석은 20개까지
+        count: Math.min(999, Array.isArray(p.people) ? p.people.length : 0) }));   // «들어온 사람 n»은 자르기 전 수 — 21번째부터 숫자도 안 늘던 것(2026-11-24)
       return null; },
     'display.setTimer': function (p) { var P = pubState(pubEpoch()), s = p && p.state;
       if (!p || s === null || s === undefined) P.timer = null;
@@ -1615,6 +1629,12 @@ var NativeCore = (function () {
       var ok = {}; voters(k).forEach(function (v) { ok[v.index] = 1; }); var sel = (p.voters || []).map(Number);
       if (sel.some(function (i) { return !ok[i]; })) return rej('invalidSelection', 'cannotVote');
       uiDayVoteOpen(k); pickOv.free = pickOv.free || {}; pickOv.free.sel = sel; uiDayVoteCommit(); return null; },
+    /* 투표창을 열었다·닫았다(아이폰 진행 화면) — 큰 화면이 «투표 중»으로 간다(2026-11-24).
+       wz.voteOpen 은 웹 투표창만 켜서, 아이폰으로 진행하면 손 드는 동안 큰 화면이 «지명»에 머물렀다. 판 내용은 안 바꾼다(기록 제외). 확정(day.vote)하면 저절로 꺼진다 */
+    'display.voting': function (p) { var k = p ? p.k : null;
+      if (k === null || k === undefined) { wz.voteOpen = null; save(); return null; }
+      var n = state.phase === 'day' ? dayRec().noms[+k] : null; if (!n || n.done) return rej('invalidSelection', 'noNominationToVote');
+      wz.voteOpen = +k; save(); return null; },
     'day.execute': function (p) { var D = dayRec(), k = +p.k, n = D.noms[k]; if (!n || n.done) return rej('invalidSelection', 'noNominationToExecute');
       var G = execGate(); if (k !== G.k && !p.ok_execGate) return { status: 'needsConfirmation', token: 'execGate', revision: revision, reasonCode: 'belowGate', choices: [(G.reason ? G.reason.split(' — ')[0] + ' — ' : '') + SAY('ms.ask.belowGate')] };   // 웹도 묻고 예면 진행한다
       var nToday = state.nights || 1, execedToday = D.noms.some(function (o) { return o.done; }) || state.seats.some(function (x) { return x && x.dead && x.cause === 'exec' && x.causeN === nToday; });   // 웹 uiDayExec 와 같은 잣대 — 하늘의 벌·좌석 시트 처형도 센다
@@ -1670,6 +1690,7 @@ var NativeCore = (function () {
     'game.again': function (p) { if (!gameEnded()) return rej('notAllowedInPhase', 'gameNotOver'); state.rvPos = -1; state.rvSeen = [];   /* 새 판은 넘기기를 처음부터 — 앞 판 위치가 남아 «넘기기 이어 하기 · 8/8»로 앞 판 배정 그대로 시작되던 것(2026-11-11 2바퀴 평가) */ state.tvReveal = false; delete state.tvReplay;   /* 끈 채로 — 새 판이 시작되면 아래 걷기에서 지워져 다음 종료 때 다시 먼저 뜬다 */   /* 한 판 더 — 지난 판 직업 공개·복기를 TV 에서 걷는다 */ if (state.practice) localStorage.setItem(PRACTICE_KEY, '1');   /* 연습판에서 «한 판 더»는 계속 연습(웹 연습 마당과 같게) */ wz.again = {}; wzAgainGo(); try { prepClose(); } catch (e) { 드러냄('native_core.game.again', e); }
       if (p && p.shuffle) state.seatShuffle = true;   // «자리 섞어서 다시»
       if (p && p.fresh) { switchEdition(state.edition, { quiet: true, force: true }); state.seats.forEach(function (x) { x.dead = false; delete x.cause; delete x.causeN; }); }   // «바꿔서 한 판 더» — 인원·자리부터 다시 볼 땐 지난 판 흔적(사망·역할)을 걷는다(명단 확정의 끝난 판 갈래와 같게)
+      delete state.rvPos;   // 아직 직업을 안 나눈 새 판 — 자리에 지난 판 직업이 남아 있어도 큰 화면이 «역할 확인 0 / n · 1번 차례»로 앞서 가지 않게(2026-11-24). 직업을 나누면(roles.assign) -1 로 다시 선다
       return null; },
     'seat.toggleToken': function (p) { var i = +p.seat; if (!state.seats[i]) return rej('invalidSelection', 'seatNotFound');
       try { if (!KREG.개념[KID('tok', String(p.token))]) return rej('invalidSelection', 'unknownToken'); } catch (e) { 드러냄('native_core.seat.toggleToken', e); }   // 입구에서 막는다 — 미등록 이름은 저장 가드가 거부한다

@@ -422,5 +422,11 @@
  "a2hs.login": "La première fois, reconnectez-vous avec Kakao",
  "a2hs.ok": "Compris",
  "a2hs.later": "Plus tard",
- "a2hs.install": "Installer l’app"
+ "a2hs.install": "Installer l’app",
+ "gnow.wrap": "Merci d’avoir joué aujourd’hui",
+ "login.failed": "Connexion impossible. Veuillez réessayer",
+ "plaza.joining": "Connexion en cours…",
+ "plaza.leave_ask": "Partir maintenant ? Pour revenir, il faudra rescanner le QR code",
+ "gnow.closed": "La rencontre d’aujourd’hui est terminée",
+ "gnow.late": "Vous n’avez pas de place dans cette partie. Vous jouerez à partir de la suivante"
 }

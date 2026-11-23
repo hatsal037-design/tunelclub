@@ -422,5 +422,11 @@
   "a2hs.login": "Pertama kali, kamu perlu masuk dengan Kakao lagi",
   "a2hs.ok": "Mengerti",
   "a2hs.later": "Nanti",
-  "a2hs.install": "Pasang aplikasi"
+  "a2hs.install": "Pasang aplikasi",
+  "gnow.wrap": "Terima kasih sudah bermain hari ini",
+  "login.failed": "Gagal masuk. Coba lagi",
+  "plaza.joining": "Sedang bergabung…",
+  "plaza.leave_ask": "Keluar sekarang? Untuk masuk lagi kamu harus memindai QR lagi",
+  "gnow.closed": "Pertemuan hari ini sudah selesai",
+  "gnow.late": "Kamu belum punya kursi di permainan ini. Kamu ikut mulai permainan berikutnya"
 }

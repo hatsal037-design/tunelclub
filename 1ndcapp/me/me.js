@@ -4,7 +4,7 @@
 import { html, render, useState, useEffect, useRef, useContext, createContext } from '../lib/preact-htm.js';
 import { mountCards, setBriefTr, saveFiles } from '../js/briefing.js';
 import { Icon } from '../js/icons.js';
-import { NavStack, useNav, Back } from '../js/nav.js';
+import { NavStack, useNav, Back, backPush, backDrop } from '../js/nav.js';
 import { Page, LargeTitle, Section, Row, RowLabel, Labeled, Primary, Segmented, Toggle, Search, RoleArt, ActionSheet, Alert, Empty, NavButton, Sheet, HoldButton, Cover } from '../js/ui.js';
 import { QrScanner } from '../js/qrscan.js';
 import { APC, APF, CUR, josa, ico, geo } from '../js/screen_v5.js';   // 지금 판 = 큰 화면 v5 를 세로로 접은 판(2026-10-26 v6d) — 순환 표시·기호·자리 배치는 큰 화면 것을 그대로
@@ -20,17 +20,27 @@ const rows = r => Array.isArray(r) ? r : (r && (r.rows || r.value)) || [];   // 
 const msgOf = r => r && !r.ok ? (r.code === 'legacy' ? r.legacy : T('err.' + r.code)) : null;
 const photoURL = p => URL_ + '/storage/v1/object/public/' + p;
 const LANGS = [['ko', '한국어'], ['en', 'English'], ['ja', '日本語'], ['es', 'Español'], ['zh-Hans', '简体中文'], ['zh-Hant', '繁體中文'], ['th', 'ไทย'], ['vi', 'Tiếng Việt'], ['id', 'Bahasa Indonesia'], ['pt-BR', 'Português (Brasil)'], ['de', 'Deutsch'], ['fr', 'Français']];
-const DEMO = /[?&]demo=1/.test(location.search);   /* 시안 확인용 — 로그인 없이 화면만 */
+const DEMO = /[?&]demo=1/.test(location.search);
+/* 고르실 것(2026-11-24 다듬기 시안) — 기본은 전부 지금 동작. 정해지면 여기 값만 바꾼다. 시안 찍을 때만 window.__ME_OPT 로 덮는다(주소로는 못 바꾼다)
+   gate: 'after' 체크인 먼저·가입 칸은 뒤(«나중에» 됨) | 'nick' 닉네임과 동의만 받고 바로 들어감(«나중에» 없음, 아이디는 나중에)
+   closedNote: 진행자가 광장을 닫으면 «모임이 끝났어요» 한 줄   ·   lateNote: 판 중에 들어와 내 자리가 없으면 한 줄 */
+const OPT = Object.assign({ gate: 'nick', closedNote: true, lateNote: false },   // 2026-11-25 햇살님 «추천안으로»: 닉네임과 동의만 · 광장 닫힘 한 줄 · 늦게 온 사람 줄은 안 띄움(손으로 앉힌 사람에게도 떠서)
+  (typeof window !== 'undefined' && window.__ME_OPT) || {});   /* 시안 확인용 — 로그인 없이 화면만 */
 
 const auth = { user: null, subs: new Set(),
   async init() { const { data } = await sb.auth.getSession(); this.user = data?.session?.user || null;
+    try { const q = location.search + '&' + location.hash.replace(/^#/, '');   // 카카오 동의 화면에서 취소·오류로 돌아오면 주소에 error 가 붙는다 — 읽고 주소에서 지운다(참가 코드 ?j= 는 남김)
+      if (!this.user && /(^|[?&])error(_code|_description)?=/.test(q)) { this.fail = true; const u = new URL(location.href); ['error', 'error_code', 'error_description'].forEach(k => u.searchParams.delete(k)); history.replaceState(null, '', u.pathname + u.search); } } catch (e) { globalThis.드러냄?.('auth.init.error', e); }   // 주소를 못 읽으면 그냥 로그인 줄만
     sb.auth.onAuthStateChange((_e, s) => { const u = s?.user || null; if ((u && u.id) !== (this.user && this.user.id)) { this.user = u; this.subs.forEach(f => f()); } }); },
-  login(provider = 'kakao') { const back = location.origin + location.pathname + location.search; sb.auth.signInWithOAuth({ provider, options: { redirectTo: back } }); },
-  async logout() { await sb.auth.signOut(); this.user = null; this.subs.forEach(f => f()); },
+  fail: null,   // 로그인하지 못했을 때 한 줄(전엔 말없이 로그인 줄만 다시 보였다)
+  async login(provider = 'kakao') { const back = location.origin + location.pathname + location.search; this.fail = null;
+    try { const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: back } }); if (error) throw error; } catch (e) { this.fail = true; this.subs.forEach(f => f()); } },
+  async logout() { await sb.auth.signOut({ scope: 'local' }); this.user = null;   /* 이 브라우저만 — 기본값(global)은 같은 사람의 모든 기기(진행 중인 폰 앱까지)를 끊는다 */
+    this.subs.forEach(f => f()); },
 };
 function useAuth() { const [, f] = useState(0); useEffect(() => { const g = () => f(x => x + 1); auth.subs.add(g); return () => auth.subs.delete(g); }, []); return DEMO || !!auth.user; }
 const PROVIDERS = ['kakao'];   /* 구글·애플은 키 연결 뒤 ['apple','google','kakao'] — 앱 Account.providers 와 같이 */
-const LoginRows = () => html`<${Section}>${PROVIDERS.map(p => html`<${Row} onClick=${() => auth.login(p)} tint>${T('login.' + p)}<//>`)}<//>`;
+const LoginRows = () => { useAuth(); return html`<${Section} footer=${auth.fail ? T('login.failed') : null}>${PROVIDERS.map(p => html`<${Row} onClick=${() => auth.login(p)} tint>${T('login.' + p)}<//>`)}<//>`; };
 
 function Avatar({ r = {}, size = 40 }) {
   const st = `width:${size}px;height:${size}px`;
@@ -55,17 +65,18 @@ function Loading({ v, children }) { return v === undefined ? html`<div class="bo
 const LIVE_MS = 5000;
 const live = { joined: [], status: {}, people: {}, skew: 0, ready: false, subs: new Set(), on: false,
   emit() { this.subs.forEach(f => f()); },
-  async refresh(full) { const t = this.busy = Date.now(); try { await this.load(full); } finally { if (this.busy === t) this.busy = 0; } },
-  async load(full) {   // 망이 한 번 끊겨도(ok:false) 직전 광장·명단·현황을 그대로 둔다 — 비우면 폴링까지 멈췄다(반증 검토 2026-10-25)
+  async refresh(full) { const t = this.busy = Date.now(); this.seq = (this.seq || 0) + 1; try { await this.load(full, this.seq); } finally { if (this.busy === t) this.busy = 0; } },
+  async load(full, my) {   // my — 이 읽기의 번호. 늦게 끝난 앞 읽기가 뒤 읽기(체크인 직후)의 결과를 빈 목록으로 덮지 않게, 끝날 때 번호가 바뀌어 있으면 버린다(2026-11-24)
+    const stale = () => my && this.seq !== my;   // 망이 한 번 끊겨도(ok:false) 직전 광장·명단·현황을 그대로 둔다 — 비우면 폴링까지 멈췄다(반증 검토 2026-10-25)
     if (DEMO) { demoPlaza(this); this.ready = true; return this.emit(); }
     if (!auth.user) { this.joined = []; this.status = {}; this.ready = true; return this.emit(); }
-    if (full || !this.ready) { const jr = await P.joined(); if (!(jr && jr.ok === false)) this.joined = rows(jr); const pp = {}; for (const x of this.joined) { const r = await P.plazaPeople(x.plaza); pp[x.plaza] = r && r.ok === false ? (this.people[x.plaza] || []) : rows(r); } this.people = pp; }
-    const st = {}; for (const x of this.joined) { const r = await P.plazaStatus(x.plaza); if (r && r.ok) { st[x.plaza] = { ...(r.state || {}), mine: r.mine || null, epoch: r.epoch || null }; if (r.now) this.skew = r.now - Date.now(); } else if (r && r.code === 'net' && this.status[x.plaza]) st[x.plaza] = this.status[x.plaza]; }
-    this.status = st; this.ready = true; this.emit(); },
+    if (full || !this.ready) { const jr = await P.joined(); if (stale()) return; if (!(jr && jr.ok === false)) this.joined = rows(jr); const pp = {}; for (const x of this.joined) { const r = await P.plazaPeople(x.plaza); pp[x.plaza] = r && r.ok === false ? (this.people[x.plaza] || []) : rows(r); } this.people = pp; }
+    const st = {}; for (const x of this.joined) { const r = await P.plazaStatus(x.plaza); if (r && r.ok) { st[x.plaza] = { ...(r.state || {}), mine: r.mine || null, epoch: r.epoch || null }; if (r.now) this.skew = r.now - Date.now(); } else if (r && r.code === 'net' && this.status[x.plaza]) st[x.plaza] = this.status[x.plaza]; else if (r && r.code === 'closed') this.closed = x.host || true; }   // 진행자가 광장을 닫음 — 고르실 것 closedNote
+    if (stale()) return; this.status = st; this.ready = true; this.emit(); },
   slow() { return this.busy && Date.now() - this.busy < 20000; },
   start() { if (this.on) return; this.on = true;   // 보고 있는 동안만 — 다른 탭·화면 꺼짐이면 쉰다
     setInterval(() => { if (!document.hidden && this.joined.length && !DEMO && !this.slow()) this.refresh(); }, LIVE_MS);   // 앞 읽기가 안 끝났으면 건너뜀 — 느린 망에서 겹쳐 쌓이지 않게(20초 넘게 안 오면 걸린 것으로 보고 다시)
-    setInterval(() => { if (!document.hidden && this.joined.length && !DEMO && !this.slow()) this.refresh(true); }, LIVE_MS * 6);   // 체크인 명단·나간 광장은 30초마다
+    setInterval(() => { if (!document.hidden && (this.joined.length || auth.user) && !DEMO && !this.slow()) this.refresh(true); }, LIVE_MS * 6);   // 체크인 명단·나간 광장은 30초마다
     document.addEventListener('visibilitychange', () => { if (!document.hidden && this.joined.length) this.refresh(); }); } };
 /* 자리표 메모(2026-11-14 햇살님 «참가자 웹에도 메모» — 앱 SeatNotes.swift 와 같은 일, 서버 0333). 판 중엔 내 것만, 판 끝나면 그 판 사람 모두(복기) */
 const notes = { plaza: null, epoch: null, m: {}, err: null, subs: new Set(), emit() { this.subs.forEach(f => f()); },
@@ -99,35 +110,38 @@ function demoPlaza(L) {
     mine: { id: 'om_detective', history: [{ n: 1, lines: ['고른 사람: 9번 서준', '받은 답: 시민'] }, { n: 2, lines: ['고른 사람: 3번 민수', '받은 답: 범죄 조직'] }], role: '수사관', team: '시민 편 (선)', side: 'good', ab: '매밤: 한 명을 조사해 범죄자 그룹인지 확인한다. 브로커가 있으면 브로커는 시민으로 보인다.', rule: '처형되면 «시민»으로 공개' } } };
 }
 const openGame = () => window.dispatchEvent(new Event('me-game'));
+/* 광장 «까지» 시각 — 서버 값(UTC)을 이 기기 시각으로. 전엔 글자를 잘라 그대로 보여 9시간 어긋났다 */
+const untilText = t => { const d = t ? new Date(t) : null; if (!d || isNaN(d)) return ''; const p = n => String(n).padStart(2, '0'); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
 function PlazaTab() {
   const on = useAuth(), nav = useNav(), L = useLive(); useTick();
-  const [code, setCode] = useState(''), [msg, setMsg] = useState(null), [scan, setScan] = useState(false);
+  const [code, setCode] = useState(''), [msg, setMsg] = useState(null), [scan, setScan] = useState(false), [going, setGoing] = useState(false), [bye, setBye] = useState(null);
   const pending = !on && window.Participant.codeFrom(location.href);   // QR 로 들어왔는데 아직 로그인 전
-  const checkin = async c => { const r = await P.checkin(c); const bad = msgOf(r) || (r && r.error);
-    if (bad) { setMsg(bad); return; }
+  const checkin = async c => { if (going) return; setGoing(true); let r; try { r = await P.checkin(c); } catch (e) { r = { ok: false, code: 'net' }; } const bad = msgOf(r) || (r && r.error);
+    if (bad) { setGoing(false); setCode(c); setMsg(bad); return; }   // 못 들어갔으면 코드를 칸에 남긴다 — QR 을 다시 안 찍고 «참가»만 누르면 되게
     window.dispatchEvent(new Event('me-reload'));   // 처음 온 사람은 체크인 때 계정이 생긴다(0323) — 다시 읽어야 빈 칸 채우기가 뜬다
-    await live.refresh(true); try { sessionStorage.removeItem('me.game.closed'); } catch {} openGame(); window.dispatchEvent(new Event('me-a2hs')); };   // 알림 창 없이 바로 «지금 판»
+    await live.refresh(true); try { sessionStorage.removeItem('me.game.closed'); } catch {} setGoing(false); openGame(); window.dispatchEvent(new Event('me-a2hs')); };   // 알림 창 없이 바로 «지금 판»
   useEffect(() => { live.refresh(true); }, [on]);
   useEffect(() => { const c = window.Participant.codeFrom(location.href); if (c && on && !DEMO) { history.replaceState(null, '', location.pathname); checkin(c); } }, [on]);
   return html`<${Page} ...${useShell()}>
     <${LargeTitle}>${T('tab.plaza')}<//>
     ${!on ? html`${pending && html`<${Section}><${Row}><${Icon} name="house" size=${22} /><${RowLabel} title=${T('plaza.login_to_join')} text=${T('plaza.code_is', { c: pending })} /><//><//>`}<${LoginRows} />` : html`
-      ${L.ready && !L.joined.length && html`<${Section}><${Row}><span class="sec">${T('empty.plaza')}</span><//><//>`}
+      ${going ? html`<${Section}><${Row}><span class="sec">${T('plaza.joining')}</span><//><//>` : L.ready && !L.joined.length && html`<${Section}><${Row}><span class="sec">${T('empty.plaza')}</span><//><//>`}
       ${(() => { const j = L.joined[0], st = j && L.status[j.plaza]; if (!st || !st.scene || st.scene === 'ended' || !(st.day || st.night)) return null; const l = timerLeft(st.timer, L.skew);   // 지금 판 승차권 띠(2026-11-15 햇살님 시안 ③) — 판 화면을 닫아도 맨 위에서 한 번에
         return html`<button type="button" class="gband" onClick=${openGame}><span class="l"><small>${T('game.now')} · ${T('plaza.host_place', { host: j.host, place: T('place.plaza') })}</small><b>${phaseText(st)}</b></span>${l != null ? html`<span class="r">${mmss(l)}<em>›</em></span>` : html`<span class="r"><em>›</em></span>`}</button>`; })()}
       ${L.joined.map(j => { const st = L.status[j.plaza], pp = L.people[j.plaza] || [];
         return html`<${Section} header=${T('plaza.joined')}>
-        <${Row}><${Icon} name="house" size=${22} /><${RowLabel} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} text=${T('plaza.until', { t: (j.ends_at || '').slice(0, 16).replace('T', ' ') })} /><//>
+        <${Row}><${Icon} name="house" size=${22} /><${RowLabel} title=${T('plaza.host_place', { host: j.host, place: T('place.plaza') })} text=${T('plaza.until', { t: untilText(j.ends_at) })} /><//>
         ${!(st && st.scene && st.scene !== 'ended' && (st.day || st.night)) && html`<${Row} chevron onClick=${openGame}><${RowLabel} title=${T('game.now')} /><span class="sec">${liveText(st, L.skew) || phaseText(st || {})}</span><//>`}
         ${pp.length > 0 && html`<${Row} chevron onClick=${() => nav.push(html`<${PeopleList} title=${T('plaza.people')} load=${async () => rows(await P.plazaPeople(j.plaza))} />`)}>
           <span style="display:flex;gap:4px">${pp.slice(0, 5).map(r => html`<${Avatar} r=${r} size=${28} />`)}</span><span class="sec">${T('plaza.count', { n: pp.length })}</span><//>`}
-        <${Row} danger onClick=${async () => { await P.leave(j.plaza); live.refresh(true); }}>${T('plaza.leave')}<//><//>`; })}
+        <${Row} danger onClick=${() => setBye(j.plaza)}>${T('plaza.leave')}<//><//>`; })}
       <${Section} header=${T('plaza.code')}>
         <div class="row"><input class="textin grow" id="me-code" value=${code} placeholder=${T('plaza.code_ph')} autocapitalize="characters" onInput=${e => setCode(e.currentTarget.value.trim())} />
         <button class="blink" aria-label=${T('plaza.qr')} onClick=${() => setScan(true)}><${Icon} name="qrcode" size=${22} /></button>
         <button class="blink" disabled=${!window.Participant.codeFrom(code)} onClick=${() => checkin(window.Participant.codeFrom(code))}>${T('plaza.join')}</button></div><//>`}
     ${scan && html`<${QrScanner} title=${T('plaza.scan')} noCam=${T('plaza.no_cam')} closeLabel=${T('ui.close')} parse=${t => window.Participant.codeFrom(t)} onClose=${() => setScan(false)} onCode=${c => { setScan(false); checkin(c); }} />`}
-    <${Alert} open=${!!msg} title=${msg} onClose=${() => setMsg(null)} />
+    <${ActionSheet} open=${!!bye} title=${T('plaza.leave_ask')} cancel=${T('ui.cancel')} onClose=${() => setBye(null)} actions=${[{ label: T('plaza.leave'), role: 'destructive', onClick: async () => { await P.leave(bye); live.refresh(true); } }]} />
+    <${Alert} open=${!!msg} title=${msg} ok=${T('ui.ok')} onClose=${() => setMsg(null)} />
   <//>`;
 }
 
@@ -149,6 +163,7 @@ function GnowHead({ st, nameOf, left, narrow }) {
   const big = t => { const M = narrow ? 200 : 340, w = tw5(t, 34), fs = w > M ? Math.max(20, Math.floor(34 * M / w)) : 34; return html`<div class="g5big" style=${'font-size:' + fs + 'px'}>${t}</div>`; };
   const sub = t => html`<div class="g5sub">${t}</div>`, dn = st.day ? T('gnow.day', { n: st.day }) + ' · ' : '';
   const ko = (document.documentElement.lang || 'ko') === 'ko', by = id => ko ? josa(nameOf(id), '이', '가') : nameOf(id);
+  if (s === 'wrap') return big(T('gnow.wrap'));   // 마무리 — 큰 화면과 같은 말(전엔 제목만 남은 빈 화면)
   if (!n && (!s || s === 'idle' || s === 'waiting' || s === 'prep')) return html`${big(T('live.prep'))}${sub(T('game.wait', { n: st.checkin || 0 }))}`;
   if (s === 'night') return st.night ? big(T('gnow.night', { n: st.night })) : null;
   if (s === 'discussion') { if (!st.timer || left == null) return html`${hd(2, dn + T('gnow.disc'), APC.day[2])}${big(T('gnow.free'))}`;
@@ -228,10 +243,13 @@ function GameNow({ close }) {
   const j = L.joined[0], st0 = j && L.status[j.plaza], pp = j ? (L.people[j.plaza] || []) : [];
   const roles = useModeRoles(st0 && st0.modeId), roleKo = Object.fromEntries(roles.map(r => [r.id, r.ko]));   // 훅은 일찍 돌아가기 전에(조건부 훅 금지)
   useEffect(() => { if (j && st0 && st0.scene && st0.scene !== 'prep') notes.load(j.plaza); }, [j && j.plaza, st0 && st0.epoch]);   // 판이 바뀌면 그 판 메모로
-  if (!j) return html`<${Page} title=${T('game.now')} left=${html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}><${Section}><${Row}><span class="sec">${T('empty.plaza')}</span><//><//><//>`;
-  const st = { ...(st0 || {}), seats: (st0 && Array.isArray(st0.seats)) ? st0.seats : [], checkin: pp.length }, left = timerLeft(st.timer, L.skew), night = st.scene === 'night';
+  if (!j) return html`<${Page} title=${T('game.now')} left=${html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}><${Section}><${Row}><span class="sec">${OPT.closedNote && live.closed ? T('gnow.closed') : T('empty.plaza')}</span><//><//><//>`;
+  /* 광장을 연 직후(자리 잡기 전)의 공개 값엔 이름 없는 기본 자리 8개가 실려 온다 — 대기·마무리 장면은 자리를 그리지 않는다(2026-11-24: 머리 글이 비고 «자리 8 · 살아 있음 8»이 떴다) */
+  const noSeats = !st0 || !st0.scene || st0.scene === 'idle' || st0.scene === 'waiting' || st0.scene === 'wrap';
+  const st = { ...(st0 || {}), seats: (!noSeats && Array.isArray(st0.seats)) ? st0.seats : [], checkin: pp.length }, left = timerLeft(st.timer, L.skew), night = st.scene === 'night';
   const nameOf = n => { const x = st.seats.find(q => q.n === n); return x ? x.name || n + '번' : ''; };
   const guide = st.brief && (st.brief.groups || []).length, ended = st.scene === 'ended', open = ended || !fold, mineN = st.mine && st.mine.n;
+  const began = !!(st.night || st.day);   // 자리 메모는 첫 밤부터 — 준비 때 적으면 서버가 «판이 아직 시작되지 않았어요»로 버렸다
   const me = mineN ? st.seats.find(q => q.n === mineN) : null, alive = st.seats.filter(q => !q.dead).length;
   const memo = DEMO || N.epoch === st.epoch ? N.m : {};
   const sum = tap && st.seats.length > 12 ? tap + ' · ' + nameOf(tap) : ended ? T('gnow.reveal') : me ? T('gnow.my_seat', { n: me.n, s: me.dead ? T('gnow.dead') : T('gnow.alive') }) : T('gnow.seats_sum', { n: st.seats.length, a: alive });
@@ -239,8 +257,9 @@ function GameNow({ close }) {
     <div class="g5">
       <${GnowTop} st=${st} nameOf=${nameOf} left=${left} />
       ${st.seats.length > 0 && html`<button type="button" class="g5row" aria-expanded=${open} disabled=${ended} onClick=${() => setFold(!fold)}><span class="lab">${T('gnow.seats')}</span><span class="val">${sum}</span>${!ended && html`<span class="tg">${fold ? '▸' : '▾'}</span>`}</button>
-        ${open && !ended && html`<div class="g5hint">${T('note.hint')}</div>`}
-        ${open && html`<${GnowBoard} st=${st} mineN=${mineN} memo=${memo} roleKo=${roleKo} onTap=${n => { setTap(tap === n ? null : n); if (!ended) setNoteN(n); }} />`}`}
+        ${open && !ended && began && html`<div class="g5hint">${T('note.hint')}</div>`}
+        ${open && html`<${GnowBoard} st=${st} mineN=${mineN} memo=${memo} roleKo=${roleKo} onTap=${n => { setTap(tap === n ? null : n); if (!ended && began) setNoteN(n); }} />`}`}
+      ${OPT.lateNote && began && !ended && !mineN && st.seats.length > 0 && html`<div class="g5hint">${T('gnow.late')}</div>`}
       ${ended && st.epoch && html`<div class="g5flow"><div class="cap">${T('note.replay')}</div><${NoteReplay} plaza=${j.plaza} epoch=${st.epoch} roleKo=${roleKo} /></div>`}
       <${NoteSheet} open=${noteN != null} plaza=${j.plaza} seat=${noteN} name=${noteN != null ? nameOf(noteN) : ''} roles=${roles} cur=${noteN != null ? memo[noteN] : null} onClose=${() => setNoteN(null)} />
       <${Alert} open=${!!N.err} title=${N.err || ''} onClose=${() => { notes.err = null; notes.emit(); }} />
@@ -712,7 +731,7 @@ function Codex({ rows: l }) {
 function AccountTab({ close }) {
   const on = useAuth(), nav = useNav();
   const [me, setMe] = useState({}), [st, setSt] = useState({}), [ask, setAsk] = useState(false), [fail, setFail] = useState(null);   // 탈퇴는 계정 화면에서 바로(2026-10-24 햇살님 «탈퇴 한 번에 가능한 버튼») — 설정 안 줄도 그대로 둔다
-  const load = async () => { if (!on || DEMO) return; const m = await P.me(); const v = m.value || m; setMe(v); setSt(await P.status()); setLang(v.lang); if ((v.needs || []).length && !seen()) { seen(true); nav.push(html`<${Signup} me=${v} done=${load} />`); window.dispatchEvent(new Event('me-fill')); } };   // 처음 한 번·로그인했을 때만(2026-10-06 «나중에»)   // 빠진 칸(0250) — 계정 탭으로 넘겨 채우게
+  const load = async () => { if (!on || DEMO) return; const m = await P.me(); const v = m.value || m; setMe(v); setSt(await P.status()); setLang(v.lang); if ((v.needs || []).length && !seen()) { seen(true); nav.push(html`<${Signup} me=${v} done=${load} quick=${OPT.gate === 'nick' && (v.needs || []).includes('nick')} />`); window.dispatchEvent(new Event('me-fill')); } };   // 처음 한 번·로그인했을 때만(2026-10-06 «나중에»)   // 빠진 칸(0250) — 계정 탭으로 넘겨 채우게
   useEffect(() => { load(); }, [on]);
   useEffect(() => { const f = () => load(); window.addEventListener('me-reload', f); return () => window.removeEventListener('me-reload', f); }, [on]);
   return html`<${Page} left=${close && html`<${NavButton} icon="xmark" label=${T('ui.close')} onClick=${close} />`}>
@@ -749,19 +768,19 @@ function useNameCheck(kind, value, orig) {
 }
 const Note = ({ n }) => n && html`<div class=${n[0] ? 'green' : 'red'} style="font-size:13px;padding:0 16px 8px">${n[1]}</div>`;
 const seen = v => { try { if (v) sessionStorage.setItem('me.welcomed', '1'); return !!sessionStorage.getItem('me.welcomed'); } catch { return false; } };
-function Signup({ me, done }) {
+function Signup({ me, done, quick }) {   // quick — 닉네임과 동의만(고르실 것 gate:'nick'). 아이디·이름은 계정 화면에서 나중에
   const need = k => (me.needs || ['nick', 'handle', 'agree']).includes(k);
   const nav = useNav(); const [nick, setNick] = useState(me.nick || ''), [handle, setHandle] = useState(me.handle || ''), [nm, setNm] = useState(me.display_name || ''), [agree, setAgree] = useState(false), [busy, setBusy] = useState(false), [fail, setFail] = useState({});
   const nn = useNameCheck('nick', nick, me.nick), hn = useNameCheck('handle', handle, me.handle || '');
-  const ok = (agree || !need('agree')) && handle && nick && !(nn && !nn[0]) && !(hn && !hn[0]);
+  const ok = (agree || !need('agree')) && (quick || handle) && nick && !(nn && !nn[0]) && !(hn && !hn[0]);
   const save = async () => { setBusy(true); const ch = {}; if (need('agree')) ch.agreed = true; if (handle !== (me.handle || '')) ch.handle = handle; if (nick !== me.nick) ch.nick = nick; if (nm !== (me.display_name || '')) ch.name = nm; const r = await P.setProfile(ch); setBusy(false); if (r.ok) { nav.pop(); done(); window.dispatchEvent(new Event('me-filled')); } else setFail(r.failed || {}); };   // 채우고 나면 계정 화면에 머물지 않고 보던 곳(지금 판)으로
-  return html`<${Page} title=${T('signup.title')} left=${html`<${NavButton} label=${T('signup.later')} onClick=${() => { nav.pop(); window.dispatchEvent(new Event('me-filled')); }} />`} right=${html`<${NavButton} label=${T('signup.go')} bold disabled=${!ok || busy} onClick=${save} />`}>
+  return html`<${Page} title=${T('signup.title')} left=${!quick && html`<${NavButton} label=${T('signup.later')} onClick=${() => { nav.pop(); window.dispatchEvent(new Event('me-filled')); }} />`} right=${html`<${NavButton} label=${T('signup.go')} bold disabled=${!ok || busy} onClick=${save} />`}>
     <${Section}><div class="row" style="white-space:pre-line">${T(me.from_tunel ? 'signup.intro.tunel' : 'signup.intro')}</div><//>
     ${html`<${Section} header=${T('profile.nick')} footer=${T('signup.nick.help') + (me.from_tunel ? ' ' + T('signup.nick.tunel') : '')}><div class="row"><input class="textin grow" id="su-nick" value=${nick} onInput=${e => setNick(e.currentTarget.value)} /></div><//><${Note} n=${fail.nick ? [false, T('err.' + fail.nick)] : nn} />`}
-    ${html`<${Section} header=${T('profile.handle')} footer=${T('signup.handle.help')}><div class="row"><span class="sec">@</span><input class="textin grow" id="su-handle" value=${handle} autocapitalize="off" autocomplete="off" spellcheck="false" onInput=${e => setHandle(e.currentTarget.value)} /></div><//><${Note} n=${fail.handle ? [false, T('err.' + fail.handle)] : hn} />`}
-    <${Section} header=${T('profile.name')} footer=${T('signup.name.help')}><div class="row"><input class="textin grow" id="su-name" value=${nm} onInput=${e => setNm(e.currentTarget.value)} /></div><//><${Note} n=${fail.name ? [false, T('err.' + fail.name)] : null} />
+    ${!quick && html`<${Section} header=${T('profile.handle')} footer=${T('signup.handle.help')}><div class="row"><span class="sec">@</span><input class="textin grow" id="su-handle" value=${handle} autocapitalize="off" autocomplete="off" spellcheck="false" onInput=${e => setHandle(e.currentTarget.value)} /></div><//><${Note} n=${fail.handle ? [false, T('err.' + fail.handle)] : hn} />`}
+    ${!quick && html`<${Section} header=${T('profile.name')} footer=${T('signup.name.help')}><div class="row"><input class="textin grow" id="su-name" value=${nm} onInput=${e => setNm(e.currentTarget.value)} /></div><//><${Note} n=${fail.name ? [false, T('err.' + fail.name)] : null} />`}
     ${need('agree') && html`<${Section} footer=${T('signup.easy')}><${Toggle} checked=${agree} onChange=${setAgree}>${T('signup.agree')}<//>
-      <${Row} chevron onClick=${() => open('../terms.html')}>${T('signup.terms')}<//><${Row} chevron onClick=${() => open('../privacy.html')}>${T('signup.privacy')}<//><//>`}
+      <${Row} chevron onClick=${() => open('terms.html')}>${T('signup.terms')}<//><${Row} chevron onClick=${() => open('privacy.html')}>${T('signup.privacy')}<//><//>`}
   <//>`;
 }
 function EditProfile({ me, done }) {
@@ -780,7 +799,7 @@ function EditProfile({ me, done }) {
     <${Section} header=${T('profile.handle')} footer=${me.handle_left !== undefined && T('edit.left', { n: me.handle_left })}><div class="row"><span class="sec">@</span><input class="textin grow" id="ep-handle" value=${f.handle} autocapitalize="off" autocomplete="off" spellcheck="false" onInput=${set('handle')} /></div><//><${Note} n=${fail.handle ? [false, T('err.' + fail.handle)] : hn} />
     <${Section} header=${T('profile.name')} footer=${me.name_left !== undefined && T('edit.left', { n: me.name_left })}><div class="row"><input class="textin grow" id="ep-name" value=${f.name} onInput=${set('name')} /></div><//><${Note} n=${fail.name ? [false, T('err.' + fail.name)] : local('name')} />
     <${Section} header=${T('profile.bio')}><div class="row"><textarea class="textin grow" id="ep-bio" rows="3" maxlength="150" onInput=${set('bio')}>${f.bio}</textarea></div><//><${Note} n=${local('bio')} />
-    ${(me.revert || []).map(x => html`<${Section}><${Row} tint onClick=${async () => { await P.revert(x.kind); nav.pop(); done(); }}>${T('revert.to', { old: (x.kind === 'handle' ? '@' : '') + x.old })}<//><//>`)}
+    ${(me.revert || []).filter(x => x && x.old).map(x => html`<${Section}><${Row} tint onClick=${async () => { await P.revert(x.kind); nav.pop(); done(); }}>${T('revert.to', { old: (x.kind === 'handle' ? '@' : '') + x.old })}<//><//>`)}
     <${ActionSheet} open=${ask === 'handle'} title=${T('edit.handle_confirm', { old: orig('handle') })} onClose=${() => setAsk(null)} actions=${[{ label: T('ui.change'), onClick: save }]} />
     <${ActionSheet} open=${ask === 'discard'} title=${T('edit.discard')} onClose=${() => setAsk(null)} actions=${[{ label: T('ui.discard'), role: 'destructive', onClick: () => nav.pop() }]} />
   <//>`;
@@ -859,7 +878,14 @@ function App() {
     if (!over && j && closed !== j.plaza) setOver('game'); }, [L.joined.length && L.joined[0].plaza, over]);
   const closeGame = () => { try { if (L.joined[0]) sessionStorage.setItem(closedKey, L.joined[0].plaza); } catch {} setOver(null); };
   const [a2, setA2] = useState(false);
-  useEffect(() => { const f = () => { if (!standalone() && (!DEMO || /[?&]a2hs=1/.test(location.search)) && ls('me.a2hs') !== '1') setTimeout(() => setA2(true), 800); }; window.addEventListener('me-a2hs', f); return () => window.removeEventListener('me-a2hs', f); }, []);
+  /* 홈 화면 안내 — 가입 칸이 떠 있는 동안은 미뤘다가 채운 뒤(me-filled)에(2026-11-24: 처음 온 사람에게 가입 칸·안내 시트·지금 판이 한꺼번에 겹쳤다) */
+  useEffect(() => { let want = false, filling = false;
+    const show = () => { want = false; if (!standalone() && (!DEMO || /[?&]a2hs=1/.test(location.search)) && ls('me.a2hs') !== '1') setTimeout(() => { if (!filling) setA2(true); else want = true; }, 800); };
+    const f = () => { if (filling) want = true; else show(); }, fill = () => { filling = true; setA2(false); }, filled = () => { filling = false; if (want) show(); };
+    window.addEventListener('me-a2hs', f); window.addEventListener('me-fill', fill); window.addEventListener('me-filled', filled);
+    return () => { window.removeEventListener('me-a2hs', f); window.removeEventListener('me-fill', fill); window.removeEventListener('me-filled', filled); }; }, []);
+  /* 브라우저 뒤로 = 덮은 화면(지금 판·계정·설정) 닫기 */
+  useEffect(() => { if (!over) return; let popped = false; const f = () => { popped = true; if (over === 'game') closeGame(); else setOver(null); }; backPush(f); return () => { if (!popped) backDrop(f); }; }, [over]);
   const sh = { space, open: setOver, pick: setPicking };
   const cur = tabs[space];
   const all = [...SPACES.play.map(t => ['play', ...t]), ...SPACES.feed.map(t => ['feed', ...t])];
@@ -885,9 +911,16 @@ function WebSettings({ close }) {
   <//>`;
 }
 function draw() { render(html`<${App} key=${document.documentElement.lang} />`, document.getElementById('app')); }
-(async () => {
-  ko = await (await fetch('i18n/ko.json')).json();
-  await auth.init();
-  await setLang(null);
-  draw();
+/* 첫 화면을 받다 끊기면 제목만 뜬 채 멈췄다 — 한 줄과 «다시» 단추를 그린다(화면 글을 아직 못 받았을 수 있어 글은 여기 박아 둔다) */
+(async function boot() {
+  try {
+    ko = await (await fetch('i18n/ko.json')).json();
+    await auth.init();
+    await setLang(null);
+    draw();
+  } catch (e) {
+    const el = document.getElementById('app'), en = !/^ko/i.test(navigator.language || 'ko');
+    el.innerHTML = '<div style="padding:28vh 24px 0;text-align:center;font:17px -apple-system,sans-serif"><div>' + (en ? 'Can’t connect' : '연결이 안 돼요') + '</div><button type="button" id="me-retry" style="margin-top:16px;font:inherit;color:#007aff;background:none;border:0;padding:12px 24px">' + (en ? 'Try again' : '다시') + '</button></div>';
+    document.getElementById('me-retry').onclick = () => { el.innerHTML = ''; boot(); };
+  }
 })();

@@ -422,5 +422,11 @@
   "a2hs.login": "처음 한 번은 카카오 로그인을 다시 해요",
   "a2hs.ok": "알겠어요",
   "a2hs.later": "다음에",
-  "a2hs.install": "앱 설치"
+  "a2hs.install": "앱 설치",
+  "gnow.wrap": "오늘 즐거웠어요",
+  "login.failed": "로그인하지 못했어요. 다시 눌러 주세요",
+  "plaza.joining": "들어가는 중…",
+  "plaza.leave_ask": "정말 나갈까요? 다시 들어오려면 QR 을 다시 찍어야 해요",
+  "gnow.closed": "오늘 모임이 끝났어요",
+  "gnow.late": "이번 판에는 내 자리가 없어요. 다음 판부터 앉아요"
 }

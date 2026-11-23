@@ -14,6 +14,8 @@ var 드러냄 = /** @type {any} */ (globalThis).드러냄 || (/** @type {any} */
     'tunel', '1ndclub', '1ndcapp', 'dangsan', 'hatsal', 'host', 'moderator', 'operator', 'notice'];
   var EMOJI = /[\u{1F000}-\u{1FAFF}☀-➿⬀-⯿←-⇿️‍]/u;
   var CTRL = /[\u0000-\u001f\u007f]/;
+  /* 눈에 안 보이는 글자 — 폭 없는 공백·방향 표시·한글 채움 문자 등. 남의 닉과 똑같아 보이는 닉(«햇살» + 폭 없는 공백)이나 빈 닉을 만드는 길(2026-11-24). 서버 0336 과 같은 목록 */
+  var UNSEEN = /[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u206f\u3164\ufe00-\ufe0e\ufeff\uffa0]/;
   var NICK_SYMBOL = /[!"#$%&()*+,/:;<=>?@[\\\]^`{|}~]/;
   var LIMIT = { nick: 12, name: 30, bio: 150, handle: 30 };
 
@@ -36,6 +38,7 @@ var 드러냄 = /** @type {any} */ (globalThis).드러냄 || (/** @type {any} */
       if (Array.from(v).length > LIMIT.nick) return 'too_long';
       if (CTRL.test(v)) return 'bad_chars';
       if (EMOJI.test(v)) return 'emoji';
+      if (UNSEEN.test(v)) return 'bad_chars';
       if (NICK_SYMBOL.test(v)) return 'bad_chars';
       return null;   // 예약어는 서버가(운영자 예외, 0290)
     }
@@ -44,15 +47,22 @@ var 드러냄 = /** @type {any} */ (globalThis).드러냄 || (/** @type {any} */
       if (Array.from(v).length > LIMIT[kind]) return 'too_long';
       if (CTRL.test(v)) return 'bad_chars';
       if (EMOJI.test(v)) return 'emoji';
+      if (UNSEEN.test(v)) return 'bad_chars';
       return null;
     }
     return 'bad_chars';
   }
 
+  var COOL_AT = null;
+  function coolDate(r) {   // 서버가 준 시각(at) → 이 기기 날짜 M/D, 없으면 문장 속 «MM/DD»
+    var d = r.at ? new Date(r.at) : null; if (d && !isNaN(d)) return (d.getMonth() + 1) + '/' + d.getDate();
+    var m = /(\d{1,2})\/(\d{1,2})/.exec(String(r.error || r.reason || '')); return m ? Number(m[1]) + '/' + Number(m[2]) : null;
+  }
   // 서버 답을 한 꼴로 — {ok, code, ...}. 코드가 없는 옛 함수는 문장(error)을 legacy 로 넘긴다(그대로 보여 줄 수밖에 없다)
   function answer(r) {
     if (r && typeof r === 'object' && 'ok' in r) {
       if (r.ok) return r;
+      if (r.code === 'cooldown') COOL_AT = coolDate(r) || COOL_AT;   // «{at} 뒤에 바꿀 수 있어요»의 날짜 — 화면은 코드만 받아 글을 만들므로 여기서 챙긴다(전엔 «{at}»가 그대로 보였다)
       return Object.assign({}, r, { ok: false, code: r.code || 'legacy', legacy: r.code ? undefined : (r.error || r.reason || null) });
     }
     return { ok: true, value: r };
@@ -79,8 +89,12 @@ var 드러냄 = /** @type {any} */ (globalThis).드러냄 || (/** @type {any} */
 
       // ── 나·프로필 ──
       me: function () {   // needs = 채워야 할 칸(nick·handle·agree) — 투넬에서 넘어온 계정은 다음 로그인 때 채운다(0250, 스위치 complete_profile)
+        var self = this, again = arguments[0] === true;
         return Promise.all([call('my_profile'), call('my_needs'), call('my_origin')]).then(function (a) {
           var r = a[0]; if (!r.ok) return r;
+          /* 계정 줄이 아직 없는 사람(QR 체크인 없이 로그인부터 한 새 사람) — 줄을 만들고 한 번 다시 읽는다(2026-11-24).
+             전엔 줄이 체크인·판 올리기 때만 생겨, 이런 사람은 가입 창이 안 뜨고 아이디 저장·광장 열기가 «로그인이 필요해요»로 막혔다. */
+          if (r.value == null && !again) return call('claim_me', { p_nick: '' }).then(function (c) { return c.ok ? self.me(true) : c; });
           var v = r.value || r; v.needs = a[1].ok && Array.isArray(a[1].value) ? a[1].value : (v.handle ? [] : ['handle', 'agree']);
           v.from_tunel = !!(a[2].ok && a[2].value && a[2].value.from_tunel);   // 계정 정보 창 설명(0291)
           return set('me', v);
@@ -198,6 +212,7 @@ var 드러냄 = /** @type {any} */ (globalThis).드러냄 || (/** @type {any} */
   // 문구 — 사전(i18n/<언어>.json)에서 키를 찾아 {이름} 자리를 채운다. 없으면 한국어 사전, 그래도 없으면 키
   function text(dict, key, vars, fallback) {
     var s = (dict && dict[key]) || (fallback && fallback[key]) || key;
+    if (key === 'err.cooldown' && !(vars && vars.at != null) && COOL_AT) vars = Object.assign({}, vars, { at: COOL_AT });
     return s.replace(/\{(\w+)\}/g, function (m, k) { return vars && vars[k] != null ? String(vars[k]) : m; });
   }
   // 언어 고르기 — 계정에 정한 것 → 기기 언어 → 지원하지 않는 언어면 영어(정함 2026-10-06). 중국어는 대만·홍콩·번체면 번체, 나머지 간체
@@ -211,7 +226,7 @@ var 드러냄 = /** @type {any} */ (globalThis).드러냄 || (/** @type {any} */
     return LANGS.indexOf(l) >= 0 ? l : 'en';
   }
 
-  var api = { create: create, problem: problem, codeFrom: codeFrom, text: text, lang: lang, LANGS: LANGS, LIMIT: LIMIT };
+  var api = { create: create, problem: problem, codeFrom: codeFrom, text: text, lang: lang, LANGS: LANGS, LIMIT: LIMIT, coolAt: function () { return COOL_AT; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.Participant = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

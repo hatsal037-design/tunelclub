@@ -422,5 +422,11 @@
   "a2hs.login": "Lần đầu bạn sẽ đăng nhập Kakao lại",
   "a2hs.ok": "Đã hiểu",
   "a2hs.later": "Để sau",
-  "a2hs.install": "Cài ứng dụng"
+  "a2hs.install": "Cài ứng dụng",
+  "gnow.wrap": "Hôm nay vui lắm, cảm ơn nhé",
+  "login.failed": "Không đăng nhập được. Hãy thử lại",
+  "plaza.joining": "Đang tham gia…",
+  "plaza.leave_ask": "Rời đi bây giờ? Muốn vào lại phải quét QR lần nữa",
+  "gnow.closed": "Buổi gặp hôm nay đã kết thúc",
+  "gnow.late": "Ván này bạn chưa có chỗ. Bạn sẽ vào từ ván sau"
 }

@@ -422,5 +422,11 @@
   "a2hs.login": "The first time, you'll sign in with Kakao again",
   "a2hs.ok": "Got it",
   "a2hs.later": "Later",
-  "a2hs.install": "Install app"
+  "a2hs.install": "Install app",
+  "gnow.wrap": "Thanks for playing today",
+  "login.failed": "Couldn’t sign in. Please try again",
+  "plaza.joining": "Joining…",
+  "plaza.leave_ask": "Leave now? You’ll need to scan the QR again to rejoin",
+  "gnow.closed": "Today’s meetup has ended",
+  "gnow.late": "You don’t have a seat in this game. You’ll join from the next one"
 }

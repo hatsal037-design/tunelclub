@@ -422,5 +422,11 @@
  "a2hs.login": "Beim ersten Mal meldest du dich erneut mit Kakao an",
  "a2hs.ok": "Verstanden",
  "a2hs.later": "Später",
- "a2hs.install": "App installieren"
+ "a2hs.install": "App installieren",
+ "gnow.wrap": "Danke fürs Mitspielen heute",
+ "login.failed": "Anmeldung fehlgeschlagen. Bitte versuch es noch einmal",
+ "plaza.joining": "Trete bei…",
+ "plaza.leave_ask": "Jetzt gehen? Zum Wiederbeitreten musst du den QR-Code erneut scannen",
+ "gnow.closed": "Das heutige Treffen ist beendet",
+ "gnow.late": "In dieser Partie hast du keinen Platz. Du bist ab der nächsten dabei"
 }

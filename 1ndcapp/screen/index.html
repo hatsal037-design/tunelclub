@@ -332,7 +332,7 @@ function renderWaiting(p, arena, W, H) {
     + '<div><div style="font-size:' + 96 * u + 'px;font-weight:800;line-height:1.1;letter-spacing:-.01em">첫밤 사망자 <span style="color:#e8323c">클럽</span></div>'
     + '<div style="font-size:' + 44 * u + 'px;color:' + moon + ';margin-top:' + 10 * u + 'px">' + esc(w.title) + '</div>'
     + (w.date ? '<div style="font-size:' + 34 * u + 'px;color:' + cream + ';margin-top:' + 8 * u + 'px">' + (d => (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + '일월화수목금토'[d.getDay()] + '요일')(new Date(w.date + 'T12:00:00')) + '</div>' : '')   // 광장 연 날
-    + (w.code ? '<div style="font-size:' + 38 * u + 'px;color:rgba(246,238,228,.75);margin-top:' + 14 * u + 'px">들어온 사람 <b style="color:' + cream + '">' + n + '</b></div>' : '')   // 체크인이 없으면 셀 사람도 없다(2026-11-16)
+    + (w.code ? '<div style="font-size:' + 38 * u + 'px;color:rgba(246,238,228,.75);margin-top:' + 14 * u + 'px">들어온 사람 <b style="color:' + cream + '">' + (typeof w.count === 'number' ? w.count : n) + '</b></div>' : '')   // 체크인이 없으면 셀 사람도 없다(2026-11-16)
     + (w.notice ? '<div style="font-size:' + 34 * u + 'px;color:' + cream + ';max-width:' + W * 0.5 + 'px;margin-top:' + 16 * u + 'px;white-space:pre-line">' + esc(w.notice) + '</div>' : '') + '</div></div></div>';   // 광장 공지(2026-11-02)
   const side = TH * 0.25;
   if (q) h += '<div style="position:absolute;right:' + (W * 0.05 - left) + 'px;top:' + (TH * 0.07 - top) + 'px;display:flex;flex-direction:column;align-items:center;gap:' + 10 * u + 'px"><div style="width:' + side + 'px;height:' + side + 'px;background:#fff;border-radius:' + 14 * u + 'px;padding:' + 14 * u + 'px;box-sizing:border-box" aria-label="참가 QR">' + q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }) + '</div>'
@@ -483,8 +483,11 @@ function draw() {
   $('composition').textContent = p.initialComposition && !night ? '처음 구성  선 ' + p.initialComposition.good + ' · 악 ' + p.initialComposition.evil : '';
   const name = id => { const s = p.seats.find(s => s.id === id); return s ? s.name || s.number + '번' : ''; };
   $('ribbon').innerHTML = (p.results || []).map(r => '<div class="result ' + (r.status === 'leading' ? 'lead' : '') + '"><span>' + esc(name(r.targetId)) + '</span><strong>' + r.votes + '<small>표</small></strong>' + (r.status === 'leading' ? '<span class="stamp" aria-label="유력 — 기준을 채운 단독 최다">유력</span>' : '<small>' + ({ below: '기준 미달', qualified: '기준 충족', tied: '공동 최다' })[r.status] + '</small>') + '</div>').join('');
-  const a = $('arena'), W = a.clientWidth, H = a.clientHeight, n = p.seats.length; if (!n || !W) { a.innerHTML = ''; return; }
-  if (p.scene === 'waiting' && p.waiting) { renderWaiting(p, a, W, H); return; }
+  const a = $('arena'), W = a.clientWidth, H = a.clientHeight, n = p.seats.length;
+  /* 대기는 자리 수를 보기 전에 — 판과 판 사이(결과 화면을 나간 뒤·한 판 더)의 대기는 자리 0으로 온다. 전엔 여기서 빈 화면 + 위 줄 «낮 · undefined»가 됐다(2026-11-24) */
+  if (p.scene === 'waiting' && p.waiting && W) { renderWaiting(p, a, W, H); return; }
+  if (p.scene === 'waiting') $('phase').textContent = '';
+  if (!n || !W) { a.innerHTML = ''; return; }
   if (p.scene === 'ended' && (p.endReveal?.length || p.endReplay)) { $('ribbon').innerHTML = ''; renderEnded(p, a, W, H); return; }
   NAMES = p.seats.map(s => s.name || s.number + '번');
   /* 낮 구석 간략판 — 몇째 낮 · 살아 있는 사람 · 판사만 투표 · 무리별 승리 결론(편별 생존 수는 안 낸다). 자리와 겹치면 자리판을 그만큼 왼쪽으로 좁혀 다시 */

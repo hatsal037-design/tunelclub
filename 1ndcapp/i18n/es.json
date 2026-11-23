@@ -422,5 +422,11 @@
   "a2hs.login": "La primera vez tendrás que entrar con Kakao otra vez",
   "a2hs.ok": "Entendido",
   "a2hs.later": "Más tarde",
-  "a2hs.install": "Instalar app"
+  "a2hs.install": "Instalar app",
+  "gnow.wrap": "Gracias por jugar hoy",
+  "login.failed": "No se pudo iniciar sesión. Inténtalo de nuevo",
+  "plaza.joining": "Entrando…",
+  "plaza.leave_ask": "¿Salir ahora? Para volver tendrás que escanear el QR otra vez",
+  "gnow.closed": "El encuentro de hoy ha terminado",
+  "gnow.late": "No tienes asiento en esta partida. Entrarás en la siguiente"
 }

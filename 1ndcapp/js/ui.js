@@ -128,19 +128,19 @@ export function Cover({ open, children, clear }) {
   return html`<div class=${cx('cover', clear && 'clear')} role="dialog" aria-modal="true">${children}</div>`;
 }
 /** 확인창(액션 시트) — 제목·설명·단추들·취소 */
-export function ActionSheet({ open, title, message, actions = [], onClose }) {
+export function ActionSheet({ open, title, message, actions = [], onClose, cancel = '취소' }) {
   if (!open) return null;
   return html`<div class="sheet-wrap on"><div class="scrim" onClick=${onClose}></div>
     <div class="asheet" role="alertdialog">
       <div class="ag">${(title || message) && html`<div class="ah">${title && html`<b>${title}</b>`}${message && html`<span>${message}</span>`}</div>`}
         ${actions.map(a => html`<button class=${cx('ab', a.role === 'destructive' && 'danger')} onClick=${() => { onClose(); a.onClick && a.onClick(); }}>${a.label}</button>`)}</div>
-      <button class="ab cancel" onClick=${onClose}>취소</button></div></div>`;
+      <button class="ab cancel" onClick=${onClose}>${cancel}</button></div></div>`;
 }
-export function Alert({ open, title, message, onClose }) {
+export function Alert({ open, title, message, onClose, ok = '확인' }) {
   if (!open) return null;
   return html`<div class="sheet-wrap on center"><div class="scrim"></div>
     <div class="alert" role="alertdialog"><div class="ah"><b>${title}</b>${message && html`<span>${message}</span>`}</div>
-    <button class="ab" onClick=${onClose}>확인</button></div></div>`;
+    <button class="ab" onClick=${onClose}>${ok}</button></div></div>`;
 }
 /** 명령 응답 알림 — 거절만 표준 알림으로(낡은 화면에서 한 번 더 누른 것은 조용히 무시) */
 export function ReplyAlert({ reply, clear }) {

@@ -422,5 +422,11 @@
   "a2hs.login": "第一次需要重新用 Kakao 登录",
   "a2hs.ok": "知道了",
   "a2hs.later": "以后再说",
-  "a2hs.install": "安装应用"
+  "a2hs.install": "安装应用",
+  "gnow.wrap": "今天玩得很开心",
+  "login.failed": "登录失败，请再试一次",
+  "plaza.joining": "正在加入…",
+  "plaza.leave_ask": "要离开吗？重新加入需要再扫一次二维码",
+  "gnow.closed": "今天的聚会结束了",
+  "gnow.late": "这一局没有你的座位，下一局开始入座"
 }
